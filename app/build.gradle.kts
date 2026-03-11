@@ -153,11 +153,3 @@ val prepareReleaseArtifacts by tasks.registering {
         }
     }
 }
-
-tasks.register("printVersionName") {
-    group = "help"
-    description = "Prints the Android app release version name."
-    doLast {
-        println(appVersionName.get())
-    }
-}

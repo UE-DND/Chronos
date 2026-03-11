@@ -72,8 +72,7 @@ jobs:
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           echo "tag_version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
-          VERSION="$(./gradlew -q printVersionName -PAPP_VERSION="$TAG_VERSION")"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build release APKs
         run: ./gradlew clean prepareReleaseArtifacts -PAPP_VERSION="${{ steps.version.outputs.tag_version }}"
