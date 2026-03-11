@@ -27,14 +27,14 @@ jobs:
 
       - name: Prepare signing config
         env:
-          RELEASE_STORE_FILE_BASE64: ${{ secrets.RELEASE_STORE_FILE_BASE64 || secrets.RELEASE_STORE_FILE }}
+          RELEASE_STORE_FILE_BASE64: ${{ secrets.RELEASE_STORE_FILE_BASE64 }}
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           if [ -z "$RELEASE_STORE_FILE_BASE64" ]; then
-            echo "Missing signing secret: RELEASE_STORE_FILE_BASE64 (or fallback RELEASE_STORE_FILE)." >&2
-            echo "Expected value: base64-encoded keystore file contents, not a file path." >&2
+            echo "Missing signing secret: RELEASE_STORE_FILE_BASE64." >&2
+            echo "Expected value: raw base64 of the keystore file, not a file path." >&2
             exit 1
           fi
 
@@ -49,7 +49,8 @@ jobs:
 
           if ! printf '%s' "$CLEANED_KEYSTORE_BASE64" | base64 --decode > .signing/release.jks 2>/tmp/keystore_decode_error.log; then
             echo "Failed to decode release keystore secret." >&2
-            echo "Make sure RELEASE_STORE_FILE_BASE64 (or RELEASE_STORE_FILE) contains raw base64 of the keystore file." >&2
+            echo "RELEASE_STORE_FILE_BASE64 must be the raw base64 of the keystore file." >&2
+            echo "Example: base64 -i your-release.jks | tr -d '\n'" >&2
             cat /tmp/keystore_decode_error.log >&2 || true
             exit 1
           fi
