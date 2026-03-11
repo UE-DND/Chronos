@@ -1,0 +1,42 @@
+node_modules/
+build/
+dist/
+coverage/
+.gradle/
+.idea/
+local.properties
+*.iml
+captures/
+app/build/
+.DS_Store
+*.log
+.env*
+!.env.example
+.kotlin/
+.serena/
+
+# Android / Gradle module outputs
+**/build/
+**/.cxx/
+**/generated/
+
+# Android Studio / IntelliJ
+.idea/caches/
+.idea/workspace.xml
+.idea/deploymentTargetSelector.xml
+.idea/compiler.xml
+
+# Kotlin / KSP
+*.kotlin_module
+**/kspCaches/
+
+# Signing / local secrets
+*.jks
+*.keystore
+google-services.json
+
+# macOS
+.AppleDouble
+.LSOverride
+
+.report/

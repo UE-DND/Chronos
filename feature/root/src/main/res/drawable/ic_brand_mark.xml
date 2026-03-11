@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="@color/launcher_foreground_on_brand"
+        android:pathData="M30,26h48c4.42,0 8,3.58 8,8v40c0,4.42 -3.58,8 -8,8H30c-4.42,0 -8,-3.58 -8,-8V34c0,-4.42 3.58,-8 8,-8z" />
+    <path
+        android:fillColor="@color/launcher_foreground_primary"
+        android:pathData="M22,36h64v12H22z" />
+    <path
+        android:fillColor="@color/launcher_foreground_primary"
+        android:pathData="M34,20h8v18h-8z" />
+    <path
+        android:fillColor="@color/launcher_foreground_primary"
+        android:pathData="M66,20h8v18h-8z" />
+    <path
+        android:fillColor="@color/launcher_foreground_primary"
+        android:pathData="M32,52h12v10H32z" />
+    <path
+        android:fillColor="@color/launcher_foreground_primary"
+        android:pathData="M48,52h12v10H48z" />
+    <path
+        android:fillColor="@color/launcher_foreground_primary"
+        android:pathData="M32,66h12v10H32z" />
+    <path
+        android:fillColor="@color/launcher_foreground_primary"
+        android:pathData="M48,66h12v10H48z" />
+    <path
+        android:fillColor="@color/launcher_foreground_accent"
+        android:pathData="M72,58m-14,0a14,14 0,1 1,28 0a14,14 0,1 1,-28 0" />
+    <path
+        android:fillColor="@color/launcher_foreground_on_brand"
+        android:pathData="M71,50h3v9.5l6,3.6l-1.5,2.6L71,61.4z" />
+</vector>
