@@ -1,6 +1,6 @@
 # Chronos
 
-> Chronos 是一个简单的课程表应用，仅支持查看、编辑和分享课表功能
+> Chronos 是一个简单的 Android 课程表应用，仅支持查看和分享课表
 
 <p align="center">
 	<img src="assets/Screenshot_1.png" alt="Screenshot 2" width="48%" />

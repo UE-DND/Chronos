@@ -11,7 +11,7 @@
     <string name="timetable_manage_action">管理课程表</string>
 
     <string name="timetable_manage_title">管理课程表</string>
-    <string name="timetable_manage_subtitle">切换、新建或整理你的本地课表</string>
+    <string name="timetable_manage_subtitle">新建或切换本地课表</string>
     <string name="timetable_create_action">新建课程表</string>
     <string name="timetable_course_count">%1$d 门课程</string>
 

@@ -53,7 +53,7 @@ internal fun ManageTimetablesDialog(
         confirmButton = {},
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                BrandedDialogTitle(
+                DialogTitleBlock(
                     title = stringResource(R.string.timetable_manage_title),
                     subtitle = stringResource(R.string.timetable_manage_subtitle),
                     modifier = Modifier.weight(1f),

@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Locale
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -8,20 +9,45 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-val releaseStoreFile = providers.gradleProperty("RELEASE_STORE_FILE")
-val releaseStorePassword = providers.gradleProperty("RELEASE_STORE_PASSWORD")
-val releaseKeyAlias = providers.gradleProperty("RELEASE_KEY_ALIAS")
-val releaseKeyPassword = providers.gradleProperty("RELEASE_KEY_PASSWORD")
+val localSigningProperties = Properties().apply {
+    val localSigningFile = rootProject.file(".signing/.env.release-signing")
+    if (localSigningFile.isFile) {
+        localSigningFile.inputStream().use(::load)
+    }
+}
+
+fun resolveStoreFile(): String? {
+    val localStoreFile = localSigningProperties.getProperty("RELEASE_STORE_FILE")
+    if (!localStoreFile.isNullOrBlank() && rootProject.file(localStoreFile).isFile) {
+        return localStoreFile
+    }
+
+    val configuredPath = providers.gradleProperty("RELEASE_STORE_FILE").orNull
+    if (!configuredPath.isNullOrBlank() && rootProject.file(configuredPath).isFile) {
+        return configuredPath
+    }
+
+    return null
+}
+
+fun resolveSigningProperty(name: String): String? =
+    localSigningProperties.getProperty(name)?.takeIf { it.isNotBlank() }
+        ?: providers.gradleProperty(name).orNull
+
+val releaseStoreFile = resolveStoreFile()
+val releaseStorePassword = resolveSigningProperty("RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = resolveSigningProperty("RELEASE_KEY_ALIAS")
+val releaseKeyPassword = resolveSigningProperty("RELEASE_KEY_PASSWORD")
 val appVersionName = providers.gradleProperty("APP_VERSION").orElse("1.0.0")
 val releaseAbiNames = mapOf(
     "arm64-v8a" to "v8a",
     "armeabi-v7a" to "v7a",
     "x86_64" to "x86_64",
 )
-val hasReleaseSigning = releaseStoreFile.isPresent &&
-    releaseStorePassword.isPresent &&
-    releaseKeyAlias.isPresent &&
-    releaseKeyPassword.isPresent
+val hasReleaseSigning = !releaseStoreFile.isNullOrBlank() &&
+    !releaseStorePassword.isNullOrBlank() &&
+    !releaseKeyAlias.isNullOrBlank() &&
+    !releaseKeyPassword.isNullOrBlank()
 
 android {
     namespace = "com.chronos.mobile"
@@ -43,17 +69,18 @@ android {
     signingConfigs {
         if (hasReleaseSigning) {
             create("release") {
-                storeFile = rootProject.file(releaseStoreFile.get())
-                storePassword = releaseStorePassword.get()
-                keyAlias = releaseKeyAlias.get()
-                keyPassword = releaseKeyPassword.get()
+                storeFile = rootProject.file(requireNotNull(releaseStoreFile))
+                storePassword = requireNotNull(releaseStorePassword)
+                keyAlias = requireNotNull(releaseKeyAlias)
+                keyPassword = requireNotNull(releaseKeyPassword)
             }
         }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
