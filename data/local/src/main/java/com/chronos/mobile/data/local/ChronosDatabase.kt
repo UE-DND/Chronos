@@ -19,18 +19,18 @@ abstract class ChronosDatabase : RoomDatabase() {
 private val migrationJson = Json { encodeDefaults = true }
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
-    override fun migrate(database: SupportSQLiteDatabase) {
+    override fun migrate(db: SupportSQLiteDatabase) {
         val defaultConfig = migrationJson.encodeToString(TimetableDetails())
             .replace("'", "''")
-        database.execSQL(
+        db.execSQL(
             "ALTER TABLE timetables ADD COLUMN configJson TEXT NOT NULL DEFAULT '$defaultConfig'"
         )
     }
 }
 
 val MIGRATION_2_3 = object : Migration(2, 3) {
-    override fun migrate(database: SupportSQLiteDatabase) {
-        database.execSQL(
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
             "ALTER TABLE courses ADD COLUMN weeksCsv TEXT NOT NULL DEFAULT ''"
         )
     }

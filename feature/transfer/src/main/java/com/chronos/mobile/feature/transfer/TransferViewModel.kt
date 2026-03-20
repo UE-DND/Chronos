@@ -27,6 +27,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.crypto.Cipher
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -154,7 +155,9 @@ class TransferViewModel @Inject constructor(
         uiState.update { it.copy(preview = null, previewSource = null) }
     }
 
-    fun prepareSaveCipher(): AppResult<Cipher> = prepareCredentialSaveUseCase()
+    suspend fun prepareSaveCipher(): AppResult<Cipher> = withContext(Dispatchers.IO) {
+        prepareCredentialSaveUseCase()
+    }
 
     suspend fun saveCredentials(
         account: String,
@@ -162,7 +165,9 @@ class TransferViewModel @Inject constructor(
         cipher: Cipher,
     ): AppResult<Unit> = saveOnlineCredentialUseCase(account = account, password = password, cipher = cipher)
 
-    fun prepareUnlockCipher(): AppResult<Cipher> = prepareCredentialUnlockUseCase()
+    suspend fun prepareUnlockCipher(): AppResult<Cipher> = withContext(Dispatchers.IO) {
+        prepareCredentialUnlockUseCase()
+    }
 
     suspend fun unlockSavedCredentials(cipher: Cipher): AppResult<AuthSnapshot> =
         unlockOnlineCredentialUseCase(cipher)
@@ -179,26 +184,26 @@ class TransferViewModel @Inject constructor(
         }
     }
 
-    suspend fun previewImported(content: String, source: ImportSource): AppResult<Timetable> = withContext(Dispatchers.Default) {
+    suspend fun previewImported(content: String, source: ImportSource): AppResult<Timetable> = withContext(Dispatchers.IO) {
         previewImportedTimetableUseCase(content).onSuccess { timetable ->
             uiState.update { it.copy(preview = timetable, previewSource = source) }
         }
     }
 
-    suspend fun previewOnline(authSnapshot: AuthSnapshot): AppResult<Timetable> = withContext(Dispatchers.Default) {
+    suspend fun previewOnline(authSnapshot: AuthSnapshot): AppResult<Timetable> = withContext(Dispatchers.IO) {
         previewOnlineTimetableUseCase(authSnapshot).onSuccess { timetable ->
             uiState.update { it.copy(preview = timetable, previewSource = ImportSource.ONLINE) }
         }
     }
 
-    suspend fun importPreview(): AppResult<ImportTimetableResult> = withContext(Dispatchers.Default) {
+    suspend fun importPreview(): AppResult<ImportTimetableResult> = withContext(Dispatchers.IO) {
         val currentState = state.value
         val preview = currentState.preview
             ?: return@withContext AppError.NotFound("请先获取课表预览").asFailure()
         importTimetableUseCase.import(preview, currentState.importMode)
     }
 
-    suspend fun export(): AppResult<String?> = withContext(Dispatchers.Default) {
+    suspend fun export(): AppResult<String?> = withContext(Dispatchers.IO) {
         exportCurrentTimetableUseCase()
     }
 }

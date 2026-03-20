@@ -11,7 +11,7 @@ class CalculateAcademicWeekUseCase @Inject constructor() {
     operator fun invoke(today: LocalDate, details: TimetableDetails?): Int {
         val configured = details ?: TimetableDetails()
         val termStart = runCatching { LocalDate.parse(configured.termStartDate) }.getOrElse {
-            LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+            today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         }
         if (today.isBefore(termStart)) {
             return configured.startWeek

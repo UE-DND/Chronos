@@ -30,7 +30,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import com.chronos.mobile.domain.model.AuthSnapshot
-import com.chronos.mobile.domain.result.AppResult
 import com.chronos.mobile.domain.result.fold
 import com.chronos.mobile.domain.usecase.ImportTimetableResult
 import kotlinx.coroutines.launch
@@ -287,8 +286,6 @@ fun TransferImportConfirmRoute(
                         viewModel.importPreview().fold(
                             onSuccess = { result ->
                                 onImportSuccess(result)
-                                onMessage("课程表已导入")
-                                onBack()
                             },
                             onFailure = { error ->
                                 onMessage(error.message)

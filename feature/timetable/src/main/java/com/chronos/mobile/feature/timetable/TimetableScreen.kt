@@ -432,7 +432,7 @@ internal fun buildTimetableCourseDisplayModels(
     visibleCourses.forEach { (originalIndex, course) ->
         if (course.weeks.isEmpty() || displayedWeek in course.weeks) return@forEach
         val nextWeek = course.weeks
-            .filter { it >= academicWeek }
+            .filter { it >= displayedWeek }
             .minOrNull()
             ?: return@forEach
         val slotKey = course.slotKey()
@@ -501,8 +501,8 @@ internal fun parsePeriodRanges(periods: List<PeriodTime>): List<ParsedPeriodRang
     periods.map { period ->
         ParsedPeriodRange(
             index = period.index,
-            startTime = LocalTime.parse(period.startTime),
-            endTime = LocalTime.parse(period.endTime),
+            startTime = runCatching { LocalTime.parse(period.startTime) }.getOrElse { LocalTime.MIDNIGHT },
+            endTime = runCatching { LocalTime.parse(period.endTime) }.getOrElse { LocalTime.MIDNIGHT },
         )
     }
 

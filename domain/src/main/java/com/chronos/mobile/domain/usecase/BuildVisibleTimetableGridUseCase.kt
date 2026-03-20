@@ -14,7 +14,7 @@ import javax.inject.Inject
 class BuildVisibleTimetableGridUseCase @Inject constructor() {
     operator fun invoke(today: LocalDate, displayedWeek: Int, timetable: Timetable): TimetableGridModel {
         val visibleDays = buildVisibleDayIndices(timetable.details)
-        val startOfWeek = resolveWeekStart(timetable.details, displayedWeek)
+        val startOfWeek = resolveWeekStart(timetable.details, displayedWeek, today)
         val weekDays = visibleDays.map { dayIndex ->
             val date = startOfWeek.plusDays((dayIndex - 1).toLong())
             TimetableDayModel(
@@ -37,9 +37,9 @@ class BuildVisibleTimetableGridUseCase @Inject constructor() {
         )
     }
 
-    private fun resolveWeekStart(details: TimetableDetails, displayedWeek: Int): LocalDate {
+    private fun resolveWeekStart(details: TimetableDetails, displayedWeek: Int, today: LocalDate): LocalDate {
         val termStart = runCatching { LocalDate.parse(details.termStartDate) }.getOrElse {
-            LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+            today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         }
         return termStart
             .plusWeeks((displayedWeek - details.startWeek).toLong())
