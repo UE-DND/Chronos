@@ -1,5 +1,8 @@
 package com.chronos.mobile.feature.root
 
+import com.chronos.mobile.domain.model.GithubContributor
+import com.chronos.mobile.domain.model.GithubRelease
+
 enum class RootTab {
     TIMETABLE,
     MINE,
@@ -16,6 +19,10 @@ internal object RootRoute {
     const val TRANSFER_EXPORT = "secondary/transfer/export"
     const val THEME_SETTINGS = "secondary/theme-settings"
     const val WALLPAPER = "secondary/wallpaper"
+    const val ABOUT = "secondary/about"
+    const val VERSION_RELEASE = "secondary/about/version-release"
+    const val OPEN_SOURCE_LICENSES = "secondary/open-source-licenses"
+    const val PROJECT_LICENSE = "secondary/open-source-licenses/project"
 }
 
 internal const val SecondaryPageEnterDuration = 320
@@ -23,4 +30,21 @@ internal const val SecondaryPageExitDuration = 260
 
 data class RootUiState(
     val activeTab: RootTab = RootTab.TIMETABLE,
+    val aboutUiState: AboutUiState = AboutUiState(),
+)
+
+data class AboutUiState(
+    val isLoading: Boolean = false,
+    val contributors: List<GithubContributor> = emptyList(),
+    val errorMessage: String? = null,
+    val hasLoaded: Boolean = false,
+    val versionRelease: VersionReleaseUiState = VersionReleaseUiState(),
+)
+
+data class VersionReleaseUiState(
+    val isLoading: Boolean = false,
+    val release: GithubRelease? = null,
+    val errorMessage: String? = null,
+    val hasLoadedTag: String? = null,
+    val currentTag: String? = null,
 )

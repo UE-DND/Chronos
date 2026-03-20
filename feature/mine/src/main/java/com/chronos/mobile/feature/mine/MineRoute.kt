@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Wallpaper
@@ -47,6 +48,7 @@ fun MineRoute(
     onExport: () -> Unit,
     onOpenThemeSettings: () -> Unit,
     onChangeWallpaper: () -> Unit,
+    onOpenAbout: () -> Unit,
 ) {
     LazyColumn(
         modifier = modifier
@@ -124,6 +126,20 @@ fun MineRoute(
                         onClick = onChangeWallpaper,
                     )
                 }
+            }
+        }
+        item {
+            MineSection(
+                title = "关于与反馈",
+                accentColor = MaterialTheme.colorScheme.tertiary,
+            ) {
+                MineRow(
+                    icon = Icons.Default.Info,
+                    iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    iconColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    title = "关于 Chronos",
+                    onClick = onOpenAbout,
+                )
             }
         }
         item {

@@ -1,6 +1,7 @@
 package com.chronos.mobile.feature.root
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.webkit.MimeTypeMap
@@ -30,6 +31,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
@@ -38,9 +40,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.chronos.mobile.core.designsystem.theme.ChronosTheme
+import com.chronos.mobile.feature.mine.AboutScreen
 import com.chronos.mobile.feature.mine.MineWallpaperScreen
 import com.chronos.mobile.feature.mine.MineRoute
+import com.chronos.mobile.feature.mine.R as MineR
+import com.chronos.mobile.feature.mine.OpenSourceLicensesScreen
+import com.chronos.mobile.feature.mine.ProjectLicenseScreen
 import com.chronos.mobile.feature.mine.ThemeSettingsScreen
+import com.chronos.mobile.feature.mine.VersionReleaseScreen
 import com.chronos.mobile.feature.timetable.CourseEditorRoute
 import com.chronos.mobile.feature.timetable.ManageTimetablesRoute
 import com.chronos.mobile.feature.timetable.TimetableDetailsEditorRoute
@@ -48,6 +55,7 @@ import com.chronos.mobile.feature.timetable.TimetableRoute
 import com.chronos.mobile.feature.transfer.TransferDialogMode
 import com.chronos.mobile.feature.transfer.TransferImportConfirmRoute
 import com.chronos.mobile.feature.transfer.TransferRoute
+import com.google.android.gms.oss.licenses.v2.OssLicensesMenuActivity
 import com.chronos.mobile.domain.usecase.BuildVisibleTimetableGridUseCase
 import com.chronos.mobile.domain.usecase.CalculateAcademicWeekUseCase
 import java.io.File
@@ -58,9 +66,12 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun ChronosRootRoute(
+    appVersionName: String,
+    buildTime: String,
     viewModel: RootViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val appState by viewModel.appState.collectAsStateWithLifecycle()
@@ -70,6 +81,7 @@ fun ChronosRootRoute(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val bottomBarVisible = currentRoute !in secondaryRoutes
+    val projectLicenseText = remember(context) { loadProjectLicenseText(context) }
     val returnToTimetable: () -> Unit = {
         viewModel.switchTab(RootTab.TIMETABLE)
         val popped = navController.popBackStack(RootRoute.TIMETABLE, inclusive = false)
@@ -245,6 +257,7 @@ fun ChronosRootRoute(
                     onExport = { navController.navigate(RootRoute.TRANSFER_EXPORT) },
                     onOpenThemeSettings = { navController.navigate(RootRoute.THEME_SETTINGS) },
                     onChangeWallpaper = { navController.navigate(RootRoute.WALLPAPER) },
+                    onOpenAbout = { navController.navigate(RootRoute.ABOUT) },
                 )
             }
 
@@ -335,6 +348,88 @@ fun ChronosRootRoute(
             }
 
             composable(
+                route = RootRoute.ABOUT,
+                enterTransition = { secondaryPageEnterTransition() },
+                exitTransition = { secondaryPageExitTransition() },
+                popEnterTransition = { secondaryPagePopEnterTransition() },
+                popExitTransition = { secondaryPagePopExitTransition() },
+            ) {
+                LaunchedEffect(Unit) {
+                    viewModel.loadAboutContributors()
+                }
+                AboutScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    appVersionName = appVersionName,
+                    buildTime = buildTime,
+                    contributors = state.aboutUiState.contributors,
+                    isLoading = state.aboutUiState.isLoading,
+                    errorMessage = state.aboutUiState.errorMessage,
+                    onOpenCurrentVersionRelease = { navController.navigate(RootRoute.VERSION_RELEASE) },
+                    onOpenOpenSourceLicenses = { navController.navigate(RootRoute.OPEN_SOURCE_LICENSES) },
+                    onBack = { navController.popBackStack() },
+                    onRetryLoadContributors = { viewModel.loadAboutContributors(forceRefresh = true) },
+                )
+            }
+
+            composable(
+                route = RootRoute.VERSION_RELEASE,
+                enterTransition = { secondaryPageEnterTransition() },
+                exitTransition = { secondaryPageExitTransition() },
+                popEnterTransition = { secondaryPagePopEnterTransition() },
+                popExitTransition = { secondaryPagePopExitTransition() },
+            ) {
+                val releaseState = state.aboutUiState.versionRelease
+                LaunchedEffect(appVersionName) {
+                    viewModel.loadCurrentVersionRelease(appVersionName = appVersionName)
+                }
+                LaunchedEffect(releaseState.errorMessage, releaseState.currentTag) {
+                    if (!releaseState.errorMessage.isNullOrBlank() && !releaseState.currentTag.isNullOrBlank()) {
+                        uriHandler.openUri(
+                            "https://github.com/UE-DND/Chronos/releases/tag/${releaseState.currentTag}",
+                        )
+                    }
+                }
+                VersionReleaseScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    isLoading = releaseState.isLoading,
+                    release = releaseState.release,
+                    errorMessage = releaseState.errorMessage,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(
+                route = RootRoute.OPEN_SOURCE_LICENSES,
+                enterTransition = { secondaryPageEnterTransition() },
+                exitTransition = { secondaryPageExitTransition() },
+                popEnterTransition = { secondaryPagePopEnterTransition() },
+                popExitTransition = { secondaryPagePopExitTransition() },
+            ) {
+                OpenSourceLicensesScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    onBack = { navController.popBackStack() },
+                    onOpenProjectLicense = { navController.navigate(RootRoute.PROJECT_LICENSE) },
+                    onOpenThirdPartyLicenses = {
+                        context.startActivity(Intent(context, OssLicensesMenuActivity::class.java))
+                    },
+                )
+            }
+
+            composable(
+                route = RootRoute.PROJECT_LICENSE,
+                enterTransition = { secondaryPageEnterTransition() },
+                exitTransition = { secondaryPageExitTransition() },
+                popEnterTransition = { secondaryPagePopEnterTransition() },
+                popExitTransition = { secondaryPagePopExitTransition() },
+            ) {
+                ProjectLicenseScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    licenseText = projectLicenseText,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(
                 route = RootRoute.WALLPAPER,
                 enterTransition = { secondaryPageEnterTransition() },
                 exitTransition = { secondaryPageExitTransition() },
@@ -420,8 +515,20 @@ private val secondaryRoutes = setOf(
     RootRoute.TRANSFER_IMPORT_CONFIRM,
     RootRoute.TRANSFER_EXPORT,
     RootRoute.THEME_SETTINGS,
+    RootRoute.ABOUT,
+    RootRoute.VERSION_RELEASE,
+    RootRoute.OPEN_SOURCE_LICENSES,
+    RootRoute.PROJECT_LICENSE,
     RootRoute.WALLPAPER,
 )
+
+private fun loadProjectLicenseText(context: Context): String {
+    return runCatching {
+        context.resources.openRawResource(MineR.raw.project_license).bufferedReader().use { it.readText() }
+    }.getOrElse {
+        "读取项目许可证失败。"
+    }
+}
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.secondaryPageEnterTransition() =
     slideIntoContainer(
@@ -431,7 +538,7 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.secondaryPageEnter
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.secondaryPageExitTransition() =
     slideOutOfContainer(
-        towards = AnimatedContentTransitionScope.SlideDirection.End,
+        towards = AnimatedContentTransitionScope.SlideDirection.Start,
         animationSpec = tween(durationMillis = SecondaryPageExitDuration),
     ) + fadeOut(animationSpec = tween(durationMillis = SecondaryPageExitDuration))
 

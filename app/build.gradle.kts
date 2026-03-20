@@ -1,4 +1,8 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.gradle.api.provider.Provider
+import java.io.File
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.Properties
 
@@ -7,10 +11,11 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.oss.licenses)
 }
 
-val localSigningProperties = Properties().apply {
-    val localSigningFile = rootProject.file(".signing/.env.release-signing")
+val localSigningProperties: Properties = Properties().apply {
+    val localSigningFile: File = rootProject.file(".signing/.env.release-signing")
     if (localSigningFile.isFile) {
         localSigningFile.inputStream().use(::load)
     }
@@ -40,8 +45,11 @@ val releaseStoreFile = resolveStoreFile()
 val releaseStorePassword = resolveSigningProperty("RELEASE_STORE_PASSWORD")
 val releaseKeyAlias = resolveSigningProperty("RELEASE_KEY_ALIAS")
 val releaseKeyPassword = resolveSigningProperty("RELEASE_KEY_PASSWORD")
-val appVersionName: org.gradle.api.provider.Provider<String> =
+val appVersionName: Provider<String> =
     providers.gradleProperty("APP_VERSION").orElse("1.0.0")
+val buildTimeValue = LocalDateTime.now().format(
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+)
 val releaseAbiNames = mapOf(
     "arm64-v8a" to "v8a",
     "armeabi-v7a" to "v7a",
@@ -62,6 +70,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = appVersionName.get()
+        buildConfigField("String", "BUILD_TIME", "\"$buildTimeValue\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -101,6 +110,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     splits {
@@ -137,6 +147,7 @@ dependencies {
     implementation(libs.google.material)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
+    implementation(libs.google.play.services.oss.licenses)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     debugImplementation(libs.androidx.compose.ui.tooling)
@@ -154,23 +165,25 @@ val prepareReleaseArtifacts by tasks.registering {
     outputs.dir(targetDir)
 
     doLast {
-        val source = sourceDir.get().asFile
-        val target = targetDir.get().asFile
+        val source: File = sourceDir.get().asFile
+        val target: File = targetDir.get().asFile
 
         if (!source.exists()) {
             error("Release APK directory not found: ${source.absolutePath}")
         }
 
         target.mkdirs()
-        target.listFiles()?.forEach { existing ->
+        val existingArtifacts: Array<File>? = target.listFiles()
+        existingArtifacts?.forEach { existing: File ->
             if (existing.isFile) {
                 existing.delete()
             }
         }
 
         releaseAbiNames.forEach { (abi, suffix) ->
-            val apk = source.listFiles()
-                ?.firstOrNull { file ->
+            val sourceApks: Array<File>? = source.listFiles()
+            val apk: File = sourceApks
+                ?.firstOrNull { file: File ->
                     file.extension == "apk" &&
                         !file.name.contains("unsigned", ignoreCase = true) &&
                         file.name.lowercase(Locale.US).contains(abi.lowercase(Locale.US))

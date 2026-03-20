@@ -15,7 +15,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
-            ChronosRootRoute()
+            ChronosRootRoute(
+                appVersionName = BuildConfig.VERSION_NAME,
+                buildTime = BuildConfig.BUILD_TIME,
+            )
         }
     }
 }

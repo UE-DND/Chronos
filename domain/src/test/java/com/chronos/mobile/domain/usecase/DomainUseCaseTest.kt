@@ -209,9 +209,12 @@ class DomainUseCaseTest {
         assertTrue(exported is AppResult.Success)
         val value = (exported as AppResult.Success).value
         assertNotNull(value)
-        assertTrue(value!!.contains("\"yearTerm\""))
-        assertTrue(value.contains("\"weekDayList\""))
-        assertTrue(value.contains("\"eventList\""))
+        val payload = codec.decode(value!!)
+        assertTrue(payload is AppResult.Success)
+        val decoded = (payload as AppResult.Success).value
+        assertTrue(decoded.yearTerm.isNotBlank())
+        assertTrue(decoded.weekDayList.isNotEmpty())
+        assertTrue(decoded.eventList.isNotEmpty())
     }
 
     @Test

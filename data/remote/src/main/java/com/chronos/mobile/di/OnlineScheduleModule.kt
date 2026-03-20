@@ -1,7 +1,11 @@
 package com.chronos.mobile.di
 
 import com.chronos.mobile.data.remote.DefaultOnlineScheduleJsonCodec
+import com.chronos.mobile.data.remote.RemoteGithubContributorRepository
+import com.chronos.mobile.data.remote.RemoteGithubReleaseRepository
 import com.chronos.mobile.data.remote.RemoteOnlineScheduleRepository
+import com.chronos.mobile.domain.GithubContributorRepository
+import com.chronos.mobile.domain.GithubReleaseRepository
 import com.chronos.mobile.domain.OnlineScheduleJsonCodec
 import com.chronos.mobile.domain.OnlineScheduleRepository
 import dagger.Module
@@ -36,6 +40,18 @@ abstract class OnlineScheduleModule {
         fun provideOnlineScheduleRepository(
             repository: RemoteOnlineScheduleRepository,
         ): OnlineScheduleRepository = repository
+
+        @Provides
+        @Singleton
+        fun provideGithubContributorRepository(
+            repository: RemoteGithubContributorRepository,
+        ): GithubContributorRepository = repository
+
+        @Provides
+        @Singleton
+        fun provideGithubReleaseRepository(
+            repository: RemoteGithubReleaseRepository,
+        ): GithubReleaseRepository = repository
 
         @Provides
         @Singleton
