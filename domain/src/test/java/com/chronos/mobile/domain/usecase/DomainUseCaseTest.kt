@@ -8,6 +8,7 @@ import com.chronos.mobile.core.model.OnlineScheduleWeekDay
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.core.model.TimetableSummary
+import com.chronos.mobile.core.model.ThemeMode
 import com.chronos.mobile.domain.ImportMode
 import com.chronos.mobile.domain.OnlineScheduleJsonCodec
 import com.chronos.mobile.domain.TimetableRepository
@@ -178,6 +179,32 @@ class DomainUseCaseTest {
     }
 
     @Test
+    fun `setThemeMode updates app state`() = runBlocking {
+        val repo = FakeTimetableRepository()
+        val useCase = SetThemeModeUseCase(repo)
+
+        useCase(ThemeMode.DARK)
+
+        assertEquals(ThemeMode.DARK, repo.getAppStateSnapshot().themeMode)
+    }
+
+    @Test
+    fun `setDynamicColorEnabled updates app state`() = runBlocking {
+        val repo = FakeTimetableRepository()
+        val useCase = SetDynamicColorEnabledUseCase(repo)
+
+        useCase(true)
+
+        assertEquals(true, repo.getAppStateSnapshot().useDynamicColor)
+    }
+
+    @Test
+    fun `themeMode falls back to system for unknown storage values`() {
+        assertEquals(ThemeMode.SYSTEM, ThemeMode.fromStorageValue("unexpected"))
+        assertEquals(ThemeMode.SYSTEM, ThemeMode.fromStorageValue(null))
+    }
+
+    @Test
     fun `buildVisibleTimetableGrid expands periods and applies weekend visibility`() {
         val useCase = BuildVisibleTimetableGridUseCase()
         val timetable = Timetable(
@@ -205,7 +232,7 @@ class DomainUseCaseTest {
 
         assertEquals(6, grid.visibleDays.size)
         assertEquals(12, grid.displayedPeriodCount)
-        assertEquals("六", grid.visibleDays.last().shortLabel)
+        assertEquals(6, grid.visibleDays.last().dayOfWeek)
     }
 
     @Test
@@ -345,6 +372,14 @@ private class FakeTimetableRepository : TimetableRepository {
         rebuildState(wallpaperUri = uri)
     }
 
+    override suspend fun setThemeMode(mode: ThemeMode) {
+        rebuildState(themeMode = mode)
+    }
+
+    override suspend fun setUseDynamicColor(enabled: Boolean) {
+        rebuildState(useDynamicColor = enabled)
+    }
+
     fun seedCurrent(): Timetable {
         val timetable = sampleImportedTimetable().copy(id = "current-id", name = "当前课表")
         timetables = listOf(timetable)
@@ -355,6 +390,8 @@ private class FakeTimetableRepository : TimetableRepository {
     private fun rebuildState(
         currentTimetableId: String? = state.value.currentTimetableId,
         wallpaperUri: String? = state.value.wallpaperUri,
+        themeMode: ThemeMode = state.value.themeMode,
+        useDynamicColor: Boolean = state.value.useDynamicColor,
     ) {
         val resolvedCurrentTimetableId = currentTimetableId?.takeIf { id ->
             timetables.any { it.id == id }
@@ -372,6 +409,8 @@ private class FakeTimetableRepository : TimetableRepository {
             currentTimetableId = resolvedCurrentTimetableId,
             wallpaperUri = wallpaperUri,
             currentTimetable = timetables.firstOrNull { it.id == resolvedCurrentTimetableId },
+            themeMode = themeMode,
+            useDynamicColor = useDynamicColor,
         )
     }
 

@@ -109,7 +109,6 @@ fun TransferRoute(
                     .padding(paddingValues)
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 state = state,
-                currentTimetableName = appState.currentTimetable?.name,
                 onSourceChange = viewModel::selectSource,
                 onAccountChange = viewModel::setAccount,
                 onPasswordChange = viewModel::setPassword,
@@ -133,7 +132,7 @@ fun TransferRoute(
                                     Log.d("TransferImport", "online preview success, navigating to confirm")
                                     if (state.saveCredentials) {
                                         if (!state.savedCredentialState.protectionAvailable) {
-                                            onMessage("当前设备无法保存受保护凭据，仅完成预览")
+                                            onMessage("当前设备不支持保存帐号密码")
                                         } else {
                                             handleCredentialSave(
                                                 viewModel = viewModel,

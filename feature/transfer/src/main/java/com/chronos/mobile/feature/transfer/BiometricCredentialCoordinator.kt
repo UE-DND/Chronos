@@ -23,7 +23,7 @@ class BiometricCredentialCoordinator(
         cipher: Cipher,
     ): AppResult<Cipher> {
         val hostActivity = activity ?: return AppError.Security("无法启动生物识别验证").asFailure()
-        val authenticatedCipher = suspendCancellableCoroutine<Cipher?> { continuation ->
+        val authenticatedCipher = suspendCancellableCoroutine { continuation ->
             val prompt = BiometricPrompt(
                 hostActivity,
                 ContextCompat.getMainExecutor(hostActivity),

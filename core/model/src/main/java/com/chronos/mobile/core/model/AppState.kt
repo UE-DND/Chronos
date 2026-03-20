@@ -13,4 +13,6 @@ data class AppState(
     val currentTimetableId: String? = null,
     val wallpaperUri: String? = null,
     val currentTimetable: Timetable? = null,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val useDynamicColor: Boolean = false,
 )

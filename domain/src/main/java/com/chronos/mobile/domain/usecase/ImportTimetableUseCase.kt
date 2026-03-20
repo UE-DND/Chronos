@@ -1,6 +1,5 @@
 package com.chronos.mobile.domain.usecase
 
-import com.chronos.mobile.core.model.OnlineSchedulePayload
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.domain.ImportMode
 import com.chronos.mobile.domain.OnlineScheduleJsonCodec
@@ -30,11 +29,6 @@ class ImportTimetableUseCase @Inject constructor(
         }.flatMap { imported ->
             import(imported, mode)
         }
-
-    suspend fun importOnlinePayload(
-        payload: OnlineSchedulePayload,
-        mode: ImportMode,
-    ): AppResult<ImportTimetableResult> = onlineScheduleJsonCodec.toTimetable(payload).flatMap { import(it, mode) }
 
     suspend fun import(
         imported: Timetable,

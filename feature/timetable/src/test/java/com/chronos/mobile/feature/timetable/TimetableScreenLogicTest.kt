@@ -37,7 +37,6 @@ class TimetableScreenLogicTest {
             ),
             visibleDayOfWeeks = setOf(1),
             displayedWeek = 8,
-            academicWeek = 8,
             today = LocalDate.parse("2026-04-20"),
         )
 
@@ -57,7 +56,6 @@ class TimetableScreenLogicTest {
             ),
             visibleDayOfWeeks = setOf(1),
             displayedWeek = 8,
-            academicWeek = 8,
             today = LocalDate.parse("2026-04-20"),
         )
 
@@ -76,7 +74,6 @@ class TimetableScreenLogicTest {
             ),
             visibleDayOfWeeks = setOf(1),
             displayedWeek = 8,
-            academicWeek = 8,
             today = LocalDate.parse("2026-04-20"),
         )
 
@@ -96,7 +93,6 @@ class TimetableScreenLogicTest {
             ),
             visibleDayOfWeeks = setOf(1),
             displayedWeek = 8,
-            academicWeek = 8,
             today = LocalDate.parse("2026-04-20"),
         )
 

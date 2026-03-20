@@ -8,5 +8,5 @@ import javax.inject.Inject
 class PrepareCredentialUnlockUseCase @Inject constructor(
     private val secureCredentialStore: SecureCredentialStore,
 ) {
-    operator fun invoke(): AppResult<Cipher> = secureCredentialStore.createUnlockCipher()
+    suspend operator fun invoke(): AppResult<Cipher> = secureCredentialStore.createUnlockCipher()
 }

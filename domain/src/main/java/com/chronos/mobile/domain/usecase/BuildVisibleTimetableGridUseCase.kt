@@ -19,7 +19,6 @@ class BuildVisibleTimetableGridUseCase @Inject constructor() {
             val date = startOfWeek.plusDays((dayIndex - 1).toLong())
             TimetableDayModel(
                 dayOfWeek = dayIndex,
-                shortLabel = DAY_LABELS[dayIndex - 1],
                 date = date,
                 isToday = date == today,
             )
@@ -71,9 +70,5 @@ class BuildVisibleTimetableGridUseCase @Inject constructor() {
         } else {
             "$firstMonth/$lastMonth"
         }
-    }
-
-    private companion object {
-        val DAY_LABELS = listOf("一", "二", "三", "四", "五", "六", "日")
     }
 }

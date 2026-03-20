@@ -16,7 +16,6 @@ import com.chronos.mobile.domain.result.AppError
 import com.chronos.mobile.domain.result.AppResult
 import com.chronos.mobile.domain.result.appResultOf
 import com.chronos.mobile.domain.result.asFailure
-import com.chronos.mobile.domain.result.asSuccess
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.security.KeyStore
@@ -64,7 +63,7 @@ class KeystoreSecureCredentialStore @Inject constructor(
     }
 
     override fun createSaveCipher(): AppResult<Cipher> = appResultOf(
-        errorMapper = { AppError.Security("当前设备无法创建受保护凭据") },
+        errorMapper = { AppError.Security("当前设备不支持保存帐号密码") },
     ) {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateSecretKey())
@@ -86,7 +85,7 @@ class KeystoreSecureCredentialStore @Inject constructor(
         }
     }
 
-    override fun createUnlockCipher(): AppResult<Cipher> = appResultOf(
+    override suspend fun createUnlockCipher(): AppResult<Cipher> = appResultOf(
         errorMapper = { AppError.Security("当前没有可用的已保存凭据") },
     ) {
         val key = getOrCreateSecretKey()
@@ -148,9 +147,8 @@ class KeystoreSecureCredentialStore @Inject constructor(
         return generator.generateKey()
     }
 
-    private fun dataStoreDataSnapshot() = runBlockingIO {
+    private suspend fun dataStoreDataSnapshot() =
         dataStore.data.catch { emit(emptyPreferences()) }.first()
-    }
 
     private val keyStore: KeyStore by lazy {
         KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }

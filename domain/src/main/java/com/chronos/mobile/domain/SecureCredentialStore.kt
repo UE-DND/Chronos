@@ -19,7 +19,7 @@ interface SecureCredentialStore {
         cipher: Cipher,
     ): AppResult<Unit>
 
-    fun createUnlockCipher(): AppResult<Cipher>
+    suspend fun createUnlockCipher(): AppResult<Cipher>
 
     suspend fun unlock(cipher: Cipher): AppResult<AuthSnapshot>
 

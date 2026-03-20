@@ -17,12 +17,12 @@ val localSigningProperties = Properties().apply {
 }
 
 fun resolveStoreFile(): String? {
-    val localStoreFile = localSigningProperties.getProperty("RELEASE_STORE_FILE")
+    val localStoreFile: String? = localSigningProperties.getProperty("RELEASE_STORE_FILE")
     if (!localStoreFile.isNullOrBlank() && rootProject.file(localStoreFile).isFile) {
         return localStoreFile
     }
 
-    val configuredPath = providers.gradleProperty("RELEASE_STORE_FILE").orNull
+    val configuredPath: String? = providers.gradleProperty("RELEASE_STORE_FILE").orNull
     if (!configuredPath.isNullOrBlank() && rootProject.file(configuredPath).isFile) {
         return configuredPath
     }
@@ -30,15 +30,18 @@ fun resolveStoreFile(): String? {
     return null
 }
 
-fun resolveSigningProperty(name: String): String? =
-    localSigningProperties.getProperty(name)?.takeIf { it.isNotBlank() }
+fun resolveSigningProperty(name: String): String? {
+    val localValue: String? = localSigningProperties.getProperty(name)
+    return localValue?.takeIf { it.isNotBlank() }
         ?: providers.gradleProperty(name).orNull
+}
 
 val releaseStoreFile = resolveStoreFile()
 val releaseStorePassword = resolveSigningProperty("RELEASE_STORE_PASSWORD")
 val releaseKeyAlias = resolveSigningProperty("RELEASE_KEY_ALIAS")
 val releaseKeyPassword = resolveSigningProperty("RELEASE_KEY_PASSWORD")
-val appVersionName = providers.gradleProperty("APP_VERSION").orElse("1.0.0")
+val appVersionName: org.gradle.api.provider.Provider<String> =
+    providers.gradleProperty("APP_VERSION").orElse("1.0.0")
 val releaseAbiNames = mapOf(
     "arm64-v8a" to "v8a",
     "armeabi-v7a" to "v7a",
@@ -123,7 +126,6 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":core:designsystem"))
     implementation(project(":data:repository"))
     implementation(project(":data:remote"))
     implementation(project(":data:secure"))

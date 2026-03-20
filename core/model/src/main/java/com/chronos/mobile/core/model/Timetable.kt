@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.InternalSerializationApi::class)
+
 package com.chronos.mobile.core.model
 
 import kotlinx.serialization.Serializable
@@ -11,7 +13,7 @@ data class PeriodTime(
 
 @Serializable
 data class TimetableDetails(
-    val termStartDate: String = defaultTermStartDate(),
+    val termStartDate: String = DEFAULT_TERM_START_DATE,
     val startWeek: Int = 1,
     val endWeek: Int = 20,
     val showSaturday: Boolean = true,
@@ -44,5 +46,3 @@ fun defaultPeriodTimes(): List<PeriodTime> = listOf(
     PeriodTime(index = 9, startTime = "19:00", endTime = "19:45"),
     PeriodTime(index = 10, startTime = "19:50", endTime = "20:35"),
 )
-
-private fun defaultTermStartDate(): String = DEFAULT_TERM_START_DATE

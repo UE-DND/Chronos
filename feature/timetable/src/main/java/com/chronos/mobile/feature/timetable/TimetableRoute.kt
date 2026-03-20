@@ -12,7 +12,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 
 @Composable
 fun TimetableRoute(

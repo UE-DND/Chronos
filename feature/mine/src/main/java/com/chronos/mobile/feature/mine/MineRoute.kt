@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Icon
@@ -44,6 +45,7 @@ fun MineRoute(
     onManageTimetables: () -> Unit,
     onImport: () -> Unit,
     onExport: () -> Unit,
+    onOpenThemeSettings: () -> Unit,
     onChangeWallpaper: () -> Unit,
 ) {
     LazyColumn(
@@ -108,6 +110,13 @@ fun MineRoute(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     MineRow(
+                        icon = Icons.Default.Palette,
+                        iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        title = "主题设置",
+                        onClick = onOpenThemeSettings,
+                    )
+                    MineRow(
                         icon = Icons.Default.Wallpaper,
                         iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
                         iconColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -135,6 +144,7 @@ private fun MineSection(
         ) {
             Text(text = title, style = MaterialTheme.typography.titleMedium)
         }
+        Spacer(modifier = Modifier.height(8.dp))
         Surface(
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),

@@ -26,5 +26,7 @@ class AppStateAssembler @Inject constructor() {
         currentTimetableId = currentTimetableId,
         wallpaperUri = preferences.wallpaperUri,
         currentTimetable = currentTimetable,
+        themeMode = preferences.themeMode,
+        useDynamicColor = preferences.useDynamicColor,
     )
 }

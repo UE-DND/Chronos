@@ -2,6 +2,7 @@ package com.chronos.mobile.feature.root
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.webkit.MimeTypeMap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -36,8 +37,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.chronos.mobile.core.designsystem.theme.ChronosTheme
 import com.chronos.mobile.feature.mine.MineWallpaperScreen
 import com.chronos.mobile.feature.mine.MineRoute
+import com.chronos.mobile.feature.mine.ThemeSettingsScreen
 import com.chronos.mobile.feature.timetable.CourseEditorRoute
 import com.chronos.mobile.feature.timetable.ManageTimetablesRoute
 import com.chronos.mobile.feature.timetable.TimetableDetailsEditorRoute
@@ -106,49 +109,53 @@ fun ChronosRootRoute(
         }
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        bottomBar = {
-            AnimatedVisibility(
-                visible = bottomBarVisible,
-                enter = slideInVertically(
-                    animationSpec = tween(durationMillis = SecondaryPageExitDuration),
-                    initialOffsetY = { it / 2 },
-                ) + expandVertically(animationSpec = tween(durationMillis = SecondaryPageExitDuration)) +
-                    fadeIn(animationSpec = tween(durationMillis = SecondaryPageExitDuration)),
-                exit = slideOutVertically(
-                    animationSpec = tween(durationMillis = SecondaryPageEnterDuration),
-                    targetOffsetY = { it / 2 },
-                ) + shrinkVertically(animationSpec = tween(durationMillis = SecondaryPageEnterDuration)) +
-                    fadeOut(animationSpec = tween(durationMillis = SecondaryPageEnterDuration)),
-            ) {
-                ChronosBottomBar(
-                    activeTab = state.activeTab,
-                    onTabSelected = { tab ->
-                        viewModel.switchTab(tab)
-                        when (tab) {
-                            RootTab.TIMETABLE -> navController.navigate(RootRoute.TIMETABLE) {
-                                popUpTo(navController.graph.startDestinationId)
-                                launchSingleTop = true
-                            }
-
-                            RootTab.MINE -> navController.navigate(RootRoute.MINE) {
-                                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    },
-                )
-            }
-        },
-    ) { paddingValues ->
-        NavHost(
-            navController = navController,
-            startDestination = RootRoute.TIMETABLE,
+    ChronosTheme(
+        themeMode = appState.themeMode,
+        useDynamicColor = appState.useDynamicColor,
+    ) {
+        Scaffold(
             modifier = Modifier.fillMaxSize(),
-        ) {
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+            bottomBar = {
+                AnimatedVisibility(
+                    visible = bottomBarVisible,
+                    enter = slideInVertically(
+                        animationSpec = tween(durationMillis = SecondaryPageExitDuration),
+                        initialOffsetY = { it / 2 },
+                    ) + expandVertically(animationSpec = tween(durationMillis = SecondaryPageExitDuration)) +
+                        fadeIn(animationSpec = tween(durationMillis = SecondaryPageExitDuration)),
+                    exit = slideOutVertically(
+                        animationSpec = tween(durationMillis = SecondaryPageEnterDuration),
+                        targetOffsetY = { it / 2 },
+                    ) + shrinkVertically(animationSpec = tween(durationMillis = SecondaryPageEnterDuration)) +
+                        fadeOut(animationSpec = tween(durationMillis = SecondaryPageEnterDuration)),
+                ) {
+                    ChronosBottomBar(
+                        activeTab = state.activeTab,
+                        onTabSelected = { tab ->
+                            viewModel.switchTab(tab)
+                            when (tab) {
+                                RootTab.TIMETABLE -> navController.navigate(RootRoute.TIMETABLE) {
+                                    popUpTo(navController.graph.startDestinationId)
+                                    launchSingleTop = true
+                                }
+
+                                RootTab.MINE -> navController.navigate(RootRoute.MINE) {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        },
+                    )
+                }
+            },
+        ) { paddingValues ->
+            NavHost(
+                navController = navController,
+                startDestination = RootRoute.TIMETABLE,
+                modifier = Modifier.fillMaxSize(),
+            ) {
             composable(
                 route = RootRoute.TIMETABLE,
                 enterTransition = { EnterTransition.None },
@@ -236,6 +243,7 @@ fun ChronosRootRoute(
                     },
                     onImport = { navController.navigate(RootRoute.TRANSFER_IMPORT) },
                     onExport = { navController.navigate(RootRoute.TRANSFER_EXPORT) },
+                    onOpenThemeSettings = { navController.navigate(RootRoute.THEME_SETTINGS) },
                     onChangeWallpaper = { navController.navigate(RootRoute.WALLPAPER) },
                 )
             }
@@ -309,6 +317,24 @@ fun ChronosRootRoute(
             }
 
             composable(
+                route = RootRoute.THEME_SETTINGS,
+                enterTransition = { secondaryPageEnterTransition() },
+                exitTransition = { secondaryPageExitTransition() },
+                popEnterTransition = { secondaryPagePopEnterTransition() },
+                popExitTransition = { secondaryPagePopExitTransition() },
+            ) {
+                ThemeSettingsScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    themeMode = appState.themeMode,
+                    useDynamicColor = appState.useDynamicColor,
+                    showDynamicColorOption = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+                    onBack = { navController.popBackStack() },
+                    onThemeModeSelected = viewModel::setThemeMode,
+                    onDynamicColorChange = viewModel::setDynamicColorEnabled,
+                )
+            }
+
+            composable(
                 route = RootRoute.WALLPAPER,
                 enterTransition = { secondaryPageEnterTransition() },
                 exitTransition = { secondaryPageExitTransition() },
@@ -344,6 +370,7 @@ fun ChronosRootRoute(
                 )
             }
         }
+    }
     }
 }
 
@@ -392,6 +419,7 @@ private val secondaryRoutes = setOf(
     RootRoute.TRANSFER_IMPORT,
     RootRoute.TRANSFER_IMPORT_CONFIRM,
     RootRoute.TRANSFER_EXPORT,
+    RootRoute.THEME_SETTINGS,
     RootRoute.WALLPAPER,
 )
 

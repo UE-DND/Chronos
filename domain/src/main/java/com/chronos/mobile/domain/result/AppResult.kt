@@ -16,12 +16,6 @@ inline fun <T> AppResult<T>.onSuccess(block: (T) -> Unit): AppResult<T> = apply 
     }
 }
 
-inline fun <T> AppResult<T>.onFailure(block: (AppError) -> Unit): AppResult<T> = apply {
-    if (this is AppResult.Failure) {
-        block(error)
-    }
-}
-
 inline fun <T, R> AppResult<T>.map(transform: (T) -> R): AppResult<R> = when (this) {
     is AppResult.Success -> AppResult.Success(transform(value))
     is AppResult.Failure -> this

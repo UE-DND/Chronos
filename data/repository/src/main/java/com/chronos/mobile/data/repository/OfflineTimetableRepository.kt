@@ -3,6 +3,7 @@ package com.chronos.mobile.data.repository
 import com.chronos.mobile.core.model.AppState
 import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.Timetable
+import com.chronos.mobile.core.model.ThemeMode
 import com.chronos.mobile.domain.TimetableRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -11,7 +12,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 
 @Singleton
@@ -88,5 +88,13 @@ class OfflineTimetableRepository @Inject constructor(
 
     override suspend fun setWallpaper(uri: String?) {
         preferenceDataSource.setWallpaper(uri)
+    }
+
+    override suspend fun setThemeMode(mode: ThemeMode) {
+        preferenceDataSource.setThemeMode(mode)
+    }
+
+    override suspend fun setUseDynamicColor(enabled: Boolean) {
+        preferenceDataSource.setUseDynamicColor(enabled)
     }
 }

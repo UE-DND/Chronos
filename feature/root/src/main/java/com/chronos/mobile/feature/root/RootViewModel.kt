@@ -3,7 +3,10 @@ package com.chronos.mobile.feature.root
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.chronos.mobile.core.model.AppState
+import com.chronos.mobile.core.model.ThemeMode
 import com.chronos.mobile.domain.usecase.ObserveAppStateUseCase
+import com.chronos.mobile.domain.usecase.SetDynamicColorEnabledUseCase
+import com.chronos.mobile.domain.usecase.SetThemeModeUseCase
 import com.chronos.mobile.domain.usecase.SetWallpaperUseCase
 import com.chronos.mobile.feature.timetable.TimetableCommand
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,6 +23,8 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class RootViewModel @Inject constructor(
     observeAppState: ObserveAppStateUseCase,
+    private val setDynamicColorEnabledUseCase: SetDynamicColorEnabledUseCase,
+    private val setThemeModeUseCase: SetThemeModeUseCase,
     private val setWallpaperUseCase: SetWallpaperUseCase,
 ) : ViewModel() {
     private val uiState = MutableStateFlow(RootUiState())
@@ -49,6 +54,18 @@ class RootViewModel @Inject constructor(
     fun setWallpaper(uri: String?) {
         viewModelScope.launch {
             setWallpaperUseCase(uri)
+        }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch {
+            setThemeModeUseCase(mode)
+        }
+    }
+
+    fun setDynamicColorEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            setDynamicColorEnabledUseCase(enabled)
         }
     }
 }

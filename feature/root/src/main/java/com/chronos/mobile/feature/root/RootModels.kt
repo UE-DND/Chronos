@@ -14,6 +14,7 @@ internal object RootRoute {
     const val TRANSFER_IMPORT = "secondary/transfer/import"
     const val TRANSFER_IMPORT_CONFIRM = "secondary/transfer/import/confirm"
     const val TRANSFER_EXPORT = "secondary/transfer/export"
+    const val THEME_SETTINGS = "secondary/theme-settings"
     const val WALLPAPER = "secondary/wallpaper"
 }
 

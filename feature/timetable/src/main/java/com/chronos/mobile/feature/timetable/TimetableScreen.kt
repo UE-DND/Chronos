@@ -4,7 +4,6 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +20,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,7 +29,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -48,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -81,7 +79,7 @@ internal fun TimetableScreen(
     onDisplayedWeekChange: (Int) -> Unit,
 ) {
     val currentTimetable = state.appState.currentTimetable ?: return
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val startWeek = currentTimetable.details.startWeek
     val weekCount = (currentTimetable.details.endWeek - startWeek + 1).coerceAtLeast(1)
     var suppressPagerWeekSync by remember(currentTimetable.id) { mutableStateOf(true) }
@@ -184,7 +182,7 @@ private fun ChronosTopBar(
     onJumpToToday: () -> Unit,
     onDisplayedWeekChange: (Int) -> Unit,
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val view = LocalView.current
     val dateFormatter = remember { DateTimeFormatter.ofPattern("M/d", Locale.CHINA) }
     val currentTimetable = state.appState.currentTimetable
@@ -302,10 +300,7 @@ private fun ChronosTopBar(
                             )
                             if (state.displayedWeek == state.academicWeek) {
                                 Text(
-                                    text = " " + state.today.dayOfWeek.getDisplayName(
-                                        java.time.format.TextStyle.SHORT,
-                                        Locale.CHINA,
-                                    ),
+                                    text = " " + timetableDayLabel(state.today.dayOfWeek.value),
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -394,7 +389,6 @@ internal fun buildTimetableCourseDisplayModels(
     timetable: Timetable,
     visibleDayOfWeeks: Set<Int>,
     displayedWeek: Int,
-    academicWeek: Int,
     today: LocalDate,
 ): List<TimetableCourseDisplayModel> {
     val visibleCourses = timetable.courses.withIndex().filter { (_, course) ->

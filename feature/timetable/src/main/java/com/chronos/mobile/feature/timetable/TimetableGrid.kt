@@ -2,7 +2,6 @@ package com.chronos.mobile.feature.timetable
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +34,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -49,6 +49,30 @@ import com.chronos.mobile.domain.model.TimetableGridModel
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlinx.coroutines.delay
+
+@Composable
+internal fun timetableDayLabel(dayOfWeek: Int): String = when (dayOfWeek) {
+    1 -> stringResource(R.string.timetable_day_monday)
+    2 -> stringResource(R.string.timetable_day_tuesday)
+    3 -> stringResource(R.string.timetable_day_wednesday)
+    4 -> stringResource(R.string.timetable_day_thursday)
+    5 -> stringResource(R.string.timetable_day_friday)
+    6 -> stringResource(R.string.timetable_day_saturday)
+    7 -> stringResource(R.string.timetable_day_sunday)
+    else -> stringResource(R.string.timetable_day_unknown)
+}
+
+@Composable
+internal fun timetableDayShortLabel(dayOfWeek: Int): String = when (dayOfWeek) {
+    1 -> stringResource(R.string.timetable_day_short_monday)
+    2 -> stringResource(R.string.timetable_day_short_tuesday)
+    3 -> stringResource(R.string.timetable_day_short_wednesday)
+    4 -> stringResource(R.string.timetable_day_short_thursday)
+    5 -> stringResource(R.string.timetable_day_short_friday)
+    6 -> stringResource(R.string.timetable_day_short_saturday)
+    7 -> stringResource(R.string.timetable_day_short_sunday)
+    else -> stringResource(R.string.timetable_day_short_unknown)
+}
 
 @Composable
 fun TimetableGrid(
@@ -67,7 +91,7 @@ fun TimetableGrid(
     enableVerticalScroll: Boolean = true,
     onCourseClick: ((Course) -> Unit)? = null,
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
+    MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val verticalScrollState = rememberScrollState()
     val contentHeight = rowHeight * gridModel.displayedPeriodCount
     val visibleDayIndexMap = remember(gridModel.visibleDays) {
@@ -84,7 +108,6 @@ fun TimetableGrid(
             timetable = timetable,
             visibleDayOfWeeks = visibleDayIndexMap.keys,
             displayedWeek = displayedWeek,
-            academicWeek = academicWeek,
             today = today,
         )
     }
@@ -206,7 +229,7 @@ private fun TimetableGridHeader(
     sidebarWidth: Dp,
     hasWallpaper: Boolean,
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
     Row(
         modifier = Modifier
@@ -245,7 +268,7 @@ private fun TimetableGridHeader(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        text = day.shortLabel,
+                        text = timetableDayShortLabel(day.dayOfWeek),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -282,7 +305,7 @@ private fun TimetablePeriodSidebar(
     hasWallpaper: Boolean,
     currentPeriodIndex: Int?,
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
     Column(
         modifier = Modifier
@@ -336,7 +359,7 @@ private fun TimetablePeriodSidebar(
 private fun TimetableGridBackground(
     hasWallpaper: Boolean,
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -361,7 +384,7 @@ private fun TimetableCourseCard(
     onClick: (() -> Unit)? = null,
 ) {
     val alpha = if (isInDisplayedWeek) 1f else 0.45f
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val rawCardBackground = parseColor(course.color)
     val surfaceColor = MaterialTheme.colorScheme.surface
     val baseTextColor = if (isDarkTheme) {

@@ -2,18 +2,18 @@ package com.chronos.mobile.di
 
 import com.chronos.mobile.data.secure.KeystoreSecureCredentialStore
 import com.chronos.mobile.domain.SecureCredentialStore
-import dagger.Binds
 import dagger.Module
+import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-abstract class SecureCredentialModule {
-    @Binds
+object SecureCredentialModule {
+    @Provides
     @Singleton
-    abstract fun bindSecureCredentialStore(
-        secureCredentialStore: KeystoreSecureCredentialStore,
-    ): SecureCredentialStore
+    fun provideSecureCredentialStore(
+        store: KeystoreSecureCredentialStore,
+    ): SecureCredentialStore = store
 }

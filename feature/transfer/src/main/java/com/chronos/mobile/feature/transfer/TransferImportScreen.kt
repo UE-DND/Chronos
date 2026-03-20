@@ -49,7 +49,6 @@ import com.chronos.mobile.domain.ImportMode
 @Composable
 fun TransferImportScreen(
     state: TransferUiState,
-    currentTimetableName: String?,
     onSourceChange: (ImportSource) -> Unit,
     onAccountChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
@@ -243,9 +242,9 @@ private fun OnlinePreviewSection(
             )
             Text(
                 text = if (state.savedCredentialState.protectionAvailable) {
-                    "保存受保护凭据，下次先验证再预览"
+                    "保存帐号密码"
                 } else {
-                    "当前设备无法保存受保护凭据"
+                    "当前设备不支持保存帐号密码"
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

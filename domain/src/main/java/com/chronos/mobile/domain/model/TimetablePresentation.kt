@@ -5,7 +5,6 @@ import java.time.LocalDate
 
 data class TimetableDayModel(
     val dayOfWeek: Int,
-    val shortLabel: String,
     val date: LocalDate,
     val isToday: Boolean,
 )

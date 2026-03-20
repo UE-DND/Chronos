@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.InternalSerializationApi::class)
+
 package com.chronos.mobile.core.model
 
 import kotlinx.serialization.Serializable

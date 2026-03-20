@@ -4,7 +4,6 @@ import com.chronos.mobile.data.remote.DefaultOnlineScheduleJsonCodec
 import com.chronos.mobile.data.remote.RemoteOnlineScheduleRepository
 import com.chronos.mobile.domain.OnlineScheduleJsonCodec
 import com.chronos.mobile.domain.OnlineScheduleRepository
-import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -17,17 +16,6 @@ import okhttp3.OkHttpClient
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class OnlineScheduleModule {
-    @Binds
-    @Singleton
-    abstract fun bindOnlineScheduleRepository(
-        repository: RemoteOnlineScheduleRepository,
-    ): OnlineScheduleRepository
-
-    @Binds
-    @Singleton
-    abstract fun bindOnlineScheduleJsonCodec(
-        codec: DefaultOnlineScheduleJsonCodec,
-    ): OnlineScheduleJsonCodec
 
     companion object {
         @Provides
@@ -42,5 +30,17 @@ abstract class OnlineScheduleModule {
             .followRedirects(true)
             .followSslRedirects(true)
             .build()
+
+        @Provides
+        @Singleton
+        fun provideOnlineScheduleRepository(
+            repository: RemoteOnlineScheduleRepository,
+        ): OnlineScheduleRepository = repository
+
+        @Provides
+        @Singleton
+        fun provideOnlineScheduleJsonCodec(
+            codec: DefaultOnlineScheduleJsonCodec,
+        ): OnlineScheduleJsonCodec = codec
     }
 }

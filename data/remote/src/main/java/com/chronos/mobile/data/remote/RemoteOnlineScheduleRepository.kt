@@ -14,7 +14,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -80,7 +79,7 @@ class RemoteOnlineScheduleRepository @Inject constructor(
                 return AppError.Network("在线课表请求失败：HTTP ${response.code}").asFailure()
             }
             Log.d("TransferImport", "fetchWeekEvents http=${response.code}")
-            response.body.string().orEmpty()
+            response.body.string()
         }
         val jsonObject = when (val parsed = parsePayloadObject(payload)) {
             is AppResult.Success -> parsed.value
@@ -130,7 +129,7 @@ class RemoteOnlineScheduleRepository @Inject constructor(
                 return AppError.Network("统一身份认证登录失败：HTTP ${response.code}").asFailure()
             }
             Log.d("TransferImport", "login http=${response.code}")
-            when (val parsed = parsePayloadObject(response.body.string().orEmpty())) {
+            when (val parsed = parsePayloadObject(response.body.string())) {
                 is AppResult.Success -> parsed.value
                 is AppResult.Failure -> return parsed
             }

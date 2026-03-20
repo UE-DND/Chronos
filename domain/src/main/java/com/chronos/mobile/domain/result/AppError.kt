@@ -27,10 +27,6 @@ sealed interface AppError {
         override val message: String,
     ) : AppError
 
-    data class Storage(
-        override val message: String,
-    ) : AppError
-
     data class Unknown(
         override val message: String,
         val cause: Throwable? = null,

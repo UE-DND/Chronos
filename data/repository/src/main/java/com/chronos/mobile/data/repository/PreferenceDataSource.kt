@@ -2,6 +2,7 @@ package com.chronos.mobile.data.repository
 
 import com.chronos.mobile.data.preferences.UserPreferenceState
 import com.chronos.mobile.data.preferences.UserPreferences
+import com.chronos.mobile.core.model.ThemeMode
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -22,5 +23,13 @@ class PreferenceDataSource @Inject constructor(
 
     suspend fun setWallpaper(uri: String?) {
         userPreferences.setWallpaperUri(uri)
+    }
+
+    suspend fun setThemeMode(mode: ThemeMode) {
+        userPreferences.setThemeMode(mode)
+    }
+
+    suspend fun setUseDynamicColor(enabled: Boolean) {
+        userPreferences.setUseDynamicColor(enabled)
     }
 }

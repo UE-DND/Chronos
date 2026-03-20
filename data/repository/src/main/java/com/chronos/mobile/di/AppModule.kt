@@ -8,7 +8,6 @@ import com.chronos.mobile.data.local.MIGRATION_1_2
 import com.chronos.mobile.data.local.MIGRATION_2_3
 import com.chronos.mobile.data.repository.OfflineTimetableRepository
 import com.chronos.mobile.domain.TimetableRepository
-import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -31,14 +30,11 @@ object DatabaseModule {
 
     @Provides
     fun provideChronosDao(database: ChronosDatabase): ChronosDao = database.chronosDao()
+
+    @Provides
+    @Singleton
+    fun provideTimetableRepository(
+        repository: OfflineTimetableRepository,
+    ): TimetableRepository = repository
 }
 
-@Module
-@InstallIn(SingletonComponent::class)
-abstract class RepositoryModule {
-    @Binds
-    @Singleton
-    abstract fun bindTimetableRepository(
-        repository: OfflineTimetableRepository,
-    ): TimetableRepository
-}
