@@ -4,18 +4,24 @@ import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -31,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import com.chronos.mobile.domain.model.AuthSnapshot
 import com.chronos.mobile.domain.result.fold
+import com.chronos.mobile.domain.result.toAppError
 import com.chronos.mobile.domain.usecase.ImportTimetableResult
 import kotlinx.coroutines.launch
 
@@ -109,72 +116,89 @@ fun TransferRoute(
                 onSaveCredentialsChange = viewModel::setSaveCredentials,
                 onPreviewOnlineClick = {
                     scope.launch {
-                        val account = state.account.trim()
-                        val password = state.password
-                        if (account.isEmpty()) {
-                            onMessage("请输入账号")
-                            return@launch
-                        }
-                        if (password.isBlank()) {
-                            onMessage("请输入密码")
-                            return@launch
-                        }
-                        viewModel.previewOnline(AuthSnapshot(account = account, password = password)).fold(
-                            onSuccess = {
-                                if (state.saveCredentials) {
-                                    if (!state.savedCredentialState.protectionAvailable) {
-                                        onMessage("当前设备无法保存受保护凭据，仅完成预览")
-                                    } else {
-                                        handleCredentialSave(
-                                            viewModel = viewModel,
-                                            coordinator = coordinator,
-                                            account = account,
-                                            password = password,
-                                            onMessage = onMessage,
-                                        )
+                        runCatching {
+                            val account = state.account.trim()
+                            val password = state.password
+                            Log.d("TransferImport", "online preview clicked, accountLength=${account.length}, passwordBlank=${password.isBlank()}")
+                            if (account.isEmpty()) {
+                                onMessage("请输入账号")
+                                return@runCatching
+                            }
+                            if (password.isBlank()) {
+                                onMessage("请输入密码")
+                                return@runCatching
+                            }
+                            viewModel.previewOnline(AuthSnapshot(account = account, password = password)).fold(
+                                onSuccess = {
+                                    Log.d("TransferImport", "online preview success, navigating to confirm")
+                                    if (state.saveCredentials) {
+                                        if (!state.savedCredentialState.protectionAvailable) {
+                                            onMessage("当前设备无法保存受保护凭据，仅完成预览")
+                                        } else {
+                                            handleCredentialSave(
+                                                viewModel = viewModel,
+                                                coordinator = coordinator,
+                                                account = account,
+                                                password = password,
+                                                onMessage = onMessage,
+                                            )
+                                        }
                                     }
-                                }
-                                onMessage("在线课表预览已准备好")
-                                onNavigateToImportConfirm?.invoke()
-                            },
-                            onFailure = { error ->
-                                onMessage(error.message)
-                            },
-                        )
+                                    onMessage("在线课表预览已准备好")
+                                    onNavigateToImportConfirm?.invoke()
+                                },
+                                onFailure = { error ->
+                                    Log.e("TransferImport", "online preview failed: ${error.message}")
+                                    onMessage(error.message)
+                                },
+                            )
+                        }.onFailure { throwable ->
+                            Log.e("TransferImport", "online preview crashed", throwable)
+                            onMessage(throwable.toAppError().message)
+                        }
                     }
                 },
                 onPreviewWithSavedCredentialClick = {
                     scope.launch {
-                        if (!state.savedCredentialState.hasSavedCredential) {
-                            onMessage("当前没有可用的已保存凭据")
-                            return@launch
-                        }
-                        val cipherResult = viewModel.prepareUnlockCipher()
-                        cipherResult.fold(
-                            onSuccess = { cipher ->
-                                coordinator.authenticate(
-                                    title = "验证后获取在线课表",
-                                    cipher = cipher,
-                                ).fold(
+                        runCatching {
+                            if (!state.savedCredentialState.hasSavedCredential) {
+                                onMessage("当前没有可用的已保存凭据")
+                                return@runCatching
+                            }
+                            val cipherResult = viewModel.prepareUnlockCipher()
+                            cipherResult.fold(
+                                onSuccess = { cipher ->
+                                    coordinator.authenticate(
+                                        title = "验证后获取在线课表",
+                                        cipher = cipher,
+                                    ).fold(
                                     onSuccess = { authenticatedCipher ->
                                         viewModel.unlockSavedCredentials(authenticatedCipher).fold(
                                             onSuccess = { snapshot ->
                                                 viewModel.previewOnline(snapshot).fold(
                                                     onSuccess = {
+                                                        Log.d("TransferImport", "saved credential preview success, navigating to confirm")
                                                         onMessage("在线课表预览已准备好")
                                                         onNavigateToImportConfirm?.invoke()
                                                     },
-                                                    onFailure = { error -> onMessage(error.message) },
+                                                        onFailure = { error ->
+                                                            Log.e("TransferImport", "saved credential preview failed: ${error.message}")
+                                                            onMessage(error.message)
+                                                        },
                                                 )
                                             },
                                             onFailure = { error -> onMessage(error.message) },
-                                        )
-                                    },
-                                    onFailure = { error -> onMessage(error.message) },
-                                )
-                            },
-                            onFailure = { error -> onMessage(error.message) },
-                        )
+                                            )
+                                        },
+                                        onFailure = { error -> onMessage(error.message) },
+                                    )
+                                },
+                                onFailure = { error -> onMessage(error.message) },
+                            )
+                        }.onFailure { throwable ->
+                            Log.e("TransferImport", "saved credential preview crashed", throwable)
+                            onMessage(throwable.toAppError().message)
+                        }
                     }
                 },
                 onClearSavedCredentialClick = {
@@ -246,35 +270,32 @@ fun TransferImportConfirmRoute(
     val appState by viewModel.appState.collectAsStateWithLifecycle()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
-    LaunchedEffect(state.preview) {
-        if (state.preview == null) {
-            onBack()
-        }
-    }
-
-    state.preview?.let { preview ->
-        Scaffold(
-            modifier = modifier.fillMaxSize(),
-            topBar = {
-                TopAppBar(
-                    modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
-                    title = { Text("确认导入方式") },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回",
-                            )
-                        }
-                    },
-                )
-            },
-        ) { paddingValues ->
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
+                title = { Text("确认导入方式") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回",
+                        )
+                    }
+                },
+            )
+        },
+    ) { paddingValues ->
+        val contentModifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+            .padding(horizontal = 20.dp, vertical = 16.dp)
+        val preview = state.preview
+        if (preview != null) {
+            Log.d("TransferImport", "confirm route composed with preview=${preview.name}")
             TransferImportConfirmScreen(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                modifier = contentModifier,
                 preview = preview,
                 previewSource = state.previewSource,
                 importMode = state.importMode,
@@ -293,6 +314,12 @@ fun TransferImportConfirmRoute(
                         )
                     }
                 },
+            )
+        } else {
+            Log.d("TransferImport", "confirm route waiting for preview, isLoading=${state.isPreviewingOnline}")
+            PreviewPendingScreen(
+                isLoading = state.isPreviewingOnline,
+                modifier = contentModifier,
             )
         }
     }
@@ -352,6 +379,32 @@ private suspend fun previewContent(
             onMessage(error.message)
         },
     )
+}
+
+@Composable
+private fun PreviewPendingScreen(
+    isLoading: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (isLoading) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Text(
+                text = "正在准备在线课表预览...",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Text(
+                text = "当前没有可用预览，请返回上一页重新获取。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 private fun ClipboardManager?.readPlainText(context: Context): String? {

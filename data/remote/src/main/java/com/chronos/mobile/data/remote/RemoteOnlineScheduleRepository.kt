@@ -1,5 +1,6 @@
 package com.chronos.mobile.data.remote
 
+import android.util.Log
 import com.chronos.mobile.core.model.OnlineSchedulePayload
 import com.chronos.mobile.domain.OnlineScheduleRepository
 import com.chronos.mobile.domain.model.AuthSnapshot
@@ -7,6 +8,7 @@ import com.chronos.mobile.domain.result.AppError
 import com.chronos.mobile.domain.result.AppResult
 import com.chronos.mobile.domain.result.asFailure
 import com.chronos.mobile.domain.result.asSuccess
+import com.chronos.mobile.domain.result.toAppError
 import javax.inject.Inject
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -33,16 +35,27 @@ class RemoteOnlineScheduleRepository @Inject constructor(
         weekNum: String?,
         yearTerm: String?,
     ): AppResult<OnlineSchedulePayload> {
-        val client = buildClient()
-        val loginResult = login(client, authSnapshot)
-        if (loginResult is AppResult.Failure) return loginResult
-        return fetchWeekEvents(
-            client = client,
-            authSnapshot = authSnapshot,
-            weekNum = weekNum,
-            yearTerm = yearTerm,
-            allowReloginRetry = true,
-        )
+        return try {
+            Log.d("TransferImport", "fetchSchedule start, account=${authSnapshot.account}")
+            val client = buildClient()
+            val loginResult = login(client, authSnapshot)
+            if (loginResult is AppResult.Failure) {
+                Log.e("TransferImport", "fetchSchedule login failed: ${loginResult.error.message}")
+                loginResult
+            } else {
+                Log.d("TransferImport", "fetchSchedule login success, fetching week events")
+                fetchWeekEvents(
+                    client = client,
+                    authSnapshot = authSnapshot,
+                    weekNum = weekNum,
+                    yearTerm = yearTerm,
+                    allowReloginRetry = true,
+                )
+            }
+        } catch (throwable: Throwable) {
+            Log.e("TransferImport", "fetchSchedule crashed", throwable)
+            throwable.toAppError().asFailure()
+        }
     }
 
     private fun fetchWeekEvents(
@@ -61,10 +74,12 @@ class RemoteOnlineScheduleRepository @Inject constructor(
             .url(WEEK_EVENTS_URL)
             .post(body.toRequestBody(JSON_MEDIA_TYPE))
             .build()
+        Log.d("TransferImport", "fetchWeekEvents request")
         val payload = client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 return AppError.Network("在线课表请求失败：HTTP ${response.code}").asFailure()
             }
+            Log.d("TransferImport", "fetchWeekEvents http=${response.code}")
             response.body?.string().orEmpty()
         }
         val jsonObject = when (val parsed = parsePayloadObject(payload)) {
@@ -72,6 +87,7 @@ class RemoteOnlineScheduleRepository @Inject constructor(
             is AppResult.Failure -> return parsed
         }
         if (looksLikeAuthError(jsonObject)) {
+            Log.d("TransferImport", "fetchWeekEvents looks like auth error, retry=$allowReloginRetry")
             if (!allowReloginRetry) {
                 return AppError.Auth(authErrorMessage(jsonObject)).asFailure()
             }
@@ -108,10 +124,12 @@ class RemoteOnlineScheduleRepository @Inject constructor(
             .url(CAS_LOGIN_URL)
             .post(loginPayload.toRequestBody(JSON_MEDIA_TYPE))
             .build()
+        Log.d("TransferImport", "login request")
         val loginJson = client.newCall(loginRequest).execute().use { response ->
             if (!response.isSuccessful) {
                 return AppError.Network("统一身份认证登录失败：HTTP ${response.code}").asFailure()
             }
+            Log.d("TransferImport", "login http=${response.code}")
             when (val parsed = parsePayloadObject(response.body?.string().orEmpty())) {
                 is AppResult.Success -> parsed.value
                 is AppResult.Failure -> return parsed
@@ -119,6 +137,7 @@ class RemoteOnlineScheduleRepository @Inject constructor(
         }
         val code = loginJson["code"].stringValue()
         val message = loginJson["msg"].stringValue().orEmpty()
+        Log.d("TransferImport", "login response code=$code, msg=$message")
         if (code != "200" || message != "登录成功！") {
             return AppError.Auth(message.ifBlank { "统一身份认证登录失败" }).asFailure()
         }
@@ -131,6 +150,7 @@ class RemoteOnlineScheduleRepository @Inject constructor(
             if (!response.isSuccessful) {
                 return AppError.Network("课表系统登录失败：HTTP ${response.code}").asFailure()
             }
+            Log.d("TransferImport", "ticket http=${response.code}")
         }
         return Unit.asSuccess()
     }

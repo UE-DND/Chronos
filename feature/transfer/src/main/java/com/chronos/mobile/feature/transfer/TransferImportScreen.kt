@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -253,16 +254,25 @@ private fun OnlinePreviewSection(
         OutlinedButton(
             onClick = onPreviewOnlineClick,
             modifier = Modifier.fillMaxWidth(),
+            enabled = !state.isPreviewingOnline,
         ) {
-            Icon(Icons.Default.Download, contentDescription = null)
+            if (state.isPreviewingOnline) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Icon(Icons.Default.Download, contentDescription = null)
+            }
             Spacer(modifier = Modifier.size(8.dp))
-            Text("从此账号导入课表")
+            Text(if (state.isPreviewingOnline) "正在获取课表..." else "从此账号导入课表")
         }
         if (state.savedCredentialState.hasSavedCredential) {
             SavedCredentialCard(
                 account = state.savedCredentialState.account.orEmpty(),
                 onUseSavedCredentialClick = onPreviewWithSavedCredentialClick,
                 onClearSavedCredentialClick = onClearSavedCredentialClick,
+                enabled = !state.isPreviewingOnline,
             )
         }
     }
@@ -273,6 +283,7 @@ private fun SavedCredentialCard(
     account: String,
     onUseSavedCredentialClick: () -> Unit,
     onClearSavedCredentialClick: () -> Unit,
+    enabled: Boolean,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -291,12 +302,16 @@ private fun SavedCredentialCard(
         OutlinedButton(
             onClick = onUseSavedCredentialClick,
             modifier = Modifier.fillMaxWidth(),
+            enabled = enabled,
         ) {
             Icon(Icons.Default.Lock, contentDescription = null)
             Spacer(modifier = Modifier.size(8.dp))
-            Text("验证并预览")
+            Text(if (enabled) "验证并预览" else "正在获取课表...")
         }
-        TextButton(onClick = onClearSavedCredentialClick) {
+        TextButton(
+            onClick = onClearSavedCredentialClick,
+            enabled = enabled,
+        ) {
             Icon(Icons.Default.DeleteOutline, contentDescription = null)
             Spacer(modifier = Modifier.size(6.dp))
             Text("清除")

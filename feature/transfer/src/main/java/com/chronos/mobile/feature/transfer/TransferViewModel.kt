@@ -1,5 +1,6 @@
 package com.chronos.mobile.feature.transfer
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.chronos.mobile.core.model.AppState
@@ -54,6 +55,7 @@ data class TransferUiState(
     val password: String = "",
     val saveCredentials: Boolean = false,
     val savedCredentialState: SavedCredentialState = SavedCredentialState(),
+    val isPreviewingOnline: Boolean = false,
     val preview: Timetable? = null,
     val previewSource: ImportSource? = null,
 )
@@ -80,11 +82,7 @@ class TransferViewModel @Inject constructor(
         initialValue = AppState(),
     )
 
-    val state: StateFlow<TransferUiState> = uiState.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = TransferUiState(),
-    )
+    val state: StateFlow<TransferUiState> = uiState
 
     init {
         viewModelScope.launch {
@@ -107,6 +105,7 @@ class TransferViewModel @Inject constructor(
                 account = current.savedCredentialState.account.orEmpty(),
                 password = "",
                 saveCredentials = false,
+                isPreviewingOnline = false,
                 preview = null,
                 previewSource = null,
             )
@@ -190,9 +189,19 @@ class TransferViewModel @Inject constructor(
         }
     }
 
-    suspend fun previewOnline(authSnapshot: AuthSnapshot): AppResult<Timetable> = withContext(Dispatchers.IO) {
-        previewOnlineTimetableUseCase(authSnapshot).onSuccess { timetable ->
-            uiState.update { it.copy(preview = timetable, previewSource = ImportSource.ONLINE) }
+    suspend fun previewOnline(authSnapshot: AuthSnapshot): AppResult<Timetable> {
+        Log.d("TransferImport", "viewModel.previewOnline start")
+        uiState.update { it.copy(isPreviewingOnline = true) }
+        return try {
+            withContext(Dispatchers.IO) {
+                previewOnlineTimetableUseCase(authSnapshot).onSuccess { timetable ->
+                    Log.d("TransferImport", "viewModel.previewOnline success, preview=${timetable.name}, courses=${timetable.courses.size}")
+                    uiState.update { it.copy(preview = timetable, previewSource = ImportSource.ONLINE) }
+                }
+            }
+        } finally {
+            Log.d("TransferImport", "viewModel.previewOnline finish")
+            uiState.update { it.copy(isPreviewingOnline = false) }
         }
     }
 

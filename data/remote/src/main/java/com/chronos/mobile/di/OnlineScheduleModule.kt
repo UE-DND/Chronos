@@ -11,6 +11,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
+import okhttp3.Dns
 import okhttp3.OkHttpClient
 
 @Module
@@ -32,9 +33,12 @@ abstract class OnlineScheduleModule {
         @Provides
         @Singleton
         fun provideBaseOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
+            .dns(Dns.SYSTEM)
+            .callTimeout(20, TimeUnit.SECONDS)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(false)
             .followRedirects(true)
             .followSslRedirects(true)
             .build()
