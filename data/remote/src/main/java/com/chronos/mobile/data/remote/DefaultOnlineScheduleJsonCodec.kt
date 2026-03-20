@@ -27,7 +27,7 @@ class DefaultOnlineScheduleJsonCodec @Inject constructor(
     private val json = Json {
         encodeDefaults = true
         ignoreUnknownKeys = true
-        prettyPrint = true
+        prettyPrint = false
     }
 
     override fun decode(json: String): AppResult<OnlineSchedulePayload> = appResultOf(
