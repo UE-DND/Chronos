@@ -27,7 +27,7 @@ fun TransferExportScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         Text(
-            text = "将“${currentTimetableName ?: "未命名"}”复制为在线格式 JSON。",
+            text = "将“${currentTimetableName ?: "未命名"}”复制为链接。",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         OutlinedButton(
@@ -36,7 +36,7 @@ fun TransferExportScreen(
         ) {
             Icon(Icons.Default.IosShare, contentDescription = null)
             Spacer(modifier = Modifier.size(8.dp))
-            Text("复制在线格式 JSON")
+            Text("复制课表链接")
         }
     }
 }

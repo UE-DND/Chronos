@@ -72,7 +72,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.PeriodTime
 import com.chronos.mobile.core.model.Timetable

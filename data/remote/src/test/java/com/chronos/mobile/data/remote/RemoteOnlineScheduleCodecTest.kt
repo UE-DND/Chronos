@@ -4,6 +4,7 @@ import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.OnlineSchedulePayload
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.domain.result.AppResult
 import com.chronos.mobile.domain.usecase.CalculateAcademicWeekUseCase
 import java.net.URLDecoder
 import kotlinx.serialization.json.Json
@@ -18,8 +19,8 @@ class RemoteOnlineScheduleCodecTest {
     fun `codec exports online payload structure`() {
         val timetable = sampleTimetable()
 
-        val encoded = codec.encode(timetable)
-        val payload = codec.decode(encoded)
+        val encoded = codec.encode(timetable).requireSuccess()
+        val payload = codec.decode(encoded).requireSuccess()
 
         assertEquals("2025-2026-2", payload.yearTerm)
         assertTrue(payload.weekList.isNotEmpty())
@@ -32,9 +33,9 @@ class RemoteOnlineScheduleCodecTest {
 
     @Test
     fun `codec imports online payload into local timetable`() {
-        val payload = codec.decode(codec.encode(sampleTimetable()))
+        val payload = codec.decode(codec.encode(sampleTimetable()).requireSuccess()).requireSuccess()
 
-        val timetable = codec.toTimetable(payload)
+        val timetable = codec.toTimetable(payload).requireSuccess()
 
         assertEquals("2025-2026-2", timetable.name)
         assertEquals(1, timetable.courses.size)
@@ -64,7 +65,7 @@ class RemoteOnlineScheduleCodecTest {
             ),
         )
 
-        val timetable = codec.toTimetable(payload)
+        val timetable = codec.toTimetable(payload).requireSuccess()
 
         assertEquals(3, timetable.courses.single().startPeriod)
         assertEquals(4, timetable.courses.single().endPeriod)
@@ -102,7 +103,7 @@ class RemoteOnlineScheduleCodecTest {
             ),
         )
 
-        val timetable = codec.toTimetable(payload)
+        val timetable = codec.toTimetable(payload).requireSuccess()
 
         assertEquals(2, timetable.courses.size)
         assertEquals(timetable.courses[0].color, timetable.courses[1].color)
@@ -157,4 +158,9 @@ class RemoteOnlineScheduleCodecTest {
             endWeek = 20,
         ),
     )
+
+    private fun <T> AppResult<T>.requireSuccess(): T = when (this) {
+        is AppResult.Success -> value
+        is AppResult.Failure -> throw AssertionError("Expected success but was failure: ${error.message}")
+    }
 }

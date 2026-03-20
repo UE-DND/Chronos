@@ -208,7 +208,7 @@ class TransferViewModel @Inject constructor(
     suspend fun importPreview(): AppResult<ImportTimetableResult> = withContext(Dispatchers.IO) {
         val currentState = state.value
         val preview = currentState.preview
-            ?: return@withContext AppError.NotFound("请先获取课表预览").asFailure()
+            ?: return@withContext AppError.NotFound("请先获取课表").asFailure()
         importTimetableUseCase.import(preview, currentState.importMode)
     }
 

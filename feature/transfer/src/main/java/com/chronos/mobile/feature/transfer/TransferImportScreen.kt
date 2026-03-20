@@ -135,7 +135,7 @@ fun TransferImportConfirmScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         Text(
-            text = "预览已经准备好，选择导入方式后再执行导入。",
+            text = "课表已准备好，请选择导入方式：",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -194,8 +194,8 @@ private fun SourceSelector(
                     Text(
                         text = when (source) {
                             ImportSource.ONLINE -> "教务处"
-                            ImportSource.JSON -> "分享"
-                            ImportSource.HTML -> "文件"
+                            ImportSource.JSON -> "分享链接"
+                            ImportSource.HTML -> "HTML 文件"
                         },
                         fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                     )
@@ -401,10 +401,10 @@ private fun PreviewSummaryCard(
                 ) {
                     Text(
                         text = when (source) {
-                            ImportSource.ONLINE -> "在线预览"
-                            ImportSource.JSON -> "JSON 预览"
-                            ImportSource.HTML -> "HTML 预览"
-                            null -> "课表预览"
+                            ImportSource.ONLINE -> "在线课表"
+                            ImportSource.JSON -> "分享课表"
+                            ImportSource.HTML -> "文件课表"
+                            null -> "课表"
                         },
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,

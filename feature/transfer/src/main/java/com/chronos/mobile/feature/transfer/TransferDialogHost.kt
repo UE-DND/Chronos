@@ -32,7 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import com.chronos.mobile.domain.model.AuthSnapshot
@@ -144,7 +144,7 @@ fun TransferRoute(
                                             )
                                         }
                                     }
-                                    onMessage("在线课表预览已准备好")
+                                    onMessage("课表已准备好")
                                     onNavigateToImportConfirm?.invoke()
                                 },
                                 onFailure = { error ->
@@ -178,7 +178,7 @@ fun TransferRoute(
                                                 viewModel.previewOnline(snapshot).fold(
                                                     onSuccess = {
                                                         Log.d("TransferImport", "saved credential preview success, navigating to confirm")
-                                                        onMessage("在线课表预览已准备好")
+                                                        onMessage("课表已准备好")
                                                         onNavigateToImportConfirm?.invoke()
                                                     },
                                                         onFailure = { error ->
@@ -241,7 +241,7 @@ fun TransferRoute(
                                     clipboardManager?.setPrimaryClip(
                                         ClipData.newPlainText("chronos_online_schedule_json", exportedJson),
                                     )
-                                    onMessage("在线格式课表 JSON 已复制到剪贴板")
+                                    onMessage("课表链接已复制到剪贴板")
                                     onBack()
                                 }
                             },
@@ -372,7 +372,7 @@ private suspend fun previewContent(
     }
     viewModel.previewImported(value, source).fold(
         onSuccess = {
-            onMessage("课表预览已准备好")
+            onMessage("课表已准备好")
             onSuccess()
         },
         onFailure = { error ->
@@ -393,7 +393,7 @@ private fun PreviewPendingScreen(
         if (isLoading) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             Text(
-                text = "正在准备在线课表预览...",
+                text = "正在准备课表...",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

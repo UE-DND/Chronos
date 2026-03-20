@@ -23,7 +23,7 @@ data class UserPreferenceState(
 
 @Singleton
 class UserPreferences @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
 ) {
     private object Keys {
         val currentTimetableId = stringPreferencesKey("current_timetable_id")

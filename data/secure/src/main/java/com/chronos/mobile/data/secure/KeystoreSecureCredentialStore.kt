@@ -37,7 +37,7 @@ import kotlinx.coroutines.flow.map
 
 @Singleton
 class KeystoreSecureCredentialStore @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
 ) : SecureCredentialStore {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val dataStore = PreferenceDataStoreFactory.create(
