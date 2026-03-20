@@ -3,6 +3,7 @@ package com.chronos.mobile.domain.usecase
 import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.core.model.TimetableImportSource
 import com.chronos.mobile.domain.result.AppError
 import com.chronos.mobile.domain.result.AppResult
 import com.chronos.mobile.domain.result.asFailure
@@ -51,6 +52,7 @@ class ParseEducationalTimetableHtmlUseCase @Inject constructor() {
                 endWeek = maxOf(20, maxWeek),
                 showSaturday = courses.any { it.dayOfWeek == 6 },
                 showSunday = courses.any { it.dayOfWeek == 7 },
+                importSource = TimetableImportSource.FILE_HTML,
             ),
         ).asSuccess()
     }

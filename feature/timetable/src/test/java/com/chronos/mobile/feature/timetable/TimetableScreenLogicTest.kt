@@ -4,6 +4,7 @@ import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.PeriodTime
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.core.model.TimetableImportSource
 import com.chronos.mobile.domain.model.TimetableGridModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -144,6 +145,18 @@ class TimetableScreenLogicTest {
         assertEquals(2, findCurrentPeriodIndex(periods, LocalTime.parse("09:15")))
         assertEquals(3, findCurrentPeriodIndex(periods, LocalTime.parse("09:50")))
         assertEquals(3, findCurrentPeriodIndex(periods, LocalTime.parse("11:10")))
+    }
+
+    @Test
+    fun `non current week setting is hidden for online import timetable`() {
+        assertFalse(shouldShowNonCurrentWeekCourseSetting(TimetableImportSource.ONLINE_EDU))
+    }
+
+    @Test
+    fun `non current week setting remains visible for non online sources`() {
+        assertTrue(shouldShowNonCurrentWeekCourseSetting(TimetableImportSource.UNKNOWN))
+        assertTrue(shouldShowNonCurrentWeekCourseSetting(TimetableImportSource.FILE_HTML))
+        assertTrue(shouldShowNonCurrentWeekCourseSetting(TimetableImportSource.SHARED_JSON))
     }
 
     private fun sampleTimetable(

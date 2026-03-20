@@ -4,6 +4,7 @@ import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.OnlineSchedulePayload
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.core.model.TimetableImportSource
 import com.chronos.mobile.domain.result.AppResult
 import com.chronos.mobile.domain.usecase.CalculateAcademicWeekUseCase
 import java.net.URLDecoder
@@ -23,6 +24,7 @@ class RemoteOnlineScheduleCodecTest {
         val payload = codec.decode(encoded).requireSuccess()
 
         assertEquals("2025-2026-2", payload.yearTerm)
+        assertEquals(TimetableImportSource.SHARED_JSON.name, payload.importSource)
         assertTrue(payload.weekList.isNotEmpty())
         assertTrue(payload.weekDayList.size == 7)
         assertEquals(1, payload.eventList.size)
@@ -41,6 +43,34 @@ class RemoteOnlineScheduleCodecTest {
         assertEquals(1, timetable.courses.size)
         assertEquals("编译原理", timetable.courses.first().name)
         assertEquals(listOf(1, 2, 3, 4), timetable.courses.first().weeks)
+        assertEquals(TimetableImportSource.SHARED_JSON, timetable.details.importSource)
+    }
+
+    @Test
+    fun `codec falls back to shared json source when payload source is unknown`() {
+        val payload = OnlineSchedulePayload(
+            yearTerm = "2025-2026-2",
+            weekNum = "3",
+            importSource = "INVALID_SOURCE",
+            weekList = (1..20).map(Int::toString),
+            eventList = listOf(
+                com.chronos.mobile.core.model.OnlineScheduleEvent(
+                    weekNum = "3",
+                    weekDay = "2",
+                    weekList = listOf("2", "3"),
+                    sessionList = listOf("3", "4"),
+                    sessionStart = "3",
+                    sessionLast = "2",
+                    eventName = "嵌入式系统及应用",
+                    address = "两江校区 弘远楼D0334",
+                    memberName = "刘政",
+                ),
+            ),
+        )
+
+        val timetable = codec.toTimetable(payload).requireSuccess()
+
+        assertEquals(TimetableImportSource.SHARED_JSON, timetable.details.importSource)
     }
 
     @Test

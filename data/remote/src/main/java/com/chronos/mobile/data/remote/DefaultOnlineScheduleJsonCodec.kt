@@ -6,6 +6,7 @@ import com.chronos.mobile.core.model.OnlineSchedulePayload
 import com.chronos.mobile.core.model.OnlineScheduleWeekDay
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.core.model.TimetableImportSource
 import com.chronos.mobile.domain.OnlineScheduleJsonCodec
 import com.chronos.mobile.domain.result.AppError
 import com.chronos.mobile.domain.result.AppResult
@@ -62,6 +63,9 @@ class DefaultOnlineScheduleJsonCodec @Inject constructor(
                 endWeek = maxWeek,
                 showSaturday = courses.any { it.dayOfWeek == 6 },
                 showSunday = courses.any { it.dayOfWeek == 7 },
+                importSource = payload.importSource
+                    .toTimetableImportSourceOrNull()
+                    ?: TimetableImportSource.SHARED_JSON,
             ),
         ).asSuccess()
     }
@@ -75,6 +79,7 @@ class DefaultOnlineScheduleJsonCodec @Inject constructor(
             yearTerm = name,
             weekNum = weekNum,
             nowMonth = resolveWeekStart(today, details).monthValue.toString(),
+            importSource = TimetableImportSource.SHARED_JSON.name,
             yearTermList = listOf(name),
             weekList = weekList,
             weekDayList = buildWeekDayList(today, details),
@@ -197,6 +202,9 @@ class DefaultOnlineScheduleJsonCodec @Inject constructor(
             .removeSuffix("■")
             .removeSuffix("◆")
             .trim()
+
+    private fun String.toTimetableImportSourceOrNull(): TimetableImportSource? =
+        runCatching { TimetableImportSource.valueOf(trim()) }.getOrNull()
 
     private companion object {
         val COURSE_PALETTE = listOf(

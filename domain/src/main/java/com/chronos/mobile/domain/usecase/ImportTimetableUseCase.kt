@@ -60,7 +60,9 @@ class ImportTimetableUseCase @Inject constructor(
                 createdAt = currentTimetable.createdAt,
                 updatedAt = System.currentTimeMillis(),
                 courses = imported.withAssignedCourseIds(currentTimetable.id),
-                details = currentTimetable.details,
+                details = currentTimetable.details.copy(
+                    importSource = imported.details.importSource,
+                ),
             )
             repository.saveTimetable(overwritten)
             ImportTimetableResult(

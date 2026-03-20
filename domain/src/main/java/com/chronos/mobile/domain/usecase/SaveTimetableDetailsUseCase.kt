@@ -42,6 +42,7 @@ class SaveTimetableDetailsUseCase @Inject constructor(
                     showSaturday = draft.showSaturday,
                     showSunday = draft.showSunday,
                     showNonCurrentWeekCourses = draft.showNonCurrentWeekCourses,
+                    importSource = draft.importSource,
                     periodTimes = normalizedPeriods,
                 ),
             )

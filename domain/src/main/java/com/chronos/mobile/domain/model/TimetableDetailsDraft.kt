@@ -1,5 +1,7 @@
 package com.chronos.mobile.domain.model
 
+import com.chronos.mobile.core.model.TimetableImportSource
+
 data class PeriodTimeDraft(
     val index: Int,
     val startTime: String,
@@ -14,5 +16,6 @@ data class TimetableDetailsDraft(
     val showSaturday: Boolean = true,
     val showSunday: Boolean = true,
     val showNonCurrentWeekCourses: Boolean = false,
+    val importSource: TimetableImportSource = TimetableImportSource.UNKNOWN,
     val periodTimes: List<PeriodTimeDraft> = emptyList(),
 )

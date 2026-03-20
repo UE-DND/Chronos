@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.chronos.mobile.core.model.TimetableImportSource
 import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.core.model.defaultPeriodTimes
 import com.chronos.mobile.domain.model.PeriodTimeDraft
@@ -201,14 +202,16 @@ internal fun TimetableDetailsEditorScreen(
                         onCheckedChange = { editor = editor.copy(showSunday = it) },
                     )
                 }
-                item {
-                    SwitchRow(
-                        title = stringResource(R.string.timetable_show_non_current_week_courses),
-                        checked = editor.showNonCurrentWeekCourses,
-                        onCheckedChange = {
-                            editor = editor.copy(showNonCurrentWeekCourses = it)
-                        },
-                    )
+                if (shouldShowNonCurrentWeekCourseSetting(editor.importSource)) {
+                    item {
+                        SwitchRow(
+                            title = stringResource(R.string.timetable_show_non_current_week_courses),
+                            checked = editor.showNonCurrentWeekCourses,
+                            onCheckedChange = {
+                                editor = editor.copy(showNonCurrentWeekCourses = it)
+                            },
+                        )
+                    }
                 }
                 item {
                     HorizontalDivider()
@@ -319,6 +322,9 @@ private fun localDateToMillis(date: LocalDate): Long =
 
 private fun millisToLocalDate(millis: Long): LocalDate =
     java.time.Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+
+internal fun shouldShowNonCurrentWeekCourseSetting(importSource: TimetableImportSource): Boolean =
+    importSource != TimetableImportSource.ONLINE_EDU
 
 private fun TimetableDetailsDraft.resetToDefaultSettings(): TimetableDetailsDraft {
     val defaults = TimetableDetails()

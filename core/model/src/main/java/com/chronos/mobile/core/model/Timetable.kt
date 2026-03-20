@@ -5,6 +5,14 @@ package com.chronos.mobile.core.model
 import kotlinx.serialization.Serializable
 
 @Serializable
+enum class TimetableImportSource {
+    UNKNOWN,
+    ONLINE_EDU,
+    FILE_HTML,
+    SHARED_JSON,
+}
+
+@Serializable
 data class PeriodTime(
     val index: Int,
     val startTime: String,
@@ -19,6 +27,7 @@ data class TimetableDetails(
     val showSaturday: Boolean = true,
     val showSunday: Boolean = true,
     val showNonCurrentWeekCourses: Boolean = false,
+    val importSource: TimetableImportSource = TimetableImportSource.UNKNOWN,
     val periodTimes: List<PeriodTime> = defaultPeriodTimes(),
 )
 

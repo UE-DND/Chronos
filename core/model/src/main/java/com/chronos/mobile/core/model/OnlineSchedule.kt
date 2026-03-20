@@ -9,6 +9,7 @@ data class OnlineSchedulePayload(
     val yearTerm: String = "",
     val weekNum: String = "",
     val nowMonth: String = "",
+    val importSource: String = "",
     val yearTermList: List<String> = emptyList(),
     val weekList: List<String> = emptyList(),
     val weekDayList: List<OnlineScheduleWeekDay> = emptyList(),

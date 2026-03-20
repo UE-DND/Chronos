@@ -7,6 +7,7 @@ import com.chronos.mobile.core.model.OnlineSchedulePayload
 import com.chronos.mobile.core.model.OnlineScheduleWeekDay
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.core.model.TimetableImportSource
 import com.chronos.mobile.core.model.TimetableSummary
 import com.chronos.mobile.core.model.ThemeMode
 import com.chronos.mobile.domain.ImportMode
@@ -163,6 +164,41 @@ class DomainUseCaseTest {
     }
 
     @Test
+    fun `importTimetable as new keeps imported source`() = runBlocking {
+        val repo = FakeTimetableRepository()
+        repo.seedCurrent()
+        val imported = repo.sampleImportedTimetable().copy(
+            details = TimetableDetails(importSource = TimetableImportSource.ONLINE_EDU),
+        )
+        val useCase = ImportTimetableUseCase(repo, ParseEducationalTimetableHtmlUseCase(), codec)
+
+        useCase.import(imported, ImportMode.AS_NEW)
+
+        val current = repo.getAppStateSnapshot().currentTimetable
+        assertEquals(TimetableImportSource.ONLINE_EDU, current?.details?.importSource)
+    }
+
+    @Test
+    fun `importTimetable overwrite updates source to latest import source`() = runBlocking {
+        val repo = FakeTimetableRepository()
+        repo.seedCurrent()
+        val imported = repo.sampleImportedTimetable().copy(
+            details = TimetableDetails(importSource = TimetableImportSource.FILE_HTML),
+        )
+        val useCase = ImportTimetableUseCase(repo, ParseEducationalTimetableHtmlUseCase(), codec)
+
+        useCase.import(imported, ImportMode.OVERWRITE_CURRENT)
+
+        val current = repo.getAppStateSnapshot().currentTimetable
+        assertEquals(TimetableImportSource.FILE_HTML, current?.details?.importSource)
+    }
+
+    @Test
+    fun `timetable details defaults source to unknown`() {
+        assertEquals(TimetableImportSource.UNKNOWN, TimetableDetails().importSource)
+    }
+
+    @Test
     fun `exportCurrentTimetable outputs online schedule json`() = runBlocking {
         val repo = FakeTimetableRepository()
         repo.seedCurrent()
@@ -286,6 +322,7 @@ class DomainUseCaseTest {
             listOf(2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15),
             current?.courses?.first()?.weeks,
         )
+        assertEquals(TimetableImportSource.FILE_HTML, current?.details?.importSource)
     }
 
     @Test
@@ -451,6 +488,7 @@ private class FakeOnlineScheduleJsonCodec : OnlineScheduleJsonCodec {
             yearTerm = timetable.name,
             weekNum = "1",
             nowMonth = "3",
+            importSource = "SHARED_JSON",
             yearTermList = listOf(timetable.name),
             weekList = (timetable.details.startWeek..timetable.details.endWeek).map(Int::toString),
             weekDayList = listOf(
