@@ -45,7 +45,10 @@ import com.chronos.mobile.feature.timetable.TimetableRoute
 import com.chronos.mobile.feature.transfer.TransferDialogMode
 import com.chronos.mobile.feature.transfer.TransferImportConfirmRoute
 import com.chronos.mobile.feature.transfer.TransferRoute
+import com.chronos.mobile.domain.usecase.BuildVisibleTimetableGridUseCase
+import com.chronos.mobile.domain.usecase.CalculateAcademicWeekUseCase
 import java.io.File
+import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -312,9 +315,24 @@ fun ChronosRootRoute(
                 popEnterTransition = { secondaryPagePopEnterTransition() },
                 popExitTransition = { secondaryPagePopExitTransition() },
             ) {
+                val timetable = appState.currentTimetable
+                val today = remember { LocalDate.now() }
+                val previewData = remember(timetable, today) {
+                    if (timetable == null) null
+                    else {
+                        val week = CalculateAcademicWeekUseCase()(today, timetable.details)
+                        val grid = BuildVisibleTimetableGridUseCase()(today, week, timetable)
+                        Triple(week, grid, timetable)
+                    }
+                }
                 MineWallpaperScreen(
                     modifier = Modifier.fillMaxSize(),
                     hasWallpaper = !appState.wallpaperUri.isNullOrBlank(),
+                    wallpaperUri = appState.wallpaperUri,
+                    timetable = previewData?.third,
+                    academicWeek = previewData?.first ?: 1,
+                    today = today,
+                    gridModel = previewData?.second,
                     onBack = { navController.popBackStack() },
                     onChangeWallpaper = { wallpaperLauncher.launch("image/*") },
                     onClearWallpaper = {
