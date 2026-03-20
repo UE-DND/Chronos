@@ -46,7 +46,6 @@ data class TimetableUiState(
     val displayedWeekTimetableId: String? = null,
     val gridModel: TimetableGridModel? = null,
     val weekGridModels: Map<Int, TimetableGridModel> = emptyMap(),
-    val manageDialogVisible: Boolean = false,
     val editingCourse: CourseDraft? = null,
 )
 
@@ -104,10 +103,6 @@ class TimetableViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = TimetableUiState(),
     )
-
-    fun showManageDialog(show: Boolean) {
-        uiState.update { it.copy(manageDialogVisible = show) }
-    }
 
     fun createTimetable(name: String) {
         viewModelScope.launch {

@@ -3,15 +3,19 @@ package com.chronos.mobile.domain.usecase
 import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.domain.result.AppError
+import com.chronos.mobile.domain.result.AppResult
+import com.chronos.mobile.domain.result.asFailure
+import com.chronos.mobile.domain.result.asSuccess
 import java.util.UUID
 import javax.inject.Inject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
 class ParseEducationalTimetableHtmlUseCase @Inject constructor() {
-    operator fun invoke(content: String): Timetable? {
+    operator fun invoke(content: String): AppResult<Timetable?> {
         val document = Jsoup.parse(content)
-        val table = document.selectFirst("#kbgrid_table_0") ?: return null
+        val table = document.selectFirst("#kbgrid_table_0") ?: return null.asSuccess()
         val titleContainer = table.selectFirst(".timetable_title")
         val term = titleContainer
             ?.selectFirst("h6.pull-left")
@@ -27,7 +31,7 @@ class ParseEducationalTimetableHtmlUseCase @Inject constructor() {
             .flatMap(::parseCellCourses)
 
         if (courses.isEmpty()) {
-            throw IllegalArgumentException("HTML 中未找到可导入的课程数据")
+            return AppError.Validation("HTML 中未找到可导入的课程数据").asFailure()
         }
 
         val now = System.currentTimeMillis()
@@ -48,7 +52,7 @@ class ParseEducationalTimetableHtmlUseCase @Inject constructor() {
                 showSaturday = courses.any { it.dayOfWeek == 6 },
                 showSunday = courses.any { it.dayOfWeek == 7 },
             ),
-        )
+        ).asSuccess()
     }
 
     private fun parseCellCourses(cell: Element): List<Course> {

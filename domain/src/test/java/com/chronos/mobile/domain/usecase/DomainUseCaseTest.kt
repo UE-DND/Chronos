@@ -2,14 +2,20 @@ package com.chronos.mobile.domain.usecase
 
 import com.chronos.mobile.core.model.AppState
 import com.chronos.mobile.core.model.Course
+import com.chronos.mobile.core.model.OnlineScheduleEvent
+import com.chronos.mobile.core.model.OnlineSchedulePayload
+import com.chronos.mobile.core.model.OnlineScheduleWeekDay
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.core.model.TimetableSummary
 import com.chronos.mobile.domain.ImportMode
+import com.chronos.mobile.domain.OnlineScheduleJsonCodec
 import com.chronos.mobile.domain.TimetableRepository
 import com.chronos.mobile.domain.model.CourseDraft
 import com.chronos.mobile.domain.model.PeriodTimeDraft
 import com.chronos.mobile.domain.model.TimetableDetailsDraft
+import com.chronos.mobile.domain.result.AppResult
+import com.chronos.mobile.domain.result.asSuccess
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
@@ -24,6 +30,8 @@ import java.io.File
 import java.time.LocalDate
 
 class DomainUseCaseTest {
+    private val codec = FakeOnlineScheduleJsonCodec()
+
     @Test
     fun `calculateAcademicWeek clamps before term start`() {
         val useCase = CalculateAcademicWeekUseCase()
@@ -113,9 +121,9 @@ class DomainUseCaseTest {
         val repo = FakeTimetableRepository()
         repo.seedCurrent()
         val imported = repo.sampleImportedTimetable()
-        val useCase = ImportTimetableUseCase(repo, ParseEducationalTimetableHtmlUseCase())
+        val useCase = ImportTimetableUseCase(repo, ParseEducationalTimetableHtmlUseCase(), codec)
 
-        useCase(repo.encodeTimetable(imported), ImportMode.AS_NEW)
+        useCase((codec.encode(imported) as AppResult.Success).value, ImportMode.AS_NEW)
 
         val current = repo.getAppStateSnapshot().currentTimetable
         assertNotNull(current)
@@ -128,14 +136,15 @@ class DomainUseCaseTest {
         val repo = FakeTimetableRepository()
         val existing = repo.seedCurrent()
         val imported = repo.sampleImportedTimetable()
-        val useCase = ImportTimetableUseCase(repo, ParseEducationalTimetableHtmlUseCase())
+        val useCase = ImportTimetableUseCase(repo, ParseEducationalTimetableHtmlUseCase(), codec)
 
-        useCase(repo.encodeTimetable(imported), ImportMode.OVERWRITE_CURRENT)
+        useCase((codec.encode(imported) as AppResult.Success).value, ImportMode.OVERWRITE_CURRENT)
 
         val current = repo.getAppStateSnapshot().currentTimetable
         assertEquals(existing.id, current?.id)
         assertEquals(existing.name, current?.name)
         assertEquals(imported.courses.size, current?.courses?.size)
+        assertEquals(existing.details, current?.details)
     }
 
     @Test
@@ -143,9 +152,9 @@ class DomainUseCaseTest {
         val repo = FakeTimetableRepository()
         val existing = repo.seedCurrent()
         val imported = repo.sampleImportedTimetable()
-        val useCase = ImportTimetableUseCase(repo, ParseEducationalTimetableHtmlUseCase())
+        val useCase = ImportTimetableUseCase(repo, ParseEducationalTimetableHtmlUseCase(), codec)
 
-        useCase(repo.encodeTimetable(imported), ImportMode.OVERWRITE_CURRENT)
+        useCase((codec.encode(imported) as AppResult.Success).value, ImportMode.OVERWRITE_CURRENT)
 
         val current = repo.getAppStateSnapshot().currentTimetable
         assertNotNull(current)
@@ -153,17 +162,19 @@ class DomainUseCaseTest {
     }
 
     @Test
-    fun `exportCurrentTimetable includes timetable details fields`() = runBlocking {
+    fun `exportCurrentTimetable outputs online schedule json`() = runBlocking {
         val repo = FakeTimetableRepository()
         repo.seedCurrent()
-        val useCase = ExportCurrentTimetableUseCase(repo)
+        val useCase = ExportCurrentTimetableUseCase(repo, codec)
 
         val exported = useCase()
 
-        assertNotNull(exported)
-        assertTrue(exported!!.contains("\"details\""))
-        assertTrue(exported.contains("\"showNonCurrentWeekCourses\""))
-        assertTrue(exported.contains("\"periodTimes\""))
+        assertTrue(exported is AppResult.Success)
+        val value = (exported as AppResult.Success).value
+        assertNotNull(value)
+        assertTrue(value!!.contains("\"yearTerm\""))
+        assertTrue(value.contains("\"weekDayList\""))
+        assertTrue(value.contains("\"eventList\""))
     }
 
     @Test
@@ -200,7 +211,7 @@ class DomainUseCaseTest {
     @Test
     fun `importTimetable parses educational html and ignores other courses`() = runBlocking {
         val repo = FakeTimetableRepository()
-        val useCase = ImportTimetableUseCase(repo, ParseEducationalTimetableHtmlUseCase())
+        val useCase = ImportTimetableUseCase(repo, ParseEducationalTimetableHtmlUseCase(), codec)
 
         useCase(
             """
@@ -258,10 +269,11 @@ class DomainUseCaseTest {
         assumeTrue(samplePath.isNotBlank())
 
         val parsed = ParseEducationalTimetableHtmlUseCase()(File(samplePath).readText())
-        assertNotNull(parsed)
+        assertTrue(parsed is AppResult.Success)
 
-        val timetable = parsed!!
-        println("TERM=${timetable.name}")
+        val timetable = (parsed as AppResult.Success).value
+        assertNotNull(timetable)
+        println("TERM=${timetable!!.name}")
         println("COURSE_COUNT=${timetable.courses.size}")
         timetable.courses
             .sortedWith(compareBy<Course> { it.dayOfWeek }.thenBy { it.startPeriod }.thenBy { it.name })
@@ -281,10 +293,6 @@ class DomainUseCaseTest {
 }
 
 private class FakeTimetableRepository : TimetableRepository {
-    private val json = Json {
-        encodeDefaults = true
-        ignoreUnknownKeys = true
-    }
     private val state = MutableStateFlow(AppState())
     private var timetables: List<Timetable> = emptyList()
 
@@ -337,12 +345,6 @@ private class FakeTimetableRepository : TimetableRepository {
         rebuildState(wallpaperUri = uri)
     }
 
-    override suspend fun decodeTimetable(json: String): Timetable =
-        this.json.decodeFromString<Timetable>(json)
-
-    override suspend fun encodeTimetable(timetable: Timetable): String =
-        json.encodeToString(timetable)
-
     fun seedCurrent(): Timetable {
         val timetable = sampleImportedTimetable().copy(id = "current-id", name = "当前课表")
         timetables = listOf(timetable)
@@ -393,4 +395,68 @@ private class FakeTimetableRepository : TimetableRepository {
         ),
         details = TimetableDetails(),
     )
+}
+
+private class FakeOnlineScheduleJsonCodec : OnlineScheduleJsonCodec {
+    private val json = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+    }
+
+    override fun decode(json: String): AppResult<OnlineSchedulePayload> =
+        this.json.decodeFromString(OnlineSchedulePayload.serializer(), json).asSuccess()
+
+    override fun encode(timetable: Timetable): AppResult<String> = json.encodeToString(
+        OnlineSchedulePayload.serializer(),
+        OnlineSchedulePayload(
+            yearTerm = timetable.name,
+            weekNum = "1",
+            nowMonth = "3",
+            yearTermList = listOf(timetable.name),
+            weekList = (timetable.details.startWeek..timetable.details.endWeek).map(Int::toString),
+            weekDayList = listOf(
+                OnlineScheduleWeekDay(weekDay = "一", weekDate = "03/02", today = false),
+                OnlineScheduleWeekDay(weekDay = "二", weekDate = "03/03", today = false),
+            ),
+            eventList = timetable.courses.map { course ->
+                OnlineScheduleEvent(
+                    weekNum = "1",
+                    weekDay = course.dayOfWeek.toString(),
+                    weekList = course.weeks.map(Int::toString),
+                    weekCover = "",
+                    sessionList = (course.startPeriod..course.endPeriod).map(Int::toString),
+                    sessionStart = course.startPeriod.toString(),
+                    sessionLast = course.endPeriod.toString(),
+                    eventName = course.name,
+                    address = course.location,
+                    memberName = course.teacher,
+                    duplicateGroupType = "0",
+                    duplicateGroup = 0,
+                    eventType = "1",
+                    eventID = course.id,
+                )
+            },
+        ),
+    ).asSuccess()
+
+    override fun toTimetable(payload: OnlineSchedulePayload): AppResult<Timetable> = Timetable(
+        id = "decoded-online",
+        name = payload.yearTerm.ifBlank { "在线课表" },
+        createdAt = 1L,
+        updatedAt = 1L,
+        courses = payload.eventList.mapIndexed { index, event ->
+            Course(
+                id = event.eventID.ifBlank { "decoded-$index" },
+                name = event.eventName,
+                teacher = event.memberName,
+                location = event.address,
+                dayOfWeek = event.weekDay.toInt(),
+                startPeriod = event.sessionStart.toInt(),
+                endPeriod = event.sessionLast.toInt(),
+                color = "#EADDFF",
+                weeks = event.weekList.map(String::toInt),
+            )
+        },
+        details = TimetableDetails(),
+    ).asSuccess()
 }

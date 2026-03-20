@@ -20,6 +20,7 @@ fun TimetableRoute(
     contentPadding: PaddingValues = PaddingValues(),
     timetableCommands: Flow<TimetableCommand>,
     onImportTimetable: () -> Unit,
+    onEditCourse: () -> Unit,
     onEditTimetableDetails: () -> Unit,
     viewModel: TimetableViewModel = hiltViewModel(),
 ) {
@@ -29,7 +30,6 @@ fun TimetableRoute(
     LaunchedEffect(timetableCommands) {
         timetableCommands.collect { command ->
             when (command) {
-                TimetableCommand.OpenManageTimetables -> viewModel.showManageDialog(true)
                 TimetableCommand.JumpToCurrentWeek -> viewModel.jumpToCurrentWeek()
             }
         }
@@ -52,31 +52,13 @@ fun TimetableRoute(
                 onEditTimetableDetails = {
                     onEditTimetableDetails()
                 },
-                onCourseClick = viewModel::requestEditCourse,
+                onCourseClick = { course ->
+                    viewModel.requestEditCourse(course)
+                    onEditCourse()
+                },
                 onDisplayedWeekChange = viewModel::setDisplayedWeek,
             )
         }
-    }
-
-    if (state.manageDialogVisible) {
-        ManageTimetablesDialog(
-            timetables = state.appState.timetables,
-            currentTimetableId = state.appState.currentTimetableId,
-            onDismiss = { viewModel.showManageDialog(false) },
-            onCreateTimetable = viewModel::createTimetable,
-            onSwitchTimetable = viewModel::switchTimetable,
-            onDeleteTimetable = viewModel::deleteTimetable,
-        )
-    }
-
-    state.editingCourse?.let { editor ->
-        CourseEditorDialog(
-            initialState = editor,
-            maxPeriods = state.gridModel?.displayedPeriodCount ?: 10,
-            onDismiss = viewModel::dismissCourseEditor,
-            onSave = viewModel::saveCourse,
-            onDelete = editor.id?.let { id -> { viewModel.deleteCourse(id) } },
-        )
     }
 }
 

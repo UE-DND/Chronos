@@ -16,6 +16,4 @@ interface TimetableRepository {
     suspend fun deleteTimetable(id: String)
     suspend fun setCurrentTimetableId(id: String?)
     suspend fun setWallpaper(uri: String?)
-    suspend fun decodeTimetable(json: String): Timetable
-    suspend fun encodeTimetable(timetable: Timetable): String
 }

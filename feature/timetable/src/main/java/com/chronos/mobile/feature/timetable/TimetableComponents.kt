@@ -115,16 +115,10 @@ internal fun PeriodStepperRow(
 @Composable
 internal fun DialogTitleBlock(
     title: String,
-    subtitle: String,
     modifier: Modifier = Modifier,
 ) {
     androidx.compose.foundation.layout.Column(modifier = modifier) {
         Text(text = title, style = MaterialTheme.typography.titleLarge)
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 

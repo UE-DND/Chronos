@@ -1,5 +1,6 @@
 package com.chronos.mobile.feature.timetable
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -16,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -56,36 +56,8 @@ internal fun TimetableDetailsEditorScreen(
     onSave: (TimetableDetailsDraft) -> Unit,
 ) {
     var editor by remember(initialState) { mutableStateOf(initialState) }
-    var datePickerVisible by remember { mutableStateOf(false) }
-
-    if (datePickerVisible) {
-        val datePickerState = rememberTermStartDatePickerState(editor.termStartDate)
-        DatePickerDialog(
-            onDismissRequest = { datePickerVisible = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis
-                            ?.let(::millisToLocalDate)
-                            ?.let { selectedDate ->
-                                editor = editor.copy(termStartDate = selectedDate.toString())
-                            }
-                        datePickerVisible = false
-                    },
-                    enabled = datePickerState.selectedDateMillis != null,
-                ) {
-                    Text(stringResource(R.string.timetable_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { datePickerVisible = false }) {
-                    Text(stringResource(R.string.timetable_cancel))
-                }
-            },
-        ) {
-            DatePicker(state = datePickerState)
-        }
-    }
+    var datePickerExpanded by remember { mutableStateOf(false) }
+    val datePickerState = rememberTermStartDatePickerState(editor.termStartDate)
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -144,10 +116,54 @@ internal fun TimetableDetailsEditorScreen(
                 }
                 item {
                     OutlinedButton(
-                        onClick = { datePickerVisible = true },
+                        onClick = { datePickerExpanded = !datePickerExpanded },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(stringResource(R.string.timetable_term_start_date_pick))
+                        Text(
+                            if (datePickerExpanded) {
+                                stringResource(R.string.timetable_cancel)
+                            } else {
+                                stringResource(R.string.timetable_term_start_date_pick)
+                            },
+                        )
+                    }
+                }
+                if (datePickerExpanded) {
+                    item {
+                        Surface(
+                            shape = MaterialTheme.shapes.extraLarge,
+                            color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        ) {
+                            androidx.compose.foundation.layout.Column(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                            ) {
+                                DatePicker(state = datePickerState)
+                                androidx.compose.foundation.layout.Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.End,
+                                ) {
+                                    TextButton(onClick = { datePickerExpanded = false }) {
+                                        Text(stringResource(R.string.timetable_cancel))
+                                    }
+                                    TextButton(
+                                        onClick = {
+                                            datePickerState.selectedDateMillis
+                                                ?.let(::millisToLocalDate)
+                                                ?.let { selectedDate ->
+                                                    editor = editor.copy(termStartDate = selectedDate.toString())
+                                                }
+                                            datePickerExpanded = false
+                                        },
+                                        enabled = datePickerState.selectedDateMillis != null,
+                                    ) {
+                                        Text(stringResource(R.string.timetable_confirm))
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 item {

@@ -28,6 +28,7 @@ kotlin {
 dependencies {
     implementation(project(":core:model"))
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.javax.inject)
     implementation(libs.jsoup)
     testImplementation(libs.junit4)

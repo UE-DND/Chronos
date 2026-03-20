@@ -6,7 +6,6 @@ import com.chronos.mobile.core.model.AppState
 import com.chronos.mobile.domain.usecase.ObserveAppStateUseCase
 import com.chronos.mobile.domain.usecase.SetWallpaperUseCase
 import com.chronos.mobile.feature.timetable.TimetableCommand
-import com.chronos.mobile.feature.transfer.TransferDialogMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
@@ -45,15 +44,6 @@ class RootViewModel @Inject constructor(
         if (tab == RootTab.TIMETABLE) {
             eventChannel.trySend(TimetableCommand.JumpToCurrentWeek)
         }
-    }
-
-    fun showTransferDialog(mode: TransferDialogMode?) {
-        uiState.update { it.copy(transferDialogMode = mode) }
-    }
-
-    fun requestManageTimetables() {
-        uiState.update { it.copy(activeTab = RootTab.TIMETABLE) }
-        eventChannel.trySend(TimetableCommand.OpenManageTimetables)
     }
 
     fun setWallpaper(uri: String?) {

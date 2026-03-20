@@ -125,6 +125,8 @@ kotlin {
 dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":data:repository"))
+    implementation(project(":data:remote"))
+    implementation(project(":data:secure"))
     implementation(project(":feature:root"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)

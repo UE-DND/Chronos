@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Wallpaper
-import androidx.compose.material.icons.outlined.LayersClear
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -46,7 +45,6 @@ fun MineRoute(
     onImport: () -> Unit,
     onExport: () -> Unit,
     onChangeWallpaper: () -> Unit,
-    onClearWallpaper: () -> Unit,
 ) {
     LazyColumn(
         modifier = modifier
@@ -113,18 +111,9 @@ fun MineRoute(
                         icon = Icons.Default.Wallpaper,
                         iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
                         iconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        title = "更换课表壁纸",
+                        title = if (hasWallpaper) "壁纸设置" else "设置课表壁纸",
                         onClick = onChangeWallpaper,
                     )
-                    if (hasWallpaper) {
-                        MineRow(
-                            icon = Icons.Outlined.LayersClear,
-                            iconContainerColor = Color(0xFFF9DEDC),
-                            iconColor = Color(0xFFB3261E),
-                            title = "清除壁纸",
-                            onClick = onClearWallpaper,
-                        )
-                    }
                 }
             }
         }

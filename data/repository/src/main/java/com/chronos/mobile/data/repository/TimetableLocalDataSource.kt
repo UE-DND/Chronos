@@ -1,0 +1,124 @@
+package com.chronos.mobile.data.repository
+
+import com.chronos.mobile.core.model.Course
+import com.chronos.mobile.core.model.Timetable
+import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.core.model.TimetableSummary
+import com.chronos.mobile.data.local.ChronosDao
+import com.chronos.mobile.data.local.CourseEntity
+import com.chronos.mobile.data.local.TimetableEntity
+import com.chronos.mobile.data.local.TimetableSummaryRow
+import com.chronos.mobile.data.local.TimetableWithCourses
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.Json
+
+@Singleton
+class TimetableLocalDataSource @Inject constructor(
+    private val chronosDao: ChronosDao,
+) {
+    private val storageJson = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+    }
+
+    fun observeTimetableSummaries(): Flow<List<TimetableSummary>> = chronosDao.observeTimetableSummaries()
+        .map { summaries -> summaries.map { it.toDomain() } }
+        .distinctUntilChanged()
+
+    fun observeTimetable(id: String): Flow<Timetable?> = chronosDao.observeTimetableById(id)
+        .map { timetable -> timetable?.toDomain() }
+        .distinctUntilChanged()
+
+    suspend fun getTimetableSummariesSnapshot(): List<TimetableSummary> =
+        chronosDao.getTimetableSummariesSnapshot().map { it.toDomain() }
+
+    suspend fun getTimetable(id: String): Timetable? = chronosDao.getTimetableById(id)?.toDomain()
+
+    suspend fun saveTimetable(timetable: Timetable) {
+        chronosDao.upsertTimetableGraph(
+            timetable = timetable.toEntity(),
+            courses = timetable.courses.map { it.toEntity(timetable.id) },
+        )
+    }
+
+    suspend fun saveCourse(timetableId: String, course: Course) {
+        chronosDao.upsertCourseForTimetable(
+            timetableId = timetableId,
+            course = course.toEntity(timetableId),
+            updatedAt = System.currentTimeMillis(),
+        )
+    }
+
+    suspend fun deleteCourse(courseId: String) {
+        chronosDao.deleteCourseAndTouchTimetable(
+            courseId = courseId,
+            updatedAt = System.currentTimeMillis(),
+        )
+    }
+
+    suspend fun deleteTimetable(id: String) {
+        chronosDao.deleteTimetable(id)
+    }
+
+    private fun TimetableWithCourses.toDomain(): Timetable = Timetable(
+        id = timetable.id,
+        name = timetable.name,
+        createdAt = timetable.createdAt,
+        updatedAt = timetable.updatedAt,
+        courses = courses.map { it.toDomain() },
+        details = timetable.detailsOrDefault(),
+    )
+
+    private fun TimetableSummaryRow.toDomain(): TimetableSummary = TimetableSummary(
+        id = id,
+        name = name,
+        courseCount = courseCount,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+    )
+
+    private fun Timetable.toEntity(): TimetableEntity = TimetableEntity(
+        id = id,
+        name = name,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        configJson = storageJson.encodeToString(details),
+    )
+
+    private fun Course.toEntity(timetableId: String): CourseEntity = CourseEntity(
+        id = id,
+        timetableId = timetableId,
+        name = name,
+        teacher = teacher,
+        location = location,
+        dayOfWeek = dayOfWeek,
+        startPeriod = startPeriod,
+        endPeriod = endPeriod,
+        color = color,
+        textColor = textColor,
+        weeksCsv = weeks.joinToString(","),
+    )
+
+    private fun CourseEntity.toDomain(): Course = Course(
+        id = id,
+        name = name,
+        teacher = teacher,
+        location = location,
+        dayOfWeek = dayOfWeek,
+        startPeriod = startPeriod,
+        endPeriod = endPeriod,
+        color = color,
+        textColor = textColor,
+        weeks = weeksCsv.split(",")
+            .mapNotNull(String::toIntOrNull)
+            .sorted(),
+    )
+
+    private fun TimetableEntity.detailsOrDefault(): TimetableDetails = runCatching {
+        storageJson.decodeFromString<TimetableDetails>(configJson)
+    }.getOrDefault(TimetableDetails())
+}

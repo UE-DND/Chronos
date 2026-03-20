@@ -371,13 +371,6 @@ internal fun EmptyTimetableState(
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = stringResource(R.string.timetable_empty_subtitle),
-            style = MaterialTheme.typography.titleMedium,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.tertiary,
-        )
         Spacer(modifier = Modifier.height(28.dp))
         OutlinedButton(
             onClick = onImportTimetable,

@@ -31,15 +31,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.chronos.mobile.feature.mine.MineWallpaperScreen
 import com.chronos.mobile.feature.mine.MineRoute
+import com.chronos.mobile.feature.timetable.CourseEditorRoute
+import com.chronos.mobile.feature.timetable.ManageTimetablesRoute
 import com.chronos.mobile.feature.timetable.TimetableDetailsEditorRoute
 import com.chronos.mobile.feature.timetable.TimetableRoute
-import com.chronos.mobile.feature.transfer.TransferDialogHost
 import com.chronos.mobile.feature.transfer.TransferDialogMode
+import com.chronos.mobile.feature.transfer.TransferImportConfirmRoute
+import com.chronos.mobile.feature.transfer.TransferRoute
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -58,7 +63,17 @@ fun ChronosRootRoute(
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val bottomBarVisible = currentRoute != RootRoute.TIMETABLE_DETAILS
+    val bottomBarVisible = currentRoute !in secondaryRoutes
+    val returnToTimetable: () -> Unit = {
+        viewModel.switchTab(RootTab.TIMETABLE)
+        val popped = navController.popBackStack(RootRoute.TIMETABLE, inclusive = false)
+        if (!popped) {
+            navController.navigate(RootRoute.TIMETABLE) {
+                popUpTo(navController.graph.startDestinationId)
+                launchSingleTop = true
+            }
+        }
+    }
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let {
@@ -142,7 +157,8 @@ fun ChronosRootRoute(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = paddingValues,
                     timetableCommands = viewModel.timetableCommands,
-                    onImportTimetable = { viewModel.showTransferDialog(TransferDialogMode.IMPORT) },
+                    onImportTimetable = { navController.navigate(RootRoute.TRANSFER_IMPORT) },
+                    onEditCourse = { navController.navigate(RootRoute.TIMETABLE_COURSE_EDITOR) },
                     onEditTimetableDetails = { navController.navigate(RootRoute.TIMETABLE_DETAILS) },
                 )
             }
@@ -185,6 +201,23 @@ fun ChronosRootRoute(
             }
 
             composable(
+                route = RootRoute.TIMETABLE_COURSE_EDITOR,
+                enterTransition = { secondaryPageEnterTransition() },
+                exitTransition = { secondaryPageExitTransition() },
+                popEnterTransition = { secondaryPagePopEnterTransition() },
+                popExitTransition = { secondaryPagePopExitTransition() },
+            ) { backStackEntry ->
+                val timetableEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(RootRoute.TIMETABLE)
+                }
+                CourseEditorRoute(
+                    modifier = Modifier.fillMaxSize(),
+                    parentEntry = timetableEntry,
+                    onDismiss = { navController.popBackStack() },
+                )
+            }
+
+            composable(
                 route = RootRoute.MINE,
                 enterTransition = { EnterTransition.None },
                 exitTransition = { ExitTransition.None },
@@ -196,15 +229,93 @@ fun ChronosRootRoute(
                     contentPadding = paddingValues,
                     hasWallpaper = !appState.wallpaperUri.isNullOrBlank(),
                     onManageTimetables = {
-                        viewModel.requestManageTimetables()
-                        navController.navigate(RootRoute.TIMETABLE) {
-                            popUpTo(navController.graph.startDestinationId) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        navController.navigate(RootRoute.MANAGE_TIMETABLES)
                     },
-                    onImport = { viewModel.showTransferDialog(TransferDialogMode.IMPORT) },
-                    onExport = { viewModel.showTransferDialog(TransferDialogMode.EXPORT) },
+                    onImport = { navController.navigate(RootRoute.TRANSFER_IMPORT) },
+                    onExport = { navController.navigate(RootRoute.TRANSFER_EXPORT) },
+                    onChangeWallpaper = { navController.navigate(RootRoute.WALLPAPER) },
+                )
+            }
+
+            composable(
+                route = RootRoute.MANAGE_TIMETABLES,
+                enterTransition = { secondaryPageEnterTransition() },
+                exitTransition = { secondaryPageExitTransition() },
+                popEnterTransition = { secondaryPagePopEnterTransition() },
+                popExitTransition = { secondaryPagePopExitTransition() },
+            ) {
+                ManageTimetablesRoute(
+                    modifier = Modifier.fillMaxSize(),
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(
+                route = RootRoute.TRANSFER_IMPORT,
+                enterTransition = { secondaryPageEnterTransition() },
+                exitTransition = { secondaryPageExitTransition() },
+                popEnterTransition = { secondaryPagePopEnterTransition() },
+                popExitTransition = { secondaryPagePopExitTransition() },
+            ) {
+                TransferRoute(
+                    modifier = Modifier.fillMaxSize(),
+                    mode = TransferDialogMode.IMPORT,
+                    onBack = { navController.popBackStack() },
+                    onNavigateToImportConfirm = {
+                        navController.navigate(RootRoute.TRANSFER_IMPORT_CONFIRM)
+                    },
+                    onMessage = { snackbarMessage = it },
+                )
+            }
+
+            composable(
+                route = RootRoute.TRANSFER_IMPORT_CONFIRM,
+                enterTransition = { secondaryPageEnterTransition() },
+                exitTransition = { secondaryPageExitTransition() },
+                popEnterTransition = { secondaryPagePopEnterTransition() },
+                popExitTransition = { secondaryPagePopExitTransition() },
+            ) { backStackEntry ->
+                val transferImportEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(RootRoute.TRANSFER_IMPORT)
+                }
+                TransferImportConfirmRoute(
+                    modifier = Modifier.fillMaxSize(),
+                    parentEntry = transferImportEntry,
+                    onBack = { navController.popBackStack() },
+                    onMessage = { snackbarMessage = it },
+                    onImportSuccess = {
+                        snackbarMessage = "课程表已导入"
+                        returnToTimetable()
+                    },
+                )
+            }
+
+            composable(
+                route = RootRoute.TRANSFER_EXPORT,
+                enterTransition = { secondaryPageEnterTransition() },
+                exitTransition = { secondaryPageExitTransition() },
+                popEnterTransition = { secondaryPagePopEnterTransition() },
+                popExitTransition = { secondaryPagePopExitTransition() },
+            ) {
+                TransferRoute(
+                    modifier = Modifier.fillMaxSize(),
+                    mode = TransferDialogMode.EXPORT,
+                    onBack = { navController.popBackStack() },
+                    onMessage = { snackbarMessage = it },
+                )
+            }
+
+            composable(
+                route = RootRoute.WALLPAPER,
+                enterTransition = { secondaryPageEnterTransition() },
+                exitTransition = { secondaryPageExitTransition() },
+                popEnterTransition = { secondaryPagePopEnterTransition() },
+                popExitTransition = { secondaryPagePopExitTransition() },
+            ) {
+                MineWallpaperScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    hasWallpaper = !appState.wallpaperUri.isNullOrBlank(),
+                    onBack = { navController.popBackStack() },
                     onChangeWallpaper = { wallpaperLauncher.launch("image/*") },
                     onClearWallpaper = {
                         scope.launch(Dispatchers.IO) {
@@ -214,17 +325,6 @@ fun ChronosRootRoute(
                     },
                 )
             }
-        }
-
-        state.transferDialogMode?.let { mode ->
-            TransferDialogHost(
-                mode = mode,
-                onDismiss = { viewModel.showTransferDialog(null) },
-                onMessage = { snackbarMessage = it },
-                onImportSuccess = {
-                    snackbarMessage = "课程表已导入"
-                },
-            )
         }
     }
 }
@@ -266,3 +366,37 @@ private fun deleteManagedWallpaperFile(
         file.delete()
     }
 }
+
+private val secondaryRoutes = setOf(
+    RootRoute.TIMETABLE_DETAILS,
+    RootRoute.TIMETABLE_COURSE_EDITOR,
+    RootRoute.MANAGE_TIMETABLES,
+    RootRoute.TRANSFER_IMPORT,
+    RootRoute.TRANSFER_IMPORT_CONFIRM,
+    RootRoute.TRANSFER_EXPORT,
+    RootRoute.WALLPAPER,
+)
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.secondaryPageEnterTransition() =
+    slideIntoContainer(
+        towards = AnimatedContentTransitionScope.SlideDirection.Start,
+        animationSpec = tween(durationMillis = SecondaryPageEnterDuration),
+    ) + fadeIn(animationSpec = tween(durationMillis = SecondaryPageEnterDuration))
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.secondaryPageExitTransition() =
+    slideOutOfContainer(
+        towards = AnimatedContentTransitionScope.SlideDirection.End,
+        animationSpec = tween(durationMillis = SecondaryPageExitDuration),
+    ) + fadeOut(animationSpec = tween(durationMillis = SecondaryPageExitDuration))
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.secondaryPagePopEnterTransition() =
+    slideIntoContainer(
+        towards = AnimatedContentTransitionScope.SlideDirection.End,
+        animationSpec = tween(durationMillis = SecondaryPageExitDuration),
+    ) + fadeIn(animationSpec = tween(durationMillis = SecondaryPageExitDuration))
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.secondaryPagePopExitTransition() =
+    slideOutOfContainer(
+        towards = AnimatedContentTransitionScope.SlideDirection.End,
+        animationSpec = tween(durationMillis = SecondaryPageEnterDuration),
+    ) + fadeOut(animationSpec = tween(durationMillis = SecondaryPageEnterDuration))
