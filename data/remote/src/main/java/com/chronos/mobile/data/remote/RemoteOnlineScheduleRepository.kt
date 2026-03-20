@@ -7,7 +7,6 @@ import com.chronos.mobile.domain.result.AppError
 import com.chronos.mobile.domain.result.AppResult
 import com.chronos.mobile.domain.result.asFailure
 import com.chronos.mobile.domain.result.asSuccess
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -21,6 +20,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.JavaNetCookieJar
 
 class RemoteOnlineScheduleRepository @Inject constructor(
+    private val baseClient: OkHttpClient,
     private val casPasswordEncryptor: CasPasswordEncryptor,
 ) : OnlineScheduleRepository {
     private val json = Json {
@@ -139,13 +139,8 @@ class RemoteOnlineScheduleRepository @Inject constructor(
         val cookieManager = java.net.CookieManager().apply {
             setCookiePolicy(java.net.CookiePolicy.ACCEPT_ALL)
         }
-        return OkHttpClient.Builder()
+        return baseClient.newBuilder()
             .cookieJar(JavaNetCookieJar(cookieManager))
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(15, TimeUnit.SECONDS)
-            .followRedirects(true)
-            .followSslRedirects(true)
             .build()
     }
 

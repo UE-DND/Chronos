@@ -114,8 +114,7 @@ class TimetableLocalDataSource @Inject constructor(
         color = color,
         textColor = textColor,
         weeks = weeksCsv.split(",")
-            .mapNotNull(String::toIntOrNull)
-            .sorted(),
+            .mapNotNull(String::toIntOrNull),
     )
 
     private fun TimetableEntity.detailsOrDefault(): TimetableDetails = runCatching {
