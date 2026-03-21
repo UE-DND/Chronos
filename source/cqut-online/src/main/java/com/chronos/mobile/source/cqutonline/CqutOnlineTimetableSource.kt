@@ -1,6 +1,7 @@
 package com.chronos.mobile.source.cqutonline
 
 import android.util.Log
+import com.chronos.mobile.core.model.OnlineScheduleEvent
 import com.chronos.mobile.core.model.OnlineSchedulePayload
 import com.chronos.mobile.domain.RemoteTimetableSource
 import com.chronos.mobile.domain.model.AuthSnapshot
@@ -11,6 +12,7 @@ import com.chronos.mobile.domain.result.asSuccess
 import com.chronos.mobile.domain.result.toAppError
 import java.net.CookieManager
 import java.net.URI
+import java.util.LinkedHashMap
 import javax.inject.Inject
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -42,18 +44,63 @@ class CqutOnlineTimetableSource @Inject constructor(
             if (loginResult is AppResult.Failure) {
                 loginResult
             } else {
-                fetchWeekEvents(
+                fetchTimetable(
                     session = session,
                     authSnapshot = authSnapshot,
                     weekNum = weekNum,
                     yearTerm = yearTerm,
-                    allowReloginRetry = true,
                 )
             }
         } catch (throwable: Throwable) {
             Log.e(TAG, "fetchSchedule crashed", throwable)
             throwable.toAppError().asFailure()
         }
+    }
+
+    private fun fetchTimetable(
+        session: SessionContext,
+        authSnapshot: AuthSnapshot,
+        weekNum: String?,
+        yearTerm: String?,
+    ): AppResult<OnlineSchedulePayload> {
+        val initialPayload = when (
+            val result = fetchWeekEvents(
+                session = session,
+                authSnapshot = authSnapshot,
+                weekNum = weekNum,
+                yearTerm = yearTerm,
+                allowReloginRetry = true,
+            )
+        ) {
+            is AppResult.Success -> result.value
+            is AppResult.Failure -> return result
+        }
+
+        val weeksToFetch = resolveWeeksToFetch(initialPayload, weekNum)
+        if (weeksToFetch.size <= 1) {
+            return initialPayload.asSuccess()
+        }
+
+        val targetYearTerm = yearTerm?.trim()?.takeIf { it.isNotBlank() } ?: initialPayload.yearTerm
+        val payloads = mutableListOf(initialPayload)
+        weeksToFetch.forEach { targetWeek ->
+            val isInitialWeek = targetWeek == initialPayload.weekNum && targetYearTerm == initialPayload.yearTerm
+            if (isInitialWeek) return@forEach
+            when (
+                val result = fetchWeekEvents(
+                    session = session,
+                    authSnapshot = authSnapshot,
+                    weekNum = targetWeek,
+                    yearTerm = targetYearTerm,
+                    allowReloginRetry = true,
+                )
+            ) {
+                is AppResult.Success -> payloads += result.value
+                is AppResult.Failure -> return result
+            }
+        }
+
+        return mergeWeekPayloads(initialPayload, payloads).asSuccess()
     }
 
     private fun fetchWeekEvents(
@@ -187,3 +234,82 @@ class CqutOnlineTimetableSource @Inject constructor(
         val cookieManager: CookieManager,
     )
 }
+
+internal fun resolveWeeksToFetch(
+    initialPayload: OnlineSchedulePayload,
+    requestedWeekNum: String?,
+): List<String> {
+    val explicitWeek = requestedWeekNum?.trim()?.takeIf { it.isNotBlank() }
+    if (explicitWeek != null) {
+        return listOf(explicitWeek)
+    }
+    val termWeeks = initialPayload.weekList
+        .map(String::trim)
+        .filter(String::isNotBlank)
+        .distinct()
+    if (termWeeks.isNotEmpty()) {
+        return termWeeks
+    }
+    return listOfNotNull(initialPayload.weekNum.trim().takeIf { it.isNotBlank() })
+}
+
+internal fun mergeWeekPayloads(
+    initialPayload: OnlineSchedulePayload,
+    payloads: List<OnlineSchedulePayload>,
+): OnlineSchedulePayload {
+    val mergedEvents = LinkedHashMap<OnlineScheduleEventKey, OnlineScheduleEvent>()
+    payloads.forEach { payload ->
+        payload.eventList.forEach { event ->
+            val normalizedEvent = event.copy(
+                weekNum = event.weekNum.trim(),
+                weekDay = event.weekDay.trim(),
+                weekList = event.weekList.map(String::trim).filter(String::isNotBlank),
+                weekCover = event.weekCover.trim(),
+                sessionList = event.sessionList.map(String::trim).filter(String::isNotBlank),
+                sessionStart = event.sessionStart.trim(),
+                sessionLast = event.sessionLast.trim(),
+                eventName = event.eventName.trim(),
+                address = event.address.trim(),
+                memberName = event.memberName.trim(),
+                duplicateGroupType = event.duplicateGroupType.trim(),
+                eventType = event.eventType.trim(),
+                eventID = event.eventID.trim(),
+            )
+            mergedEvents.putIfAbsent(
+                OnlineScheduleEventKey(
+                    weekDay = normalizedEvent.weekDay,
+                    weekList = normalizedEvent.weekList,
+                    sessionList = normalizedEvent.sessionList,
+                    sessionStart = normalizedEvent.sessionStart,
+                    sessionLast = normalizedEvent.sessionLast,
+                    eventName = normalizedEvent.eventName,
+                    address = normalizedEvent.address,
+                    memberName = normalizedEvent.memberName,
+                    eventType = normalizedEvent.eventType,
+                ),
+                normalizedEvent,
+            )
+        }
+    }
+    return initialPayload.copy(
+        yearTerm = initialPayload.yearTerm.trim(),
+        weekNum = initialPayload.weekNum.trim(),
+        nowMonth = initialPayload.nowMonth.trim(),
+        yearTermList = initialPayload.yearTermList.map(String::trim).filter(String::isNotBlank).distinct(),
+        weekList = initialPayload.weekList.map(String::trim).filter(String::isNotBlank).distinct(),
+        weekDayList = initialPayload.weekDayList,
+        eventList = mergedEvents.values.toList(),
+    )
+}
+
+private data class OnlineScheduleEventKey(
+    val weekDay: String,
+    val weekList: List<String>,
+    val sessionList: List<String>,
+    val sessionStart: String,
+    val sessionLast: String,
+    val eventName: String,
+    val address: String,
+    val memberName: String,
+    val eventType: String,
+)

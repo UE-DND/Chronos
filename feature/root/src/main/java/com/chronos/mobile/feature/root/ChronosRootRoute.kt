@@ -78,10 +78,11 @@ fun ChronosRootRoute(
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val activeTab = routeToRootTab(currentRoute)
     val bottomBarVisible = currentRoute !in secondaryRoutes
     val projectLicenseText = remember(context) { loadProjectLicenseText(context) }
     val returnToTimetable: () -> Unit = {
-        viewModel.switchTab(RootTab.TIMETABLE)
+        viewModel.jumpToCurrentWeek()
         val popped = navController.popBackStack(RootRoute.TIMETABLE, inclusive = false)
         if (!popped) {
             navController.navigate(RootRoute.TIMETABLE) {
@@ -141,13 +142,15 @@ fun ChronosRootRoute(
                         fadeOut(animationSpec = tween(durationMillis = SecondaryPageEnterDuration)),
                 ) {
                     ChronosBottomBar(
-                        activeTab = state.activeTab,
+                        activeTab = activeTab,
                         onTabSelected = { tab ->
-                            viewModel.switchTab(tab)
                             when (tab) {
-                                RootTab.TIMETABLE -> navController.navigate(RootRoute.TIMETABLE) {
-                                    popUpTo(navController.graph.startDestinationId)
-                                    launchSingleTop = true
+                                RootTab.TIMETABLE -> {
+                                    viewModel.jumpToCurrentWeek()
+                                    navController.navigate(RootRoute.TIMETABLE) {
+                                        popUpTo(navController.graph.startDestinationId)
+                                        launchSingleTop = true
+                                    }
                                 }
 
                                 RootTab.MINE -> navController.navigate(RootRoute.MINE) {
@@ -511,6 +514,11 @@ private val secondaryRoutes = setOf(
     RootRoute.PROJECT_LICENSE,
     RootRoute.WALLPAPER,
 )
+
+private fun routeToRootTab(route: String?): RootTab = when (route) {
+    RootRoute.MINE -> RootTab.MINE
+    else -> RootTab.TIMETABLE
+}
 
 private fun loadProjectLicenseText(context: Context): String {
     return runCatching {

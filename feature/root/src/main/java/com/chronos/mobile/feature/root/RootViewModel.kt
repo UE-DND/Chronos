@@ -72,11 +72,8 @@ class RootViewModel @Inject constructor(
         initialValue = RootUiState(),
     )
 
-    fun switchTab(tab: RootTab) {
-        uiState.update { it.copy(activeTab = tab) }
-        if (tab == RootTab.TIMETABLE) {
-            eventChannel.trySend(TimetableCommand.JumpToCurrentWeek)
-        }
+    fun jumpToCurrentWeek() {
+        eventChannel.trySend(TimetableCommand.JumpToCurrentWeek)
     }
 
     fun setWallpaper(uri: String?) {

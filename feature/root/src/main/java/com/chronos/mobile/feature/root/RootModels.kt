@@ -31,7 +31,6 @@ internal const val SecondaryPageExitDuration = 260
 
 @Immutable
 data class RootUiState(
-    val activeTab: RootTab = RootTab.TIMETABLE,
     val aboutUiState: AboutUiState = AboutUiState(),
 )
 
