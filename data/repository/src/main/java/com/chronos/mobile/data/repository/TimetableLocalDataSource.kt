@@ -66,7 +66,8 @@ class TimetableLocalDataSource @Inject constructor(
             createdAt = timetable.createdAt,
             updatedAt = timetable.updatedAt,
             courses = courses.map { it.toDomain() }.toList(),
-            details = config.details,
+            academicConfig = config.academicConfig,
+            importMetadata = config.importMetadata,
             viewPrefs = config.viewPrefs,
         )
     }
@@ -85,7 +86,8 @@ class TimetableLocalDataSource @Inject constructor(
         createdAt = createdAt,
         updatedAt = updatedAt,
         configJson = timetableConfigJsonCodec.encode(
-            details = details,
+            academicConfig = academicConfig,
+            importMetadata = importMetadata,
             viewPrefs = viewPrefs,
         ),
     )
@@ -120,5 +122,5 @@ class TimetableLocalDataSource @Inject constructor(
     )
 
     private fun TimetableEntity.configOrDefault(): TimetableConfig =
-        timetableConfigJsonCodec.decode(configJson)
+        timetableConfigJsonCodec.decode(configJson, timetableId = id)
 }

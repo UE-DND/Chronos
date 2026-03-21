@@ -1,6 +1,6 @@
 package com.chronos.mobile.domain
 
-import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.core.model.AcademicConfig
 import com.chronos.mobile.core.model.currentWeekMonday
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -15,8 +15,8 @@ class AcademicCalendarService @Inject constructor() {
         currentWeekMonday(referenceDate)
     }.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
-    fun calculateAcademicWeek(today: LocalDate, details: TimetableDetails?): Int {
-        val configured = details ?: TimetableDetails()
+    fun calculateAcademicWeek(today: LocalDate, academicConfig: AcademicConfig?): Int {
+        val configured = academicConfig ?: AcademicConfig()
         val termStart = normalizeTermStartDate(configured.termStartDate, today)
         if (today.isBefore(termStart)) {
             return configured.startWeek
@@ -26,19 +26,19 @@ class AcademicCalendarService @Inject constructor() {
     }
 
     fun resolveWeekStart(
-        details: TimetableDetails,
+        academicConfig: AcademicConfig,
         week: Int,
         referenceDate: LocalDate,
     ): LocalDate {
-        val termStart = normalizeTermStartDate(details.termStartDate, referenceDate)
-        return termStart.plusWeeks((week - details.startWeek).toLong())
+        val termStart = normalizeTermStartDate(academicConfig.termStartDate, referenceDate)
+        return termStart.plusWeeks((week - academicConfig.startWeek).toLong())
     }
 
     fun resolveCourseDate(
-        details: TimetableDetails,
+        academicConfig: AcademicConfig,
         week: Int,
         dayOfWeek: Int,
         referenceDate: LocalDate,
-    ): LocalDate = resolveWeekStart(details, week, referenceDate)
+    ): LocalDate = resolveWeekStart(academicConfig, week, referenceDate)
         .plusDays((dayOfWeek - 1).toLong())
 }

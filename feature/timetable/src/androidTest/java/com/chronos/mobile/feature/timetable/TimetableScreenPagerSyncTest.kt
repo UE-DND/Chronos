@@ -17,7 +17,7 @@ import androidx.compose.ui.test.swipeRight
 import com.chronos.mobile.core.model.AppState
 import com.chronos.mobile.core.model.PeriodTime
 import com.chronos.mobile.core.model.Timetable
-import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.core.model.AcademicConfig
 import com.chronos.mobile.core.model.TimetableSummary
 import com.chronos.mobile.domain.model.TimetableDayModel
 import com.chronos.mobile.domain.model.TimetableGridModel
@@ -113,7 +113,7 @@ class TimetableScreenPagerSyncTest {
         courses = emptyList(),
         createdAt = 0L,
         updatedAt = 0L,
-        details = TimetableDetails(
+        academicConfig = AcademicConfig(
             termStartDate = "2026-03-02",
             startWeek = 3,
             endWeek = 4,

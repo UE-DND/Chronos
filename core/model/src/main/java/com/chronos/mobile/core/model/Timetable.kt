@@ -9,6 +9,7 @@ import java.time.temporal.TemporalAdjusters
 import kotlinx.serialization.Serializable
 
 @Serializable
+@Immutable
 enum class TimetableImportSource {
     UNKNOWN,
     ONLINE_EDU,
@@ -26,19 +27,24 @@ data class PeriodTime(
 
 @Serializable
 @Immutable
-data class TimetableDetails(
+data class AcademicConfig(
     val termStartDate: String = "",
     val startWeek: Int = 1,
     val endWeek: Int = 20,
-    val showSaturday: Boolean = true,
-    val showSunday: Boolean = true,
-    val importSource: TimetableImportSource = TimetableImportSource.UNKNOWN,
     val periodTimes: List<PeriodTime> = defaultPeriodTimes(),
 )
 
 @Serializable
 @Immutable
+data class TimetableImportMetadata(
+    val source: TimetableImportSource = TimetableImportSource.UNKNOWN,
+)
+
+@Serializable
+@Immutable
 data class TimetableViewPrefs(
+    val showSaturday: Boolean = true,
+    val showSunday: Boolean = true,
     val showNonCurrentWeekCourses: Boolean = false,
 )
 
@@ -50,7 +56,8 @@ data class Timetable(
     val courses: List<Course>,
     val createdAt: Long,
     val updatedAt: Long,
-    val details: TimetableDetails = TimetableDetails(),
+    val academicConfig: AcademicConfig = AcademicConfig(),
+    val importMetadata: TimetableImportMetadata = TimetableImportMetadata(),
     val viewPrefs: TimetableViewPrefs = TimetableViewPrefs(),
 )
 

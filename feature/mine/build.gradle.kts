@@ -10,7 +10,7 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":domain"))
-    implementation(project(":feature:timetable"))
+    implementation(project(":core:timetable-ui"))
     implementation(libs.androidx.core.ktx)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

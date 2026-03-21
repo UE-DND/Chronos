@@ -23,7 +23,6 @@
     <string name="timetable_name_label">课程表名称</string>
     <string name="timetable_term_start_date_label">学期第一天</string>
     <string name="timetable_term_start_date_placeholder">请选择日期</string>
-    <string name="timetable_term_start_date_pick">选择日期</string>
     <string name="timetable_start_week_label">起始周次</string>
     <string name="timetable_end_week_label">结束周次</string>
     <string name="timetable_show_saturday">显示周六</string>

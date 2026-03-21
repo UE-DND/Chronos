@@ -1,11 +1,12 @@
 package com.chronos.mobile.data.repository
 
-import com.chronos.mobile.core.model.TimetableDetails
+import android.util.Log
+import com.chronos.mobile.core.model.AcademicConfig
+import com.chronos.mobile.core.model.TimetableImportMetadata
 import com.chronos.mobile.core.model.TimetableViewPrefs
 import javax.inject.Inject
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 
 class TimetableConfigJsonCodec @Inject constructor() {
     private val json = Json {
@@ -14,25 +15,36 @@ class TimetableConfigJsonCodec @Inject constructor() {
     }
 
     internal fun encode(
-        details: TimetableDetails,
+        academicConfig: AcademicConfig,
+        importMetadata: TimetableImportMetadata,
         viewPrefs: TimetableViewPrefs,
     ): String = json.encodeToString(
-        TimetableConfig(details = details, viewPrefs = viewPrefs),
+        TimetableConfig(
+            schemaVersion = SCHEMA_VERSION,
+            academicConfig = academicConfig,
+            importMetadata = importMetadata,
+            viewPrefs = viewPrefs,
+        ),
     )
 
-    internal fun decode(configJson: String): TimetableConfig = runCatching {
-        val parsed = json.parseToJsonElement(configJson)
-        if (parsed is JsonObject && "details" in parsed) {
-            json.decodeFromJsonElement(TimetableConfig.serializer(), parsed)
-        } else {
-            val legacyDetails = json.decodeFromJsonElement(TimetableDetails.serializer(), parsed)
-            TimetableConfig(details = legacyDetails)
+    internal fun decode(configJson: String, timetableId: String? = null): TimetableConfig = runCatching {
+        json.decodeFromString<TimetableConfig>(configJson)
+    }.onFailure { throwable ->
+        runCatching {
+            Log.w(TAG, "Failed to decode timetable config (id=${timetableId.orEmpty()}, schema=$SCHEMA_VERSION)", throwable)
         }
     }.getOrDefault(TimetableConfig())
+
+    private companion object {
+        const val TAG = "TimetableConfigJson"
+        const val SCHEMA_VERSION = 2
+    }
 }
 
 @Serializable
 internal data class TimetableConfig(
-    val details: TimetableDetails = TimetableDetails(),
+    val schemaVersion: Int = 2,
+    val academicConfig: AcademicConfig = AcademicConfig(),
+    val importMetadata: TimetableImportMetadata = TimetableImportMetadata(),
     val viewPrefs: TimetableViewPrefs = TimetableViewPrefs(),
 )

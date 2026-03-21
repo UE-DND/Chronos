@@ -32,7 +32,7 @@ import coil3.compose.AsyncImage
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.domain.model.TimetableCourseDisplayModel
 import com.chronos.mobile.domain.model.TimetableGridModel
-import com.chronos.mobile.feature.timetable.TimetableGrid
+import com.chronos.mobile.core.timetableui.TimetableGrid
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

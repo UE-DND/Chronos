@@ -1,10 +1,10 @@
 package com.chronos.mobile.domain.usecase
 
-import androidx.compose.runtime.Immutable
 import com.chronos.mobile.core.model.Timetable
+import com.chronos.mobile.domain.EducationalTimetableHtmlParser
 import com.chronos.mobile.domain.ImportMode
-import com.chronos.mobile.domain.OnlineScheduleJsonCodec
 import com.chronos.mobile.domain.TimetableRepository
+import com.chronos.mobile.domain.TimetableShareCodec
 import com.chronos.mobile.domain.result.AppError
 import com.chronos.mobile.domain.result.AppResult
 import com.chronos.mobile.domain.result.asFailure
@@ -13,7 +13,6 @@ import com.chronos.mobile.domain.result.flatMap
 import java.util.UUID
 import javax.inject.Inject
 
-@Immutable
 data class ImportTimetableResult(
     val timetableId: String,
     val mode: ImportMode,
@@ -21,13 +20,13 @@ data class ImportTimetableResult(
 
 class ImportTimetableUseCase @Inject constructor(
     private val repository: TimetableRepository,
-    private val parseEducationalTimetableHtml: ParseEducationalTimetableHtmlUseCase,
-    private val onlineScheduleJsonCodec: OnlineScheduleJsonCodec,
+    private val educationalTimetableHtmlParser: EducationalTimetableHtmlParser,
+    private val timetableShareCodec: TimetableShareCodec,
 ) {
     suspend operator fun invoke(content: String, mode: ImportMode): AppResult<ImportTimetableResult> =
-        parseEducationalTimetableHtml(content).flatMap { imported ->
+        educationalTimetableHtmlParser.parse(content).flatMap { imported ->
             imported?.let { AppResult.Success(it) }
-                ?: onlineScheduleJsonCodec.decode(content).flatMap(onlineScheduleJsonCodec::toTimetable)
+                ?: timetableShareCodec.decode(content).flatMap(timetableShareCodec::toTimetable)
         }.flatMap { imported ->
             import(imported, mode)
         }
@@ -47,10 +46,7 @@ class ImportTimetableUseCase @Inject constructor(
             )
             repository.saveTimetable(newTimetable)
             repository.setCurrentTimetableId(newTimetable.id)
-            ImportTimetableResult(
-                timetableId = newTimetable.id,
-                mode = mode,
-            ).asSuccess()
+            ImportTimetableResult(timetableId = newTimetable.id, mode = mode).asSuccess()
         }
 
         ImportMode.OVERWRITE_CURRENT -> {
@@ -62,18 +58,14 @@ class ImportTimetableUseCase @Inject constructor(
                 createdAt = currentTimetable.createdAt,
                 updatedAt = System.currentTimeMillis(),
                 courses = imported.withAssignedCourseIds(currentTimetable.id),
+                viewPrefs = currentTimetable.viewPrefs,
             )
             repository.saveTimetable(overwritten)
-            ImportTimetableResult(
-                timetableId = overwritten.id,
-                mode = mode,
-            ).asSuccess()
+            ImportTimetableResult(timetableId = overwritten.id, mode = mode).asSuccess()
         }
     }
 
-    private fun Timetable.withAssignedCourseIds(
-        timetableId: String,
-    ) = courses.mapIndexed { index, course ->
+    private fun Timetable.withAssignedCourseIds(timetableId: String) = courses.mapIndexed { index, course ->
         course.copy(id = "$timetableId:${index + 1}")
     }
 }

@@ -1,15 +1,16 @@
 package com.chronos.mobile.feature.timetable
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.compose.runtime.Immutable
 import com.chronos.mobile.core.model.AppState
 import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.Timetable
+import com.chronos.mobile.domain.TimeProvider
 import com.chronos.mobile.domain.model.CourseDraft
 import com.chronos.mobile.domain.model.TimetableCourseDisplayModel
-import com.chronos.mobile.domain.model.TimetableDetailsDraft
 import com.chronos.mobile.domain.model.TimetableGridModel
+import com.chronos.mobile.domain.model.TimetableSettingsDraft
 import com.chronos.mobile.domain.usecase.BuildTimetableCourseDisplayModelsUseCase
 import com.chronos.mobile.domain.usecase.BuildVisibleTimetableGridUseCase
 import com.chronos.mobile.domain.usecase.CalculateAcademicWeekUseCase
@@ -68,6 +69,7 @@ class TimetableViewModel @Inject constructor(
     private val calculateAcademicWeek: CalculateAcademicWeekUseCase,
     private val buildVisibleTimetableGrid: BuildVisibleTimetableGridUseCase,
     private val buildTimetableCourseDisplayModels: BuildTimetableCourseDisplayModelsUseCase,
+    private val timeProvider: TimeProvider,
 ) : ViewModel() {
     private val uiState = MutableStateFlow(TimetableUiState())
 
@@ -77,7 +79,7 @@ class TimetableViewModel @Inject constructor(
         observeToday(),
     ) { appState, currentState, today ->
         val timetable = appState.currentTimetable
-        val academicWeek = calculateAcademicWeek(today, timetable?.details)
+        val academicWeek = calculateAcademicWeek(today, timetable?.academicConfig)
         val displayedWeek = resolveDisplayedWeek(
             timetable = timetable,
             displayedWeek = currentState.displayedWeek,
@@ -147,7 +149,7 @@ class TimetableViewModel @Inject constructor(
         val timetable = state.value.appState.currentTimetable ?: return
         uiState.update {
             it.copy(
-                displayedWeek = week.coerceIn(timetable.details.startWeek, timetable.details.endWeek),
+                displayedWeek = week.coerceIn(timetable.academicConfig.startWeek, timetable.academicConfig.endWeek),
                 displayedWeekTimetableId = timetable.id,
             )
         }
@@ -158,8 +160,8 @@ class TimetableViewModel @Inject constructor(
         uiState.update {
             it.copy(
                 displayedWeek = state.value.academicWeek.coerceIn(
-                    timetable.details.startWeek,
-                    timetable.details.endWeek,
+                    timetable.academicConfig.startWeek,
+                    timetable.academicConfig.endWeek,
                 ),
                 displayedWeekTimetableId = timetable.id,
             )
@@ -167,7 +169,7 @@ class TimetableViewModel @Inject constructor(
     }
 
     fun saveTimetableDetails(
-        editor: TimetableDetailsDraft,
+        editor: TimetableSettingsDraft,
         onSaved: () -> Unit = {},
     ) {
         val timetableId = state.value.appState.currentTimetable?.id ?: return
@@ -204,7 +206,7 @@ class TimetableViewModel @Inject constructor(
         var emittedDate: LocalDate? = null
         while (currentCoroutineContext().isActive) {
             val now = ZonedDateTime.now()
-            val today = now.toLocalDate()
+            val today = timeProvider.today()
             if (today != emittedDate) {
                 emit(today)
                 emittedDate = today
@@ -233,7 +235,7 @@ internal fun resolveDisplayedWeek(
 ): Int = when {
     timetable == null -> 1
     displayedWeekTimetableId != timetable.id -> academicWeek
-    else -> displayedWeek.coerceIn(timetable.details.startWeek, timetable.details.endWeek)
+    else -> displayedWeek.coerceIn(timetable.academicConfig.startWeek, timetable.academicConfig.endWeek)
 }
 
 internal fun buildWeekGridModels(
@@ -245,7 +247,7 @@ internal fun buildWeekGridModels(
 ): Map<Int, TimetableGridModel> {
     timetable ?: return emptyMap()
 
-    val weekRange = timetable.details.startWeek..timetable.details.endWeek
+    val weekRange = timetable.academicConfig.startWeek..timetable.academicConfig.endWeek
     val requiredWeeks = ((displayedWeek - WEEK_GRID_CACHE_RADIUS)..(displayedWeek + WEEK_GRID_CACHE_RADIUS))
         .filter { it in weekRange }
 
@@ -264,7 +266,7 @@ internal fun buildWeekCourseDisplayModels(
 ): Map<Int, List<TimetableCourseDisplayModel>> {
     timetable ?: return emptyMap()
 
-    val weekRange = timetable.details.startWeek..timetable.details.endWeek
+    val weekRange = timetable.academicConfig.startWeek..timetable.academicConfig.endWeek
     val requiredWeeks = ((displayedWeek - WEEK_GRID_CACHE_RADIUS)..(displayedWeek + WEEK_GRID_CACHE_RADIUS))
         .filter { it in weekRange }
 

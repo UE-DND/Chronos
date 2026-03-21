@@ -11,6 +11,7 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":domain"))
+    implementation(project(":core:timetable-ui"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)

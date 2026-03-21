@@ -2,7 +2,6 @@ package com.chronos.mobile.domain.usecase
 
 import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.Timetable
-import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.domain.AcademicCalendarService
 import com.chronos.mobile.domain.model.TimetableCourseDisplayModel
 import java.time.LocalDate
@@ -38,16 +37,13 @@ class BuildTimetableCourseDisplayModelsUseCase @Inject constructor(
         val futureCandidatesBySlot = linkedMapOf<CourseSlotKey, FutureCourseCandidate>()
         visibleCourses.forEach { (originalIndex, course) ->
             if (course.weeks.isEmpty() || displayedWeek in course.weeks) return@forEach
-            val nextWeek = course.weeks
-                .filter { it >= displayedWeek }
-                .minOrNull()
-                ?: return@forEach
+            val nextWeek = course.weeks.filter { it >= displayedWeek }.minOrNull() ?: return@forEach
             val slotKey = course.slotKey()
             if (slotKey in occupiedSlots) return@forEach
             val candidate = FutureCourseCandidate(
                 course = course,
                 nextOccurrenceDate = academicCalendarService.resolveCourseDate(
-                    details = timetable.details,
+                    academicConfig = timetable.academicConfig,
                     week = nextWeek,
                     dayOfWeek = course.dayOfWeek,
                     referenceDate = today,
@@ -61,10 +57,7 @@ class BuildTimetableCourseDisplayModelsUseCase @Inject constructor(
         }
 
         val futureEntries = futureCandidatesBySlot.values
-            .sortedWith(
-                compareBy<FutureCourseCandidate> { it.originalIndex }
-                    .thenBy { it.nextOccurrenceDate },
-            )
+            .sortedWith(compareBy<FutureCourseCandidate> { it.originalIndex }.thenBy { it.nextOccurrenceDate })
             .map { candidate ->
                 TimetableCourseDisplayModel(
                     course = candidate.course.copy(weeks = candidate.course.weeks.toList()),
@@ -94,9 +87,4 @@ private fun Course.slotKey(): CourseSlotKey = CourseSlotKey(
 )
 
 private fun FutureCourseCandidate.isBetterFutureCandidateThan(other: FutureCourseCandidate): Boolean =
-    compareValuesBy(
-        this,
-        other,
-        FutureCourseCandidate::nextOccurrenceDate,
-        FutureCourseCandidate::originalIndex,
-    ) < 0
+    compareValuesBy(this, other, FutureCourseCandidate::nextOccurrenceDate, FutureCourseCandidate::originalIndex) < 0

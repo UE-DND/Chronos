@@ -2,8 +2,8 @@ package com.chronos.mobile.feature.timetable
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,16 +43,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -60,7 +60,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.chronos.mobile.core.model.Course
+import com.chronos.mobile.core.timetableui.TimetableGrid
+import com.chronos.mobile.core.timetableui.timetableDayLabel
 import com.chronos.mobile.domain.model.TimetableCourseDisplayModel
+import com.chronos.mobile.domain.model.TimetableGridModel
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -79,8 +82,8 @@ internal fun TimetableScreen(
 ) {
     val currentTimetable = state.appState.currentTimetable ?: return
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val startWeek = currentTimetable.details.startWeek
-    val weekCount = (currentTimetable.details.endWeek - startWeek + 1).coerceAtLeast(1)
+    val startWeek = currentTimetable.academicConfig.startWeek
+    val weekCount = (currentTimetable.academicConfig.endWeek - startWeek + 1).coerceAtLeast(1)
     var suppressPagerWeekSync by remember(currentTimetable.id) { mutableStateOf(true) }
     val pagerState = rememberPagerState(
         initialPage = (state.displayedWeek - startWeek).coerceIn(0, weekCount - 1),
@@ -93,9 +96,7 @@ internal fun TimetableScreen(
         snapshotFlow { pagerState.settledPage }
             .distinctUntilChanged()
             .collect { page ->
-                if (suppressPagerWeekSync) {
-                    return@collect
-                }
+                if (suppressPagerWeekSync) return@collect
                 val settledWeek = startWeek + page
                 if (settledWeek != latestDisplayedWeek) {
                     latestOnDisplayedWeekChange(settledWeek)
@@ -127,11 +128,7 @@ internal fun TimetableScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(
-                    PaddingValues(
-                        top = paddingValues.calculateTopPadding(),
-                    ),
-                ),
+                .padding(PaddingValues(top = paddingValues.calculateTopPadding())),
         ) {
             val wallpaperUri = state.appState.wallpaperUri
             if (!wallpaperUri.isNullOrBlank()) {
@@ -146,9 +143,7 @@ internal fun TimetableScreen(
 
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .testTag(TIMETABLE_PAGER_TAG),
+                modifier = Modifier.fillMaxSize().testTag(TIMETABLE_PAGER_TAG),
                 userScrollEnabled = weekCount > 1,
                 beyondViewportPageCount = 1,
             ) { page ->
@@ -188,8 +183,8 @@ private fun ChronosTopBar(
     val view = LocalView.current
     val dateFormatter = remember { DateTimeFormatter.ofPattern("M/d", Locale.CHINA) }
     val currentTimetable = state.appState.currentTimetable
-    val startWeek = currentTimetable?.details?.startWeek ?: state.displayedWeek
-    val endWeek = currentTimetable?.details?.endWeek ?: state.displayedWeek
+    val startWeek = currentTimetable?.academicConfig?.startWeek ?: state.displayedWeek
+    val endWeek = currentTimetable?.academicConfig?.endWeek ?: state.displayedWeek
     val sliderSteps = calculateWeekSliderSteps(startWeek, endWeek)
     val weekRangeText = remember(state.gridModel) {
         val weekDays = state.gridModel?.visibleDays.orEmpty()
@@ -217,9 +212,7 @@ private fun ChronosTopBar(
     TopAppBar(
         modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(
-                alpha = if (isDarkTheme) 0.78f else 0.60f,
-            ),
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = if (isDarkTheme) 0.78f else 0.60f),
         ),
         title = {
             Box(
@@ -273,9 +266,7 @@ private fun ChronosTopBar(
                             },
                             valueRange = startWeek.toFloat()..endWeek.toFloat(),
                             steps = sliderSteps,
-                            onValueChangeFinished = {
-                                weekSliderVisible = false
-                            },
+                            onValueChangeFinished = { weekSliderVisible = false },
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Text(
@@ -307,9 +298,9 @@ private fun ChronosTopBar(
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -370,7 +361,7 @@ private fun TimetablePage(
     displayedWeek: Int,
     isCurrentWeek: Boolean,
     bottomContentPadding: Dp,
-    gridModel: com.chronos.mobile.domain.model.TimetableGridModel,
+    gridModel: TimetableGridModel,
     courseDisplayModels: List<TimetableCourseDisplayModel>,
     hasWallpaper: Boolean,
     onCourseClick: (Course) -> Unit,

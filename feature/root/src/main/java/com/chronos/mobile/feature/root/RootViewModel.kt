@@ -4,11 +4,18 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.chronos.mobile.core.model.AppState
+import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.ThemeMode
+import com.chronos.mobile.domain.TimeProvider
+import com.chronos.mobile.domain.model.TimetableCourseDisplayModel
+import com.chronos.mobile.domain.model.TimetableGridModel
 import com.chronos.mobile.domain.result.AppResult
-import com.chronos.mobile.domain.usecase.ObserveAppStateUseCase
+import com.chronos.mobile.domain.usecase.BuildTimetableCourseDisplayModelsUseCase
+import com.chronos.mobile.domain.usecase.BuildVisibleTimetableGridUseCase
+import com.chronos.mobile.domain.usecase.CalculateAcademicWeekUseCase
 import com.chronos.mobile.domain.usecase.GetGithubContributorsUseCase
 import com.chronos.mobile.domain.usecase.GetGithubReleaseByTagUseCase
+import com.chronos.mobile.domain.usecase.ObserveAppStateUseCase
 import com.chronos.mobile.domain.usecase.SetDynamicColorEnabledUseCase
 import com.chronos.mobile.domain.usecase.SetThemeModeUseCase
 import com.chronos.mobile.domain.usecase.SetWallpaperUseCase
@@ -24,6 +31,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+data class WallpaperPreviewData(
+    val academicWeek: Int,
+    val gridModel: TimetableGridModel,
+    val courseDisplayModels: List<TimetableCourseDisplayModel>,
+)
+
 @HiltViewModel
 class RootViewModel @Inject constructor(
     observeAppState: ObserveAppStateUseCase,
@@ -32,6 +45,10 @@ class RootViewModel @Inject constructor(
     private val setDynamicColorEnabledUseCase: SetDynamicColorEnabledUseCase,
     private val setThemeModeUseCase: SetThemeModeUseCase,
     private val setWallpaperUseCase: SetWallpaperUseCase,
+    private val calculateAcademicWeekUseCase: CalculateAcademicWeekUseCase,
+    private val buildVisibleTimetableGridUseCase: BuildVisibleTimetableGridUseCase,
+    private val buildTimetableCourseDisplayModelsUseCase: BuildTimetableCourseDisplayModelsUseCase,
+    private val timeProvider: TimeProvider,
 ) : ViewModel() {
     private companion object {
         const val TAG = "AboutContributors"
@@ -78,6 +95,24 @@ class RootViewModel @Inject constructor(
         viewModelScope.launch {
             setDynamicColorEnabledUseCase(enabled)
         }
+    }
+
+    fun buildWallpaperPreview(timetable: Timetable?): WallpaperPreviewData? {
+        timetable ?: return null
+        val today = timeProvider.today()
+        val academicWeek = calculateAcademicWeekUseCase(today, timetable.academicConfig)
+        val gridModel = buildVisibleTimetableGridUseCase(today, academicWeek, timetable)
+        val courseDisplayModels = buildTimetableCourseDisplayModelsUseCase(
+            timetable = timetable,
+            visibleDayOfWeeks = gridModel.visibleDays.map { it.dayOfWeek }.toSet(),
+            displayedWeek = academicWeek,
+            today = today,
+        )
+        return WallpaperPreviewData(
+            academicWeek = academicWeek,
+            gridModel = gridModel,
+            courseDisplayModels = courseDisplayModels,
+        )
     }
 
     fun loadAboutContributors(forceRefresh: Boolean = false) {

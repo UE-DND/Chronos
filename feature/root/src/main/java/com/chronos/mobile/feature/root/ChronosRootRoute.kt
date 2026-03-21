@@ -42,11 +42,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.chronos.mobile.core.designsystem.theme.ChronosTheme
 import com.chronos.mobile.feature.mine.AboutScreen
-import com.chronos.mobile.feature.mine.MineWallpaperScreen
 import com.chronos.mobile.feature.mine.MineRoute
-import com.chronos.mobile.feature.mine.R as MineR
+import com.chronos.mobile.feature.mine.MineWallpaperScreen
 import com.chronos.mobile.feature.mine.OpenSourceLicensesScreen
 import com.chronos.mobile.feature.mine.ProjectLicenseScreen
+import com.chronos.mobile.feature.mine.R as MineR
 import com.chronos.mobile.feature.mine.ThemeSettingsScreen
 import com.chronos.mobile.feature.mine.VersionReleaseScreen
 import com.chronos.mobile.feature.timetable.CourseEditorRoute
@@ -57,11 +57,7 @@ import com.chronos.mobile.feature.transfer.TransferDialogMode
 import com.chronos.mobile.feature.transfer.TransferImportConfirmRoute
 import com.chronos.mobile.feature.transfer.TransferRoute
 import com.google.android.gms.oss.licenses.v2.OssLicensesMenuActivity
-import com.chronos.mobile.domain.usecase.BuildVisibleTimetableGridUseCase
-import com.chronos.mobile.domain.usecase.BuildTimetableCourseDisplayModelsUseCase
-import com.chronos.mobile.domain.usecase.CalculateAcademicWeekUseCase
 import java.io.File
-import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -439,32 +435,13 @@ fun ChronosRootRoute(
                 popExitTransition = { secondaryPagePopExitTransition() },
             ) {
                 val timetable = appState.currentTimetable
-                val today = remember { LocalDate.now() }
-                val previewData = remember(timetable, today) {
-                    if (timetable == null) null
-                    else {
-                        val week = CalculateAcademicWeekUseCase()(today, timetable.details)
-                        val grid = BuildVisibleTimetableGridUseCase()(today, week, timetable)
-                        val courseDisplayModels = BuildTimetableCourseDisplayModelsUseCase()(
-                            timetable = timetable,
-                            visibleDayOfWeeks = grid.visibleDays.map { it.dayOfWeek }.toSet(),
-                            displayedWeek = week,
-                            today = today,
-                        )
-                        PreviewWallpaperData(
-                            week = week,
-                            timetable = timetable,
-                            gridModel = grid,
-                            courseDisplayModels = courseDisplayModels,
-                        )
-                    }
-                }
+                val previewData = remember(timetable) { viewModel.buildWallpaperPreview(timetable) }
                 MineWallpaperScreen(
                     modifier = Modifier.fillMaxSize(),
                     hasWallpaper = !appState.wallpaperUri.isNullOrBlank(),
                     wallpaperUri = appState.wallpaperUri,
-                    timetable = previewData?.timetable,
-                    academicWeek = previewData?.week ?: 1,
+                    timetable = timetable,
+                    academicWeek = previewData?.academicWeek ?: 1,
                     gridModel = previewData?.gridModel,
                     courseDisplayModels = previewData?.courseDisplayModels.orEmpty(),
                     onBack = { navController.popBackStack() },
@@ -481,14 +458,6 @@ fun ChronosRootRoute(
     }
     }
 }
-
-@Immutable
-private data class PreviewWallpaperData(
-    val week: Int,
-    val timetable: com.chronos.mobile.core.model.Timetable,
-    val gridModel: com.chronos.mobile.domain.model.TimetableGridModel,
-    val courseDisplayModels: List<com.chronos.mobile.domain.model.TimetableCourseDisplayModel>,
-)
 
 private fun copyWallpaperToAppStorage(
     context: Context,

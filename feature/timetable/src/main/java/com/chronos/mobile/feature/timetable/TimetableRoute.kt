@@ -89,7 +89,7 @@ fun TimetableDetailsEditorRoute(
         currentTimetable?.let {
             TimetableDetailsEditorScreen(
                 modifier = modifier,
-                initialState = it.toDetailsDraft(),
+                initialState = it.toSettingsDraft(),
                 onDismiss = onDismiss,
                 onSave = { editor -> viewModel.saveTimetableDetails(editor, onSaved = onDismiss) },
             )

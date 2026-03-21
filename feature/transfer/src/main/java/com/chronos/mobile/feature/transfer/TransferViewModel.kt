@@ -249,7 +249,7 @@ class TransferViewModel @Inject constructor(
             val termStartDate = currentState.htmlImportTermStartDate
                 ?: return@withContext AppError.Validation("请选择学期起始日期").asFailure()
             preview.copy(
-                details = preview.details.copy(termStartDate = termStartDate),
+                academicConfig = preview.academicConfig.copy(termStartDate = termStartDate),
             )
         } else {
             preview

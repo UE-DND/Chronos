@@ -522,8 +522,8 @@ private fun PreviewSummaryCard(
                 }
             }
             PreviewMetric(label = "课程数", value = preview.courses.size.toString())
-            PreviewMetric(label = "开始周", value = preview.details.startWeek.toString())
-            PreviewMetric(label = "结束周", value = preview.details.endWeek.toString())
+            PreviewMetric(label = "开始周", value = preview.academicConfig.startWeek.toString())
+            PreviewMetric(label = "结束周", value = preview.academicConfig.endWeek.toString())
         }
     }
 }

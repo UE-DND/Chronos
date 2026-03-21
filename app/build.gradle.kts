@@ -193,6 +193,9 @@ kotlin {
 dependencies {
     implementation(project(":data:repository"))
     implementation(project(":data:remote"))
+    implementation(project(":source:cqut-online"))
+    implementation(project(":source:shared-json"))
+    implementation(project(":source:edu-html"))
     implementation(project(":data:secure"))
     implementation(project(":feature:root"))
     implementation(libs.androidx.core.ktx)

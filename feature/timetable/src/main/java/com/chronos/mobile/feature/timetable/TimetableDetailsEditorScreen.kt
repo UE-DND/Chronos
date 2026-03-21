@@ -42,13 +42,14 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.core.model.AcademicConfig
+import com.chronos.mobile.core.model.TimetableImportMetadata
 import com.chronos.mobile.core.model.TimetableImportSource
 import com.chronos.mobile.core.model.TimetableViewPrefs
 import com.chronos.mobile.core.model.currentWeekMonday
 import com.chronos.mobile.core.model.defaultPeriodTimes
 import com.chronos.mobile.domain.model.PeriodTimeDraft
-import com.chronos.mobile.domain.model.TimetableDetailsDraft
+import com.chronos.mobile.domain.model.TimetableSettingsDraft
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeParseException
@@ -57,16 +58,17 @@ import java.time.format.DateTimeParseException
 @Composable
 internal fun TimetableDetailsEditorScreen(
     modifier: Modifier = Modifier,
-    initialState: TimetableDetailsDraft,
+    initialState: TimetableSettingsDraft,
     onDismiss: () -> Unit,
-    onSave: (TimetableDetailsDraft) -> Unit,
+    onSave: (TimetableSettingsDraft) -> Unit,
 ) {
     var editor by remember(initialState) { mutableStateOf(initialState) }
     var showDatePickerDialog by remember { mutableStateOf(false) }
-    val datePickerState = rememberTermStartDatePickerState(editor.termStartDate)
+    val datePickerState = rememberTermStartDatePickerState(editor.academicConfig.termStartDate)
     val focusManager = LocalFocusManager.current
-    val showTermStartDateSetting = shouldShowTermStartDateSetting(editor.importSource)
-    val showAcademicWeekRangeSettings = shouldShowAcademicWeekRangeSettings(editor.importSource)
+    val importSource = editor.importMetadata.source
+    val showTermStartDateSetting = shouldShowTermStartDateSetting(importSource)
+    val showAcademicWeekRangeSettings = shouldShowAcademicWeekRangeSettings(importSource)
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -115,7 +117,7 @@ internal fun TimetableDetailsEditorScreen(
                 if (showTermStartDateSetting) {
                     item {
                         OutlinedTextField(
-                            value = editor.termStartDate,
+                            value = editor.academicConfig.termStartDate,
                             onValueChange = {},
                             label = { Text(stringResource(R.string.timetable_term_start_date_label)) },
                             modifier = Modifier
@@ -142,12 +144,14 @@ internal fun TimetableDetailsEditorScreen(
                     item {
                         PeriodStepperRow(
                             title = stringResource(R.string.timetable_start_week_label),
-                            value = editor.startWeek,
+                            value = editor.academicConfig.startWeek,
                             range = 1..30,
-                            onValueChange = {
+                            onValueChange = { value ->
                                 editor = editor.copy(
-                                    startWeek = it,
-                                    endWeek = maxOf(editor.endWeek, it),
+                                    academicConfig = editor.academicConfig.copy(
+                                        startWeek = value,
+                                        endWeek = maxOf(editor.academicConfig.endWeek, value),
+                                    ),
                                 )
                             },
                         )
@@ -155,77 +159,91 @@ internal fun TimetableDetailsEditorScreen(
                     item {
                         PeriodStepperRow(
                             title = stringResource(R.string.timetable_end_week_label),
-                            value = editor.endWeek,
-                            range = editor.startWeek..30,
-                            onValueChange = { editor = editor.copy(endWeek = it) },
+                            value = editor.academicConfig.endWeek,
+                            range = editor.academicConfig.startWeek..30,
+                            onValueChange = { value ->
+                                editor = editor.copy(
+                                    academicConfig = editor.academicConfig.copy(endWeek = value),
+                                )
+                            },
                         )
                     }
                 }
                 item {
                     SwitchRow(
                         title = stringResource(R.string.timetable_show_saturday),
-                        checked = editor.showSaturday,
-                        onCheckedChange = { editor = editor.copy(showSaturday = it) },
+                        checked = editor.viewPrefs.showSaturday,
+                        onCheckedChange = {
+                            editor = editor.copy(viewPrefs = editor.viewPrefs.copy(showSaturday = it))
+                        },
                     )
                 }
                 item {
                     SwitchRow(
                         title = stringResource(R.string.timetable_show_sunday),
-                        checked = editor.showSunday,
-                        onCheckedChange = { editor = editor.copy(showSunday = it) },
+                        checked = editor.viewPrefs.showSunday,
+                        onCheckedChange = {
+                            editor = editor.copy(viewPrefs = editor.viewPrefs.copy(showSunday = it))
+                        },
                     )
                 }
-                if (shouldShowNonCurrentWeekCourseSetting(editor.importSource)) {
+                if (shouldShowNonCurrentWeekCourseSetting(importSource)) {
                     item {
                         SwitchRow(
                             title = stringResource(R.string.timetable_show_non_current_week_courses),
-                            checked = editor.showNonCurrentWeekCourses,
+                            checked = editor.viewPrefs.showNonCurrentWeekCourses,
                             onCheckedChange = {
-                                editor = editor.copy(showNonCurrentWeekCourses = it)
+                                editor = editor.copy(
+                                    viewPrefs = editor.viewPrefs.copy(showNonCurrentWeekCourses = it),
+                                )
                             },
                         )
                     }
                 }
-                item {
-                    HorizontalDivider()
-                }
+                item { HorizontalDivider() }
                 item {
                     Text(
                         stringResource(R.string.timetable_period_times_title),
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
-                items(editor.periodTimes, key = { it.index }) { period ->
+                items(editor.academicConfig.periodTimes, key = { it.index }) { period ->
                     PeriodTimeEditorRow(
                         state = period,
-                        canRemove = editor.periodTimes.size > 1,
+                        canRemove = editor.academicConfig.periodTimes.size > 1,
                         onStartTimeChange = { value ->
-                            val index = editor.periodTimes.indexOfFirst { it.index == period.index }
+                            val index = editor.academicConfig.periodTimes.indexOfFirst { it.index == period.index }
                             if (index >= 0) {
                                 editor = editor.copy(
-                                    periodTimes = editor.periodTimes.replaceAt(
-                                        index = index,
-                                        item = period.copy(startTime = value),
+                                    academicConfig = editor.academicConfig.copy(
+                                        periodTimes = editor.academicConfig.periodTimes.replaceAt(
+                                            index = index,
+                                            item = period.copy(startTime = value),
+                                        ),
                                     ),
                                 )
                             }
                         },
                         onEndTimeChange = { value ->
-                            val index = editor.periodTimes.indexOfFirst { it.index == period.index }
+                            val index = editor.academicConfig.periodTimes.indexOfFirst { it.index == period.index }
                             if (index >= 0) {
                                 editor = editor.copy(
-                                    periodTimes = editor.periodTimes.replaceAt(
-                                        index = index,
-                                        item = period.copy(endTime = value),
+                                    academicConfig = editor.academicConfig.copy(
+                                        periodTimes = editor.academicConfig.periodTimes.replaceAt(
+                                            index = index,
+                                            item = period.copy(endTime = value),
+                                        ),
                                     ),
                                 )
                             }
                         },
                         onRemove = {
-                            val index = editor.periodTimes.indexOfFirst { it.index == period.index }
+                            val index = editor.academicConfig.periodTimes.indexOfFirst { it.index == period.index }
                             if (index >= 0) {
                                 editor = editor.copy(
-                                    periodTimes = editor.periodTimes.removeAt(index).reindexPeriodTimes(),
+                                    academicConfig = editor.academicConfig.copy(
+                                        periodTimes = editor.academicConfig.periodTimes.removeAt(index).reindexPeriodTimes(),
+                                    ),
                                 )
                             }
                         },
@@ -234,13 +252,15 @@ internal fun TimetableDetailsEditorScreen(
                 item {
                     OutlinedButton(
                         onClick = {
-                            val nextIndex = editor.periodTimes.size + 1
+                            val nextIndex = editor.academicConfig.periodTimes.size + 1
                             val fallback = defaultPeriodTimes().getOrNull(nextIndex - 1)
                             editor = editor.copy(
-                                periodTimes = editor.periodTimes + PeriodTimeDraft(
-                                    index = nextIndex,
-                                    startTime = fallback?.startTime ?: "21:00",
-                                    endTime = fallback?.endTime ?: "21:45",
+                                academicConfig = editor.academicConfig.copy(
+                                    periodTimes = editor.academicConfig.periodTimes + PeriodTimeDraft(
+                                        index = nextIndex,
+                                        startTime = fallback?.startTime ?: "21:00",
+                                        endTime = fallback?.endTime ?: "21:45",
+                                    ),
                                 ),
                             )
                         },
@@ -253,33 +273,32 @@ internal fun TimetableDetailsEditorScreen(
                 }
                 item {
                     OutlinedButton(
-                        onClick = {
-                            editor = editor.resetToDefaultSettings()
-                        },
+                        onClick = { editor = editor.resetToDefaultSettings() },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(stringResource(R.string.timetable_reset_all_settings))
                     }
                 }
-                item {
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
+                item { Spacer(modifier = Modifier.height(12.dp)) }
             }
         }
     }
 
     if (showTermStartDateSetting && showDatePickerDialog) {
         DatePickerDialog(
-            onDismissRequest = { showDatePickerDialog = false },
+            onDismissRequest = { },
             confirmButton = {
                 TextButton(
                     onClick = {
                         datePickerState.selectedDateMillis
                             ?.let(::millisToLocalDate)
                             ?.let { selectedDate ->
-                                editor = editor.copy(termStartDate = selectedDate.toString())
+                                editor = editor.copy(
+                                    academicConfig = editor.academicConfig.copy(
+                                        termStartDate = selectedDate.toString(),
+                                    ),
+                                )
                             }
-                        showDatePickerDialog = false
                     },
                     enabled = datePickerState.selectedDateMillis != null,
                 ) {
@@ -287,7 +306,7 @@ internal fun TimetableDetailsEditorScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePickerDialog = false }) {
+                TextButton(onClick = { }) {
                     Text(stringResource(R.string.timetable_cancel))
                 }
             },
@@ -333,22 +352,29 @@ internal fun shouldShowTermStartDateSetting(importSource: TimetableImportSource)
 internal fun shouldShowAcademicWeekRangeSettings(importSource: TimetableImportSource): Boolean =
     importSource != TimetableImportSource.ONLINE_EDU
 
-private fun TimetableDetailsDraft.resetToDefaultSettings(): TimetableDetailsDraft {
-    val defaults = TimetableDetails()
-    val defaultViewPrefs = TimetableViewPrefs()
-    return copy(
+private fun TimetableSettingsDraft.resetToDefaultSettings(): TimetableSettingsDraft = copy(
+    academicConfig = AcademicConfig(
         termStartDate = currentWeekMonday().toString(),
-        startWeek = defaults.startWeek,
-        endWeek = defaults.endWeek,
-        showSaturday = defaults.showSaturday,
-        showSunday = defaults.showSunday,
-        showNonCurrentWeekCourses = defaultViewPrefs.showNonCurrentWeekCourses,
-        periodTimes = defaults.periodTimes.map { period ->
-            PeriodTimeDraft(
-                index = period.index,
-                startTime = period.startTime,
-                endTime = period.endTime,
-            )
-        },
-    )
-}
+        periodTimes = defaultPeriodTimes(),
+    ).toDraft(),
+    viewPrefs = TimetableViewPrefs().toDraft(),
+)
+
+private fun AcademicConfig.toDraft() = com.chronos.mobile.domain.model.AcademicConfigDraft(
+    termStartDate = termStartDate,
+    startWeek = startWeek,
+    endWeek = endWeek,
+    periodTimes = periodTimes.map { period ->
+        PeriodTimeDraft(
+            index = period.index,
+            startTime = period.startTime,
+            endTime = period.endTime,
+        )
+    },
+)
+
+private fun TimetableViewPrefs.toDraft() = com.chronos.mobile.domain.model.TimetableViewPrefsDraft(
+    showSaturday = showSaturday,
+    showSunday = showSunday,
+    showNonCurrentWeekCourses = showNonCurrentWeekCourses,
+)

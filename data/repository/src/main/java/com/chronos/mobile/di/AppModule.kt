@@ -5,6 +5,8 @@ import androidx.room.Room
 import com.chronos.mobile.data.local.ChronosDao
 import com.chronos.mobile.data.local.ChronosDatabase
 import com.chronos.mobile.data.repository.OfflineTimetableRepository
+import com.chronos.mobile.domain.SystemTimeProvider
+import com.chronos.mobile.domain.TimeProvider
 import com.chronos.mobile.domain.TimetableRepository
 import dagger.Module
 import dagger.Provides
@@ -34,4 +36,8 @@ object DatabaseModule {
     fun provideTimetableRepository(
         repository: OfflineTimetableRepository,
     ): TimetableRepository = repository
+
+    @Provides
+    @Singleton
+    fun provideTimeProvider(): TimeProvider = SystemTimeProvider()
 }

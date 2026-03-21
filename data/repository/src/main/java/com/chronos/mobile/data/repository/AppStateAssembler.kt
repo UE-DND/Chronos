@@ -1,10 +1,12 @@
 package com.chronos.mobile.data.repository
 
+import com.chronos.mobile.core.model.AcademicConfig
 import com.chronos.mobile.core.model.AppState
 import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.Timetable
-import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.core.model.TimetableImportMetadata
 import com.chronos.mobile.core.model.TimetableSummary
+import com.chronos.mobile.core.model.TimetableViewPrefs
 import com.chronos.mobile.data.preferences.UserPreferenceState
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -35,13 +37,15 @@ class AppStateAssembler @Inject constructor() {
 
 private fun Timetable.copyForStateBoundary(): Timetable = copy(
     courses = courses.map(Course::copyForStateBoundary).toList(),
-    details = details.copyForStateBoundary(),
+    academicConfig = academicConfig.copyForStateBoundary(),
+    importMetadata = importMetadata.copy(),
+    viewPrefs = viewPrefs.copy(),
 )
 
 private fun Course.copyForStateBoundary(): Course = copy(
     weeks = weeks.toList(),
 )
 
-private fun TimetableDetails.copyForStateBoundary(): TimetableDetails = copy(
+private fun AcademicConfig.copyForStateBoundary(): AcademicConfig = copy(
     periodTimes = periodTimes.toList(),
 )
