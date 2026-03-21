@@ -6,10 +6,10 @@
     android:viewportHeight="108">
     <path
         android:fillColor="@color/launcher_foreground_on_brand"
-        android:pathData="M30,26h48c4.42,0 8,3.58 8,8v40c0,4.42 -3.58,8 -8,8H30c-4.42,0 -8,-3.58 -8,-8V34c0,-4.42 3.58,-8 8,-8z" />
+        android:pathData="M28,26h52c4.418,0 8,3.582 8,8v42c0,4.418 -3.582,8 -8,8H28c-4.418,0 -8,-3.582 -8,-8V34c0,-4.418 3.582,-8 8,-8z" />
     <path
         android:fillColor="@color/launcher_foreground_primary"
-        android:pathData="M22,36h64v12H22z" />
+        android:pathData="M20,36h68v11H20z" />
     <path
         android:fillColor="@color/launcher_foreground_primary"
         android:pathData="M34,20h8v18h-8z" />
@@ -18,20 +18,14 @@
         android:pathData="M66,20h8v18h-8z" />
     <path
         android:fillColor="@color/launcher_foreground_primary"
-        android:pathData="M32,52h12v10H32z" />
+        android:pathData="M34,56h22c1.657,0 3,1.343 3,3s-1.343,3 -3,3H34c-1.657,0 -3,-1.343 -3,-3s1.343,-3 3,-3z" />
     <path
         android:fillColor="@color/launcher_foreground_primary"
-        android:pathData="M48,52h12v10H48z" />
-    <path
-        android:fillColor="@color/launcher_foreground_primary"
-        android:pathData="M32,66h12v10H32z" />
-    <path
-        android:fillColor="@color/launcher_foreground_primary"
-        android:pathData="M48,66h12v10H48z" />
+        android:pathData="M34,68h12c1.657,0 3,1.343 3,3s-1.343,3 -3,3H34c-1.657,0 -3,-1.343 -3,-3s1.343,-3 3,-3z" />
     <path
         android:fillColor="@color/launcher_foreground_accent"
-        android:pathData="M72,58m-14,0a14,14 0,1 1,28 0a14,14 0,1 1,-28 0" />
+        android:pathData="M72,66m-14,0a14,14 0,1 1,28 0a14,14 0,1 1,-28 0" />
     <path
         android:fillColor="@color/launcher_foreground_on_brand"
-        android:pathData="M71,50h3v9.5l6,3.6l-1.5,2.6L71,61.4z" />
+        android:pathData="M70.5,56h3v9l5.6,3.3l-1.5,2.6l-7.1,-4.2z" />
 </vector>

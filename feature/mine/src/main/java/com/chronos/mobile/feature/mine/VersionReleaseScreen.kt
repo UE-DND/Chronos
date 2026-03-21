@@ -50,7 +50,7 @@ fun VersionReleaseScreen(
         topBar = {
             TopAppBar(
                 modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
-                title = { Text("当前版本 Release") },
+                title = { Text("发布信息") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(

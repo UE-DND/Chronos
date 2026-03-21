@@ -1,10 +1,8 @@
 package com.chronos.mobile.feature.mine
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,8 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoMode
@@ -32,7 +28,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -81,7 +76,7 @@ fun ThemeSettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            SettingsSection(
+            MineSettingsSection(
                 title = "主题模式",
                 accentColor = MaterialTheme.colorScheme.primary,
             ) {
@@ -114,7 +109,7 @@ fun ThemeSettingsScreen(
             }
 
             if (showDynamicColorOption) {
-                SettingsSection(
+                MineSettingsSection(
                     title = "颜色",
                     accentColor = MaterialTheme.colorScheme.secondary,
                 ) {
@@ -130,28 +125,6 @@ fun ThemeSettingsScreen(
 }
 
 @Composable
-private fun SettingsSection(
-    title: String,
-    accentColor: Color,
-    content: @Composable () -> Unit,
-) {
-    Column {
-        Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
-        }
-        Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-            border = BorderStroke(1.dp, accentColor.copy(alpha = 0.14f)),
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                content()
-            }
-        }
-    }
-}
-
-@Composable
 private fun ThemeOptionRow(
     icon: ImageVector,
     title: String,
@@ -159,18 +132,16 @@ private fun ThemeOptionRow(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
+    MineSettingsRow(
+        modifier = Modifier.fillMaxWidth(),
+        interactionModifier = Modifier
             .selectable(
                 selected = selected,
                 onClick = onClick,
                 role = Role.RadioButton,
-            )
-            .padding(horizontal = 4.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            ),
     ) {
-        SettingIcon(
+        MineSettingsIcon(
             icon = icon,
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             iconColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -200,14 +171,11 @@ private fun ToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 4.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    MineSettingsRow(
+        onClick = { onCheckedChange(!checked) },
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        SettingIcon(
+        MineSettingsIcon(
             icon = icon,
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -228,26 +196,5 @@ private fun ToggleRow(
             checked = checked,
             onCheckedChange = onCheckedChange,
         )
-    }
-}
-
-@Composable
-private fun SettingIcon(
-    icon: ImageVector,
-    containerColor: Color,
-    iconColor: Color,
-) {
-    Surface(
-        modifier = Modifier.size(40.dp),
-        shape = CircleShape,
-        color = containerColor,
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconColor,
-            )
-        }
     }
 }

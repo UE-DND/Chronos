@@ -1,12 +1,9 @@
 package com.chronos.mobile.feature.mine
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,8 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.ChevronRight
@@ -25,15 +20,11 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Wallpaper
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -69,7 +60,7 @@ fun MineRoute(
             )
         }
         item {
-            MineSection(
+            MineSettingsSection(
                 title = "课表管理",
                 accentColor = MaterialTheme.colorScheme.primary,
             ) {
@@ -83,7 +74,7 @@ fun MineRoute(
             }
         }
         item {
-            MineSection(
+            MineSettingsSection(
                 title = "数据与分享",
                 accentColor = MaterialTheme.colorScheme.tertiary,
             ) {
@@ -106,7 +97,7 @@ fun MineRoute(
             }
         }
         item {
-            MineSection(
+            MineSettingsSection(
                 title = "个性化",
                 accentColor = MaterialTheme.colorScheme.secondary,
             ) {
@@ -129,7 +120,7 @@ fun MineRoute(
             }
         }
         item {
-            MineSection(
+            MineSettingsSection(
                 title = "关于与反馈",
                 accentColor = MaterialTheme.colorScheme.tertiary,
             ) {
@@ -149,31 +140,6 @@ fun MineRoute(
 }
 
 @Composable
-private fun MineSection(
-    title: String,
-    accentColor: Color,
-    content: @Composable () -> Unit,
-) {
-    Column {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-        ) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-            border = BorderStroke(1.dp, accentColor.copy(alpha = 0.14f)),
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                content()
-            }
-        }
-    }
-}
-
-@Composable
 private fun MineRow(
     icon: ImageVector,
     iconContainerColor: Color,
@@ -181,24 +147,16 @@ private fun MineRow(
     title: String,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 4.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    MineSettingsRow(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Surface(
-            modifier = Modifier.size(40.dp),
-            shape = CircleShape,
-            color = iconContainerColor,
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = iconColor)
-            }
-        }
-        Spacer(modifier = Modifier.width(16.dp))
+        MineSettingsIcon(
+            icon = icon,
+            containerColor = iconContainerColor,
+            iconColor = iconColor,
+        )
+        Spacer(modifier = Modifier.width(14.dp))
         Text(
             text = title,
             style = MaterialTheme.typography.bodyLarge,
@@ -207,6 +165,7 @@ private fun MineRow(
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = null,
+            modifier = Modifier.size(18.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }

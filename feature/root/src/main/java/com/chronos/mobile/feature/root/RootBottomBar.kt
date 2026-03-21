@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -32,7 +33,11 @@ internal fun ChronosBottomBar(
             },
             icon = {
                 Icon(
-                    imageVector = Icons.Filled.CalendarMonth,
+                    imageVector = if (activeTab == RootTab.TIMETABLE) {
+                        Icons.Filled.CalendarMonth
+                    } else {
+                        Icons.Outlined.CalendarMonth
+                    },
                     contentDescription = "课表",
                 )
             },
