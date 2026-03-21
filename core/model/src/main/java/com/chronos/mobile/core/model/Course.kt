@@ -2,9 +2,11 @@
 
 package com.chronos.mobile.core.model
 
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
 
 @Serializable
+@Immutable
 data class Course(
     val id: String,
     val name: String,

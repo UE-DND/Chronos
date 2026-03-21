@@ -1,5 +1,6 @@
 package com.chronos.mobile.domain.usecase
 
+import androidx.compose.runtime.Immutable
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.domain.ImportMode
 import com.chronos.mobile.domain.OnlineScheduleJsonCodec
@@ -12,6 +13,7 @@ import com.chronos.mobile.domain.result.flatMap
 import java.util.UUID
 import javax.inject.Inject
 
+@Immutable
 data class ImportTimetableResult(
     val timetableId: String,
     val mode: ImportMode,

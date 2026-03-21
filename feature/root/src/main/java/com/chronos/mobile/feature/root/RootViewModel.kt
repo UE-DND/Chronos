@@ -111,7 +111,7 @@ class RootViewModel @Inject constructor(
                         current.copy(
                             aboutUiState = current.aboutUiState.copy(
                                 isLoading = false,
-                                contributors = result.value,
+                                contributors = result.value.toList(),
                                 errorMessage = null,
                                 hasLoaded = true,
                             ),

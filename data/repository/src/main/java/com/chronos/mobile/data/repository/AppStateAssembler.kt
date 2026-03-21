@@ -1,7 +1,9 @@
 package com.chronos.mobile.data.repository
 
 import com.chronos.mobile.core.model.AppState
+import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.Timetable
+import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.core.model.TimetableSummary
 import com.chronos.mobile.data.preferences.UserPreferenceState
 import javax.inject.Inject
@@ -22,11 +24,24 @@ class AppStateAssembler @Inject constructor() {
         currentTimetableId: String?,
         currentTimetable: Timetable?,
     ): AppState = AppState(
-        timetables = timetables,
+        timetables = timetables.toList(),
         currentTimetableId = currentTimetableId,
         wallpaperUri = preferences.wallpaperUri,
-        currentTimetable = currentTimetable,
+        currentTimetable = currentTimetable?.copyForStateBoundary(),
         themeMode = preferences.themeMode,
         useDynamicColor = preferences.useDynamicColor,
     )
 }
+
+private fun Timetable.copyForStateBoundary(): Timetable = copy(
+    courses = courses.map(Course::copyForStateBoundary).toList(),
+    details = details.copyForStateBoundary(),
+)
+
+private fun Course.copyForStateBoundary(): Course = copy(
+    weeks = weeks.toList(),
+)
+
+private fun TimetableDetails.copyForStateBoundary(): TimetableDetails = copy(
+    periodTimes = periodTimes.toList(),
+)

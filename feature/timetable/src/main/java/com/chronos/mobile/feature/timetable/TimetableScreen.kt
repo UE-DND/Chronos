@@ -60,12 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.chronos.mobile.core.model.Course
-import com.chronos.mobile.core.model.PeriodTime
-import com.chronos.mobile.core.model.Timetable
-import com.chronos.mobile.core.model.TimetableDetails
-import com.chronos.mobile.domain.AcademicCalendarService
-import java.time.LocalDate
-import java.time.LocalTime
+import com.chronos.mobile.domain.model.TimetableCourseDisplayModel
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -159,16 +154,15 @@ internal fun TimetableScreen(
             ) { page ->
                 val displayedWeek = startWeek + page
                 val gridModel = state.weekGridModels[displayedWeek]
+                val courseDisplayModels = state.weekCourseDisplayModels[displayedWeek].orEmpty()
                 if (gridModel != null) {
                     TimetablePage(
-                        timetable = currentTimetable,
                         displayedWeek = displayedWeek,
-                        academicWeek = state.academicWeek,
-                        today = state.today,
                         isCurrentWeek = displayedWeek == state.academicWeek,
                         bottomContentPadding = rootContentPadding.calculateBottomPadding(),
                         hasWallpaper = !wallpaperUri.isNullOrBlank(),
                         gridModel = gridModel,
+                        courseDisplayModels = courseDisplayModels,
                         onCourseClick = onCourseClick,
                     )
                 }
@@ -313,9 +307,9 @@ private fun ChronosTopBar(
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
+        )
+    }
+}
                     }
                 }
             }
@@ -371,144 +365,21 @@ internal fun EmptyTimetableState(
     }
 }
 
-internal data class TimetableCourseDisplayModel(
-    val course: Course,
-    val isInDisplayedWeek: Boolean,
-)
-
-internal data class ParsedPeriodRange(
-    val index: Int,
-    val startTime: LocalTime,
-    val endTime: LocalTime,
-)
-
-private data class CourseSlotKey(
-    val dayOfWeek: Int,
-    val startPeriod: Int,
-    val endPeriod: Int,
-)
-
-private data class FutureCourseCandidate(
-    val course: Course,
-    val nextOccurrenceDate: LocalDate,
-    val originalIndex: Int,
-)
-
-internal fun buildTimetableCourseDisplayModels(
-    timetable: Timetable,
-    visibleDayOfWeeks: Set<Int>,
-    displayedWeek: Int,
-    today: LocalDate,
-    resolveCourseDate: (TimetableDetails, Int, Int, LocalDate) -> LocalDate = AcademicCalendarService()::resolveCourseDate,
-): List<TimetableCourseDisplayModel> {
-    val visibleCourses = timetable.courses.withIndex().filter { (_, course) ->
-        course.dayOfWeek in visibleDayOfWeeks
-    }
-    val currentEntries = visibleCourses
-        .filter { (_, course) -> course.weeks.isEmpty() || displayedWeek in course.weeks }
-        .map { (_, course) ->
-            TimetableCourseDisplayModel(
-                course = course,
-                isInDisplayedWeek = true,
-            )
-        }
-    if (!timetable.viewPrefs.showNonCurrentWeekCourses) {
-        return currentEntries
-    }
-
-    val occupiedSlots = currentEntries.mapTo(mutableSetOf()) { it.course.slotKey() }
-    val futureCandidatesBySlot = linkedMapOf<CourseSlotKey, FutureCourseCandidate>()
-    visibleCourses.forEach { (originalIndex, course) ->
-        if (course.weeks.isEmpty() || displayedWeek in course.weeks) return@forEach
-        val nextWeek = course.weeks
-            .filter { it >= displayedWeek }
-            .minOrNull()
-            ?: return@forEach
-        val slotKey = course.slotKey()
-        if (slotKey in occupiedSlots) return@forEach
-        val candidate = FutureCourseCandidate(
-            course = course,
-            nextOccurrenceDate = resolveCourseDate(timetable.details, nextWeek, course.dayOfWeek, today),
-            originalIndex = originalIndex,
-        )
-        val current = futureCandidatesBySlot[slotKey]
-        if (current == null || candidate.isBetterFutureCandidateThan(current)) {
-            futureCandidatesBySlot[slotKey] = candidate
-        }
-    }
-
-    val futureEntries = futureCandidatesBySlot.values
-        .sortedWith(
-            compareBy<FutureCourseCandidate> { it.originalIndex }
-                .thenBy { it.nextOccurrenceDate }
-        )
-        .map { candidate ->
-            TimetableCourseDisplayModel(
-                course = candidate.course,
-                isInDisplayedWeek = false,
-            )
-        }
-    return currentEntries + futureEntries
-}
-
-private fun Course.slotKey(): CourseSlotKey =
-    CourseSlotKey(
-        dayOfWeek = dayOfWeek,
-        startPeriod = startPeriod,
-        endPeriod = endPeriod,
-    )
-
-private fun FutureCourseCandidate.isBetterFutureCandidateThan(other: FutureCourseCandidate): Boolean =
-    compareValuesBy(
-        this,
-        other,
-        FutureCourseCandidate::nextOccurrenceDate,
-        FutureCourseCandidate::originalIndex,
-    ) < 0
-
-internal fun parsePeriodRanges(periods: List<PeriodTime>): List<ParsedPeriodRange> =
-    periods.map { period ->
-        ParsedPeriodRange(
-            index = period.index,
-            startTime = runCatching { LocalTime.parse(period.startTime) }.getOrElse { LocalTime.MIDNIGHT },
-            endTime = runCatching { LocalTime.parse(period.endTime) }.getOrElse { LocalTime.MIDNIGHT },
-        )
-    }
-
-internal fun findCurrentPeriodIndex(
-    periods: List<ParsedPeriodRange>,
-    now: LocalTime,
-): Int? {
-    periods.firstOrNull { period ->
-        !now.isBefore(period.startTime) && !now.isAfter(period.endTime)
-    }?.let { return it.index }
-
-    periods.firstOrNull { period ->
-        now.isBefore(period.startTime)
-    }?.let { return it.index }
-
-    return periods.lastOrNull()?.index
-}
-
 @Composable
 private fun TimetablePage(
-    timetable: Timetable,
     displayedWeek: Int,
-    academicWeek: Int,
-    today: LocalDate,
     isCurrentWeek: Boolean,
     bottomContentPadding: Dp,
     gridModel: com.chronos.mobile.domain.model.TimetableGridModel,
+    courseDisplayModels: List<TimetableCourseDisplayModel>,
     hasWallpaper: Boolean,
     onCourseClick: (Course) -> Unit,
 ) {
     TimetableGrid(
-        timetable = timetable,
         displayedWeek = displayedWeek,
-        academicWeek = academicWeek,
-        today = today,
         isCurrentWeek = isCurrentWeek,
         gridModel = gridModel,
+        courseDisplayModels = courseDisplayModels,
         hasWallpaper = hasWallpaper,
         modifier = Modifier.fillMaxSize(),
         bottomContentPadding = bottomContentPadding,

@@ -30,9 +30,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.chronos.mobile.core.model.Timetable
+import com.chronos.mobile.domain.model.TimetableCourseDisplayModel
 import com.chronos.mobile.domain.model.TimetableGridModel
 import com.chronos.mobile.feature.timetable.TimetableGrid
-import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,8 +41,8 @@ fun MineWallpaperScreen(
     wallpaperUri: String?,
     timetable: Timetable?,
     academicWeek: Int,
-    today: LocalDate,
     gridModel: TimetableGridModel?,
+    courseDisplayModels: List<TimetableCourseDisplayModel>,
     onBack: () -> Unit,
     onChangeWallpaper: () -> Unit,
     onClearWallpaper: () -> Unit,
@@ -75,10 +75,9 @@ fun MineWallpaperScreen(
             if (hasWallpaper && timetable != null && gridModel != null) {
                 WallpaperTimetablePreview(
                     wallpaperUri = wallpaperUri,
-                    timetable = timetable,
                     academicWeek = academicWeek,
-                    today = today,
                     gridModel = gridModel,
+                    courseDisplayModels = courseDisplayModels,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -122,10 +121,9 @@ fun MineWallpaperScreen(
 @Composable
 private fun WallpaperTimetablePreview(
     wallpaperUri: String?,
-    timetable: Timetable,
     academicWeek: Int,
-    today: LocalDate,
     gridModel: TimetableGridModel,
+    courseDisplayModels: List<TimetableCourseDisplayModel>,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -142,12 +140,10 @@ private fun WallpaperTimetablePreview(
         }
 
         TimetableGrid(
-            timetable = timetable,
             displayedWeek = academicWeek,
-            academicWeek = academicWeek,
-            today = today,
             isCurrentWeek = true,
             gridModel = gridModel,
+            courseDisplayModels = courseDisplayModels,
             hasWallpaper = !wallpaperUri.isNullOrBlank(),
             modifier = Modifier.fillMaxSize(),
             enableAutoCenterCurrentPeriod = false,

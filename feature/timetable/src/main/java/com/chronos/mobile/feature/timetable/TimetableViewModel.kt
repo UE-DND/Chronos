@@ -2,12 +2,15 @@ package com.chronos.mobile.feature.timetable
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.compose.runtime.Immutable
 import com.chronos.mobile.core.model.AppState
 import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.domain.model.CourseDraft
+import com.chronos.mobile.domain.model.TimetableCourseDisplayModel
 import com.chronos.mobile.domain.model.TimetableDetailsDraft
 import com.chronos.mobile.domain.model.TimetableGridModel
+import com.chronos.mobile.domain.usecase.BuildTimetableCourseDisplayModelsUseCase
 import com.chronos.mobile.domain.usecase.BuildVisibleTimetableGridUseCase
 import com.chronos.mobile.domain.usecase.CalculateAcademicWeekUseCase
 import com.chronos.mobile.domain.usecase.CreateTimetableUseCase
@@ -18,7 +21,9 @@ import com.chronos.mobile.domain.usecase.SaveCourseUseCase
 import com.chronos.mobile.domain.usecase.SaveTimetableDetailsUseCase
 import com.chronos.mobile.domain.usecase.SwitchTimetableUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Duration
 import java.time.LocalDate
+import java.time.ZonedDateTime
 import javax.inject.Inject
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -34,9 +39,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-private const val DATE_REFRESH_INTERVAL_MILLIS = 60_000L
+private const val MIN_DELAY_MILLIS = 1_000L
 private const val WEEK_GRID_CACHE_RADIUS = 1
 
+@Immutable
 data class TimetableUiState(
     val appState: AppState = AppState(),
     val hasLoadedAppState: Boolean = false,
@@ -46,6 +52,7 @@ data class TimetableUiState(
     val displayedWeekTimetableId: String? = null,
     val gridModel: TimetableGridModel? = null,
     val weekGridModels: Map<Int, TimetableGridModel> = emptyMap(),
+    val weekCourseDisplayModels: Map<Int, List<TimetableCourseDisplayModel>> = emptyMap(),
     val editingCourse: CourseDraft? = null,
 )
 
@@ -60,6 +67,7 @@ class TimetableViewModel @Inject constructor(
     private val deleteCourseUseCase: DeleteCourseUseCase,
     private val calculateAcademicWeek: CalculateAcademicWeekUseCase,
     private val buildVisibleTimetableGrid: BuildVisibleTimetableGridUseCase,
+    private val buildTimetableCourseDisplayModels: BuildTimetableCourseDisplayModelsUseCase,
 ) : ViewModel() {
     private val uiState = MutableStateFlow(TimetableUiState())
 
@@ -87,6 +95,18 @@ class TimetableViewModel @Inject constructor(
             }.orEmpty(),
             buildGrid = buildVisibleTimetableGrid::invoke,
         )
+        val weekCourseDisplayModels = buildWeekCourseDisplayModels(
+            timetable = timetable,
+            today = today,
+            displayedWeek = displayedWeek,
+            weekGridModels = weekGridModels,
+            existingWeekCourseDisplayModels = currentState.weekCourseDisplayModels.takeIf {
+                timetable != null &&
+                    timetable == currentState.appState.currentTimetable &&
+                    currentState.today == today
+            }.orEmpty(),
+            buildDisplayModels = buildTimetableCourseDisplayModels::invoke,
+        )
 
         currentState.copy(
             appState = appState,
@@ -97,6 +117,7 @@ class TimetableViewModel @Inject constructor(
             displayedWeekTimetableId = timetable?.id,
             gridModel = weekGridModels[displayedWeek],
             weekGridModels = weekGridModels,
+            weekCourseDisplayModels = weekCourseDisplayModels,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -182,14 +203,26 @@ class TimetableViewModel @Inject constructor(
     private fun observeToday(): Flow<LocalDate> = flow {
         var emittedDate: LocalDate? = null
         while (currentCoroutineContext().isActive) {
-            val today = LocalDate.now()
+            val now = ZonedDateTime.now()
+            val today = now.toLocalDate()
             if (today != emittedDate) {
                 emit(today)
                 emittedDate = today
             }
-            delay(DATE_REFRESH_INTERVAL_MILLIS)
+            delay(computeDelayUntilNextMidnightMillis(now))
         }
     }.distinctUntilChanged()
+}
+
+internal fun computeDelayUntilNextMidnightMillis(
+    now: ZonedDateTime,
+    minimumDelayMillis: Long = MIN_DELAY_MILLIS,
+): Long {
+    val nextMidnight = now.toLocalDate()
+        .plusDays(1)
+        .atStartOfDay(now.zone)
+    val delayMillis = Duration.between(now, nextMidnight).toMillis()
+    return delayMillis.coerceAtLeast(minimumDelayMillis)
 }
 
 internal fun resolveDisplayedWeek(
@@ -218,5 +251,35 @@ internal fun buildWeekGridModels(
 
     return requiredWeeks.associateWith { week ->
         existingWeekGridModels[week] ?: buildGrid(today, week, timetable)
+    }
+}
+
+internal fun buildWeekCourseDisplayModels(
+    timetable: Timetable?,
+    today: LocalDate,
+    displayedWeek: Int,
+    weekGridModels: Map<Int, TimetableGridModel>,
+    existingWeekCourseDisplayModels: Map<Int, List<TimetableCourseDisplayModel>>,
+    buildDisplayModels: (Timetable, Set<Int>, Int, LocalDate) -> List<TimetableCourseDisplayModel>,
+): Map<Int, List<TimetableCourseDisplayModel>> {
+    timetable ?: return emptyMap()
+
+    val weekRange = timetable.details.startWeek..timetable.details.endWeek
+    val requiredWeeks = ((displayedWeek - WEEK_GRID_CACHE_RADIUS)..(displayedWeek + WEEK_GRID_CACHE_RADIUS))
+        .filter { it in weekRange }
+
+    return requiredWeeks.associateWith { week ->
+        existingWeekCourseDisplayModels[week] ?: buildDisplayModels(
+            timetable,
+            weekGridModels[week]
+                ?.visibleDays
+                ?.map { it.dayOfWeek }
+                ?.toSet()
+                .orEmpty(),
+            week,
+            today,
+        )
+    }.mapValues { (_, models) ->
+        models.toList()
     }
 }

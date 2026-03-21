@@ -6,15 +6,23 @@ import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.core.model.TimetableImportSource
 import com.chronos.mobile.core.model.TimetableViewPrefs
+import com.chronos.mobile.domain.model.TimetableCourseDisplayModel
+import com.chronos.mobile.domain.model.TimetableDayModel
 import com.chronos.mobile.domain.model.TimetableGridModel
+import com.chronos.mobile.domain.usecase.BuildTimetableCourseDisplayModelsUseCase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 
 class TimetableScreenLogicTest {
+    private val buildCourseDisplayModels = BuildTimetableCourseDisplayModelsUseCase()
+
     @Test
     fun `calculateWeekSliderSteps returns zero when only one selectable week remains`() {
         assertEquals(0, calculateWeekSliderSteps(startWeek = 1, endWeek = 1))
@@ -29,7 +37,7 @@ class TimetableScreenLogicTest {
 
     @Test
     fun `keeps current displayed week courses and excludes ended courses from non current section`() {
-        val models = buildTimetableCourseDisplayModels(
+        val models = buildCourseDisplayModels(
             timetable = sampleTimetable(
                 courses = listOf(
                     sampleCourse(id = "current", weeks = listOf(8)),
@@ -49,7 +57,7 @@ class TimetableScreenLogicTest {
 
     @Test
     fun `keeps only nearest future course for duplicate slot`() {
-        val models = buildTimetableCourseDisplayModels(
+        val models = buildCourseDisplayModels(
             timetable = sampleTimetable(
                 courses = listOf(
                     sampleCourse(id = "later", weeks = listOf(12)),
@@ -67,7 +75,7 @@ class TimetableScreenLogicTest {
 
     @Test
     fun `suppresses future placeholder when current week course already occupies slot`() {
-        val models = buildTimetableCourseDisplayModels(
+        val models = buildCourseDisplayModels(
             timetable = sampleTimetable(
                 courses = listOf(
                     sampleCourse(id = "current", weeks = listOf(8)),
@@ -85,7 +93,7 @@ class TimetableScreenLogicTest {
 
     @Test
     fun `disables future placeholders when setting is off`() {
-        val models = buildTimetableCourseDisplayModels(
+        val models = buildCourseDisplayModels(
             timetable = sampleTimetable(
                 showNonCurrentWeekCourses = false,
                 courses = listOf(
@@ -103,7 +111,7 @@ class TimetableScreenLogicTest {
 
     @Test
     fun `future placeholders use monday anchored dates for non monday term start date`() {
-        val models = buildTimetableCourseDisplayModels(
+        val models = buildCourseDisplayModels(
             timetable = sampleTimetable(
                 termStartDate = "2026-03-03",
                 courses = listOf(
@@ -152,6 +160,49 @@ class TimetableScreenLogicTest {
     }
 
     @Test
+    fun `buildWeekCourseDisplayModels keeps only displayed week and adjacent pages`() {
+        val requestedWeeks = mutableListOf<Int>()
+        val existingWeekSix = listOf(
+            TimetableCourseDisplayModel(
+                course = sampleCourse(id = "existing-week-6", weeks = listOf(6)),
+                isInDisplayedWeek = true,
+            ),
+        )
+        val weekGridModels = mapOf(
+            6 to sampleGridModel(label = "week-6"),
+            7 to sampleGridModel(label = "week-7"),
+            8 to sampleGridModel(label = "week-8"),
+        )
+        val weekCourseDisplayModels = buildWeekCourseDisplayModels(
+            timetable = sampleTimetable(courses = listOf(sampleCourse(id = "course", weeks = listOf(7, 8)))),
+            today = LocalDate.parse("2026-04-20"),
+            displayedWeek = 7,
+            weekGridModels = weekGridModels,
+            existingWeekCourseDisplayModels = mapOf(
+                6 to existingWeekSix,
+                2 to listOf(
+                    TimetableCourseDisplayModel(
+                        course = sampleCourse(id = "stale-week-2", weeks = listOf(2)),
+                        isInDisplayedWeek = false,
+                    ),
+                ),
+            ),
+        ) { timetable, _, week, today ->
+            requestedWeeks += week
+            buildCourseDisplayModels(
+                timetable = timetable,
+                visibleDayOfWeeks = setOf(1),
+                displayedWeek = week,
+                today = today,
+            )
+        }
+
+        assertEquals(listOf(6, 7, 8), weekCourseDisplayModels.keys.toList())
+        assertEquals(existingWeekSix, weekCourseDisplayModels[6])
+        assertEquals(listOf(7, 8), requestedWeeks)
+    }
+
+    @Test
     fun `findCurrentPeriodIndex prefers active period then next upcoming then last`() {
         val periods = parsePeriodRanges(
             listOf(
@@ -164,6 +215,80 @@ class TimetableScreenLogicTest {
         assertEquals(2, findCurrentPeriodIndex(periods, LocalTime.parse("09:15")))
         assertEquals(3, findCurrentPeriodIndex(periods, LocalTime.parse("09:50")))
         assertEquals(3, findCurrentPeriodIndex(periods, LocalTime.parse("11:10")))
+    }
+
+    @Test
+    fun `current time refresh delay waits for current period end`() {
+        val periods = parsePeriodRanges(
+            listOf(
+                PeriodTime(index = 1, startTime = "09:00", endTime = "09:45"),
+                PeriodTime(index = 2, startTime = "10:00", endTime = "10:45"),
+            ),
+        )
+        val now = LocalDateTime.parse("2026-03-21T09:15:00")
+
+        assertEquals(
+            30L * 60L * 1_000L,
+            computeDelayUntilNextCurrentTimeRefreshMillis(now, periods),
+        )
+    }
+
+    @Test
+    fun `current time refresh delay waits for next period start between classes`() {
+        val periods = parsePeriodRanges(
+            listOf(
+                PeriodTime(index = 1, startTime = "09:00", endTime = "09:45"),
+                PeriodTime(index = 2, startTime = "10:00", endTime = "10:45"),
+            ),
+        )
+        val now = LocalDateTime.parse("2026-03-21T09:50:00")
+
+        assertEquals(
+            10L * 60L * 1_000L,
+            computeDelayUntilNextCurrentTimeRefreshMillis(now, periods),
+        )
+    }
+
+    @Test
+    fun `current time refresh delay falls back to midnight when all periods ended`() {
+        val periods = parsePeriodRanges(
+            listOf(
+                PeriodTime(index = 1, startTime = "09:00", endTime = "09:45"),
+            ),
+        )
+        val now = LocalDateTime.parse("2026-03-21T11:10:00")
+
+        assertEquals(
+            (12L * 60L + 50L) * 60L * 1_000L,
+            computeDelayUntilNextCurrentTimeRefreshMillis(now, periods),
+        )
+    }
+
+    @Test
+    fun `current time refresh delay applies minimum threshold`() {
+        val now = LocalDateTime.parse("2026-03-21T23:59:59.800")
+
+        assertEquals(
+            1_000L,
+            computeDelayUntilNextCurrentTimeRefreshMillis(now, periods = emptyList()),
+        )
+    }
+
+    @Test
+    fun `midnight delay waits until next local midnight`() {
+        val now = ZonedDateTime.of(2026, 3, 21, 10, 15, 0, 0, ZoneId.of("Asia/Shanghai"))
+
+        assertEquals(
+            (13L * 60L + 45L) * 60L * 1_000L,
+            computeDelayUntilNextMidnightMillis(now),
+        )
+    }
+
+    @Test
+    fun `midnight delay applies minimum threshold near midnight`() {
+        val now = ZonedDateTime.of(2026, 3, 21, 23, 59, 59, 800_000_000, ZoneId.of("Asia/Shanghai"))
+
+        assertEquals(1_000L, computeDelayUntilNextMidnightMillis(now))
     }
 
     @Test
@@ -252,7 +377,13 @@ class TimetableScreenLogicTest {
     private fun sampleGridModel(label: String): TimetableGridModel =
         TimetableGridModel(
             monthLabel = label,
-            visibleDays = emptyList(),
+            visibleDays = listOf(
+                TimetableDayModel(
+                    dayOfWeek = 1,
+                    date = LocalDate.parse("2026-04-20"),
+                    isToday = true,
+                ),
+            ),
             periods = listOf(
                 PeriodTime(index = 1, startTime = "08:00", endTime = "08:45"),
             ),

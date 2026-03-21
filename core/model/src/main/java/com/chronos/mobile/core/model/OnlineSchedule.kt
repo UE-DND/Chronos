@@ -5,11 +5,13 @@
 
 package com.chronos.mobile.core.model
 
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonNames
 
 @Serializable
+@Immutable
 data class OnlineSchedulePayload(
     // yt = yearTerm, 学年学期
     @SerialName("yt") @JsonNames("yearTerm")
@@ -41,6 +43,7 @@ data class OnlineSchedulePayload(
 )
 
 @Serializable
+@Immutable
 data class OnlineScheduleWeekDay(
     // wd = weekDay, 星期
     @SerialName("wd") @JsonNames("weekDay")
@@ -54,6 +57,7 @@ data class OnlineScheduleWeekDay(
 )
 
 @Serializable
+@Immutable
 data class OnlineScheduleEvent(
     // wn = weekNum, 当前周次
     @SerialName("wn") @JsonNames("weekNum")

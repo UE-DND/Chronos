@@ -20,7 +20,7 @@ class TimetableLocalDataSource @Inject constructor(
     private val timetableConfigJsonCodec: TimetableConfigJsonCodec,
 ) {
     fun observeTimetableSummaries(): Flow<List<TimetableSummary>> = chronosDao.observeTimetableSummaries()
-        .map { summaries -> summaries.map { it.toDomain() } }
+        .map { summaries -> summaries.map { it.toDomain() }.toList() }
         .distinctUntilChanged()
 
     fun observeTimetable(id: String): Flow<Timetable?> = chronosDao.observeTimetableById(id)
@@ -65,7 +65,7 @@ class TimetableLocalDataSource @Inject constructor(
             name = timetable.name,
             createdAt = timetable.createdAt,
             updatedAt = timetable.updatedAt,
-            courses = courses.map { it.toDomain() },
+            courses = courses.map { it.toDomain() }.toList(),
             details = config.details,
             viewPrefs = config.viewPrefs,
         )
@@ -115,7 +115,8 @@ class TimetableLocalDataSource @Inject constructor(
         color = color,
         textColor = textColor,
         weeks = weeksCsv.split(",")
-            .mapNotNull(String::toIntOrNull),
+            .mapNotNull(String::toIntOrNull)
+            .toList(),
     )
 
     private fun TimetableEntity.configOrDefault(): TimetableConfig =

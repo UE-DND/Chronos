@@ -1,5 +1,8 @@
 package com.chronos.mobile.core.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class TimetableSummary(
     val id: String,
     val name: String,
@@ -8,6 +11,7 @@ data class TimetableSummary(
     val updatedAt: Long,
 )
 
+@Immutable
 data class AppState(
     val timetables: List<TimetableSummary> = emptyList(),
     val currentTimetableId: String? = null,

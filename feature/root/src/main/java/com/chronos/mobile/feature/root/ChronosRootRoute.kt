@@ -23,6 +23,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,6 +58,7 @@ import com.chronos.mobile.feature.transfer.TransferImportConfirmRoute
 import com.chronos.mobile.feature.transfer.TransferRoute
 import com.google.android.gms.oss.licenses.v2.OssLicensesMenuActivity
 import com.chronos.mobile.domain.usecase.BuildVisibleTimetableGridUseCase
+import com.chronos.mobile.domain.usecase.BuildTimetableCourseDisplayModelsUseCase
 import com.chronos.mobile.domain.usecase.CalculateAcademicWeekUseCase
 import java.io.File
 import java.time.LocalDate
@@ -443,17 +445,28 @@ fun ChronosRootRoute(
                     else {
                         val week = CalculateAcademicWeekUseCase()(today, timetable.details)
                         val grid = BuildVisibleTimetableGridUseCase()(today, week, timetable)
-                        Triple(week, grid, timetable)
+                        val courseDisplayModels = BuildTimetableCourseDisplayModelsUseCase()(
+                            timetable = timetable,
+                            visibleDayOfWeeks = grid.visibleDays.map { it.dayOfWeek }.toSet(),
+                            displayedWeek = week,
+                            today = today,
+                        )
+                        PreviewWallpaperData(
+                            week = week,
+                            timetable = timetable,
+                            gridModel = grid,
+                            courseDisplayModels = courseDisplayModels,
+                        )
                     }
                 }
                 MineWallpaperScreen(
                     modifier = Modifier.fillMaxSize(),
                     hasWallpaper = !appState.wallpaperUri.isNullOrBlank(),
                     wallpaperUri = appState.wallpaperUri,
-                    timetable = previewData?.third,
-                    academicWeek = previewData?.first ?: 1,
-                    today = today,
-                    gridModel = previewData?.second,
+                    timetable = previewData?.timetable,
+                    academicWeek = previewData?.week ?: 1,
+                    gridModel = previewData?.gridModel,
+                    courseDisplayModels = previewData?.courseDisplayModels.orEmpty(),
                     onBack = { navController.popBackStack() },
                     onChangeWallpaper = { wallpaperLauncher.launch("image/*") },
                     onClearWallpaper = {
@@ -468,6 +481,14 @@ fun ChronosRootRoute(
     }
     }
 }
+
+@Immutable
+private data class PreviewWallpaperData(
+    val week: Int,
+    val timetable: com.chronos.mobile.core.model.Timetable,
+    val gridModel: com.chronos.mobile.domain.model.TimetableGridModel,
+    val courseDisplayModels: List<com.chronos.mobile.domain.model.TimetableCourseDisplayModel>,
+)
 
 private fun copyWallpaperToAppStorage(
     context: Context,

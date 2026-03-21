@@ -5,6 +5,7 @@ import com.chronos.mobile.core.model.TimetableViewPrefs
 import javax.inject.Inject
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 
 class TimetableConfigJsonCodec @Inject constructor() {
     private val json = Json {
@@ -20,10 +21,13 @@ class TimetableConfigJsonCodec @Inject constructor() {
     )
 
     internal fun decode(configJson: String): TimetableConfig = runCatching {
-        json.decodeFromString<TimetableConfig>(configJson)
-    }.recoverCatching {
-        val legacyDetails = json.decodeFromString<TimetableDetails>(configJson)
-        TimetableConfig(details = legacyDetails)
+        val parsed = json.parseToJsonElement(configJson)
+        if (parsed is JsonObject && "details" in parsed) {
+            json.decodeFromJsonElement(TimetableConfig.serializer(), parsed)
+        } else {
+            val legacyDetails = json.decodeFromJsonElement(TimetableDetails.serializer(), parsed)
+            TimetableConfig(details = legacyDetails)
+        }
     }.getOrDefault(TimetableConfig())
 }
 

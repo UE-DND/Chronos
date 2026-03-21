@@ -2,6 +2,7 @@ package com.chronos.mobile.feature.transfer
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.compose.runtime.Immutable
 import com.chronos.mobile.core.model.AppState
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.domain.ImportMode
@@ -46,6 +47,7 @@ enum class ImportSource {
     HTML,
 }
 
+@Immutable
 data class TransferUiState(
     val importMode: ImportMode = ImportMode.AS_NEW,
     val selectedSource: ImportSource = ImportSource.ONLINE,

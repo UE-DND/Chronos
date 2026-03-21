@@ -2,6 +2,7 @@
 
 package com.chronos.mobile.core.model
 
+import androidx.compose.runtime.Immutable
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
@@ -16,6 +17,7 @@ enum class TimetableImportSource {
 }
 
 @Serializable
+@Immutable
 data class PeriodTime(
     val index: Int,
     val startTime: String,
@@ -23,6 +25,7 @@ data class PeriodTime(
 )
 
 @Serializable
+@Immutable
 data class TimetableDetails(
     val termStartDate: String = "",
     val startWeek: Int = 1,
@@ -34,11 +37,13 @@ data class TimetableDetails(
 )
 
 @Serializable
+@Immutable
 data class TimetableViewPrefs(
     val showNonCurrentWeekCourses: Boolean = false,
 )
 
 @Serializable
+@Immutable
 data class Timetable(
     val id: String,
     val name: String,

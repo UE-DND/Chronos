@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,11 +45,22 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
 import com.chronos.mobile.core.model.Course
-import com.chronos.mobile.core.model.Timetable
+import com.chronos.mobile.core.model.PeriodTime
+import com.chronos.mobile.domain.model.TimetableCourseDisplayModel
 import com.chronos.mobile.domain.model.TimetableGridModel
-import java.time.LocalDate
+import java.time.Duration
+import java.time.LocalDateTime
 import java.time.LocalTime
 import kotlinx.coroutines.delay
+
+private const val MIN_TIME_REFRESH_DELAY_MILLIS = 1_000L
+
+@Immutable
+internal data class ParsedPeriodRange(
+    val index: Int,
+    val startTime: LocalTime,
+    val endTime: LocalTime,
+)
 
 @Composable
 internal fun timetableDayLabel(dayOfWeek: Int): String = when (dayOfWeek) {
@@ -76,12 +88,10 @@ internal fun timetableDayShortLabel(dayOfWeek: Int): String = when (dayOfWeek) {
 
 @Composable
 fun TimetableGrid(
-    timetable: Timetable,
     displayedWeek: Int,
-    academicWeek: Int,
-    today: LocalDate,
     isCurrentWeek: Boolean,
     gridModel: TimetableGridModel,
+    courseDisplayModels: List<TimetableCourseDisplayModel>,
     hasWallpaper: Boolean,
     modifier: Modifier = Modifier,
     bottomContentPadding: Dp = 0.dp,
@@ -97,20 +107,6 @@ fun TimetableGrid(
     val visibleDayIndexMap = remember(gridModel.visibleDays) {
         gridModel.visibleDays.withIndex().associate { (index, day) -> day.dayOfWeek to index }
     }
-    val courseDisplayModels = remember(
-        timetable,
-        visibleDayIndexMap,
-        displayedWeek,
-        academicWeek,
-        today,
-    ) {
-        buildTimetableCourseDisplayModels(
-            timetable = timetable,
-            visibleDayOfWeeks = visibleDayIndexMap.keys,
-            displayedWeek = displayedWeek,
-            today = today,
-        )
-    }
     val parsedPeriods = remember(gridModel.periods) {
         parsePeriodRanges(gridModel.periods)
     }
@@ -124,11 +120,12 @@ fun TimetableGrid(
             .background(if (hasWallpaper) Color.Transparent else MaterialTheme.colorScheme.surface),
     ) {
         val density = LocalDensity.current
-        val currentTime by produceState(initialValue = LocalTime.now(), isCurrentWeek) {
+        val currentTime by produceState(initialValue = LocalTime.now(), isCurrentWeek, parsedPeriods) {
             value = LocalTime.now()
             if (!isCurrentWeek) return@produceState
             while (true) {
-                delay(30_000)
+                val now = LocalDateTime.now()
+                delay(computeDelayUntilNextCurrentTimeRefreshMillis(now, parsedPeriods))
                 value = LocalTime.now()
             }
         }
@@ -136,7 +133,7 @@ fun TimetableGrid(
             (viewportSize.width.toDp() - sidebarWidth).coerceAtLeast(0.dp)
         }
         val columnWidth = if (gridModel.visibleDays.isEmpty()) 0.dp else contentWidth / gridModel.visibleDays.size
-        var hasAutoCenteredCurrentWeek by remember(timetable.id, displayedWeek, isCurrentWeek) {
+        var hasAutoCenteredCurrentWeek by remember(displayedWeek, isCurrentWeek) {
             mutableStateOf(false)
         }
         val currentPeriodIndex: Int? = remember(isCurrentWeek, parsedPeriods, currentTime) {
@@ -219,6 +216,59 @@ fun TimetableGrid(
             }
         }
     }
+}
+
+internal fun parsePeriodRanges(periods: List<PeriodTime>): List<ParsedPeriodRange> =
+    periods
+        .map { period ->
+            ParsedPeriodRange(
+                index = period.index,
+                startTime = runCatching { LocalTime.parse(period.startTime) }.getOrElse { LocalTime.MIDNIGHT },
+                endTime = runCatching { LocalTime.parse(period.endTime) }.getOrElse { LocalTime.MIDNIGHT },
+            )
+        }
+        .sortedBy { it.index }
+
+internal fun findCurrentPeriodIndex(
+    periods: List<ParsedPeriodRange>,
+    now: LocalTime,
+): Int? {
+    periods.firstOrNull { period ->
+        !now.isBefore(period.startTime) && !now.isAfter(period.endTime)
+    }?.let { return it.index }
+
+    periods.firstOrNull { period ->
+        now.isBefore(period.startTime)
+    }?.let { return it.index }
+
+    return periods.lastOrNull()?.index
+}
+
+internal fun computeDelayUntilNextCurrentTimeRefreshMillis(
+    now: LocalDateTime,
+    periods: List<ParsedPeriodRange>,
+    minimumDelayMillis: Long = MIN_TIME_REFRESH_DELAY_MILLIS,
+): Long {
+    val nowTime = now.toLocalTime()
+    val nextBoundaryToday = periods.firstNotNullOfOrNull { period ->
+        when {
+            !nowTime.isBefore(period.startTime) && !nowTime.isAfter(period.endTime) ->
+                period.endTime.plusNanos(1)
+            nowTime.isBefore(period.startTime) ->
+                period.startTime
+            else -> null
+        }
+    }
+    val nextBoundary = if (nextBoundaryToday != null) {
+        var candidate = now.toLocalDate().atTime(nextBoundaryToday)
+        if (!candidate.isAfter(now)) {
+            candidate = candidate.plusDays(1)
+        }
+        candidate
+    } else {
+        now.toLocalDate().plusDays(1).atStartOfDay()
+    }
+    return Duration.between(now, nextBoundary).toMillis().coerceAtLeast(minimumDelayMillis)
 }
 
 @Composable

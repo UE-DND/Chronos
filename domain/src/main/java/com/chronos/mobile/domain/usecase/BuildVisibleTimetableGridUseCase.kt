@@ -33,8 +33,8 @@ class BuildVisibleTimetableGridUseCase @Inject constructor(
         )
         return TimetableGridModel(
             monthLabel = weekMonthLabel(weekDays.map { it.date }),
-            visibleDays = weekDays,
-            periods = buildDisplayPeriods(timetable.details, displayedPeriodCount),
+            visibleDays = weekDays.toList(),
+            periods = buildDisplayPeriods(timetable.details, displayedPeriodCount).toList(),
             displayedPeriodCount = displayedPeriodCount,
         )
     }

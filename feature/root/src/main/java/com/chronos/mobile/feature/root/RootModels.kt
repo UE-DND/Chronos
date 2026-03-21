@@ -1,5 +1,6 @@
 package com.chronos.mobile.feature.root
 
+import androidx.compose.runtime.Immutable
 import com.chronos.mobile.domain.model.GithubContributor
 import com.chronos.mobile.domain.model.GithubRelease
 
@@ -28,11 +29,13 @@ internal object RootRoute {
 internal const val SecondaryPageEnterDuration = 320
 internal const val SecondaryPageExitDuration = 260
 
+@Immutable
 data class RootUiState(
     val activeTab: RootTab = RootTab.TIMETABLE,
     val aboutUiState: AboutUiState = AboutUiState(),
 )
 
+@Immutable
 data class AboutUiState(
     val isLoading: Boolean = false,
     val contributors: List<GithubContributor> = emptyList(),
@@ -41,6 +44,7 @@ data class AboutUiState(
     val versionRelease: VersionReleaseUiState = VersionReleaseUiState(),
 )
 
+@Immutable
 data class VersionReleaseUiState(
     val isLoading: Boolean = false,
     val release: GithubRelease? = null,
