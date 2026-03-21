@@ -2,10 +2,12 @@ package com.chronos.mobile.data.secure
 
 import android.content.Context
 import android.os.Build
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.biometric.BiometricManager
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -16,11 +18,17 @@ import com.chronos.mobile.domain.result.AppError
 import com.chronos.mobile.domain.result.AppResult
 import com.chronos.mobile.domain.result.appResultOf
 import com.chronos.mobile.domain.result.asFailure
+import com.chronos.mobile.domain.result.asSuccess
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import java.security.GeneralSecurityException
+import java.security.InvalidKeyException
 import java.security.KeyStore
 import java.util.Base64
+import javax.crypto.AEADBadTagException
+import javax.crypto.BadPaddingException
 import javax.crypto.Cipher
+import javax.crypto.IllegalBlockSizeException
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
@@ -33,6 +41,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 @Singleton
 class KeystoreSecureCredentialStore @Inject constructor(
@@ -41,18 +50,22 @@ class KeystoreSecureCredentialStore @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val dataStore = PreferenceDataStoreFactory.create(
         scope = scope,
-        produceFile = { File(context.filesDir, "online_credentials.preferences_pb") },
+        produceFile = { File(context.noBackupFilesDir, CREDENTIAL_FILE_NAME) },
     )
+
+    init {
+        scope.launch {
+            sanitizeCredentialIfInvalidAtStartup()
+        }
+    }
 
     override val savedCredentialState: Flow<SavedCredentialState> = dataStore.data
         .catch { emit(emptyPreferences()) }
         .map { preferences ->
             val account = preferences[ACCOUNT_KEY]
-            val hasCiphertext = !preferences[CIPHERTEXT_KEY].isNullOrBlank()
-            val hasIv = !preferences[IV_KEY].isNullOrBlank()
             SavedCredentialState(
                 account = account,
-                hasSavedCredential = !account.isNullOrBlank() && hasCiphertext && hasIv,
+                hasSavedCredential = !account.isNullOrBlank() && hasCompleteCredential(preferences),
                 protectionAvailable = isReusableCredentialProtectionAvailable(),
             )
         }
@@ -85,19 +98,21 @@ class KeystoreSecureCredentialStore @Inject constructor(
         }
     }
 
-    override suspend fun createUnlockCipher(): AppResult<Cipher> = appResultOf(
-        errorMapper = { AppError.Security("当前没有可用的已保存凭据") },
-    ) {
-        val key = getOrCreateSecretKey()
-        val ivString = dataStoreDataSnapshot()[IV_KEY]
-            ?: throw IllegalStateException("未找到已保存的在线凭据")
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(
-            Cipher.DECRYPT_MODE,
-            key,
-            GCMParameterSpec(GCM_TAG_LENGTH_BITS, Base64.getDecoder().decode(ivString)),
-        )
-        cipher
+    override suspend fun createUnlockCipher(): AppResult<Cipher> {
+        val preferences = dataStoreDataSnapshot()
+        if (!hasCompleteCredential(preferences)) {
+            return AppError.Security("当前没有可用的已保存凭据").asFailure()
+        }
+        return try {
+            createUnlockCipher(preferences).asSuccess()
+        } catch (throwable: Throwable) {
+            if (throwable.isCredentialIrrecoverable()) {
+                clearCredentialQuietly()
+                AppError.Security(CREDENTIAL_INVALIDATED_MESSAGE).asFailure()
+            } else {
+                AppError.Security("当前没有可用的已保存凭据").asFailure()
+            }
+        }
     }
 
     override suspend fun unlock(cipher: Cipher): AppResult<AuthSnapshot> {
@@ -107,11 +122,16 @@ class KeystoreSecureCredentialStore @Inject constructor(
         if (account.isEmpty() || ciphertext.isBlank()) {
             return AppError.NotFound("未找到已保存的在线凭据").asFailure()
         }
-        return appResultOf(
-            errorMapper = { AppError.Security("读取已保存凭据失败") },
-        ) {
+        return try {
             val password = cipher.doFinal(Base64.getDecoder().decode(ciphertext)).toString(Charsets.UTF_8)
-            AuthSnapshot(account = account, password = password)
+            AuthSnapshot(account = account, password = password).asSuccess()
+        } catch (throwable: Throwable) {
+            if (throwable.isCredentialIrrecoverable()) {
+                clearCredentialQuietly()
+                AppError.Security(CREDENTIAL_INVALIDATED_MESSAGE).asFailure()
+            } else {
+                AppError.Security("读取已保存凭据失败").asFailure()
+            }
         }
     }
 
@@ -150,15 +170,65 @@ class KeystoreSecureCredentialStore @Inject constructor(
     private suspend fun dataStoreDataSnapshot() =
         dataStore.data.catch { emit(emptyPreferences()) }.first()
 
+    private suspend fun sanitizeCredentialIfInvalidAtStartup() {
+        val preferences = dataStoreDataSnapshot()
+        if (!hasCompleteCredential(preferences)) return
+        runCatching {
+            createUnlockCipher(preferences)
+        }.exceptionOrNull()
+            ?.takeIf { it.isCredentialIrrecoverable() }
+            ?.let { clearCredentialQuietly() }
+    }
+
+    private suspend fun createUnlockCipher(preferences: Preferences): Cipher {
+        val key = getExistingSecretKey() ?: throw KeyPermanentlyInvalidatedException()
+        val ivString = preferences[IV_KEY]
+            ?: throw IllegalStateException("未找到已保存的在线凭据")
+        val cipher = Cipher.getInstance(TRANSFORMATION)
+        cipher.init(
+            Cipher.DECRYPT_MODE,
+            key,
+            GCMParameterSpec(GCM_TAG_LENGTH_BITS, Base64.getDecoder().decode(ivString)),
+        )
+        return cipher
+    }
+
+    private fun getExistingSecretKey(): SecretKey? =
+        keyStore.getKey(KEY_ALIAS, null) as? SecretKey
+
+    private suspend fun clearCredentialQuietly() {
+        runCatching { clearCredential() }
+    }
+
+    private fun hasCompleteCredential(preferences: Preferences): Boolean {
+        val hasCiphertext = !preferences[CIPHERTEXT_KEY].isNullOrBlank()
+        val hasIv = !preferences[IV_KEY].isNullOrBlank()
+        return hasCiphertext && hasIv
+    }
+
+    private fun Throwable.isCredentialIrrecoverable(): Boolean = when (this) {
+        is KeyPermanentlyInvalidatedException,
+        is InvalidKeyException,
+        is AEADBadTagException,
+        is BadPaddingException,
+        is IllegalBlockSizeException,
+        is IllegalArgumentException,
+        -> true
+        is GeneralSecurityException -> true
+        else -> false
+    }
+
     private val keyStore: KeyStore by lazy {
         KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
     }
 
     private companion object {
+        const val CREDENTIAL_FILE_NAME = "online_credentials.preferences_pb"
         const val KEY_ALIAS = "chronos.online.credentials"
         const val ANDROID_KEYSTORE = "AndroidKeyStore"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         const val GCM_TAG_LENGTH_BITS = 128
+        const val CREDENTIAL_INVALIDATED_MESSAGE = "已保存凭据已失效，请重新录入账号和密码"
         const val ALLOWED_AUTHENTICATORS =
             BiometricManager.Authenticators.BIOMETRIC_STRONG or
                 BiometricManager.Authenticators.DEVICE_CREDENTIAL
