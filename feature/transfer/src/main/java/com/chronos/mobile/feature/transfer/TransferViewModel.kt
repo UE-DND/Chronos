@@ -1,6 +1,5 @@
 package com.chronos.mobile.feature.transfer
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.chronos.mobile.core.model.AppState
@@ -74,7 +73,14 @@ class TransferViewModel @Inject constructor(
     private val unlockOnlineCredentialUseCase: UnlockOnlineCredentialUseCase,
     private val clearOnlineCredentialUseCase: ClearOnlineCredentialUseCase,
 ) : ViewModel() {
-    private val uiState = MutableStateFlow(TransferUiState())
+    private val injectedAccount = debugBuildAccount()
+    private val injectedPassword = debugBuildPassword()
+    private val uiState = MutableStateFlow(
+        TransferUiState(
+            account = injectedAccount,
+            password = injectedPassword,
+        ),
+    )
 
     val appState: StateFlow<AppState> = observeAppState().stateIn(
         scope = viewModelScope,
@@ -88,9 +94,14 @@ class TransferViewModel @Inject constructor(
         viewModelScope.launch {
             observeSavedCredentialStateUseCase().collect { savedState ->
                 uiState.update { current ->
+                    val savedAccount = savedState.account.orEmpty()
                     current.copy(
                         savedCredentialState = savedState,
-                        account = current.account.ifBlank { savedState.account.orEmpty() },
+                        account = when {
+                            savedAccount.isBlank() -> current.account
+                            current.account.isBlank() || current.account == injectedAccount -> savedAccount
+                            else -> current.account
+                        },
                     )
                 }
             }
@@ -102,8 +113,10 @@ class TransferViewModel @Inject constructor(
             current.copy(
                 importMode = ImportMode.AS_NEW,
                 selectedSource = ImportSource.ONLINE,
-                account = current.savedCredentialState.account.orEmpty(),
-                password = "",
+                account = current.savedCredentialState.account
+                    ?.takeIf { it.isNotBlank() }
+                    ?: injectedAccount,
+                password = injectedPassword,
                 saveCredentials = false,
                 isPreviewingOnline = false,
                 preview = null,
@@ -202,17 +215,14 @@ class TransferViewModel @Inject constructor(
     }
 
     suspend fun previewOnline(authSnapshot: AuthSnapshot): AppResult<Timetable> {
-        Log.d("TransferImport", "viewModel.previewOnline start")
         uiState.update { it.copy(isPreviewingOnline = true) }
         return try {
             withContext(Dispatchers.IO) {
                 previewOnlineTimetableUseCase(authSnapshot).onSuccess { timetable ->
-                    Log.d("TransferImport", "viewModel.previewOnline success, preview=${timetable.name}, courses=${timetable.courses.size}")
                     uiState.update { it.copy(preview = timetable, previewSource = ImportSource.ONLINE) }
                 }
             }
         } finally {
-            Log.d("TransferImport", "viewModel.previewOnline finish")
             uiState.update { it.copy(isPreviewingOnline = false) }
         }
     }
@@ -235,5 +245,15 @@ class TransferViewModel @Inject constructor(
 
     suspend fun export(): AppResult<String?> = withContext(Dispatchers.IO) {
         exportCurrentTimetableUseCase()
+    }
+
+    private fun debugBuildAccount(): String {
+        if (!BuildConfig.DEBUG) return ""
+        return BuildConfig.ONLINE_ACCOUNT.trim()
+    }
+
+    private fun debugBuildPassword(): String {
+        if (!BuildConfig.DEBUG) return ""
+        return BuildConfig.ONLINE_PASSWORD
     }
 }

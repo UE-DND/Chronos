@@ -19,6 +19,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.JavaNetCookieJar
+import java.net.CookieManager
+import java.net.URI
 
 class RemoteOnlineScheduleRepository @Inject constructor(
     private val baseClient: OkHttpClient,
@@ -35,16 +37,13 @@ class RemoteOnlineScheduleRepository @Inject constructor(
         yearTerm: String?,
     ): AppResult<OnlineSchedulePayload> {
         return try {
-            Log.d("TransferImport", "fetchSchedule start, account=${authSnapshot.account}")
-            val client = buildClient()
-            val loginResult = login(client, authSnapshot)
+            val session = buildSession()
+            val loginResult = login(session, authSnapshot)
             if (loginResult is AppResult.Failure) {
-                Log.e("TransferImport", "fetchSchedule login failed: ${loginResult.error.message}")
                 loginResult
             } else {
-                Log.d("TransferImport", "fetchSchedule login success, fetching week events")
                 fetchWeekEvents(
-                    client = client,
+                    session = session,
                     authSnapshot = authSnapshot,
                     weekNum = weekNum,
                     yearTerm = yearTerm,
@@ -52,13 +51,13 @@ class RemoteOnlineScheduleRepository @Inject constructor(
                 )
             }
         } catch (throwable: Throwable) {
-            Log.e("TransferImport", "fetchSchedule crashed", throwable)
+            Log.e(TAG, "fetchSchedule crashed", throwable)
             throwable.toAppError().asFailure()
         }
     }
 
     private fun fetchWeekEvents(
-        client: OkHttpClient,
+        session: SessionContext,
         authSnapshot: AuthSnapshot,
         weekNum: String?,
         yearTerm: String?,
@@ -73,12 +72,10 @@ class RemoteOnlineScheduleRepository @Inject constructor(
             .url(WEEK_EVENTS_URL)
             .post(body.toRequestBody(JSON_MEDIA_TYPE))
             .build()
-        Log.d("TransferImport", "fetchWeekEvents request")
-        val payload = client.newCall(request).execute().use { response ->
+        val payload = session.client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 return AppError.Network("在线课表请求失败：HTTP ${response.code}").asFailure()
             }
-            Log.d("TransferImport", "fetchWeekEvents http=${response.code}")
             response.body.string()
         }
         val jsonObject = when (val parsed = parsePayloadObject(payload)) {
@@ -86,14 +83,13 @@ class RemoteOnlineScheduleRepository @Inject constructor(
             is AppResult.Failure -> return parsed
         }
         if (looksLikeAuthError(jsonObject)) {
-            Log.d("TransferImport", "fetchWeekEvents looks like auth error, retry=$allowReloginRetry")
             if (!allowReloginRetry) {
                 return AppError.Auth(authErrorMessage(jsonObject)).asFailure()
             }
-            val loginResult = login(client, authSnapshot)
+            val loginResult = login(session, authSnapshot)
             if (loginResult is AppResult.Failure) return loginResult
             return fetchWeekEvents(
-                client = client,
+                session = session,
                 authSnapshot = authSnapshot,
                 weekNum = weekNum,
                 yearTerm = yearTerm,
@@ -109,7 +105,7 @@ class RemoteOnlineScheduleRepository @Inject constructor(
     }
 
     private fun login(
-        client: OkHttpClient,
+        session: SessionContext,
         authSnapshot: AuthSnapshot,
     ): AppResult<Unit> {
         val loginPayload = buildJsonObject(
@@ -123,44 +119,53 @@ class RemoteOnlineScheduleRepository @Inject constructor(
             .url(CAS_LOGIN_URL)
             .post(loginPayload.toRequestBody(JSON_MEDIA_TYPE))
             .build()
-        Log.d("TransferImport", "login request")
-        val loginJson = client.newCall(loginRequest).execute().use { response ->
+        val loginJson = session.client.newCall(loginRequest).execute().use { response ->
             if (!response.isSuccessful) {
                 return AppError.Network("统一身份认证登录失败：HTTP ${response.code}").asFailure()
             }
-            Log.d("TransferImport", "login http=${response.code}")
             when (val parsed = parsePayloadObject(response.body.string())) {
                 is AppResult.Success -> parsed.value
                 is AppResult.Failure -> return parsed
             }
         }
         val code = loginJson["code"].stringValue()
-        val message = loginJson["msg"].stringValue().orEmpty()
-        Log.d("TransferImport", "login response code=$code, msg=$message")
-        if (code != "200" || message != "登录成功！") {
-            return AppError.Auth(message.ifBlank { "统一身份认证登录失败" }).asFailure()
+        val message = loginJson["msg"].stringValue()
+        if (code != "200") {
+            return AppError.Auth(message?.takeIf { it.isNotBlank() } ?: "统一身份认证登录失败").asFailure()
         }
 
         val ticketRequest = Request.Builder()
             .url(CAS_TICKET_URL)
             .get()
             .build()
-        client.newCall(ticketRequest).execute().use { response ->
+        session.client.newCall(ticketRequest).execute().use { response ->
             if (!response.isSuccessful) {
                 return AppError.Network("课表系统登录失败：HTTP ${response.code}").asFailure()
             }
-            Log.d("TransferImport", "ticket http=${response.code}")
+        }
+        if (!hasSessionCookies(session.cookieManager)) {
+            return AppError.Auth("登录失败，请重新输入账号或密码").asFailure()
         }
         return Unit.asSuccess()
     }
 
-    private fun buildClient(): OkHttpClient {
-        val cookieManager = java.net.CookieManager().apply {
+    private fun buildSession(): SessionContext {
+        val cookieManager = CookieManager().apply {
             setCookiePolicy(java.net.CookiePolicy.ACCEPT_ALL)
         }
-        return baseClient.newBuilder()
+        val client = baseClient.newBuilder()
             .cookieJar(JavaNetCookieJar(cookieManager))
             .build()
+        return SessionContext(client = client, cookieManager = cookieManager)
+    }
+
+    private fun hasSessionCookies(cookieManager: CookieManager): Boolean {
+        val cookieStore = cookieManager.cookieStore
+        return SESSION_COOKIE_HOSTS.any { host ->
+            (runCatching { cookieStore.get(URI("https://$host")) }
+                .getOrNull()
+                ?.isNotEmpty()) == true
+        }
     }
 
     private fun parsePayloadObject(raw: String): AppResult<JsonObject> = runCatching {
@@ -182,7 +187,7 @@ class RemoteOnlineScheduleRepository @Inject constructor(
     private fun authErrorMessage(jsonObject: JsonObject): String {
         return jsonObject["msg"].stringValue()
             ?.takeIf { it.isNotBlank() }
-            ?: "课表鉴权失败，请重新输入密码"
+            ?: "登录失败，请重新输入密码"
     }
 
     private fun buildJsonObject(vararg entries: Pair<String, JsonPrimitive?>): String {
@@ -201,11 +206,18 @@ class RemoteOnlineScheduleRepository @Inject constructor(
     private fun JsonElement?.stringValue(): String? = (this as? JsonPrimitive)?.content
 
     private companion object {
+        const val TAG = "TransferImport"
         const val CAS_LOGIN_URL = "https://uis.cqut.edu.cn/center-auth-server/sso/doLogin"
         const val CAS_TICKET_URL =
             "https://uis.cqut.edu.cn/center-auth-server/YF8A4013/cas/login?service=https://timetable-cfc.cqut.edu.cn/api/auth/casLogin"
         const val WEEK_EVENTS_URL = "https://timetable-cfc.cqut.edu.cn/api/courseSchedule/listWeekEvents"
+        val SESSION_COOKIE_HOSTS = listOf("uis.cqut.edu.cn", "timetable-cfc.cqut.edu.cn")
 
         val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
     }
+
+    private data class SessionContext(
+        val client: OkHttpClient,
+        val cookieManager: CookieManager,
+    )
 }

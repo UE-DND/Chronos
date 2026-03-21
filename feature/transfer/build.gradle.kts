@@ -1,4 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.io.File
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.library)
@@ -6,6 +8,26 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
 }
+
+val localProperties: Properties = Properties().apply {
+    val localPropertiesFile: File = rootProject.file("local.properties")
+    if (localPropertiesFile.isFile) {
+        localPropertiesFile.inputStream().use(::load)
+    }
+}
+
+fun resolveTransferCredential(name: String): String {
+    return providers.gradleProperty(name).orNull
+        ?.takeIf { it.isNotBlank() }
+        ?: localProperties.getProperty(name)
+            ?.takeIf { it.isNotBlank() }
+        ?: ""
+}
+
+fun String.toBuildConfigString(): String = "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
+
+val onlineAccount = resolveTransferCredential("ONLINE_ACCOUNT")
+val onlinePassword = resolveTransferCredential("ONLINE_PASSWORD")
 
 android {
     namespace = "com.chronos.mobile.feature.transfer"
@@ -15,8 +37,20 @@ android {
         minSdk = 26
     }
 
+    buildTypes {
+        debug {
+            buildConfigField("String", "ONLINE_ACCOUNT", onlineAccount.toBuildConfigString())
+            buildConfigField("String", "ONLINE_PASSWORD", onlinePassword.toBuildConfigString())
+        }
+        release {
+            buildConfigField("String", "ONLINE_ACCOUNT", "\"\"")
+            buildConfigField("String", "ONLINE_PASSWORD", "\"\"")
+        }
+    }
+
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {

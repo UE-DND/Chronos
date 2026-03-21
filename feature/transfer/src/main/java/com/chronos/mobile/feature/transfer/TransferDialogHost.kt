@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.WindowInsets
@@ -118,7 +117,6 @@ fun TransferRoute(
                         runCatching {
                             val account = state.account.trim()
                             val password = state.password
-                            Log.d("TransferImport", "online preview clicked, accountLength=${account.length}, passwordBlank=${password.isBlank()}")
                             if (account.isEmpty()) {
                                 onMessage("请输入账号")
                                 return@runCatching
@@ -129,7 +127,6 @@ fun TransferRoute(
                             }
                             viewModel.previewOnline(AuthSnapshot(account = account, password = password)).fold(
                                 onSuccess = {
-                                    Log.d("TransferImport", "online preview success, navigating to confirm")
                                     if (state.saveCredentials) {
                                         if (!state.savedCredentialState.protectionAvailable) {
                                             onMessage("当前设备不支持保存帐号密码")
@@ -147,12 +144,10 @@ fun TransferRoute(
                                     onNavigateToImportConfirm?.invoke()
                                 },
                                 onFailure = { error ->
-                                    Log.e("TransferImport", "online preview failed: ${error.message}")
                                     onMessage(error.message)
                                 },
                             )
                         }.onFailure { throwable ->
-                            Log.e("TransferImport", "online preview crashed", throwable)
                             onMessage(throwable.toAppError().message)
                         }
                     }
@@ -176,12 +171,10 @@ fun TransferRoute(
                                             onSuccess = { snapshot ->
                                                 viewModel.previewOnline(snapshot).fold(
                                                     onSuccess = {
-                                                        Log.d("TransferImport", "saved credential preview success, navigating to confirm")
                                                         onMessage("课表已准备好")
                                                         onNavigateToImportConfirm?.invoke()
                                                     },
                                                         onFailure = { error ->
-                                                            Log.e("TransferImport", "saved credential preview failed: ${error.message}")
                                                             onMessage(error.message)
                                                         },
                                                 )
@@ -195,7 +188,6 @@ fun TransferRoute(
                                 onFailure = { error -> onMessage(error.message) },
                             )
                         }.onFailure { throwable ->
-                            Log.e("TransferImport", "saved credential preview crashed", throwable)
                             onMessage(throwable.toAppError().message)
                         }
                     }
@@ -292,7 +284,6 @@ fun TransferImportConfirmRoute(
             .padding(horizontal = 20.dp, vertical = 16.dp)
         val preview = state.preview
         if (preview != null) {
-            Log.d("TransferImport", "confirm route composed with preview=${preview.name}")
             TransferImportConfirmScreen(
                 modifier = contentModifier,
                 preview = preview,
@@ -316,7 +307,6 @@ fun TransferImportConfirmRoute(
                 },
             )
         } else {
-            Log.d("TransferImport", "confirm route waiting for preview, isLoading=${state.isPreviewingOnline}")
             PreviewPendingScreen(
                 isLoading = state.isPreviewingOnline,
                 modifier = contentModifier,
