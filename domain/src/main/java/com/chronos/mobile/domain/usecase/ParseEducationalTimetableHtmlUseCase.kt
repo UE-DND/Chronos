@@ -9,10 +9,12 @@ import com.chronos.mobile.domain.result.AppError
 import com.chronos.mobile.domain.result.AppResult
 import com.chronos.mobile.domain.result.asFailure
 import com.chronos.mobile.domain.result.asSuccess
+import java.io.ByteArrayInputStream
 import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
 class ParseEducationalTimetableHtmlUseCase @Inject constructor(
@@ -22,6 +24,17 @@ class ParseEducationalTimetableHtmlUseCase @Inject constructor(
 
     operator fun invoke(content: String): AppResult<Timetable?> {
         val document = Jsoup.parse(content)
+        return parseDocument(document)
+    }
+
+    operator fun invoke(contentBytes: ByteArray): AppResult<Timetable?> {
+        val document = ByteArrayInputStream(contentBytes).use { inputStream ->
+            Jsoup.parse(inputStream, null, "")
+        }
+        return parseDocument(document)
+    }
+
+    private fun parseDocument(document: Document): AppResult<Timetable?> {
         val table = document.selectFirst("#kbgrid_table_0") ?: return null.asSuccess()
         val titleContainer = table.selectFirst(".timetable_title")
         val term = titleContainer

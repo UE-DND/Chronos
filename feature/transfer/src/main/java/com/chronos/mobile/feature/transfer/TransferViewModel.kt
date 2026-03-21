@@ -214,6 +214,18 @@ class TransferViewModel @Inject constructor(
         }
     }
 
+    suspend fun previewImportedHtml(contentBytes: ByteArray): AppResult<Timetable> = withContext(Dispatchers.IO) {
+        previewImportedTimetableUseCase.previewHtml(contentBytes).onSuccess { timetable ->
+            uiState.update {
+                it.copy(
+                    preview = timetable,
+                    previewSource = ImportSource.HTML,
+                    htmlImportTermStartDate = null,
+                )
+            }
+        }
+    }
+
     suspend fun previewOnline(authSnapshot: AuthSnapshot): AppResult<Timetable> {
         uiState.update { it.copy(isPreviewingOnline = true) }
         return try {

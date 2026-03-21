@@ -68,16 +68,19 @@ fun TransferRoute(
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
-            val content = context.contentResolver.openInputStream(uri)
-                ?.bufferedReader()
-                ?.use { it.readText() }
-            previewContent(
-                source = ImportSource.HTML,
-                content = content,
-                viewModel = viewModel,
-                onMessage = onMessage,
-                onSuccess = { onNavigateToImportConfirm?.invoke() },
-                emptyMessage = "导入失败，HTML 文件内容为空",
+            val contentBytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            if (contentBytes == null || contentBytes.isEmpty()) {
+                onMessage("导入失败，HTML 文件内容为空")
+                return@launch
+            }
+            viewModel.previewImportedHtml(contentBytes).fold(
+                onSuccess = {
+                    onMessage("课表已准备好")
+                    onNavigateToImportConfirm?.invoke()
+                },
+                onFailure = { error ->
+                    onMessage(error.message)
+                },
             )
         }
     }
@@ -211,7 +214,14 @@ fun TransferRoute(
                     }
                 },
                 onPreviewFromHtmlFileClick = {
-                    importFromFileLauncher.launch(arrayOf("text/html"))
+                    importFromFileLauncher.launch(
+                        arrayOf(
+                            "text/html",
+                            "application/xhtml+xml",
+                            "text/plain",
+                            "application/octet-stream",
+                        ),
+                    )
                 },
                 onClearPreviewClick = viewModel::clearPreview,
             )

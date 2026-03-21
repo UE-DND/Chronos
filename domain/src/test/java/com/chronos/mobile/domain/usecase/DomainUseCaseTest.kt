@@ -31,6 +31,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import java.nio.charset.Charset
 import java.time.LocalDate
 
 class DomainUseCaseTest {
@@ -431,6 +432,65 @@ class DomainUseCaseTest {
     }
 
     @Test
+    fun `parseEducationalTimetableHtml decodes gbk html via meta charset`() {
+        val parser = ParseEducationalTimetableHtmlUseCase()
+        val html = educationalHtmlSample(
+            studentName = "张三",
+            courseName = "高等数学",
+            teacher = "王老师",
+            location = "教学楼101",
+            withMetaCharset = "gbk",
+        )
+        val bytes = html.toByteArray(Charset.forName("GBK"))
+
+        val result = parser(bytes)
+
+        assertTrue(result is AppResult.Success)
+        val timetable = (result as AppResult.Success).value
+        assertNotNull(timetable)
+        assertEquals("张三的课表", timetable?.name)
+        assertEquals("高等数学", timetable?.courses?.firstOrNull()?.name)
+        assertEquals("王老师", timetable?.courses?.firstOrNull()?.teacher)
+        assertEquals("教学楼101", timetable?.courses?.firstOrNull()?.location)
+    }
+
+    @Test
+    fun `parseEducationalTimetableHtml decodes utf8 bom html`() {
+        val parser = ParseEducationalTimetableHtmlUseCase()
+        val html = educationalHtmlSample(
+            studentName = "李四",
+            courseName = "大学英语",
+            teacher = "陈老师",
+            location = "外语楼202",
+        )
+        val bytes = UTF8_BOM + html.toByteArray(Charsets.UTF_8)
+
+        val result = parser(bytes)
+
+        assertTrue(result is AppResult.Success)
+        val timetable = (result as AppResult.Success).value
+        assertNotNull(timetable)
+        assertEquals("李四的课表", timetable?.name)
+        assertEquals("大学英语", timetable?.courses?.firstOrNull()?.name)
+        assertEquals("陈老师", timetable?.courses?.firstOrNull()?.teacher)
+        assertEquals("外语楼202", timetable?.courses?.firstOrNull()?.location)
+    }
+
+    @Test
+    fun `previewImportedTimetable previewHtml fails when html is not educational timetable`() {
+        val useCase = PreviewImportedTimetableUseCase(
+            parseEducationalTimetableHtml = ParseEducationalTimetableHtmlUseCase(),
+            onlineScheduleJsonCodec = codec,
+        )
+
+        val result = useCase.previewHtml("<html><body><p>hello</p></body></html>".toByteArray())
+
+        assertTrue(result is AppResult.Failure)
+        val errorMessage = (result as AppResult.Failure).error.message
+        assertEquals("导入失败，未识别到可用的教务课表 HTML 内容", errorMessage)
+    }
+
+    @Test
     fun `parse external educational html sample when path provided`() {
         val samplePath = System.getProperty("chronos.sampleHtmlPath")
             ?.takeIf { it.isNotBlank() }
@@ -458,6 +518,50 @@ class DomainUseCaseTest {
                     ).joinToString(" | "),
                 )
             }
+    }
+
+    private fun educationalHtmlSample(
+        studentName: String,
+        courseName: String,
+        teacher: String,
+        location: String,
+        withMetaCharset: String? = null,
+    ): String = """
+        <html>
+          <head>
+            ${withMetaCharset?.let { """<meta charset="$it">""" } ?: ""}
+          </head>
+          <body>
+            <table id="kbgrid_table_0">
+              <tbody>
+                <tr>
+                  <td colspan="9">
+                    <div class="timetable_title">
+                      <h6 class="pull-left">2025-2026学年第2学期</h6>
+                      ${studentName}的课表
+                      <h6 class="pull-right">学号：123456</h6>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td rowspan="2" id="1-1" class="td_wrap">
+                    <div class="timetable_con text-left">
+                      <span class="title"><font color="blue">${courseName}</font></span>
+                      <p><span title="节/周"></span><font color="blue">(1-2节)2-10周</font></p>
+                      <p><span title="上课地点"></span><font color="blue">${location}</font></p>
+                      <p><span title="教师"></span><font color="blue">${teacher}</font></p>
+                    </div>
+                  </td>
+                </tr>
+                <tr></tr>
+              </tbody>
+            </table>
+          </body>
+        </html>
+    """.trimIndent()
+
+    private companion object {
+        val UTF8_BOM = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())
     }
 }
 
