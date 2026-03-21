@@ -38,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -51,6 +52,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -69,6 +71,9 @@ import java.util.Locale
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.roundToInt
 
+internal const val TIMETABLE_PAGER_TAG = "timetable_pager"
+internal const val TIMETABLE_DISPLAYED_WEEK_LABEL_TAG = "timetable_displayed_week_label"
+
 @Composable
 internal fun TimetableScreen(
     state: TimetableUiState,
@@ -86,6 +91,8 @@ internal fun TimetableScreen(
         initialPage = (state.displayedWeek - startWeek).coerceIn(0, weekCount - 1),
         pageCount = { weekCount },
     )
+    val latestDisplayedWeek by rememberUpdatedState(state.displayedWeek)
+    val latestOnDisplayedWeekChange by rememberUpdatedState(onDisplayedWeekChange)
 
     LaunchedEffect(pagerState, startWeek) {
         snapshotFlow { pagerState.settledPage }
@@ -95,8 +102,8 @@ internal fun TimetableScreen(
                     return@collect
                 }
                 val settledWeek = startWeek + page
-                if (settledWeek != state.displayedWeek) {
-                    onDisplayedWeekChange(settledWeek)
+                if (settledWeek != latestDisplayedWeek) {
+                    latestOnDisplayedWeekChange(settledWeek)
                 }
             }
     }
@@ -144,7 +151,9 @@ internal fun TimetableScreen(
 
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .testTag(TIMETABLE_PAGER_TAG),
                 userScrollEnabled = weekCount > 1,
                 beyondViewportPageCount = 1,
             ) { page ->
@@ -294,6 +303,7 @@ private fun ChronosTopBar(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = stringResource(R.string.timetable_header_displayed_week, state.displayedWeek),
+                                modifier = Modifier.testTag(TIMETABLE_DISPLAYED_WEEK_LABEL_TAG),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
