@@ -33,4 +33,6 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.kotlinx.serialization.json)
     ksp(libs.androidx.room.compiler)
+    testImplementation(libs.junit4)
+    testImplementation(libs.kotlinx.serialization.json)
 }

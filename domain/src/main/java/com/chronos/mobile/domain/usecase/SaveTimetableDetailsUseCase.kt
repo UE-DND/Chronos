@@ -2,12 +2,10 @@ package com.chronos.mobile.domain.usecase
 
 import com.chronos.mobile.core.model.PeriodTime
 import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.core.model.currentWeekMonday
 import com.chronos.mobile.core.model.defaultPeriodTimes
 import com.chronos.mobile.domain.TimetableRepository
 import com.chronos.mobile.domain.model.TimetableDetailsDraft
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 
 class SaveTimetableDetailsUseCase @Inject constructor(
@@ -50,6 +48,6 @@ class SaveTimetableDetailsUseCase @Inject constructor(
     }
 
     private fun parseTermStartDate(raw: String): String = raw.trim().ifBlank {
-        LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()
+        currentWeekMonday().toString()
     }
 }

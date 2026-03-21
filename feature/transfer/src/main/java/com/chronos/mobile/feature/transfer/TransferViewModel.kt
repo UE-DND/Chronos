@@ -57,6 +57,7 @@ data class TransferUiState(
     val isPreviewingOnline: Boolean = false,
     val preview: Timetable? = null,
     val previewSource: ImportSource? = null,
+    val htmlImportTermStartDate: String? = null,
 )
 
 @HiltViewModel
@@ -107,6 +108,7 @@ class TransferViewModel @Inject constructor(
                 isPreviewingOnline = false,
                 preview = null,
                 previewSource = null,
+                htmlImportTermStartDate = null,
             )
         }
     }
@@ -121,8 +123,13 @@ class TransferViewModel @Inject constructor(
                 selectedSource = source,
                 preview = null,
                 previewSource = null,
+                htmlImportTermStartDate = null,
             )
         }
+    }
+
+    fun setHtmlImportTermStartDate(date: String) {
+        uiState.update { it.copy(htmlImportTermStartDate = date) }
     }
 
     fun setAccount(account: String) {
@@ -150,7 +157,7 @@ class TransferViewModel @Inject constructor(
     }
 
     fun clearPreview() {
-        uiState.update { it.copy(preview = null, previewSource = null) }
+        uiState.update { it.copy(preview = null, previewSource = null, htmlImportTermStartDate = null) }
     }
 
     suspend fun prepareSaveCipher(): AppResult<Cipher> = withContext(Dispatchers.IO) {
@@ -184,7 +191,13 @@ class TransferViewModel @Inject constructor(
 
     suspend fun previewImported(content: String, source: ImportSource): AppResult<Timetable> = withContext(Dispatchers.IO) {
         previewImportedTimetableUseCase(content).onSuccess { timetable ->
-            uiState.update { it.copy(preview = timetable, previewSource = source) }
+            uiState.update {
+                it.copy(
+                    preview = timetable,
+                    previewSource = source,
+                    htmlImportTermStartDate = if (source == ImportSource.HTML) null else it.htmlImportTermStartDate,
+                )
+            }
         }
     }
 
@@ -208,7 +221,16 @@ class TransferViewModel @Inject constructor(
         val currentState = state.value
         val preview = currentState.preview
             ?: return@withContext AppError.NotFound("请先获取课表").asFailure()
-        importTimetableUseCase.import(preview, currentState.importMode)
+        val finalPreview = if (currentState.previewSource == ImportSource.HTML) {
+            val termStartDate = currentState.htmlImportTermStartDate
+                ?: return@withContext AppError.Validation("请选择学期起始日期").asFailure()
+            preview.copy(
+                details = preview.details.copy(termStartDate = termStartDate),
+            )
+        } else {
+            preview
+        }
+        importTimetableUseCase.import(finalPreview, currentState.importMode)
     }
 
     suspend fun export(): AppResult<String?> = withContext(Dispatchers.IO) {

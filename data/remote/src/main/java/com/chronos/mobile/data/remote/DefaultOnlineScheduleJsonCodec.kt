@@ -7,6 +7,8 @@ import com.chronos.mobile.core.model.OnlineScheduleWeekDay
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.core.model.TimetableImportSource
+import com.chronos.mobile.core.model.currentWeekMonday
+import com.chronos.mobile.core.model.parseTermStartDateOrCurrentWeekMonday
 import com.chronos.mobile.domain.OnlineScheduleJsonCodec
 import com.chronos.mobile.domain.result.AppError
 import com.chronos.mobile.domain.result.AppResult
@@ -17,15 +19,18 @@ import com.chronos.mobile.domain.usecase.CalculateAcademicWeekUseCase
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 import kotlinx.serialization.json.Json
+import kotlin.math.abs
 
 class DefaultOnlineScheduleJsonCodec @Inject constructor(
     private val calculateAcademicWeekUseCase: CalculateAcademicWeekUseCase,
 ) : OnlineScheduleJsonCodec {
     private val json = Json {
         encodeDefaults = true
+        explicitNulls = false
         ignoreUnknownKeys = true
         prettyPrint = false
     }
@@ -50,6 +55,7 @@ class DefaultOnlineScheduleJsonCodec @Inject constructor(
             return AppError.Validation("JSON 中未找到可导入的课程数据").asFailure()
         }
         val now = System.currentTimeMillis()
+        val today = LocalDate.now()
         val maxWeek = (payload.weekList.mapNotNull(String::toIntOrNull).maxOrNull()
             ?: courses.flatMap { it.weeks }.maxOrNull()
             ?: 20).coerceAtLeast(20)
@@ -60,6 +66,7 @@ class DefaultOnlineScheduleJsonCodec @Inject constructor(
             createdAt = now,
             updatedAt = now,
             details = TimetableDetails(
+                termStartDate = resolveImportedTermStartDate(payload, today),
                 endWeek = maxWeek,
                 showSaturday = courses.any { it.dayOfWeek == 6 },
                 showSunday = courses.any { it.dayOfWeek == 7 },
@@ -75,16 +82,29 @@ class DefaultOnlineScheduleJsonCodec @Inject constructor(
         val today = LocalDate.now()
         val weekNum = calculateAcademicWeekUseCase(today, details).toString()
         val weekList = (details.startWeek..details.endWeek).map(Int::toString)
+        val importSource = details.importSource
         return OnlineSchedulePayload(
             yearTerm = name,
             weekNum = weekNum,
             nowMonth = resolveWeekStart(today, details).monthValue.toString(),
-            importSource = TimetableImportSource.SHARED_JSON.name,
+            importSource = importSource.name,
+            termStartDate = exportTermStartDate(importSource, details),
             yearTermList = listOf(name),
             weekList = weekList,
             weekDayList = buildWeekDayList(today, details),
             eventList = courses.map { it.toOnlineEvent(weekNum) },
         )
+    }
+
+    private fun exportTermStartDate(
+        importSource: TimetableImportSource,
+        details: TimetableDetails,
+    ): String? = when (importSource) {
+        TimetableImportSource.ONLINE_EDU -> null
+        TimetableImportSource.FILE_HTML,
+        TimetableImportSource.SHARED_JSON,
+        TimetableImportSource.UNKNOWN
+        -> details.termStartDate.trim().ifBlank { null }
     }
 
     private fun buildWeekDayList(
@@ -115,11 +135,109 @@ class DefaultOnlineScheduleJsonCodec @Inject constructor(
         referenceDate: LocalDate,
         details: TimetableDetails,
     ): LocalDate {
-        val termStart = runCatching { LocalDate.parse(details.termStartDate) }.getOrElse {
-            referenceDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-        }
+        val termStart = parseTermStartDateOrCurrentWeekMonday(details.termStartDate, referenceDate)
         val weekNum = calculateAcademicWeekUseCase(referenceDate, details)
         return termStart.plusWeeks((weekNum - details.startWeek).toLong())
+    }
+
+    private fun resolveImportedTermStartDate(
+        payload: OnlineSchedulePayload,
+        referenceDate: LocalDate,
+    ): String {
+        val inferred = when (payload.importSource.toTimetableImportSourceOrNull()) {
+            TimetableImportSource.ONLINE_EDU -> inferImportedTermStartDate(payload, referenceDate)
+            else -> payload.termStartDate
+                ?.trim()
+                ?.takeIf(String::isNotBlank)
+                ?.let(::parseImportedTermStartDate)
+                ?: inferImportedTermStartDate(payload, referenceDate)
+        }
+        return (inferred ?: currentWeekMonday(referenceDate)).toString()
+    }
+
+    private fun parseImportedTermStartDate(value: String): LocalDate? =
+        runCatching { LocalDate.parse(value) }.getOrNull()
+
+    private fun inferImportedTermStartDate(
+        payload: OnlineSchedulePayload,
+        referenceDate: LocalDate,
+    ): LocalDate? {
+        val currentWeek = payload.weekNum.trim().toIntOrNull()?.takeIf { it > 0 } ?: return null
+        val weekDays = payload.weekDayList.mapNotNull { it.toImportWeekDayInfo() }
+        val anchor = weekDays.firstOrNull { it.dayOfWeek == 1 } ?: weekDays.firstOrNull() ?: return null
+        val anchorYear = inferImportWeekDateYear(
+            month = anchor.month,
+            day = anchor.day,
+            yearTerm = payload.yearTerm,
+            referenceDate = referenceDate,
+        ) ?: return null
+        val anchorDate = runCatching { LocalDate.of(anchorYear, anchor.month, anchor.day) }.getOrNull() ?: return null
+        val weekStart = anchorDate.minusDays((anchor.dayOfWeek - 1).toLong())
+        return weekStart
+            .minusWeeks((currentWeek - 1).toLong())
+            .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    }
+
+    private fun OnlineScheduleWeekDay.toImportWeekDayInfo(): ImportWeekDayInfo? {
+        val dayOfWeek = weekDay.toImportDayOfWeekOrNull() ?: return null
+        val (month, day) = weekDate.toImportMonthDayOrNull() ?: return null
+        return ImportWeekDayInfo(dayOfWeek = dayOfWeek, month = month, day = day)
+    }
+
+    private fun inferImportWeekDateYear(
+        month: Int,
+        day: Int,
+        yearTerm: String,
+        referenceDate: LocalDate,
+    ): Int? {
+        parseAcademicYears(yearTerm)?.let { (firstYear, secondYear) ->
+            val primaryYear = if (month in 8..12) firstYear else secondYear
+            if (isValidDate(primaryYear, month, day)) return primaryYear
+
+            val secondaryYear = if (primaryYear == firstYear) secondYear else firstYear
+            if (isValidDate(secondaryYear, month, day)) return secondaryYear
+        }
+
+        return listOf(
+            referenceDate.year - 1,
+            referenceDate.year,
+            referenceDate.year + 1,
+        ).mapNotNull { year ->
+            runCatching { LocalDate.of(year, month, day) }.getOrNull()
+        }.minByOrNull { candidate ->
+            abs(ChronoUnit.DAYS.between(referenceDate, candidate))
+        }?.year
+    }
+
+    private fun parseAcademicYears(yearTerm: String): Pair<Int, Int>? {
+        val match = ACADEMIC_YEAR_PATTERN.find(yearTerm) ?: return null
+        val firstYear = match.groupValues.getOrNull(1)?.toIntOrNull() ?: return null
+        val secondYear = match.groupValues.getOrNull(2)?.toIntOrNull() ?: return null
+        return firstYear to secondYear
+    }
+
+    private fun isValidDate(year: Int, month: Int, day: Int): Boolean = runCatching {
+        LocalDate.of(year, month, day)
+    }.isSuccess
+
+    private fun String.toImportDayOfWeekOrNull(): Int? = when (trim().lowercase()) {
+        "1", "一", "周一", "星期一", "mon", "monday" -> 1
+        "2", "二", "周二", "星期二", "tue", "tuesday" -> 2
+        "3", "三", "周三", "星期三", "wed", "wednesday" -> 3
+        "4", "四", "周四", "星期四", "thu", "thursday" -> 4
+        "5", "五", "周五", "星期五", "fri", "friday" -> 5
+        "6", "六", "周六", "星期六", "sat", "saturday" -> 6
+        "7", "日", "天", "周日", "星期日", "sun", "sunday" -> 7
+        else -> null
+    }
+
+    private fun String.toImportMonthDayOrNull(): Pair<Int, Int>? {
+        val parts = trim().split("/")
+        if (parts.size != 2) return null
+        val month = parts[0].toIntOrNull() ?: return null
+        val day = parts[1].toIntOrNull() ?: return null
+        if (month !in 1..12 || day !in 1..31) return null
+        return month to day
     }
 
     private fun OnlineScheduleEvent.toCourseOrNull(index: Int): Course? {
@@ -206,7 +324,14 @@ class DefaultOnlineScheduleJsonCodec @Inject constructor(
     private fun String.toTimetableImportSourceOrNull(): TimetableImportSource? =
         runCatching { TimetableImportSource.valueOf(trim()) }.getOrNull()
 
+    private data class ImportWeekDayInfo(
+        val dayOfWeek: Int,
+        val month: Int,
+        val day: Int,
+    )
+
     private companion object {
+        val ACADEMIC_YEAR_PATTERN = Regex("""(20\d{2})\D+(20\d{2})""")
         val COURSE_PALETTE = listOf(
             "#EADDFF" to "#21005D",
             "#FFDBC9" to "#311100",

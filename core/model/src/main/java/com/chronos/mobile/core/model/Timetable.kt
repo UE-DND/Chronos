@@ -2,6 +2,9 @@
 
 package com.chronos.mobile.core.model
 
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.temporal.TemporalAdjusters
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -21,7 +24,7 @@ data class PeriodTime(
 
 @Serializable
 data class TimetableDetails(
-    val termStartDate: String = DEFAULT_TERM_START_DATE,
+    val termStartDate: String = "",
     val startWeek: Int = 1,
     val endWeek: Int = 20,
     val showSaturday: Boolean = true,
@@ -41,7 +44,17 @@ data class Timetable(
     val details: TimetableDetails = TimetableDetails(),
 )
 
-const val DEFAULT_TERM_START_DATE: String = "2026-03-02"
+fun currentWeekMonday(referenceDate: LocalDate = LocalDate.now()): LocalDate =
+    referenceDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+
+fun parseTermStartDateOrCurrentWeekMonday(
+    termStartDate: String,
+    referenceDate: LocalDate,
+): LocalDate = runCatching {
+    LocalDate.parse(termStartDate)
+}.getOrElse {
+    currentWeekMonday(referenceDate)
+}
 
 fun defaultPeriodTimes(): List<PeriodTime> = listOf(
     PeriodTime(index = 1, startTime = "08:30", endTime = "09:15"),

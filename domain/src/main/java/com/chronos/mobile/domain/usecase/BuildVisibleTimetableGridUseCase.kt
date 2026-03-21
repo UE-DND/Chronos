@@ -4,6 +4,7 @@ import com.chronos.mobile.core.model.PeriodTime
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.core.model.defaultPeriodTimes
+import com.chronos.mobile.core.model.parseTermStartDateOrCurrentWeekMonday
 import com.chronos.mobile.domain.model.TimetableDayModel
 import com.chronos.mobile.domain.model.TimetableGridModel
 import java.time.DayOfWeek
@@ -37,9 +38,7 @@ class BuildVisibleTimetableGridUseCase @Inject constructor() {
     }
 
     private fun resolveWeekStart(details: TimetableDetails, displayedWeek: Int, today: LocalDate): LocalDate {
-        val termStart = runCatching { LocalDate.parse(details.termStartDate) }.getOrElse {
-            today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-        }
+        val termStart = parseTermStartDateOrCurrentWeekMonday(details.termStartDate, today)
         return termStart
             .plusWeeks((displayedWeek - details.startWeek).toLong())
             .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))

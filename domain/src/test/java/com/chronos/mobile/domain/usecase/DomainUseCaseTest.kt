@@ -10,6 +10,7 @@ import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.core.model.TimetableImportSource
 import com.chronos.mobile.core.model.TimetableSummary
 import com.chronos.mobile.core.model.ThemeMode
+import com.chronos.mobile.core.model.currentWeekMonday
 import com.chronos.mobile.domain.ImportMode
 import com.chronos.mobile.domain.OnlineScheduleJsonCodec
 import com.chronos.mobile.domain.TimetableRepository
@@ -89,6 +90,20 @@ class DomainUseCaseTest {
         assertEquals(2, saved?.details?.periodTimes?.size)
         assertEquals(1, saved?.details?.periodTimes?.first()?.index)
         assertEquals("08:00", saved?.details?.periodTimes?.first()?.startTime)
+        assertEquals(currentWeekMonday().toString(), saved?.details?.termStartDate)
+    }
+
+    @Test
+    fun `createTimetable writes current week monday as default term start date`() = runBlocking {
+        val repo = FakeTimetableRepository()
+        val useCase = CreateTimetableUseCase(repo)
+
+        useCase(" ")
+
+        val current = repo.getAppStateSnapshot().currentTimetable
+        assertNotNull(current)
+        assertEquals("未命名课表", current?.name)
+        assertEquals(currentWeekMonday().toString(), current?.details?.termStartDate)
     }
 
     @Test
@@ -196,6 +211,11 @@ class DomainUseCaseTest {
     @Test
     fun `timetable details defaults source to unknown`() {
         assertEquals(TimetableImportSource.UNKNOWN, TimetableDetails().importSource)
+    }
+
+    @Test
+    fun `timetable details defaults term start date to empty`() {
+        assertEquals("", TimetableDetails().termStartDate)
     }
 
     @Test
@@ -326,6 +346,7 @@ class DomainUseCaseTest {
             current?.courses?.first()?.weeks,
         )
         assertEquals(TimetableImportSource.FILE_HTML, current?.details?.importSource)
+        assertEquals(currentWeekMonday().toString(), current?.details?.termStartDate)
     }
 
     @Test

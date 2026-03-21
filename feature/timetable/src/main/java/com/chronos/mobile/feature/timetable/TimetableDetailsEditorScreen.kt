@@ -1,6 +1,5 @@
 package com.chronos.mobile.feature.timetable
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -16,7 +15,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -37,10 +38,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.chronos.mobile.core.model.TimetableImportSource
 import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.core.model.currentWeekMonday
 import com.chronos.mobile.core.model.defaultPeriodTimes
 import com.chronos.mobile.domain.model.PeriodTimeDraft
 import com.chronos.mobile.domain.model.TimetableDetailsDraft
@@ -57,8 +61,11 @@ internal fun TimetableDetailsEditorScreen(
     onSave: (TimetableDetailsDraft) -> Unit,
 ) {
     var editor by remember(initialState) { mutableStateOf(initialState) }
-    var datePickerExpanded by remember { mutableStateOf(false) }
+    var showDatePickerDialog by remember { mutableStateOf(false) }
     val datePickerState = rememberTermStartDatePickerState(editor.termStartDate)
+    val focusManager = LocalFocusManager.current
+    val showTermStartDateSetting = shouldShowTermStartDateSetting(editor.importSource)
+    val showAcademicWeekRangeSettings = shouldShowAcademicWeekRangeSettings(editor.importSource)
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -104,89 +111,54 @@ internal fun TimetableDetailsEditorScreen(
                         singleLine = true,
                     )
                 }
-                item {
-                    OutlinedTextField(
-                        value = editor.termStartDate,
-                        onValueChange = {},
-                        label = { Text(stringResource(R.string.timetable_term_start_date_label)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        readOnly = true,
-                        placeholder = { Text(stringResource(R.string.timetable_term_start_date_placeholder)) },
-                    )
-                }
-                item {
-                    OutlinedButton(
-                        onClick = { datePickerExpanded = !datePickerExpanded },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            if (datePickerExpanded) {
-                                stringResource(R.string.timetable_cancel)
-                            } else {
-                                stringResource(R.string.timetable_term_start_date_pick)
+                if (showTermStartDateSetting) {
+                    item {
+                        OutlinedTextField(
+                            value = editor.termStartDate,
+                            onValueChange = {},
+                            label = { Text(stringResource(R.string.timetable_term_start_date_label)) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onFocusChanged { focusState ->
+                                    if (focusState.isFocused) {
+                                        showDatePickerDialog = true
+                                        focusManager.clearFocus(force = true)
+                                    }
+                                },
+                            singleLine = true,
+                            readOnly = true,
+                            placeholder = { Text(stringResource(R.string.timetable_term_start_date_placeholder)) },
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = null,
+                                )
                             },
                         )
                     }
                 }
-                if (datePickerExpanded) {
+                if (showAcademicWeekRangeSettings) {
                     item {
-                        Surface(
-                            shape = MaterialTheme.shapes.extraLarge,
-                            color = MaterialTheme.colorScheme.surfaceContainerLowest,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        ) {
-                            androidx.compose.foundation.layout.Column(
-                                modifier = Modifier.padding(vertical = 8.dp),
-                            ) {
-                                DatePicker(state = datePickerState)
-                                androidx.compose.foundation.layout.Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp),
-                                    horizontalArrangement = Arrangement.End,
-                                ) {
-                                    TextButton(onClick = { datePickerExpanded = false }) {
-                                        Text(stringResource(R.string.timetable_cancel))
-                                    }
-                                    TextButton(
-                                        onClick = {
-                                            datePickerState.selectedDateMillis
-                                                ?.let(::millisToLocalDate)
-                                                ?.let { selectedDate ->
-                                                    editor = editor.copy(termStartDate = selectedDate.toString())
-                                                }
-                                            datePickerExpanded = false
-                                        },
-                                        enabled = datePickerState.selectedDateMillis != null,
-                                    ) {
-                                        Text(stringResource(R.string.timetable_confirm))
-                                    }
-                                }
-                            }
-                        }
+                        PeriodStepperRow(
+                            title = stringResource(R.string.timetable_start_week_label),
+                            value = editor.startWeek,
+                            range = 1..30,
+                            onValueChange = {
+                                editor = editor.copy(
+                                    startWeek = it,
+                                    endWeek = maxOf(editor.endWeek, it),
+                                )
+                            },
+                        )
                     }
-                }
-                item {
-                    PeriodStepperRow(
-                        title = stringResource(R.string.timetable_start_week_label),
-                        value = editor.startWeek,
-                        range = 1..30,
-                        onValueChange = {
-                            editor = editor.copy(
-                                startWeek = it,
-                                endWeek = maxOf(editor.endWeek, it),
-                            )
-                        },
-                    )
-                }
-                item {
-                    PeriodStepperRow(
-                        title = stringResource(R.string.timetable_end_week_label),
-                        value = editor.endWeek,
-                        range = editor.startWeek..30,
-                        onValueChange = { editor = editor.copy(endWeek = it) },
-                    )
+                    item {
+                        PeriodStepperRow(
+                            title = stringResource(R.string.timetable_end_week_label),
+                            value = editor.endWeek,
+                            range = editor.startWeek..30,
+                            onValueChange = { editor = editor.copy(endWeek = it) },
+                        )
+                    }
                 }
                 item {
                     SwitchRow(
@@ -294,6 +266,34 @@ internal fun TimetableDetailsEditorScreen(
             }
         }
     }
+
+    if (showTermStartDateSetting && showDatePickerDialog) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis
+                            ?.let(::millisToLocalDate)
+                            ?.let { selectedDate ->
+                                editor = editor.copy(termStartDate = selectedDate.toString())
+                            }
+                        showDatePickerDialog = false
+                    },
+                    enabled = datePickerState.selectedDateMillis != null,
+                ) {
+                    Text(stringResource(R.string.timetable_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerDialog = false }) {
+                    Text(stringResource(R.string.timetable_cancel))
+                }
+            },
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -326,10 +326,16 @@ private fun millisToLocalDate(millis: Long): LocalDate =
 internal fun shouldShowNonCurrentWeekCourseSetting(importSource: TimetableImportSource): Boolean =
     importSource != TimetableImportSource.ONLINE_EDU
 
+internal fun shouldShowTermStartDateSetting(importSource: TimetableImportSource): Boolean =
+    importSource != TimetableImportSource.ONLINE_EDU
+
+internal fun shouldShowAcademicWeekRangeSettings(importSource: TimetableImportSource): Boolean =
+    importSource != TimetableImportSource.ONLINE_EDU
+
 private fun TimetableDetailsDraft.resetToDefaultSettings(): TimetableDetailsDraft {
     val defaults = TimetableDetails()
     return copy(
-        termStartDate = defaults.termStartDate,
+        termStartDate = currentWeekMonday().toString(),
         startWeek = defaults.startWeek,
         endWeek = defaults.endWeek,
         showSaturday = defaults.showSaturday,

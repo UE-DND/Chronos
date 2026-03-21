@@ -1,18 +1,15 @@
 package com.chronos.mobile.domain.usecase
 
 import com.chronos.mobile.core.model.TimetableDetails
-import java.time.DayOfWeek
+import com.chronos.mobile.core.model.parseTermStartDateOrCurrentWeekMonday
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
-import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 
 class CalculateAcademicWeekUseCase @Inject constructor() {
     operator fun invoke(today: LocalDate, details: TimetableDetails?): Int {
         val configured = details ?: TimetableDetails()
-        val termStart = runCatching { LocalDate.parse(configured.termStartDate) }.getOrElse {
-            today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-        }
+        val termStart = parseTermStartDateOrCurrentWeekMonday(configured.termStartDate, today)
         if (today.isBefore(termStart)) {
             return configured.startWeek
         }

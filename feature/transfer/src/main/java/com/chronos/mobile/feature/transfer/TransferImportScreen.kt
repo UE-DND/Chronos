@@ -18,12 +18,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -36,8 +40,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -45,6 +55,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.domain.ImportMode
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeParseException
 
 @Composable
 fun TransferImportScreen(
@@ -121,12 +134,14 @@ fun TransferImportConfirmScreen(
     preview: Timetable,
     previewSource: ImportSource?,
     importMode: ImportMode,
+    htmlImportTermStartDate: String?,
     currentTimetableName: String?,
     onImportModeChange: (ImportMode) -> Unit,
-    onClearPreviewClick: () -> Unit,
+    onHtmlImportTermStartDateChange: (String) -> Unit,
     onConfirmImportClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val canConfirmImport = previewSource != ImportSource.HTML || htmlImportTermStartDate != null
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -141,16 +156,22 @@ fun TransferImportConfirmScreen(
         PreviewSummaryCard(
             preview = preview,
             source = previewSource,
-            onClearPreviewClick = onClearPreviewClick,
         )
         ImportModeSelector(
             currentTimetableName = currentTimetableName,
             selectedMode = importMode,
             onImportModeChange = onImportModeChange,
         )
+        if (previewSource == ImportSource.HTML) {
+            HtmlImportTermStartDatePicker(
+                selectedDate = htmlImportTermStartDate,
+                onDateChange = onHtmlImportTermStartDateChange,
+            )
+        }
         OutlinedButton(
             onClick = onConfirmImportClick,
             modifier = Modifier.fillMaxWidth(),
+            enabled = canConfirmImport,
         ) {
             Icon(Icons.Default.Download, contentDescription = null)
             Spacer(modifier = Modifier.size(8.dp))
@@ -164,6 +185,90 @@ fun TransferImportConfirmScreen(
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HtmlImportTermStartDatePicker(
+    selectedDate: String?,
+    onDateChange: (String) -> Unit,
+) {
+    var showDatePickerDialog by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val datePickerState = rememberHtmlTermStartDatePickerState(selectedDate)
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        SectionLabel(title = "学期起始日期")
+        OutlinedTextField(
+            value = selectedDate.orEmpty(),
+            onValueChange = {},
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged { focusState ->
+                    if (focusState.isFocused) {
+                        showDatePickerDialog = true
+                        focusManager.clearFocus(force = true)
+                    }
+                },
+            readOnly = true,
+            singleLine = true,
+            placeholder = { Text("请选择学期第一天") },
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = null,
+                )
+            },
+        )
+        if (showDatePickerDialog) {
+            DatePickerDialog(
+                onDismissRequest = { showDatePickerDialog = false },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            datePickerState.selectedDateMillis
+                                ?.let(::millisToLocalDate)
+                                ?.let { date -> onDateChange(date.toString()) }
+                            showDatePickerDialog = false
+                        },
+                        enabled = datePickerState.selectedDateMillis != null,
+                    ) {
+                        Text("确认")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePickerDialog = false }) {
+                        Text("取消")
+                    }
+                },
+            ) {
+                DatePicker(state = datePickerState)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun rememberHtmlTermStartDatePickerState(selectedDate: String?): androidx.compose.material3.DatePickerState {
+    val initialSelectedDateMillis = remember(selectedDate) {
+        selectedDate?.toLocalDateOrNull()?.let(::localDateToMillis)
+    }
+    return androidx.compose.material3.rememberDatePickerState(
+        initialSelectedDateMillis = initialSelectedDateMillis,
+    )
+}
+
+private fun String.toLocalDateOrNull(): LocalDate? =
+    try {
+        LocalDate.parse(this)
+    } catch (_: DateTimeParseException) {
+        null
+    }
+
+private fun localDateToMillis(date: LocalDate): Long =
+    date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+private fun millisToLocalDate(millis: Long): LocalDate =
+    java.time.Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
 
 @Composable
 private fun SectionLabel(title: String) {
@@ -374,7 +479,6 @@ private fun ImportModeSelector(
 private fun PreviewSummaryCard(
     preview: Timetable,
     source: ImportSource?,
-    onClearPreviewClick: () -> Unit,
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -392,6 +496,13 @@ private fun PreviewSummaryCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
+                Text(
+                    text = preview.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(modifier = Modifier.size(8.dp))
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(999.dp))
@@ -409,15 +520,7 @@ private fun PreviewSummaryCard(
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
-                TextButton(onClick = onClearPreviewClick) {
-                    Text("清除预览")
-                }
             }
-            Text(
-                text = preview.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
             PreviewMetric(label = "课程数", value = preview.courses.size.toString())
             PreviewMetric(label = "开始周", value = preview.details.startWeek.toString())
             PreviewMetric(label = "结束周", value = preview.details.endWeek.toString())

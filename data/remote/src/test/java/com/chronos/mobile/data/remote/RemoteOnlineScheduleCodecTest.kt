@@ -1,15 +1,19 @@
 package com.chronos.mobile.data.remote
 
 import com.chronos.mobile.core.model.Course
+import com.chronos.mobile.core.model.OnlineScheduleEvent
 import com.chronos.mobile.core.model.OnlineSchedulePayload
+import com.chronos.mobile.core.model.OnlineScheduleWeekDay
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.core.model.TimetableImportSource
+import com.chronos.mobile.core.model.currentWeekMonday
 import com.chronos.mobile.domain.result.AppResult
 import com.chronos.mobile.domain.usecase.CalculateAcademicWeekUseCase
 import java.net.URLDecoder
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -18,13 +22,14 @@ class RemoteOnlineScheduleCodecTest {
 
     @Test
     fun `codec exports online payload structure`() {
-        val timetable = sampleTimetable()
+        val timetable = sampleTimetable(importSource = TimetableImportSource.SHARED_JSON)
 
         val encoded = codec.encode(timetable).requireSuccess()
         val payload = codec.decode(encoded).requireSuccess()
 
         assertEquals("2025-2026-2", payload.yearTerm)
         assertEquals(TimetableImportSource.SHARED_JSON.name, payload.importSource)
+        assertEquals("2026-03-02", payload.termStartDate)
         assertTrue(payload.weekList.isNotEmpty())
         assertTrue(payload.weekDayList.size == 7)
         assertEquals(1, payload.eventList.size)
@@ -35,7 +40,9 @@ class RemoteOnlineScheduleCodecTest {
 
     @Test
     fun `codec imports online payload into local timetable`() {
-        val payload = codec.decode(codec.encode(sampleTimetable()).requireSuccess()).requireSuccess()
+        val payload = codec.decode(
+            codec.encode(sampleTimetable(importSource = TimetableImportSource.SHARED_JSON)).requireSuccess()
+        ).requireSuccess()
 
         val timetable = codec.toTimetable(payload).requireSuccess()
 
@@ -44,6 +51,144 @@ class RemoteOnlineScheduleCodecTest {
         assertEquals("编译原理", timetable.courses.first().name)
         assertEquals(listOf(1, 2, 3, 4), timetable.courses.first().weeks)
         assertEquals(TimetableImportSource.SHARED_JSON, timetable.details.importSource)
+        assertEquals("2026-03-02", timetable.details.termStartDate)
+    }
+
+    @Test
+    fun `codec preserves online edu source and omits explicit term start date on export`() {
+        val payload = codec.decode(
+            codec.encode(sampleTimetable(importSource = TimetableImportSource.ONLINE_EDU)).requireSuccess()
+        ).requireSuccess()
+
+        assertEquals(TimetableImportSource.ONLINE_EDU.name, payload.importSource)
+        assertNull(payload.termStartDate)
+    }
+
+    @Test
+    fun `codec preserves file html source and explicit term start date on export`() {
+        val payload = codec.decode(
+            codec.encode(sampleTimetable(importSource = TimetableImportSource.FILE_HTML)).requireSuccess()
+        ).requireSuccess()
+
+        assertEquals(TimetableImportSource.FILE_HTML.name, payload.importSource)
+        assertEquals("2026-03-02", payload.termStartDate)
+    }
+
+    @Test
+    fun `codec uses explicit term start date for non online payload`() {
+        val payload = OnlineSchedulePayload(
+            yearTerm = "2025-2026-2",
+            weekNum = "3",
+            importSource = TimetableImportSource.SHARED_JSON.name,
+            termStartDate = "2026-02-23",
+            weekList = (1..20).map(Int::toString),
+            eventList = listOf(
+                OnlineScheduleEvent(
+                    weekNum = "3",
+                    weekDay = "1",
+                    weekList = listOf("3"),
+                    sessionList = listOf("1", "2"),
+                    sessionStart = "1",
+                    sessionLast = "2",
+                    eventName = "编译原理",
+                    address = "B201",
+                    memberName = "张老师",
+                ),
+            ),
+        )
+
+        val timetable = codec.toTimetable(payload).requireSuccess()
+
+        assertEquals("2026-02-23", timetable.details.termStartDate)
+    }
+
+    @Test
+    fun `codec ignores explicit term start date for online edu payload`() {
+        val payload = OnlineSchedulePayload(
+            yearTerm = "2025-2026-2",
+            weekNum = "3",
+            importSource = TimetableImportSource.ONLINE_EDU.name,
+            termStartDate = "2026-02-23",
+            weekList = (1..20).map(Int::toString),
+            weekDayList = listOf(
+                OnlineScheduleWeekDay(weekDay = "一", weekDate = "03/16"),
+            ),
+            eventList = listOf(
+                OnlineScheduleEvent(
+                    weekNum = "3",
+                    weekDay = "1",
+                    weekList = listOf("3"),
+                    sessionList = listOf("1", "2"),
+                    sessionStart = "1",
+                    sessionLast = "2",
+                    eventName = "编译原理",
+                    address = "B201",
+                    memberName = "张老师",
+                ),
+            ),
+        )
+
+        val timetable = codec.toTimetable(payload).requireSuccess()
+
+        assertEquals("2026-03-02", timetable.details.termStartDate)
+        assertEquals(TimetableImportSource.ONLINE_EDU, timetable.details.importSource)
+    }
+
+    @Test
+    fun `codec infers term start date from year term week and monday date`() {
+        val payload = OnlineSchedulePayload(
+            yearTerm = "2025-2026-2",
+            weekNum = "3",
+            weekList = (1..20).map(Int::toString),
+            weekDayList = listOf(
+                OnlineScheduleWeekDay(weekDay = "一", weekDate = "03/16"),
+            ),
+            eventList = listOf(
+                OnlineScheduleEvent(
+                    weekNum = "3",
+                    weekDay = "1",
+                    weekList = listOf("3"),
+                    sessionList = listOf("1", "2"),
+                    sessionStart = "1",
+                    sessionLast = "2",
+                    eventName = "编译原理",
+                    address = "B201",
+                    memberName = "张老师",
+                ),
+            ),
+        )
+
+        val timetable = codec.toTimetable(payload).requireSuccess()
+
+        assertEquals("2026-03-02", timetable.details.termStartDate)
+    }
+
+    @Test
+    fun `codec falls back to current week monday when term start cannot be inferred`() {
+        val payload = OnlineSchedulePayload(
+            yearTerm = "unknown",
+            weekNum = "bad-week",
+            weekDayList = listOf(
+                OnlineScheduleWeekDay(weekDay = "?", weekDate = "xx/yy"),
+            ),
+            eventList = listOf(
+                OnlineScheduleEvent(
+                    weekNum = "1",
+                    weekDay = "1",
+                    weekList = listOf("1"),
+                    sessionList = listOf("1"),
+                    sessionStart = "1",
+                    sessionLast = "1",
+                    eventName = "高等数学",
+                    address = "A101",
+                    memberName = "李老师",
+                ),
+            ),
+        )
+
+        val timetable = codec.toTimetable(payload).requireSuccess()
+
+        assertEquals(currentWeekMonday().toString(), timetable.details.termStartDate)
     }
 
     @Test
@@ -164,7 +309,9 @@ class RemoteOnlineScheduleCodecTest {
         assertTrue(chunks.all { it.isNotBlank() })
     }
 
-    private fun sampleTimetable(): Timetable = Timetable(
+    private fun sampleTimetable(
+        importSource: TimetableImportSource = TimetableImportSource.UNKNOWN,
+    ): Timetable = Timetable(
         id = "t1",
         name = "2025-2026-2",
         createdAt = 1L,
@@ -186,6 +333,7 @@ class RemoteOnlineScheduleCodecTest {
             termStartDate = "2026-03-02",
             startWeek = 1,
             endWeek = 20,
+            importSource = importSource,
         ),
     )
 

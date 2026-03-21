@@ -23,6 +23,9 @@ data class OnlineSchedulePayload(
     // is = importSource, 导入来源
     @SerialName("is") @JsonNames("importSource")
     val importSource: String = "",
+    // ts = termStartDate, 学期起始日期（yyyy-MM-dd，可选）
+    @SerialName("ts") @JsonNames("termStartDate")
+    val termStartDate: String? = null,
     // yl = yearTermList, 学期列表
     @SerialName("yl") @JsonNames("yearTermList")
     val yearTermList: List<String> = emptyList(),

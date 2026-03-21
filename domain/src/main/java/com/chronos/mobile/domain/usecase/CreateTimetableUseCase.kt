@@ -2,6 +2,7 @@ package com.chronos.mobile.domain.usecase
 
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.core.model.currentWeekMonday
 import com.chronos.mobile.domain.TimetableRepository
 import java.util.UUID
 import javax.inject.Inject
@@ -17,7 +18,9 @@ class CreateTimetableUseCase @Inject constructor(
             courses = emptyList(),
             createdAt = now,
             updatedAt = now,
-            details = TimetableDetails(),
+            details = TimetableDetails(
+                termStartDate = currentWeekMonday().toString(),
+            ),
         )
         repository.saveTimetable(timetable)
         repository.setCurrentTimetableId(timetable.id)

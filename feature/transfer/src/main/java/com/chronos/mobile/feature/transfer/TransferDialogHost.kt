@@ -298,9 +298,10 @@ fun TransferImportConfirmRoute(
                 preview = preview,
                 previewSource = state.previewSource,
                 importMode = state.importMode,
+                htmlImportTermStartDate = state.htmlImportTermStartDate,
                 currentTimetableName = appState.currentTimetable?.name,
                 onImportModeChange = viewModel::setImportMode,
-                onClearPreviewClick = viewModel::clearPreview,
+                onHtmlImportTermStartDateChange = viewModel::setHtmlImportTermStartDate,
                 onConfirmImportClick = {
                     scope.launch {
                         viewModel.importPreview().fold(

@@ -61,6 +61,7 @@ import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.PeriodTime
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.core.model.parseTermStartDateOrCurrentWeekMonday
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -467,9 +468,7 @@ private fun resolveCourseDate(
     dayOfWeek: Int,
     today: LocalDate,
 ): LocalDate {
-    val termStart = runCatching { LocalDate.parse(details.termStartDate) }.getOrElse {
-        today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-    }
+    val termStart = parseTermStartDateOrCurrentWeekMonday(details.termStartDate, today)
     return termStart
         .plusWeeks((week - details.startWeek).toLong())
         .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))

@@ -4,8 +4,6 @@ import android.content.Context
 import androidx.room.Room
 import com.chronos.mobile.data.local.ChronosDao
 import com.chronos.mobile.data.local.ChronosDatabase
-import com.chronos.mobile.data.local.MIGRATION_1_2
-import com.chronos.mobile.data.local.MIGRATION_2_3
 import com.chronos.mobile.data.repository.OfflineTimetableRepository
 import com.chronos.mobile.domain.TimetableRepository
 import dagger.Module
@@ -26,7 +24,7 @@ object DatabaseModule {
         context,
         ChronosDatabase::class.java,
         "chronos.db",
-    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
+    ).build()
 
     @Provides
     fun provideChronosDao(database: ChronosDatabase): ChronosDao = database.chronosDao()
@@ -37,4 +35,3 @@ object DatabaseModule {
         repository: OfflineTimetableRepository,
     ): TimetableRepository = repository
 }
-

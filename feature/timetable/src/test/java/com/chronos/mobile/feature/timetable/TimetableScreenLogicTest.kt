@@ -159,6 +159,30 @@ class TimetableScreenLogicTest {
         assertTrue(shouldShowNonCurrentWeekCourseSetting(TimetableImportSource.SHARED_JSON))
     }
 
+    @Test
+    fun `term start date setting is hidden for online import timetable`() {
+        assertFalse(shouldShowTermStartDateSetting(TimetableImportSource.ONLINE_EDU))
+    }
+
+    @Test
+    fun `term start date setting remains visible for non online sources`() {
+        assertTrue(shouldShowTermStartDateSetting(TimetableImportSource.UNKNOWN))
+        assertTrue(shouldShowTermStartDateSetting(TimetableImportSource.FILE_HTML))
+        assertTrue(shouldShowTermStartDateSetting(TimetableImportSource.SHARED_JSON))
+    }
+
+    @Test
+    fun `academic week range settings are hidden for online import timetable`() {
+        assertFalse(shouldShowAcademicWeekRangeSettings(TimetableImportSource.ONLINE_EDU))
+    }
+
+    @Test
+    fun `academic week range settings remain visible for non online sources`() {
+        assertTrue(shouldShowAcademicWeekRangeSettings(TimetableImportSource.UNKNOWN))
+        assertTrue(shouldShowAcademicWeekRangeSettings(TimetableImportSource.FILE_HTML))
+        assertTrue(shouldShowAcademicWeekRangeSettings(TimetableImportSource.SHARED_JSON))
+    }
+
     private fun sampleTimetable(
         showNonCurrentWeekCourses: Boolean = true,
         courses: List<Course>,
