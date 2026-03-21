@@ -1,5 +1,13 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.provider.MapProperty
+import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.TaskAction
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -45,12 +53,12 @@ val releaseStoreFile = resolveStoreFile()
 val releaseStorePassword = resolveSigningProperty("RELEASE_STORE_PASSWORD")
 val releaseKeyAlias = resolveSigningProperty("RELEASE_KEY_ALIAS")
 val releaseKeyPassword = resolveSigningProperty("RELEASE_KEY_PASSWORD")
-val appVersionName: Provider<String> =
+val appVersionNameProvider: Provider<String> =
     providers.gradleProperty("APP_VERSION").orElse("1.0.0")
 val buildTimeValue = LocalDateTime.now().format(
     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
 )
-val releaseAbiNames = mapOf(
+val releaseAbiNameMap = mapOf(
     "arm64-v8a" to "v8a",
     "armeabi-v7a" to "v7a",
     "x86_64" to "x86_64",
@@ -59,6 +67,53 @@ val hasReleaseSigning = !releaseStoreFile.isNullOrBlank() &&
     !releaseStorePassword.isNullOrBlank() &&
     !releaseKeyAlias.isNullOrBlank() &&
     !releaseKeyPassword.isNullOrBlank()
+
+abstract class PrepareReleaseArtifactsTask : DefaultTask() {
+    @get:InputDirectory
+    abstract val sourceDir: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val targetDir: DirectoryProperty
+
+    @get:Input
+    abstract val appVersionName: Property<String>
+
+    @get:Input
+    abstract val releaseAbiNames: MapProperty<String, String>
+
+    @TaskAction
+    fun prepareArtifacts() {
+        val source: File = sourceDir.get().asFile
+        val target: File = targetDir.get().asFile
+
+        if (!source.exists()) {
+            error("Release APK directory not found: ${source.absolutePath}")
+        }
+
+        if (!target.exists()) {
+            target.mkdirs()
+        }
+
+        target.listFiles()
+            ?.filter(File::isFile)
+            ?.forEach(File::delete)
+
+        releaseAbiNames.get().forEach { (abi, suffix) ->
+            val apk: File = source.listFiles()
+                ?.firstOrNull { file: File ->
+                    file.extension == "apk" &&
+                        !file.name.contains("unsigned", ignoreCase = true) &&
+                        file.name.lowercase(Locale.US).contains(abi.lowercase(Locale.US))
+                }
+                ?: error("Signed release APK for ABI $abi not found in ${source.absolutePath}")
+
+            apk.copyTo(
+                target.resolve("Chronos-${appVersionName.get()}-$suffix.apk"),
+                overwrite = true,
+            )
+        }
+    }
+}
 
 android {
     namespace = "com.chronos.mobile"
@@ -69,7 +124,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = appVersionName.get()
+        versionName = appVersionNameProvider.get()
         buildConfigField("String", "BUILD_TIME", "\"$buildTimeValue\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -117,7 +172,7 @@ android {
         abi {
             isEnable = true
             reset()
-            include(*releaseAbiNames.keys.toTypedArray())
+            include(*releaseAbiNameMap.keys.toTypedArray())
             isUniversalApk = false
         }
     }
@@ -153,47 +208,13 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
 
-val prepareReleaseArtifacts by tasks.registering {
+val prepareReleaseArtifacts by tasks.registering(PrepareReleaseArtifactsTask::class) {
     group = "distribution"
     description = "Builds split release APKs and copies them to stable GitHub Release names."
     dependsOn("assembleRelease")
 
-    val sourceDir = layout.buildDirectory.dir("outputs/apk/release")
-    val targetDir = layout.buildDirectory.dir("outputs/github-release")
-
-    inputs.dir(sourceDir)
-    outputs.dir(targetDir)
-
-    doLast {
-        val source: File = sourceDir.get().asFile
-        val target: File = targetDir.get().asFile
-
-        if (!source.exists()) {
-            error("Release APK directory not found: ${source.absolutePath}")
-        }
-
-        target.mkdirs()
-        val existingArtifacts: Array<File>? = target.listFiles()
-        existingArtifacts?.forEach { existing: File ->
-            if (existing.isFile) {
-                existing.delete()
-            }
-        }
-
-        releaseAbiNames.forEach { (abi, suffix) ->
-            val sourceApks: Array<File>? = source.listFiles()
-            val apk: File = sourceApks
-                ?.firstOrNull { file: File ->
-                    file.extension == "apk" &&
-                        !file.name.contains("unsigned", ignoreCase = true) &&
-                        file.name.lowercase(Locale.US).contains(abi.lowercase(Locale.US))
-                }
-                ?: error("Signed release APK for ABI $abi not found in ${source.absolutePath}")
-
-            apk.copyTo(
-                target.resolve("Chronos-${appVersionName.get()}-$suffix.apk"),
-                overwrite = true,
-            )
-        }
-    }
+    sourceDir.set(layout.buildDirectory.dir("outputs/apk/release"))
+    targetDir.set(layout.buildDirectory.dir("outputs/github-release"))
+    appVersionName.set(appVersionNameProvider)
+    releaseAbiNames.putAll(releaseAbiNameMap)
 }
