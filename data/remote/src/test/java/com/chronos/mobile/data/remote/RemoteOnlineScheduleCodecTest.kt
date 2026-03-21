@@ -8,9 +8,11 @@ import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.core.model.TimetableImportSource
 import com.chronos.mobile.core.model.currentWeekMonday
+import com.chronos.mobile.domain.AcademicCalendarService
 import com.chronos.mobile.domain.result.AppResult
-import com.chronos.mobile.domain.usecase.CalculateAcademicWeekUseCase
 import java.net.URLDecoder
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -18,7 +20,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RemoteOnlineScheduleCodecTest {
-    private val codec = DefaultOnlineScheduleJsonCodec(CalculateAcademicWeekUseCase())
+    private val codec = DefaultOnlineScheduleJsonCodec()
+    private val academicCalendarService = AcademicCalendarService()
+    private val monthDayFormatter = DateTimeFormatter.ofPattern("MM/dd")
 
     @Test
     fun `codec exports online payload structure`() {
@@ -72,6 +76,26 @@ class RemoteOnlineScheduleCodecTest {
 
         assertEquals(TimetableImportSource.FILE_HTML.name, payload.importSource)
         assertEquals("2026-03-02", payload.termStartDate)
+    }
+
+    @Test
+    fun `codec normalizes non monday term start date on import and export`() {
+        val timetable = sampleTimetable(
+            importSource = TimetableImportSource.SHARED_JSON,
+            termStartDate = "2026-03-03",
+        )
+
+        val payload = codec.decode(codec.encode(timetable).requireSuccess()).requireSuccess()
+        val imported = codec.toTimetable(payload).requireSuccess()
+        val expectedWeekStart = academicCalendarService.resolveWeekStart(
+            details = timetable.details,
+            week = academicCalendarService.calculateAcademicWeek(LocalDate.now(), timetable.details),
+            referenceDate = LocalDate.now(),
+        )
+
+        assertEquals("2026-03-02", payload.termStartDate)
+        assertEquals(expectedWeekStart.format(monthDayFormatter), payload.weekDayList.first().weekDate)
+        assertEquals("2026-03-02", imported.details.termStartDate)
     }
 
     @Test
@@ -219,6 +243,26 @@ class RemoteOnlineScheduleCodecTest {
     }
 
     @Test
+    fun `codec exports monday anchored week day list and month label`() {
+        val timetable = sampleTimetable(
+            importSource = TimetableImportSource.SHARED_JSON,
+            termStartDate = "2026-03-03",
+        )
+        val payload = codec.decode(
+            codec.encode(timetable).requireSuccess()
+        ).requireSuccess()
+        val expectedWeekStart = academicCalendarService.resolveWeekStart(
+            details = timetable.details,
+            week = academicCalendarService.calculateAcademicWeek(LocalDate.now(), timetable.details),
+            referenceDate = LocalDate.now(),
+        )
+
+        assertEquals(expectedWeekStart.monthValue.toString(), payload.nowMonth)
+        assertEquals(expectedWeekStart.format(monthDayFormatter), payload.weekDayList.first().weekDate)
+        assertEquals("一", payload.weekDayList.first().weekDay)
+    }
+
+    @Test
     fun `codec interprets sessionLast as duration not ending period`() {
         val payload = OnlineSchedulePayload(
             yearTerm = "2025-2026-2",
@@ -311,6 +355,7 @@ class RemoteOnlineScheduleCodecTest {
 
     private fun sampleTimetable(
         importSource: TimetableImportSource = TimetableImportSource.UNKNOWN,
+        termStartDate: String = "2026-03-02",
     ): Timetable = Timetable(
         id = "t1",
         name = "2025-2026-2",
@@ -330,7 +375,7 @@ class RemoteOnlineScheduleCodecTest {
             ),
         ),
         details = TimetableDetails(
-            termStartDate = "2026-03-02",
+            termStartDate = termStartDate,
             startWeek = 1,
             endWeek = 20,
             importSource = importSource,

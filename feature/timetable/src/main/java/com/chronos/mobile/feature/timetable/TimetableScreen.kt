@@ -61,12 +61,10 @@ import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.PeriodTime
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
-import com.chronos.mobile.core.model.parseTermStartDateOrCurrentWeekMonday
-import java.time.DayOfWeek
+import com.chronos.mobile.domain.AcademicCalendarService
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.roundToInt
@@ -391,6 +389,7 @@ internal fun buildTimetableCourseDisplayModels(
     visibleDayOfWeeks: Set<Int>,
     displayedWeek: Int,
     today: LocalDate,
+    resolveCourseDate: (TimetableDetails, Int, Int, LocalDate) -> LocalDate = AcademicCalendarService()::resolveCourseDate,
 ): List<TimetableCourseDisplayModel> {
     val visibleCourses = timetable.courses.withIndex().filter { (_, course) ->
         course.dayOfWeek in visibleDayOfWeeks
@@ -419,12 +418,7 @@ internal fun buildTimetableCourseDisplayModels(
         if (slotKey in occupiedSlots) return@forEach
         val candidate = FutureCourseCandidate(
             course = course,
-            nextOccurrenceDate = resolveCourseDate(
-                details = timetable.details,
-                week = nextWeek,
-                dayOfWeek = course.dayOfWeek,
-                today = today,
-            ),
+            nextOccurrenceDate = resolveCourseDate(timetable.details, nextWeek, course.dayOfWeek, today),
             originalIndex = originalIndex,
         )
         val current = futureCandidatesBySlot[slotKey]
@@ -461,19 +455,6 @@ private fun FutureCourseCandidate.isBetterFutureCandidateThan(other: FutureCours
         FutureCourseCandidate::nextOccurrenceDate,
         FutureCourseCandidate::originalIndex,
     ) < 0
-
-private fun resolveCourseDate(
-    details: TimetableDetails,
-    week: Int,
-    dayOfWeek: Int,
-    today: LocalDate,
-): LocalDate {
-    val termStart = parseTermStartDateOrCurrentWeekMonday(details.termStartDate, today)
-    return termStart
-        .plusWeeks((week - details.startWeek).toLong())
-        .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-        .plusDays((dayOfWeek - 1).toLong())
-}
 
 internal fun parsePeriodRanges(periods: List<PeriodTime>): List<ParsedPeriodRange> =
     periods.map { period ->

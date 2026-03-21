@@ -4,17 +4,22 @@ import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.core.model.TimetableImportSource
-import com.chronos.mobile.core.model.currentWeekMonday
+import com.chronos.mobile.domain.AcademicCalendarService
 import com.chronos.mobile.domain.result.AppError
 import com.chronos.mobile.domain.result.AppResult
 import com.chronos.mobile.domain.result.asFailure
 import com.chronos.mobile.domain.result.asSuccess
+import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
-class ParseEducationalTimetableHtmlUseCase @Inject constructor() {
+class ParseEducationalTimetableHtmlUseCase @Inject constructor(
+    private val academicCalendarService: AcademicCalendarService,
+) {
+    constructor() : this(AcademicCalendarService())
+
     operator fun invoke(content: String): AppResult<Timetable?> {
         val document = Jsoup.parse(content)
         val table = document.selectFirst("#kbgrid_table_0") ?: return null.asSuccess()
@@ -50,7 +55,9 @@ class ParseEducationalTimetableHtmlUseCase @Inject constructor() {
             createdAt = now,
             updatedAt = now,
             details = TimetableDetails(
-                termStartDate = currentWeekMonday().toString(),
+                termStartDate = academicCalendarService
+                    .normalizeTermStartDate("", LocalDate.now())
+                    .toString(),
                 endWeek = maxOf(20, maxWeek),
                 showSaturday = courses.any { it.dayOfWeek == 6 },
                 showSunday = courses.any { it.dayOfWeek == 7 },

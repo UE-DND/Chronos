@@ -2,15 +2,19 @@ package com.chronos.mobile.domain.usecase
 
 import com.chronos.mobile.core.model.PeriodTime
 import com.chronos.mobile.core.model.TimetableDetails
-import com.chronos.mobile.core.model.currentWeekMonday
 import com.chronos.mobile.core.model.defaultPeriodTimes
+import com.chronos.mobile.domain.AcademicCalendarService
 import com.chronos.mobile.domain.TimetableRepository
 import com.chronos.mobile.domain.model.TimetableDetailsDraft
+import java.time.LocalDate
 import javax.inject.Inject
 
 class SaveTimetableDetailsUseCase @Inject constructor(
     private val repository: TimetableRepository,
+    private val academicCalendarService: AcademicCalendarService,
 ) {
+    constructor(repository: TimetableRepository) : this(repository, AcademicCalendarService())
+
     suspend operator fun invoke(timetableId: String, draft: TimetableDetailsDraft) {
         val timetable = repository.getTimetable(timetableId) ?: return
         val safeStartWeek = draft.startWeek.coerceAtLeast(1)
@@ -47,7 +51,6 @@ class SaveTimetableDetailsUseCase @Inject constructor(
         )
     }
 
-    private fun parseTermStartDate(raw: String): String = raw.trim().ifBlank {
-        currentWeekMonday().toString()
-    }
+    private fun parseTermStartDate(raw: String): String =
+        academicCalendarService.normalizeTermStartDate(raw, LocalDate.now()).toString()
 }

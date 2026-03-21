@@ -4,18 +4,20 @@ import com.chronos.mobile.core.model.PeriodTime
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.core.model.defaultPeriodTimes
-import com.chronos.mobile.core.model.parseTermStartDateOrCurrentWeekMonday
+import com.chronos.mobile.domain.AcademicCalendarService
 import com.chronos.mobile.domain.model.TimetableDayModel
 import com.chronos.mobile.domain.model.TimetableGridModel
-import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 
-class BuildVisibleTimetableGridUseCase @Inject constructor() {
+class BuildVisibleTimetableGridUseCase @Inject constructor(
+    private val academicCalendarService: AcademicCalendarService,
+) {
+    constructor() : this(AcademicCalendarService())
+
     operator fun invoke(today: LocalDate, displayedWeek: Int, timetable: Timetable): TimetableGridModel {
         val visibleDays = buildVisibleDayIndices(timetable.details)
-        val startOfWeek = resolveWeekStart(timetable.details, displayedWeek, today)
+        val startOfWeek = academicCalendarService.resolveWeekStart(timetable.details, displayedWeek, today)
         val weekDays = visibleDays.map { dayIndex ->
             val date = startOfWeek.plusDays((dayIndex - 1).toLong())
             TimetableDayModel(
@@ -35,13 +37,6 @@ class BuildVisibleTimetableGridUseCase @Inject constructor() {
             periods = buildDisplayPeriods(timetable.details, displayedPeriodCount),
             displayedPeriodCount = displayedPeriodCount,
         )
-    }
-
-    private fun resolveWeekStart(details: TimetableDetails, displayedWeek: Int, today: LocalDate): LocalDate {
-        val termStart = parseTermStartDateOrCurrentWeekMonday(details.termStartDate, today)
-        return termStart
-            .plusWeeks((displayedWeek - details.startWeek).toLong())
-            .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
     }
 
     private fun buildDisplayPeriods(details: TimetableDetails, count: Int): List<PeriodTime> {

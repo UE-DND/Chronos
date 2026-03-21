@@ -2,14 +2,18 @@ package com.chronos.mobile.domain.usecase
 
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
-import com.chronos.mobile.core.model.currentWeekMonday
+import com.chronos.mobile.domain.AcademicCalendarService
+import java.time.LocalDate
 import com.chronos.mobile.domain.TimetableRepository
 import java.util.UUID
 import javax.inject.Inject
 
 class CreateTimetableUseCase @Inject constructor(
     private val repository: TimetableRepository,
+    private val academicCalendarService: AcademicCalendarService,
 ) {
+    constructor(repository: TimetableRepository) : this(repository, AcademicCalendarService())
+
     suspend operator fun invoke(name: String) {
         val now = System.currentTimeMillis()
         val timetable = Timetable(
@@ -19,7 +23,9 @@ class CreateTimetableUseCase @Inject constructor(
             createdAt = now,
             updatedAt = now,
             details = TimetableDetails(
-                termStartDate = currentWeekMonday().toString(),
+                termStartDate = academicCalendarService
+                    .normalizeTermStartDate("", LocalDate.now())
+                    .toString(),
             ),
         )
         repository.saveTimetable(timetable)

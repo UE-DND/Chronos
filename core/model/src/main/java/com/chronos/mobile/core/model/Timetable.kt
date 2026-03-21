@@ -47,15 +47,6 @@ data class Timetable(
 fun currentWeekMonday(referenceDate: LocalDate = LocalDate.now()): LocalDate =
     referenceDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
-fun parseTermStartDateOrCurrentWeekMonday(
-    termStartDate: String,
-    referenceDate: LocalDate,
-): LocalDate = runCatching {
-    LocalDate.parse(termStartDate)
-}.getOrElse {
-    currentWeekMonday(referenceDate)
-}
-
 fun defaultPeriodTimes(): List<PeriodTime> = listOf(
     PeriodTime(index = 1, startTime = "08:30", endTime = "09:15"),
     PeriodTime(index = 2, startTime = "09:25", endTime = "10:10"),

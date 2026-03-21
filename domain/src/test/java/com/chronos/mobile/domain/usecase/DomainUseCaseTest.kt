@@ -11,6 +11,7 @@ import com.chronos.mobile.core.model.TimetableImportSource
 import com.chronos.mobile.core.model.TimetableSummary
 import com.chronos.mobile.core.model.ThemeMode
 import com.chronos.mobile.core.model.currentWeekMonday
+import com.chronos.mobile.domain.AcademicCalendarService
 import com.chronos.mobile.domain.ImportMode
 import com.chronos.mobile.domain.OnlineScheduleJsonCodec
 import com.chronos.mobile.domain.TimetableRepository
@@ -34,6 +35,7 @@ import java.time.LocalDate
 
 class DomainUseCaseTest {
     private val codec = FakeOnlineScheduleJsonCodec()
+    private val academicCalendarService = AcademicCalendarService()
 
     @Test
     fun `calculateAcademicWeek clamps before term start`() {
@@ -55,6 +57,37 @@ class DomainUseCaseTest {
         val result = useCase(LocalDate.now(), TimetableDetails(termStartDate = "bad-date"))
 
         assertEquals(1, result)
+    }
+
+    @Test
+    fun `calculateAcademicWeek normalizes non monday term start date`() {
+        val useCase = CalculateAcademicWeekUseCase()
+        val details = TimetableDetails(
+            termStartDate = "2026-03-03",
+            startWeek = 1,
+            endWeek = 20,
+        )
+
+        val result = useCase(LocalDate.parse("2026-03-09"), details)
+
+        assertEquals(2, result)
+    }
+
+    @Test
+    fun `academicCalendarService resolves monday week start from non monday term start date`() {
+        val details = TimetableDetails(
+            termStartDate = "2026-03-03",
+            startWeek = 1,
+            endWeek = 20,
+        )
+
+        val weekStart = academicCalendarService.resolveWeekStart(
+            details = details,
+            week = 2,
+            referenceDate = LocalDate.parse("2026-03-09"),
+        )
+
+        assertEquals(LocalDate.parse("2026-03-09"), weekStart)
     }
 
     @Test
@@ -91,6 +124,30 @@ class DomainUseCaseTest {
         assertEquals(1, saved?.details?.periodTimes?.first()?.index)
         assertEquals("08:00", saved?.details?.periodTimes?.first()?.startTime)
         assertEquals(currentWeekMonday().toString(), saved?.details?.termStartDate)
+    }
+
+    @Test
+    fun `saveTimetableDetails normalizes non monday term start date`() = runBlocking {
+        val repo = FakeTimetableRepository()
+        val timetable = repo.seedCurrent()
+        val useCase = SaveTimetableDetailsUseCase(repo)
+
+        useCase(
+            timetable.id,
+            TimetableDetailsDraft(
+                name = timetable.name,
+                termStartDate = "2026-03-03",
+                startWeek = 1,
+                endWeek = 20,
+                showSaturday = true,
+                showSunday = true,
+                showNonCurrentWeekCourses = false,
+            ),
+        )
+
+        val saved = repo.getTimetable(timetable.id)
+
+        assertEquals("2026-03-02", saved?.details?.termStartDate)
     }
 
     @Test
@@ -292,6 +349,30 @@ class DomainUseCaseTest {
         assertEquals(6, grid.visibleDays.size)
         assertEquals(12, grid.displayedPeriodCount)
         assertEquals(6, grid.visibleDays.last().dayOfWeek)
+    }
+
+    @Test
+    fun `buildVisibleTimetableGrid uses monday anchored week for non monday term start date`() {
+        val useCase = BuildVisibleTimetableGridUseCase()
+        val timetable = Timetable(
+            id = "t1",
+            name = "课表",
+            createdAt = 1L,
+            updatedAt = 1L,
+            courses = emptyList(),
+            details = TimetableDetails(
+                termStartDate = "2026-03-03",
+                startWeek = 1,
+                endWeek = 20,
+                showSaturday = false,
+                showSunday = false,
+            ),
+        )
+
+        val grid = useCase(LocalDate.parse("2026-03-09"), 2, timetable)
+
+        assertEquals(LocalDate.parse("2026-03-09"), grid.visibleDays.first().date)
+        assertEquals(LocalDate.parse("2026-03-13"), grid.visibleDays.last().date)
     }
 
     @Test

@@ -2,9 +2,13 @@ package com.chronos.mobile.feature.timetable
 
 import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.Timetable
+import com.chronos.mobile.domain.AcademicCalendarService
 import com.chronos.mobile.domain.model.CourseDraft
 import com.chronos.mobile.domain.model.PeriodTimeDraft
 import com.chronos.mobile.domain.model.TimetableDetailsDraft
+import java.time.LocalDate
+
+private val academicCalendarService = AcademicCalendarService()
 
 internal fun Course.toDraft(): CourseDraft =
     CourseDraft(
@@ -23,7 +27,9 @@ internal fun Course.toDraft(): CourseDraft =
 internal fun Timetable.toDetailsDraft(): TimetableDetailsDraft =
     TimetableDetailsDraft(
         name = name,
-        termStartDate = details.termStartDate,
+        termStartDate = academicCalendarService
+            .normalizeTermStartDate(details.termStartDate, LocalDate.now())
+            .toString(),
         startWeek = details.startWeek,
         endWeek = details.endWeek,
         showSaturday = details.showSaturday,

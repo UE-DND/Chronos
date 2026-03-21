@@ -8,14 +8,13 @@ import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.core.model.TimetableImportSource
 import com.chronos.mobile.core.model.currentWeekMonday
-import com.chronos.mobile.core.model.parseTermStartDateOrCurrentWeekMonday
+import com.chronos.mobile.domain.AcademicCalendarService
 import com.chronos.mobile.domain.OnlineScheduleJsonCodec
 import com.chronos.mobile.domain.result.AppError
 import com.chronos.mobile.domain.result.AppResult
 import com.chronos.mobile.domain.result.appResultOf
 import com.chronos.mobile.domain.result.asFailure
 import com.chronos.mobile.domain.result.asSuccess
-import com.chronos.mobile.domain.usecase.CalculateAcademicWeekUseCase
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -26,8 +25,10 @@ import kotlinx.serialization.json.Json
 import kotlin.math.abs
 
 class DefaultOnlineScheduleJsonCodec @Inject constructor(
-    private val calculateAcademicWeekUseCase: CalculateAcademicWeekUseCase,
+    private val academicCalendarService: AcademicCalendarService,
 ) : OnlineScheduleJsonCodec {
+    constructor() : this(AcademicCalendarService())
+
     private val json = Json {
         encodeDefaults = true
         explicitNulls = false
@@ -80,18 +81,24 @@ class DefaultOnlineScheduleJsonCodec @Inject constructor(
     private fun Timetable.toOnlinePayload(): OnlineSchedulePayload {
         val details = details
         val today = LocalDate.now()
-        val weekNum = calculateAcademicWeekUseCase(today, details).toString()
+        val academicWeek = academicCalendarService.calculateAcademicWeek(today, details)
+        val weekStart = academicCalendarService.resolveWeekStart(
+            details = details,
+            week = academicWeek,
+            referenceDate = today,
+        )
+        val weekNum = academicWeek.toString()
         val weekList = (details.startWeek..details.endWeek).map(Int::toString)
         val importSource = details.importSource
         return OnlineSchedulePayload(
             yearTerm = name,
             weekNum = weekNum,
-            nowMonth = resolveWeekStart(today, details).monthValue.toString(),
+            nowMonth = weekStart.monthValue.toString(),
             importSource = importSource.name,
-            termStartDate = exportTermStartDate(importSource, details),
+            termStartDate = exportTermStartDate(importSource, details, today),
             yearTermList = listOf(name),
             weekList = weekList,
-            weekDayList = buildWeekDayList(today, details),
+            weekDayList = buildWeekDayList(today, weekStart),
             eventList = courses.map { it.toOnlineEvent(weekNum) },
         )
     }
@@ -99,19 +106,19 @@ class DefaultOnlineScheduleJsonCodec @Inject constructor(
     private fun exportTermStartDate(
         importSource: TimetableImportSource,
         details: TimetableDetails,
+        referenceDate: LocalDate,
     ): String? = when (importSource) {
         TimetableImportSource.ONLINE_EDU -> null
         TimetableImportSource.FILE_HTML,
         TimetableImportSource.SHARED_JSON,
         TimetableImportSource.UNKNOWN
-        -> details.termStartDate.trim().ifBlank { null }
+        -> academicCalendarService.normalizeTermStartDate(details.termStartDate, referenceDate).toString()
     }
 
     private fun buildWeekDayList(
         referenceDate: LocalDate,
-        details: TimetableDetails,
+        weekStart: LocalDate,
     ): List<OnlineScheduleWeekDay> {
-        val weekStart = resolveWeekStart(referenceDate, details)
         val formatter = DateTimeFormatter.ofPattern("MM/dd")
         return (0..6).map { offset ->
             val date = weekStart.plusDays(offset.toLong())
@@ -131,15 +138,6 @@ class DefaultOnlineScheduleJsonCodec @Inject constructor(
         }
     }
 
-    private fun resolveWeekStart(
-        referenceDate: LocalDate,
-        details: TimetableDetails,
-    ): LocalDate {
-        val termStart = parseTermStartDateOrCurrentWeekMonday(details.termStartDate, referenceDate)
-        val weekNum = calculateAcademicWeekUseCase(referenceDate, details)
-        return termStart.plusWeeks((weekNum - details.startWeek).toLong())
-    }
-
     private fun resolveImportedTermStartDate(
         payload: OnlineSchedulePayload,
         referenceDate: LocalDate,
@@ -152,7 +150,9 @@ class DefaultOnlineScheduleJsonCodec @Inject constructor(
                 ?.let(::parseImportedTermStartDate)
                 ?: inferImportedTermStartDate(payload, referenceDate)
         }
-        return (inferred ?: currentWeekMonday(referenceDate)).toString()
+        return academicCalendarService
+            .normalizeTermStartDate((inferred ?: currentWeekMonday(referenceDate)).toString(), referenceDate)
+            .toString()
     }
 
     private fun parseImportedTermStartDate(value: String): LocalDate? =

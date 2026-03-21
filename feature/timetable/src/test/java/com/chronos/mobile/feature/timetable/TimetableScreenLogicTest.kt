@@ -101,6 +101,24 @@ class TimetableScreenLogicTest {
     }
 
     @Test
+    fun `future placeholders use monday anchored dates for non monday term start date`() {
+        val models = buildTimetableCourseDisplayModels(
+            timetable = sampleTimetable(
+                termStartDate = "2026-03-03",
+                courses = listOf(
+                    sampleCourse(id = "nearer", weeks = listOf(2)),
+                    sampleCourse(id = "later", weeks = listOf(3)),
+                ),
+            ),
+            visibleDayOfWeeks = setOf(1),
+            displayedWeek = 1,
+            today = LocalDate.parse("2026-03-03"),
+        )
+
+        assertEquals(listOf("nearer"), models.map { it.course.id })
+    }
+
+    @Test
     fun `resolveDisplayedWeek resets to academic week when timetable changes`() {
         val resolvedWeek = resolveDisplayedWeek(
             timetable = sampleTimetable(courses = emptyList()),
@@ -183,8 +201,16 @@ class TimetableScreenLogicTest {
         assertTrue(shouldShowAcademicWeekRangeSettings(TimetableImportSource.SHARED_JSON))
     }
 
+    @Test
+    fun `toDetailsDraft normalizes non monday term start date`() {
+        val draft = sampleTimetable(termStartDate = "2026-03-03", courses = emptyList()).toDetailsDraft()
+
+        assertEquals("2026-03-02", draft.termStartDate)
+    }
+
     private fun sampleTimetable(
         showNonCurrentWeekCourses: Boolean = true,
+        termStartDate: String = "2026-03-02",
         courses: List<Course>,
     ): Timetable =
         Timetable(
@@ -194,7 +220,7 @@ class TimetableScreenLogicTest {
             createdAt = 0L,
             updatedAt = 0L,
             details = TimetableDetails(
-                termStartDate = "2026-03-02",
+                termStartDate = termStartDate,
                 startWeek = 1,
                 endWeek = 20,
                 showNonCurrentWeekCourses = showNonCurrentWeekCourses,
