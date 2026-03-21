@@ -42,8 +42,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.chronos.mobile.core.model.TimetableImportSource
 import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.core.model.TimetableImportSource
+import com.chronos.mobile.core.model.TimetableViewPrefs
 import com.chronos.mobile.core.model.currentWeekMonday
 import com.chronos.mobile.core.model.defaultPeriodTimes
 import com.chronos.mobile.domain.model.PeriodTimeDraft
@@ -334,13 +335,14 @@ internal fun shouldShowAcademicWeekRangeSettings(importSource: TimetableImportSo
 
 private fun TimetableDetailsDraft.resetToDefaultSettings(): TimetableDetailsDraft {
     val defaults = TimetableDetails()
+    val defaultViewPrefs = TimetableViewPrefs()
     return copy(
         termStartDate = currentWeekMonday().toString(),
         startWeek = defaults.startWeek,
         endWeek = defaults.endWeek,
         showSaturday = defaults.showSaturday,
         showSunday = defaults.showSunday,
-        showNonCurrentWeekCourses = defaults.showNonCurrentWeekCourses,
+        showNonCurrentWeekCourses = defaultViewPrefs.showNonCurrentWeekCourses,
         periodTimes = defaults.periodTimes.map { period ->
             PeriodTimeDraft(
                 index = period.index,

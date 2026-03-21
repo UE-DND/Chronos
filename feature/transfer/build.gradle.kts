@@ -1,12 +1,10 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.io.File
 import java.util.Properties
 
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.hilt)
-    alias(libs.plugins.ksp)
+    id("chronos.android.library")
+    id("chronos.android.compose")
+    id("chronos.android.hilt")
 }
 
 val localProperties: Properties = Properties().apply {
@@ -31,11 +29,6 @@ val onlinePassword = resolveTransferCredential("ONLINE_PASSWORD")
 
 android {
     namespace = "com.chronos.mobile.feature.transfer"
-    compileSdk = 36
-
-    defaultConfig {
-        minSdk = 26
-    }
 
     buildTypes {
         debug {
@@ -49,20 +42,7 @@ android {
     }
 
     buildFeatures {
-        compose = true
         buildConfig = true
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_21)
     }
 }
 
@@ -83,7 +63,5 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.hilt.navigation.compose)
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

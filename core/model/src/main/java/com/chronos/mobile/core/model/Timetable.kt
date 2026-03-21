@@ -29,9 +29,13 @@ data class TimetableDetails(
     val endWeek: Int = 20,
     val showSaturday: Boolean = true,
     val showSunday: Boolean = true,
-    val showNonCurrentWeekCourses: Boolean = false,
     val importSource: TimetableImportSource = TimetableImportSource.UNKNOWN,
     val periodTimes: List<PeriodTime> = defaultPeriodTimes(),
+)
+
+@Serializable
+data class TimetableViewPrefs(
+    val showNonCurrentWeekCourses: Boolean = false,
 )
 
 @Serializable
@@ -42,6 +46,7 @@ data class Timetable(
     val createdAt: Long,
     val updatedAt: Long,
     val details: TimetableDetails = TimetableDetails(),
+    val viewPrefs: TimetableViewPrefs = TimetableViewPrefs(),
 )
 
 fun currentWeekMonday(referenceDate: LocalDate = LocalDate.now()): LocalDate =

@@ -402,7 +402,7 @@ internal fun buildTimetableCourseDisplayModels(
                 isInDisplayedWeek = true,
             )
         }
-    if (!timetable.details.showNonCurrentWeekCourses) {
+    if (!timetable.viewPrefs.showNonCurrentWeekCourses) {
         return currentEntries
     }
 

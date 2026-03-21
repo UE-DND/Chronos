@@ -2,6 +2,7 @@ package com.chronos.mobile.domain.usecase
 
 import com.chronos.mobile.core.model.PeriodTime
 import com.chronos.mobile.core.model.TimetableDetails
+import com.chronos.mobile.core.model.TimetableViewPrefs
 import com.chronos.mobile.core.model.defaultPeriodTimes
 import com.chronos.mobile.domain.AcademicCalendarService
 import com.chronos.mobile.domain.TimetableRepository
@@ -43,9 +44,11 @@ class SaveTimetableDetailsUseCase @Inject constructor(
                     endWeek = draft.endWeek.coerceAtLeast(safeStartWeek),
                     showSaturday = draft.showSaturday,
                     showSunday = draft.showSunday,
-                    showNonCurrentWeekCourses = draft.showNonCurrentWeekCourses,
                     importSource = draft.importSource,
                     periodTimes = normalizedPeriods,
+                ),
+                viewPrefs = TimetableViewPrefs(
+                    showNonCurrentWeekCourses = draft.showNonCurrentWeekCourses,
                 ),
             )
         )

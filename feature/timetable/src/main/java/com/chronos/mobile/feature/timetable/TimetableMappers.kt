@@ -34,7 +34,7 @@ internal fun Timetable.toDetailsDraft(): TimetableDetailsDraft =
         endWeek = details.endWeek,
         showSaturday = details.showSaturday,
         showSunday = details.showSunday,
-        showNonCurrentWeekCourses = details.showNonCurrentWeekCourses,
+        showNonCurrentWeekCourses = viewPrefs.showNonCurrentWeekCourses,
         importSource = details.importSource,
         periodTimes = details.periodTimes.map {
             PeriodTimeDraft(

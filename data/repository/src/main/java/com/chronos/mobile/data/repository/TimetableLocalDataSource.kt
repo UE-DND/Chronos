@@ -2,7 +2,6 @@ package com.chronos.mobile.data.repository
 
 import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.Timetable
-import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.core.model.TimetableSummary
 import com.chronos.mobile.data.local.ChronosDao
 import com.chronos.mobile.data.local.CourseEntity
@@ -14,17 +13,12 @@ import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.json.Json
 
 @Singleton
 class TimetableLocalDataSource @Inject constructor(
     private val chronosDao: ChronosDao,
+    private val timetableConfigJsonCodec: TimetableConfigJsonCodec,
 ) {
-    private val storageJson = Json {
-        encodeDefaults = true
-        ignoreUnknownKeys = true
-    }
-
     fun observeTimetableSummaries(): Flow<List<TimetableSummary>> = chronosDao.observeTimetableSummaries()
         .map { summaries -> summaries.map { it.toDomain() } }
         .distinctUntilChanged()
@@ -64,14 +58,18 @@ class TimetableLocalDataSource @Inject constructor(
         chronosDao.deleteTimetable(id)
     }
 
-    private fun TimetableWithCourses.toDomain(): Timetable = Timetable(
-        id = timetable.id,
-        name = timetable.name,
-        createdAt = timetable.createdAt,
-        updatedAt = timetable.updatedAt,
-        courses = courses.map { it.toDomain() },
-        details = timetable.detailsOrDefault(),
-    )
+    private fun TimetableWithCourses.toDomain(): Timetable {
+        val config = timetable.configOrDefault()
+        return Timetable(
+            id = timetable.id,
+            name = timetable.name,
+            createdAt = timetable.createdAt,
+            updatedAt = timetable.updatedAt,
+            courses = courses.map { it.toDomain() },
+            details = config.details,
+            viewPrefs = config.viewPrefs,
+        )
+    }
 
     private fun TimetableSummaryRow.toDomain(): TimetableSummary = TimetableSummary(
         id = id,
@@ -86,7 +84,10 @@ class TimetableLocalDataSource @Inject constructor(
         name = name,
         createdAt = createdAt,
         updatedAt = updatedAt,
-        configJson = storageJson.encodeToString(details),
+        configJson = timetableConfigJsonCodec.encode(
+            details = details,
+            viewPrefs = viewPrefs,
+        ),
     )
 
     private fun Course.toEntity(timetableId: String): CourseEntity = CourseEntity(
@@ -117,7 +118,6 @@ class TimetableLocalDataSource @Inject constructor(
             .mapNotNull(String::toIntOrNull),
     )
 
-    private fun TimetableEntity.detailsOrDefault(): TimetableDetails = runCatching {
-        storageJson.decodeFromString<TimetableDetails>(configJson)
-    }.getOrDefault(TimetableDetails())
+    private fun TimetableEntity.configOrDefault(): TimetableConfig =
+        timetableConfigJsonCodec.decode(configJson)
 }

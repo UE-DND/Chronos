@@ -1,35 +1,11 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.hilt)
-    alias(libs.plugins.ksp)
+    id("chronos.android.library")
+    id("chronos.android.compose")
+    id("chronos.android.hilt")
 }
 
 android {
     namespace = "com.chronos.mobile.feature.root"
-    compileSdk = 36
-
-    defaultConfig {
-        minSdk = 26
-    }
-
-    buildFeatures {
-        compose = true
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_21)
-    }
 }
 
 dependencies {
@@ -51,8 +27,6 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
-    implementation(libs.hilt.android)
     implementation(libs.google.play.services.oss.licenses)
-    ksp(libs.hilt.compiler)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

@@ -1,33 +1,10 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.compose)
+    id("chronos.android.library")
+    id("chronos.android.compose")
 }
 
 android {
     namespace = "com.chronos.mobile.feature.mine"
-    compileSdk = 36
-
-    defaultConfig {
-        minSdk = 26
-    }
-
-    buildFeatures {
-        compose = true
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_21)
-    }
 }
 
 dependencies {

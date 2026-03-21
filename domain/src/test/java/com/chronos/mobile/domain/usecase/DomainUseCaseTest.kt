@@ -5,10 +5,12 @@ import com.chronos.mobile.core.model.Course
 import com.chronos.mobile.core.model.OnlineScheduleEvent
 import com.chronos.mobile.core.model.OnlineSchedulePayload
 import com.chronos.mobile.core.model.OnlineScheduleWeekDay
+import com.chronos.mobile.core.model.PeriodTime
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.core.model.TimetableImportSource
 import com.chronos.mobile.core.model.TimetableSummary
+import com.chronos.mobile.core.model.TimetableViewPrefs
 import com.chronos.mobile.core.model.ThemeMode
 import com.chronos.mobile.core.model.currentWeekMonday
 import com.chronos.mobile.domain.AcademicCalendarService
@@ -120,7 +122,7 @@ class DomainUseCaseTest {
         assertEquals(1, saved?.details?.startWeek)
         assertEquals(1, saved?.details?.endWeek)
         assertEquals(false, saved?.details?.showSaturday)
-        assertEquals(true, saved?.details?.showNonCurrentWeekCourses)
+        assertEquals(true, saved?.viewPrefs?.showNonCurrentWeekCourses)
         assertEquals(2, saved?.details?.periodTimes?.size)
         assertEquals(1, saved?.details?.periodTimes?.first()?.index)
         assertEquals("08:00", saved?.details?.periodTimes?.first()?.startTime)
@@ -218,8 +220,10 @@ class DomainUseCaseTest {
         val current = repo.getAppStateSnapshot().currentTimetable
         assertEquals(existing.id, current?.id)
         assertEquals(existing.name, current?.name)
+        assertEquals(existing.createdAt, current?.createdAt)
         assertEquals(imported.courses.size, current?.courses?.size)
-        assertEquals(existing.details, current?.details)
+        assertEquals(imported.details, current?.details)
+        assertEquals(imported.viewPrefs, current?.viewPrefs)
     }
 
     @Test
@@ -264,6 +268,80 @@ class DomainUseCaseTest {
 
         val current = repo.getAppStateSnapshot().currentTimetable
         assertEquals(TimetableImportSource.FILE_HTML, current?.details?.importSource)
+    }
+
+    @Test
+    fun `importTimetable overwrite updates week range from imported details`() = runBlocking {
+        val repo = FakeTimetableRepository()
+        repo.seedCurrent()
+        val imported = repo.sampleImportedTimetable().copy(
+            details = TimetableDetails(
+                termStartDate = "2026-02-23",
+                startWeek = 2,
+                endWeek = 16,
+            ),
+        )
+        val useCase = ImportTimetableUseCase(repo, ParseEducationalTimetableHtmlUseCase(), codec)
+
+        useCase.import(imported, ImportMode.OVERWRITE_CURRENT)
+
+        val current = repo.getAppStateSnapshot().currentTimetable
+        assertEquals(2, current?.details?.startWeek)
+        assertEquals(16, current?.details?.endWeek)
+    }
+
+    @Test
+    fun `importTimetable overwrite updates weekend visibility from imported details`() = runBlocking {
+        val repo = FakeTimetableRepository()
+        repo.seedCurrent()
+        val imported = repo.sampleImportedTimetable().copy(
+            details = TimetableDetails(
+                showSaturday = false,
+                showSunday = true,
+            ),
+        )
+        val useCase = ImportTimetableUseCase(repo, ParseEducationalTimetableHtmlUseCase(), codec)
+
+        useCase.import(imported, ImportMode.OVERWRITE_CURRENT)
+
+        val current = repo.getAppStateSnapshot().currentTimetable
+        assertEquals(false, current?.details?.showSaturday)
+        assertEquals(true, current?.details?.showSunday)
+    }
+
+    @Test
+    fun `importTimetable overwrite updates period times from imported details`() = runBlocking {
+        val repo = FakeTimetableRepository()
+        repo.seedCurrent()
+        val imported = repo.sampleImportedTimetable().copy(
+            details = TimetableDetails(
+                periodTimes = listOf(
+                    PeriodTime(index = 1, startTime = "08:00", endTime = "08:45"),
+                    PeriodTime(index = 2, startTime = "08:55", endTime = "09:40"),
+                ),
+            ),
+        )
+        val useCase = ImportTimetableUseCase(repo, ParseEducationalTimetableHtmlUseCase(), codec)
+
+        useCase.import(imported, ImportMode.OVERWRITE_CURRENT)
+
+        val current = repo.getAppStateSnapshot().currentTimetable
+        assertEquals(imported.details.periodTimes, current?.details?.periodTimes)
+    }
+
+    @Test
+    fun `importTimetable overwrite updates non current week visibility from imported view prefs`() = runBlocking {
+        val repo = FakeTimetableRepository()
+        repo.seedCurrent()
+        val imported = repo.sampleImportedTimetable().copy(
+            viewPrefs = TimetableViewPrefs(showNonCurrentWeekCourses = true),
+        )
+        val useCase = ImportTimetableUseCase(repo, ParseEducationalTimetableHtmlUseCase(), codec)
+
+        useCase.import(imported, ImportMode.OVERWRITE_CURRENT)
+
+        val current = repo.getAppStateSnapshot().currentTimetable
+        assertEquals(true, current?.viewPrefs?.showNonCurrentWeekCourses)
     }
 
     @Test

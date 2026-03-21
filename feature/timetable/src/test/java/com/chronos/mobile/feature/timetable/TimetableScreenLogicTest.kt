@@ -5,6 +5,7 @@ import com.chronos.mobile.core.model.PeriodTime
 import com.chronos.mobile.core.model.Timetable
 import com.chronos.mobile.core.model.TimetableDetails
 import com.chronos.mobile.core.model.TimetableImportSource
+import com.chronos.mobile.core.model.TimetableViewPrefs
 import com.chronos.mobile.domain.model.TimetableGridModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -223,6 +224,8 @@ class TimetableScreenLogicTest {
                 termStartDate = termStartDate,
                 startWeek = 1,
                 endWeek = 20,
+            ),
+            viewPrefs = TimetableViewPrefs(
                 showNonCurrentWeekCourses = showNonCurrentWeekCourses,
             ),
         )

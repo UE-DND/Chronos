@@ -6,7 +6,7 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [TimetableEntity::class, CourseEntity::class],
     version = 1,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class ChronosDatabase : RoomDatabase() {
     abstract fun chronosDao(): ChronosDao

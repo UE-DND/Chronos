@@ -1,29 +1,10 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.hilt)
-    alias(libs.plugins.ksp)
+    id("chronos.android.library")
+    id("chronos.android.hilt")
 }
 
 android {
     namespace = "com.chronos.mobile.data.secure"
-    compileSdk = 36
-
-    defaultConfig {
-        minSdk = 26
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_21)
-    }
 }
 
 dependencies {
@@ -31,7 +12,5 @@ dependencies {
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.datastore.preferences)
-    implementation(libs.hilt.android)
     implementation(libs.kotlinx.coroutines.android)
-    ksp(libs.hilt.compiler)
 }
