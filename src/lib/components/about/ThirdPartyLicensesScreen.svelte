@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { staticPath } from '$lib/config/static-path';
 	import { connectivity } from '$lib/platform/connectivity.svelte';
 	import { resolveFetchErrorMessage } from '$lib/client/fetch-error-message';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -22,7 +23,7 @@
 		errorMessage = '';
 
 		try {
-			const response = await fetch('/licenses/third-party.json');
+			const response = await fetch(staticPath('/licenses/third-party.json'));
 			if (!response.ok) {
 				errorMessage = resolveFetchErrorMessage(!connectivity.isOnline, '无法加载第三方许可证列表');
 				loadState = 'error';

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { staticPath } from '$lib/config/static-path';
 	import { parseMarkdown } from '$lib/content/markdown';
 	import { connectivity } from '$lib/platform/connectivity.svelte';
 	import { resolveFetchErrorMessage } from '$lib/client/fetch-error-message';
@@ -28,7 +29,7 @@
 		errorMessage = '';
 
 		try {
-			const response = await fetch(documentPath);
+			const response = await fetch(staticPath(documentPath));
 			if (!response.ok) {
 				errorMessage = resolveFetchErrorMessage(!connectivity.isOnline, '无法加载文档内容');
 				loadState = 'error';

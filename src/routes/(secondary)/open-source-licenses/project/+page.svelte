@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { staticPath } from '$lib/config/static-path';
 	import { connectivity } from '$lib/platform/connectivity.svelte';
 	import { resolveFetchErrorMessage } from '$lib/client/fetch-error-message';
 	import SecondaryPageShell from '$lib/components/SecondaryPageShell.svelte';
@@ -17,7 +18,7 @@
 		errorMessage = '';
 
 		try {
-			const response = await fetch('/licenses/project_license.txt');
+			const response = await fetch(staticPath('/licenses/project_license.txt'));
 			if (!response.ok) {
 				errorMessage = resolveFetchErrorMessage(!connectivity.isOnline, '无法加载许可证文本');
 				loadState = 'error';

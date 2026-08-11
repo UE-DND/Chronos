@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { staticPath } from '$lib/config/static-path';
+
 	let {
 		title,
 		subtitle = '',
@@ -12,7 +14,7 @@
 
 <div class="flex flex-col items-center gap-3 py-4 text-center">
 	<img
-		src="/chronos-icon.svg"
+		src={staticPath('/chronos-icon.svg')}
 		alt="Chronos"
 		class="h-20 w-20 rounded-2xl shadow-md ring-1 ring-black/5 dark:ring-white/10"
 	/>
