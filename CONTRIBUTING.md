@@ -321,6 +321,8 @@ export default defineChronosPlugin({
 
 编辑 `scripts/official-plugins.config.ts`：将新插件加入构建映射列表（源码目录 → Bundle 输出路径 + Manifest 元数据）。版本号以配置文件作为单一来源，无需在插件源码中重复声明。
 
+市场中的名称与简介由此处的多语言 Manifest 元数据提供，安装插件前即可展示；插件运行时的文案由各插件的 Message Catalog 管理。两者可针对展示场景使用不同措辞，修改简介时应检查两处，不要在构建配置中单独导入某个插件的消息目录。
+
 ### 4. 构建与校验
 
 官方插件产物**不纳入版本库**，由宿主构建或开发服务器自动生成：

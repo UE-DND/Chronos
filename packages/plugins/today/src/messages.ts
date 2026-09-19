@@ -30,7 +30,7 @@ export const TODAY_MESSAGES = {
 	},
 	en: {
 		'plugin.name': 'Today',
-		'plugin.description': "Quick showing today's courses",
+		'plugin.description': "Quickly view today's courses",
 		'tab.label': 'Today',
 		'screen.title': 'Today',
 		'screen.week': 'Week {week}',

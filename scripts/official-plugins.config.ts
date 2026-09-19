@@ -1,6 +1,5 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CLOCK_MESSAGES } from '../packages/plugins/clock/src/messages.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -50,7 +49,7 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 		name: { 'zh-CN': '自定义壁纸', en: 'Custom Wallpaper' },
 		description: {
 			'zh-CN': '自定义课表页壁纸，支持动态取色',
-			en: 'Custom timetable wallpaper with dynamic color'
+			en: 'Custom timetable wallpaper with dynamic color extraction'
 		},
 		entry: resolve(root, 'packages/plugins/wallpaper/bundle/entry.ts')
 	},
@@ -86,7 +85,7 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 		name: { 'zh-CN': '今日', en: 'Today' },
 		description: {
 			'zh-CN': '快速查看当天课程',
-			en: "Bottom tab showing today's courses"
+			en: "Quickly view today's courses"
 		},
 		entry: resolve(root, 'packages/plugins/today/bundle/entry.ts')
 	},
@@ -97,7 +96,7 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 		sourceDir: 'error-log',
 		name: { 'zh-CN': '错误日志', en: 'Error Log' },
 		description: {
-			'zh-CN': '记录未处理异常与 console.error',
+			'zh-CN': '记录未处理异常与 console.error，便于排查问题',
 			en: 'Capture unhandled errors and console.error'
 		},
 		entry: resolve(root, 'packages/plugins/error-log/bundle/entry.ts')
@@ -109,8 +108,8 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 		sourceDir: 'clock',
 		name: { 'zh-CN': '自定义时间', en: 'Custom Date & Time' },
 		description: {
-			'zh-CN': CLOCK_MESSAGES['zh-cn']['plugin.description'],
-			en: CLOCK_MESSAGES.en['plugin.description']
+			'zh-CN': '冻结课表当前日期和时间',
+			en: "Freeze the timetable's current date and time"
 		},
 		entry: resolve(root, 'packages/plugins/clock/bundle/entry.ts')
 	}
