@@ -1,5 +1,6 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CLOCK_MESSAGES } from '../packages/plugins/clock/src/messages.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -108,8 +109,8 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 		sourceDir: 'clock',
 		name: { 'zh-CN': '自定义时间', en: 'Custom Date & Time' },
 		description: {
-			'zh-CN': '冻结课表当前日期和时间，用于预览任意时刻的课程',
-			en: 'Freeze the app clock to preview courses at any date and time'
+			'zh-CN': CLOCK_MESSAGES['zh-cn']['plugin.description'],
+			en: CLOCK_MESSAGES.en['plugin.description']
 		},
 		entry: resolve(root, 'packages/plugins/clock/bundle/entry.ts')
 	}

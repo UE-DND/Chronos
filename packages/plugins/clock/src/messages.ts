@@ -3,12 +3,10 @@ import type { PluginMessageCatalog } from '@chronos/core';
 export const CLOCK_MESSAGES = {
 	'zh-cn': {
 		'plugin.name': '自定义时间',
-		'plugin.description': '冻结课表当前日期和时间，用于预览任意时刻的课程',
+		'plugin.description': '冻结课表当前日期和时间',
 		'mine.title': '自定义时间',
 		'mine.keywords': '时间,日期,冻结,时钟,调试,预览,clock,time,date',
 		'screen.title': '自定义时间',
-		'screen.status.system': '引擎时间',
-		'screen.status.frozen': '已冻结',
 		'screen.status.subtitle.system': '课表按引擎时间运行',
 		'screen.status.subtitle.frozen': '课表按自定义时间运行',
 		'screen.field.date': '日期',
@@ -32,12 +30,10 @@ export const CLOCK_MESSAGES = {
 	},
 	en: {
 		'plugin.name': 'Custom Date & Time',
-		'plugin.description': 'Freeze the app clock to preview courses at any date and time',
+		'plugin.description': "Freeze the timetable's current date and time",
 		'mine.title': 'Custom date & time',
 		'mine.keywords': 'time,date,freeze,clock,debug,preview',
 		'screen.title': 'Custom Date & Time',
-		'screen.status.system': 'Engine time',
-		'screen.status.frozen': 'Frozen',
 		'screen.status.subtitle.system': 'Timetable follows engine time',
 		'screen.status.subtitle.frozen': 'Timetable follows custom time',
 		'screen.field.date': 'Date',

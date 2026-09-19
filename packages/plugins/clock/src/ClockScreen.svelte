@@ -78,7 +78,6 @@
 			minute: '2-digit'
 		})
 	);
-	const statusBadge = $derived(frozen ? pt('screen.status.frozen') : pt('screen.status.system'));
 	const statusSubtitle = $derived(
 		frozen ? pt('screen.status.subtitle.frozen') : pt('screen.status.subtitle.system')
 	);
@@ -130,23 +129,12 @@
 </script>
 
 {#snippet statusContent()}
-	<div class="flex items-start justify-between gap-3">
-		<div class="min-w-0">
-			<p class="text-headline-small text-on-surface tabular-nums">
-				{headerDate}
-				<span class="text-on-surface-variant">·</span>
-				{headerTime}
-			</p>
-			<p class="text-body-medium mt-1 text-on-surface-variant">{statusSubtitle}</p>
-		</div>
-		<span
-			class="text-label-small shrink-0 rounded-full px-2.5 py-1 {frozen
-				? 'bg-secondary-container text-on-secondary-container'
-				: 'bg-surface-container-high text-on-surface-variant'}"
-		>
-			{statusBadge}
-		</span>
-	</div>
+	<p class="text-headline-small text-on-surface tabular-nums">
+		{headerDate}
+		<span class="text-on-surface-variant">·</span>
+		{headerTime}
+	</p>
+	<p class="text-body-medium mt-1 text-on-surface-variant">{statusSubtitle}</p>
 {/snippet}
 
 <div class="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
