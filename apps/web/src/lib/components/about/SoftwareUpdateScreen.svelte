@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { appLocaleToBcp47 } from '$lib/i18n/locale-sync';
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import {
@@ -39,6 +40,7 @@
 	} = $props();
 
 	const controller = getAppController();
+	const activeLocale = $derived(appLocaleToBcp47(controller.currentLocale));
 
 	onMount(() => {
 		void updateState.checkUpdate();
@@ -75,7 +77,7 @@
 
 	function formatCheckTime(date: Date | null): string {
 		if (!date) return '-';
-		return date.toLocaleTimeString('zh-CN', {
+		return date.toLocaleTimeString(activeLocale, {
 			hour: '2-digit',
 			minute: '2-digit',
 			second: '2-digit'
