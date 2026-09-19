@@ -73,6 +73,27 @@ describe('Today relevant input refresh', () => {
 		screen.dispose();
 		engine.dispose();
 	});
+	it('locale changes re-sort same-period courses without querying again', async () => {
+		const { engine, screen, snapshot, query, course } = await harness();
+		query.mockResolvedValue(
+			['张', '李'].map((name) => ({
+				timetableId: 't',
+				timetableName: 'T',
+				course: { ...course, id: name, name }
+			}))
+		);
+		snapshot.update((s) => ({ ...s, clockTodayIso: '2026-03-03', currentLocale: 'zh-cn' }));
+		await settle();
+		expect(screen.courseEntries.map((entry) => entry.hit.course.name)).toEqual(['李', '张']);
+		expect(query).toHaveBeenCalledTimes(2);
+
+		snapshot.update((s) => ({ ...s, currentLocale: 'en' }));
+		await settle();
+		expect(screen.courseEntries.map((entry) => entry.hit.course.name)).toEqual(['张', '李']);
+		expect(query).toHaveBeenCalledTimes(2);
+		screen.dispose();
+		engine.dispose();
+	});
 	it('newer date result wins even when an older query completes last, and disposal invalidates pending work', async () => {
 		const { engine, screen, snapshot, query, course } = await harness();
 		let release!: (hits: CourseQueryHit[]) => void;

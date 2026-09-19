@@ -43,13 +43,13 @@ export function formatPeriodRange(
 	return `${range.startTime}–${range.endTime}`;
 }
 
-export function sortCourseHits(hits: CourseQueryHit[]): CourseQueryHit[] {
+export function sortCourseHits(hits: CourseQueryHit[], locale: string): CourseQueryHit[] {
 	return [...hits].sort((left, right) => {
 		const startDiff = left.course.startPeriod - right.course.startPeriod;
 		if (startDiff !== 0) return startDiff;
 		const endDiff = left.course.endPeriod - right.course.endPeriod;
 		if (endDiff !== 0) return endDiff;
-		return left.course.name.localeCompare(right.course.name, 'zh-CN');
+		return left.course.name.localeCompare(right.course.name, locale);
 	});
 }
 
@@ -100,9 +100,10 @@ export function attachCourseStatuses(
 	periodTimes: PeriodTime[],
 	nowMinutes: number,
 	currentPeriodIndex: number | null,
-	prepareReminderMinutes = 0
+	prepareReminderMinutes: number,
+	locale: string
 ): TodayCourseEntry[] {
-	return sortCourseHits(hits).map((hit) => ({
+	return sortCourseHits(hits, locale).map((hit) => ({
 		hit,
 		status: resolveCourseTimeStatus(
 			hit.course,

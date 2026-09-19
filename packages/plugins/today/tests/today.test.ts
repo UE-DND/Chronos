@@ -207,7 +207,18 @@ describe('today-courses', () => {
 			}
 		];
 
-		expect(sortCourseHits(hits).map((hit) => hit.course.id)).toEqual(['c1', 'c2']);
+		expect(sortCourseHits(hits, 'zh-cn').map((hit) => hit.course.id)).toEqual(['c1', 'c2']);
+	});
+
+	it('sortCourseHits collates same-period names using the active locale', () => {
+		const hits: CourseQueryHit[] = ['张', '李'].map((name) => ({
+			timetableId: 't1',
+			timetableName: 'A',
+			course: createCourse({ id: name, name, dayOfWeek: 1, startPeriod: 1, endPeriod: 1 })
+		}));
+
+		expect(sortCourseHits(hits, 'zh-cn').map((hit) => hit.course.name)).toEqual(['李', '张']);
+		expect(sortCourseHits(hits, 'en').map((hit) => hit.course.name)).toEqual(['张', '李']);
 	});
 
 	it('resolveCourseTimeStatus marks preparing courses within reminder window', () => {
@@ -293,7 +304,7 @@ describe('today-courses', () => {
 			}
 		];
 
-		const entries = attachCourseStatuses(hits, periodTimes, 9 * 60 + 30, 2, 30);
+		const entries = attachCourseStatuses(hits, periodTimes, 9 * 60 + 30, 2, 30, 'zh-cn');
 		expect(entries.map((entry) => entry.hit.course.id)).toEqual(['c1', 'c2']);
 		expect(entries[0]?.status).toBe('past');
 		expect(entries[1]?.status).toBe('preparing');

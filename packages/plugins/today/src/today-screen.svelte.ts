@@ -1,5 +1,5 @@
 import type { ChronosUiController, ChronosUiSnapshot } from '@chronos/ui-kit';
-import { haptic } from '@chronos/ui-kit';
+import { appLocaleToBcp47, haptic } from '@chronos/ui-kit';
 import {
 	currentTimeMinutes,
 	findCurrentPeriodIndex,
@@ -70,7 +70,8 @@ export function createTodayScreenController(): TodayScreenController {
 			periods(),
 			currentTimeMinutes(now()),
 			currentPeriod(),
-			prepareReminderMinutes
+			prepareReminderMinutes,
+			appLocaleToBcp47(snapshot?.currentLocale)
 		);
 	}
 	async function refreshPaints() {
