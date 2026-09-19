@@ -194,13 +194,19 @@ export function syncNavigationPage(completed = false): void {
 			(frame) => frame.position > actual.position && frame.position <= current.position
 		);
 		if (intent?.shellTab && getTopRoute()) getTopRoute()!.shellTab = intent.shellTab;
+		const departingRoute = getTopRoute();
 		moveToRecord(actual);
 		if (renderingTarget) {
 			renderingTarget = undefined;
 			writeMarker(actual);
 		}
 		correctingFrom = undefined;
-		if (actual.kind === 'route' && isShellRoute(page.url.pathname) && actual.shellTab)
+		if (
+			actual.kind === 'route' &&
+			actual.id !== departingRoute?.id &&
+			isShellRoute(page.url.pathname) &&
+			actual.shellTab
+		)
 			deps.setActiveTab(actual.shellTab);
 		backPending = false;
 		intent = undefined;

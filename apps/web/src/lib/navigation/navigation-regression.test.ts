@@ -276,6 +276,22 @@ describe('navigation and overlay browser contract', () => {
 		browser.complete();
 		expect(browser.setActiveTab).toHaveBeenLastCalledWith('plugin.today');
 	});
+	it('does not restore a stale shell tab when dismissing an overlay on the same route', async () => {
+		const browser = browserAdapter();
+		stageShellTabDeparture('mine');
+		await navigateForward('/about');
+		navigateBack();
+		browser.complete();
+		expect(browser.setActiveTab).toHaveBeenLastCalledWith('mine');
+
+		// The user selects the timetable tab without navigating to another route.
+		browser.setActiveTab.mockClear();
+		const sheet = openOverlayHistory('sheet', vi.fn());
+		sheet.close();
+		browser.complete();
+
+		expect(browser.setActiveTab).not.toHaveBeenCalled();
+	});
 	it('nested overlays dismiss only the traversed instance and duplicate sync is harmless', () => {
 		const browser = browserAdapter();
 		const outer = vi.fn();
