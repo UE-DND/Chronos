@@ -156,9 +156,6 @@
 						</svg>
 					</div>
 					<p class="text-title-medium text-on-surface">{pt('screen.empty.noCourses')}</p>
-					<p class="text-body-medium mt-2 text-on-surface-variant">
-						{pt('screen.empty.noCoursesHint')}
-					</p>
 				</section>
 			{:else}
 				<section class="ui-section-surface overflow-hidden">
