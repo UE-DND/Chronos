@@ -79,6 +79,7 @@ export function computeTimetableWeekLayout(
 	const placements = placeCapsules({
 		courseDisplayModels,
 		visibleDays: gridModel.visibleDays,
+		displayedPeriodCount: gridModel.displayedPeriodCount,
 		columnWidthPx,
 		expandedSlotKeys,
 		layoutMode,

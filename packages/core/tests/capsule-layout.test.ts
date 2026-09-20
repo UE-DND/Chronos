@@ -149,6 +149,28 @@ describe('slot and location helpers', () => {
 describe('placeCapsules', () => {
 	const visibleDays = [{ dayOfWeek: 1 }, { dayOfWeek: 2 }, { dayOfWeek: 3 }];
 
+	it.each([false, true])(
+		'clips visible geometry without changing course data (expanded=%s)',
+		(expanded) => {
+			const models = [courseModel('a', 1, 9, 10), courseModel('b', 1, 9, 11)];
+			const items = placeCapsules({
+				courseDisplayModels: models,
+				visibleDays,
+				displayedPeriodCount: 9,
+				columnWidthPx: 110,
+				expandedSlotKeys: new Set(expanded ? [periodSlotKey(1, 9, 11)] : [])
+			});
+			expect(items).toHaveLength(expanded ? 2 : 1);
+			for (const item of items) {
+				expect(item.geometry.startPeriod).toBe(9);
+				expect(item.geometry.endPeriod).toBe(9);
+				if (item.kind === 'course')
+					expect(item.course.endPeriod).toBe(item.course.id === 'a' ? 10 : 11);
+			}
+			expect(models.map((model) => model.course.endPeriod)).toEqual([10, 11]);
+		}
+	);
+
 	it('places a single course with full-column geometry', () => {
 		const items = placeCapsules({
 			courseDisplayModels: [courseModel('a', 1, 2, 3, { location: '两江校区 弘远楼A0213' })],

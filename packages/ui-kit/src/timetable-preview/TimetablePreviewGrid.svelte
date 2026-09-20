@@ -104,6 +104,7 @@
 			? placeCapsules({
 					courseDisplayModels,
 					visibleDays: gridModel.visibleDays,
+					displayedPeriodCount: gridModel.displayedPeriodCount,
 					columnWidthPx,
 					expandedSlotKeys: effectiveExpandedSlots,
 					coursePalette,

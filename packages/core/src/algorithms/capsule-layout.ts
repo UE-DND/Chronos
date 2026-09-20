@@ -80,6 +80,8 @@ export interface PlacedOverlapPlaceholder {
 export type PlacedItem = PlacedCourseCapsule | PlacedOverlapPlaceholder;
 
 export interface PlaceCapsulesInput {
+	/** Clip geometry to grid rows without changing source courses or slot keys. */
+	displayedPeriodCount?: number;
 	courseDisplayModels: TimetableCourseDisplayModel[];
 	visibleDays: { dayOfWeek: number }[];
 	columnWidthPx: number;
@@ -214,6 +216,15 @@ export function placeCapsules(input: PlaceCapsulesInput): PlacedItem[] {
 				})
 			);
 		});
+	}
+
+	if (input.displayedPeriodCount !== undefined) {
+		for (let i = items.length - 1; i >= 0; i -= 1) {
+			const geometry = items[i]!.geometry;
+			geometry.startPeriod = Math.max(1, geometry.startPeriod);
+			geometry.endPeriod = Math.min(input.displayedPeriodCount, geometry.endPeriod);
+			if (geometry.startPeriod > geometry.endPeriod) items.splice(i, 1);
+		}
 	}
 
 	if (capsuleCornerStyle === 'pill') {
