@@ -38,6 +38,28 @@ export class OfficialPluginRuntimeActivator {
 		try {
 			disposables.push(...(await this.activateThemeAssets(record)));
 			disposables.push(...(await this.activateBundledPlugin(record)));
+			if (record.code && record.colorsJson) {
+				const snapshot = createThemeFromColorJson(
+					parseColorThemeJson(JSON.parse(record.colorsJson))
+				);
+				const theme = this.engine.themes.getTheme(snapshot.id);
+				if (
+					!theme ||
+					this.engine.slots.resolveOwner('theme.definition', snapshot.id) !== manifest.id ||
+					(['light', 'dark'] as const).some(
+						(mode) =>
+							Object.entries(snapshot.workbenchColors[mode]).some(
+								([key, value]) => theme.workbenchColors[mode][key] !== value
+							) ||
+							Object.keys(theme.workbenchColors[mode]).length !==
+								Object.keys(snapshot.workbenchColors[mode]).length
+					)
+				) {
+					throw new Error(
+						'ESM theme must register the same colors and identity as its static resource'
+					);
+				}
+			}
 
 			const composite: Disposable = {
 				dispose: () => {
@@ -68,7 +90,7 @@ export class OfficialPluginRuntimeActivator {
 			? createIconThemeFromJson(parseIconThemeJson(JSON.parse(record.iconThemeJson)))
 			: undefined;
 		const disposables: Disposable[] = [];
-		if (colorTheme) {
+		if (colorTheme && !record.code) {
 			const wallpaper = record.wallpaperAssetId
 				? await this.images.get(record.wallpaperAssetId)
 				: undefined;

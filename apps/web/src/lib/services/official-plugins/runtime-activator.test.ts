@@ -78,6 +78,49 @@ describe('OfficialPluginRuntimeActivator', () => {
 		vi.unstubAllGlobals();
 	});
 
+	it.each([false, true])(
+		'ESM owns the theme and validates static resource consistency (mismatch=%s)',
+		async (mismatch) => {
+			const colors = {
+				light: { 'color.primary': '#123456' },
+				dark: { 'color.primary': '#abcdef' }
+			};
+			const record = {
+				manifest: {
+					id: 'hybrid',
+					name: { en: 'Hybrid' },
+					version: '1',
+					description: { en: '' },
+					author: 'test',
+					type: 'theme' as const,
+					bundleFormat: 'esm' as const,
+					themeId: 'hybrid-theme',
+					colorsUrl: '/colors.json',
+					colorsSha256: 'hash'
+				},
+				colorsJson: JSON.stringify({
+					id: 'hybrid-theme',
+					variants: { light: { colors: colors.light }, dark: { colors: colors.dark } }
+				}),
+				code: `export default { id: 'hybrid', apply(ctx) { ctx.registerSlot('theme.definition', { id: 'hybrid-theme', name: 'Hybrid', workbenchColors: ${JSON.stringify(mismatch ? { light: {}, dark: {} } : colors)}, resolveWallpaperColors() { return { workbenchColors: {} }; } }); } };`,
+				enabled: true,
+				origin: { kind: 'user' as const },
+				installedAt: 1
+			};
+			if (mismatch) {
+				await expect(activator.activate(record)).rejects.toThrow('same colors');
+				expect(engine.themes.getTheme('hybrid-theme')).toBeUndefined();
+			} else {
+				await activator.activate(record);
+				expect(engine.slots.resolveOwner('theme.definition', 'hybrid-theme')).toBe('hybrid');
+				expect(engine.themes.getTheme('hybrid-theme')?.resolveWallpaperColors).toBeTypeOf(
+					'function'
+				);
+				await activator.deactivate('hybrid');
+				expect(engine.themes.getTheme('hybrid-theme')).toBeUndefined();
+			}
+		}
+	);
 	it('registers JSON-only theme', async () => {
 		installed.add('theme-json');
 		await activator.activate({
