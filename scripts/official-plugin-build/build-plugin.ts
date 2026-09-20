@@ -24,7 +24,7 @@ export interface BuildOfficialPluginOptions {
 export interface OfficialPluginBuildResult {
 	wallpaperBytes?: Uint8Array;
 	id: string;
-	type: 'theme' | 'tool';
+	type: 'theme' | 'source' | 'codec' | 'tool';
 	rev?: string;
 	manifest?: Record<string, unknown>;
 	code: string | null;

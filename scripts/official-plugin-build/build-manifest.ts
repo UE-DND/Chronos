@@ -30,6 +30,9 @@ export function buildManifestForPlugin(
 		manifest.toolGroup = plugin.toolGroup;
 	}
 
+	if (plugin.optionalServerCapabilities)
+		manifest.optionalServerCapabilities = plugin.optionalServerCapabilities;
+
 	applyAssetManifestFields(manifest, assets, (fileName) => pluginAssetUrl(plugin.id, fileName));
 
 	return manifest;

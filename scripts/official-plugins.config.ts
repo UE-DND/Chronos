@@ -10,6 +10,7 @@ type OfficialPluginBase = {
 	/** packages/plugins source directory */
 	sourceDir: string;
 	entry?: string;
+	optionalServerCapabilities?: { pluginId: string; action: string }[];
 	colorsJson?: string;
 	iconsJson?: string;
 	/** JSON-only assets skip self-contained bundle.css verification (default: has entry) */
@@ -17,10 +18,46 @@ type OfficialPluginBase = {
 };
 
 export type OfficialPluginDef =
-	| (OfficialPluginBase & { type: 'theme' })
+	| (OfficialPluginBase & { type: 'theme' | 'source' | 'codec' })
 	| (OfficialPluginBase & { type: 'tool'; toolGroup: 'utility' | 'dev' });
 
 export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
+	{
+		id: 'codec-share',
+		type: 'tool',
+		toolGroup: 'utility',
+		sourceDir: 'codec-share',
+		name: { 'zh-CN': '分享口令', en: 'Share token' },
+		description: {
+			'zh-CN': '通过分享口令导入和分享课表',
+			en: 'Import and share timetables with share tokens'
+		},
+		entry: resolve(root, 'packages/plugins/codec-share/bundle/entry.ts')
+	},
+	{
+		id: 'source-cqut',
+		optionalServerCapabilities: [{ pluginId: 'source-cqut', action: 'preview' }],
+		type: 'source',
+		sourceDir: 'source-cqut',
+		name: { 'zh-CN': '重庆理工大学', en: 'CQUT' },
+		description: {
+			'zh-CN': '导入 HTML 课表；在线同步需要部署教务代理',
+			en: 'Import HTML timetables; online sync requires the deployed CQUT proxy'
+		},
+		entry: resolve(root, 'packages/plugins/source-cqut/bundle/entry.ts')
+	},
+	{
+		id: 'theme-m3',
+		type: 'theme',
+		sourceDir: 'theme-m3',
+		tailwindSource: false,
+		name: { 'zh-CN': 'Material 3', en: 'Material 3' },
+		description: {
+			'zh-CN': 'Chronos 默认 Material 3 配色',
+			en: 'Chronos default Material 3 colors'
+		},
+		colorsJson: resolve(root, 'packages/plugins/theme-m3/theme-m3.colors.json')
+	},
 	{
 		id: 'theme-yumemita',
 		type: 'theme',

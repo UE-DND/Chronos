@@ -387,7 +387,7 @@ describe('chronos-share-link-codec', () => {
 		const link = 'https://chronos.test/s#1.abc';
 		const clipboardText = formatShareClipboardText('知行理工', link);
 		expect(clipboardText).toBe(
-			'我分享了一张课表：「知行理工」\n复制这段文本后，打开 Chronos，选择从【分享链接】方式导入\nhttps://chronos.test/s#1.abc'
+			'我分享了一张课表：「知行理工」\n复制这段文本后，打开 Chronos，选择从【分享口令】方式导入\nhttps://chronos.test/s#1.abc'
 		);
 		expect(extractSharePayloadFromText(clipboardText)).toBe('1.abc');
 		expect(formatShareClipboardText('', link)).toContain('「未命名课表」');

@@ -37,21 +37,21 @@ export const SHARE_CODEC_MESSAGES = {
 		'share.error.parseFailed': '分享链接解析失败',
 		'share.clipboard.unnamed': '未命名课表',
 		'share.clipboard.template':
-			'我分享了一张课表：「{name}」\n复制这段文本后，打开 Chronos，选择从【分享链接】方式导入\n{link}'
+			'我分享了一张课表：「{name}」\n复制这段文本后，打开 Chronos，选择从【分享口令】方式导入\n{link}'
 	},
 	en: {
 		'plugin.name': 'Share token',
 		'plugin.description': 'Import and export timetables via share tokens',
-		'import.tab.title': 'Share link',
+		'import.tab.title': 'Share token',
 		'import.field.content.title': 'Share link or token',
 		'import.field.content.placeholder': 'Paste a timetable share link or full token',
 		'import.error.empty': 'No valid timetable share link was recognized',
-		'export.action.title': 'Share link',
+		'export.action.title': 'Share token',
 		'export.action.description': 'Generate a compact share token and copy to clipboard',
 		'export.success': 'Timetable link copied',
 		'export.warning.large':
 			'The timetable is large; some apps may truncate the link. Verify the import result.',
-		'import.ui.title': 'Share link',
+		'import.ui.title': 'Share token',
 		'import.ui.subtitle': 'Copy a share token, then tap the button below',
 		'import.ui.loading': 'Reading…',
 		'import.ui.clipboard': 'Import from clipboard',
@@ -61,6 +61,6 @@ export const SHARE_CODEC_MESSAGES = {
 		'share.error.parseFailed': 'Failed to parse share link',
 		'share.clipboard.unnamed': 'Untitled timetable',
 		'share.clipboard.template':
-			'I shared a timetable: "{name}"\nCopy this text, open Chronos, and import via Share link\n{link}'
+			'I shared a timetable: "{name}"\nCopy this text, open Chronos, and import via Share token\n{link}'
 	}
 } as const;

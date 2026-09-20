@@ -1,9 +1,10 @@
 {
 	"extends": "../../../tsconfig.json",
 	"compilerOptions": {
+		"types": ["vite/client"],
 		"paths": {
 			"@chronos/core": ["../../../packages/core/src/index.ts"]
 		}
 	},
-	"include": ["src/**/*", "tests/**/*"]
+	"include": ["src/**/*", "bundle/**/*", "tests/**/*"]
 }
