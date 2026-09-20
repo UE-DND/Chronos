@@ -8,6 +8,15 @@ export interface PluginServerRequestEvent {
 
 export type PluginServerHandler = (event: PluginServerRequestEvent) => Response | Promise<Response>;
 
+/** Build-time metadata; importing it must not load server handlers. */
+export interface PluginServerDefinition {
+	pluginId: string;
+	proxy: {
+		action: string;
+		domains: readonly string[];
+	};
+}
+
 export interface PluginServerManifest {
 	handlers: Record<string, Partial<Record<PluginHttpMethod, PluginServerHandler>>>;
 	proxy?: {

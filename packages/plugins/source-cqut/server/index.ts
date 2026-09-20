@@ -5,7 +5,7 @@ import type {
 	AppError
 } from '@chronos/core';
 import { pluginServerError, pluginServerSuccess } from '@chronos/core';
-import { SERVER_PROXY_ACTION, SERVER_PROXY_DOMAINS } from './config';
+import { serverDefinition } from './definition';
 import { fetchCqutSchedule } from './fetch-schedule';
 
 function toWireErrorKind(kind: AppError['kind']): PluginServerErrorKind {
@@ -56,10 +56,10 @@ export const handlePreview: PluginServerHandler = async ({ request }) => {
 
 export const serverManifest: PluginServerManifest = {
 	handlers: {
-		preview: { POST: handlePreview }
+		[serverDefinition.proxy.action]: { POST: handlePreview }
 	},
 	proxy: {
-		domains: [...SERVER_PROXY_DOMAINS],
-		action: SERVER_PROXY_ACTION
+		domains: [...serverDefinition.proxy.domains],
+		action: serverDefinition.proxy.action
 	}
 };

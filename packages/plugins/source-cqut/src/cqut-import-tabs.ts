@@ -22,8 +22,7 @@ import {
 	type HtmlConfirmForm
 } from './html-parser';
 import { parseCqutScheduleData, type CqutScheduleRawInput } from './cqut-schedule-parser';
-
-const SOURCE_CQUT_PLUGIN_ID = 'source-cqut';
+import { serverDefinition } from '../server/definition';
 
 export interface RegisterCqutImportTabsOptions {
 	ctx: ChronosContext;
@@ -55,8 +54,8 @@ async function executeCqutOnlineImport(
 
 	const { response, body } = await callPluginServerJson<CqutScheduleRawInput>(
 		http,
-		SOURCE_CQUT_PLUGIN_ID,
-		'preview',
+		serverDefinition.pluginId,
+		serverDefinition.proxy.action,
 		{ account: username, password }
 	);
 
@@ -88,7 +87,11 @@ export function registerCqutImportTabs(options: RegisterCqutImportTabsOptions): 
 	const htmlImportSchema = createHtmlImportSchema(t);
 	const htmlConfirmSchema = createHtmlConfirmSchema(t);
 
-	if (ctx.service(IHttpService).supportsPluginServer?.('source-cqut', 'preview')) {
+	if (
+		ctx
+			.service(IHttpService)
+			.supportsPluginServer?.(serverDefinition.pluginId, serverDefinition.proxy.action)
+	) {
 		registerImportTab<CqutImportForm>(ctx, {
 			id: 'cqut-online',
 			title: () => t('import.online.tab.title'),

@@ -26,6 +26,11 @@
 			"import": "./server/index.ts",
 			"default": "./server/index.ts"
 		},
+		"./server/definition": {
+			"types": "./server/definition.ts",
+			"import": "./server/definition.ts",
+			"default": "./server/definition.ts"
+		},
 		"./CqutOnlineImportTab": {
 			"types": "./src/CqutOnlineImportTab.svelte",
 			"import": "./src/CqutOnlineImportTab.svelte",
