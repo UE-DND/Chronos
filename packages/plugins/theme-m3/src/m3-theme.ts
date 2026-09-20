@@ -12,8 +12,8 @@ import type { CoursePaletteEntry } from '@chronos/core';
 
 export const BRAND_SOURCE_ARGB = 0xff0068b7;
 
-/** Host semantic color defaults — single source for generated CSS and m3-default tokens. */
-export const CHRONOS_HOST_COLOR_KEYS = [
+/** M3 theme defaults, owned by this plugin. */
+export const M3_BASE_COLOR_KEYS = [
 	'canvas',
 	'ink',
 	'border-subtle',
@@ -27,9 +27,9 @@ export const CHRONOS_HOST_COLOR_KEYS = [
 	'danger'
 ] as const;
 
-export type ChronosHostColorKey = (typeof CHRONOS_HOST_COLOR_KEYS)[number];
+export type ChronosHostColorKey = (typeof M3_BASE_COLOR_KEYS)[number];
 
-export const CHRONOS_HOST_COLORS: Record<'light' | 'dark', Record<ChronosHostColorKey, string>> = {
+export const M3_BASE_COLORS: Record<'light' | 'dark', Record<ChronosHostColorKey, string>> = {
 	light: {
 		canvas: '#f0f4f8',
 		ink: '#0b1f33',
@@ -57,16 +57,6 @@ export const CHRONOS_HOST_COLORS: Record<'light' | 'dark', Record<ChronosHostCol
 		danger: '#e60012'
 	}
 };
-
-/** Tailwind @theme inline bridge keys for host semantics. */
-export const CHRONOS_HOST_INLINE_THEME_KEYS = [
-	'canvas',
-	'ink',
-	'success',
-	'warning',
-	'danger',
-	'border-subtle'
-] as const;
 
 const materialColors = new MaterialDynamicColors();
 
@@ -195,10 +185,6 @@ function toKebabCase(name: string): string {
 	return name.replaceAll('_', '-');
 }
 
-function getM3ColorNames(): string[] {
-	return allDynamicColors.map((color) => toKebabCase(color.name));
-}
-
 function createDynamicScheme(sourceArgb: number, isDark: boolean): DynamicScheme {
 	return new DynamicScheme({
 		sourceColorHcts: [Hct.fromInt(sourceArgb)],
@@ -268,77 +254,12 @@ export function coursePaletteFromSources(argbs: number[]): CoursePaletteEntry[] 
 	return entries;
 }
 
-function hostColorCssVars(mode: 'light' | 'dark'): string[] {
-	return CHRONOS_HOST_COLOR_KEYS.map(
-		(key) => `\t\t--color-${key}: ${CHRONOS_HOST_COLORS[mode][key]};`
-	);
-}
-
-export function buildGeneratedThemeCss(): string {
-	const light = createDynamicScheme(BRAND_SOURCE_ARGB, false);
-	const dark = createDynamicScheme(BRAND_SOURCE_ARGB, true);
-	const lightVars: string[] = [];
-	const darkVars: string[] = [];
-
-	for (const color of allDynamicColors) {
-		const kebabCase = toKebabCase(color.name);
-		const lightHex = argbToHex(color.getArgb(light));
-		const darkHex = argbToHex(color.getArgb(dark));
-
-		lightVars.push(`\t\t--color-${kebabCase}: ${lightHex};`);
-		if (lightHex !== darkHex) {
-			darkVars.push(`\t\t--color-${kebabCase}: ${darkHex};`);
-		}
-	}
-
-	lightVars.push(...hostColorCssVars('light'));
-	darkVars.push(...hostColorCssVars('dark'));
-
-	return `/* generated, do not edit */
-
-@layer tokens {
-	:root {
-${lightVars.join('\n')}
-	}
-
-	.dark {
-${darkVars.join('\n')}
-	}
-}
-
-${themeInlineBlock()}
-`;
-}
-
-/** Tailwind `@theme inline` bridge only — no `:root` hex token values. */
-export function buildGeneratedThemeInlineCss(): string {
-	return `/* generated, do not edit */
-
-${themeInlineBlock()}
-`;
-}
-
-function themeInlineBlock(): string {
-	const themeInlineVars = [
-		...getM3ColorNames().map((name) => `\t--color-${name}: var(--color-${name});`),
-		...CHRONOS_COLOR_ALIASES.map(
-			(alias) => `\t--color-${alias.name}: var(--color-${alias.source});`
-		),
-		...CHRONOS_HOST_INLINE_THEME_KEYS.map((key) => `\t--color-${key}: var(--color-${key});`),
-		'\t--color-border: var(--color-border-subtle);'
-	].join('\n');
-
-	return `@theme inline {
-${themeInlineVars}
-}`;
-}
-
-function mergeHostColorsIntoTokens(
+function mergeBaseColorsIntoTokens(
 	tokens: Record<string, string>,
 	mode: 'light' | 'dark'
 ): Record<string, string> {
-	for (const key of CHRONOS_HOST_COLOR_KEYS) {
-		tokens[key] = CHRONOS_HOST_COLORS[mode][key];
+	for (const key of M3_BASE_COLOR_KEYS) {
+		tokens[key] = M3_BASE_COLORS[mode][key];
 	}
 	return tokens;
 }
@@ -355,7 +276,7 @@ export function buildM3Tokens(mode: 'light' | 'dark', seedColor?: string): Recor
 		tokens[kebabCase] = argbToHex(color.getArgb(scheme));
 	}
 
-	mergeHostColorsIntoTokens(tokens, mode);
+	mergeBaseColorsIntoTokens(tokens, mode);
 
 	return {
 		surface: tokens['surface'] ?? (isDark ? '#141318' : '#fef7ff'),

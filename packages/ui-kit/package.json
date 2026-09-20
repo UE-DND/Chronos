@@ -15,12 +15,6 @@
 			"types": "./src/*",
 			"default": "./src/*"
 		},
-		"./theme/m3-default-workbench.generated": "./src/theme/m3-default-workbench.generated.ts",
-		"./theme/m3-theme": {
-			"types": "./src/theme/m3-theme.ts",
-			"import": "./src/theme/m3-theme.ts",
-			"default": "./src/theme/m3-theme.ts"
-		},
 		"./theme/plugin-tailwind.css": "./src/theme/plugin-tailwind.css",
 		"./theme/radius.css": "./src/theme/radius.css",
 		"./theme/theme-inline.generated.css": "./src/theme/theme-inline.generated.css",
@@ -33,7 +27,6 @@
 	"dependencies": {
 		"@chronos/core": "workspace:*",
 		"@internationalized/date": "^3.12.4",
-		"@ktibow/material-color-utilities-nightly": "^0.4.1772748028000",
 		"bits-ui": "^2.19.0"
 	},
 	"peerDependencies": {

@@ -1,7 +1,7 @@
 import { argbFromHex, Hct } from '@ktibow/material-color-utilities-nightly';
 import { describe, expect, it } from 'vite-plus/test';
-import { colorsFromImageBytes } from '../src/theme/m3-theme';
-import { coursePaletteFromSources } from '@chronos/ui-kit/theme/m3-theme';
+import { colorsFromImageBytes } from '../src/m3-theme';
+import { coursePaletteFromSources } from '../src/m3-theme';
 import type { CoursePaletteEntry } from '@chronos/core';
 
 const RED = 0xffff0000;

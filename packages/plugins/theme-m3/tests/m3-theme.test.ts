@@ -1,13 +1,8 @@
 import { describe, it, expect } from 'vite-plus/test';
 import { createWorkbenchColorsFromTokens } from '@chronos/core/theme/workbench-colors';
-import { m3DefaultWorkbenchColors } from '../src/theme/m3-default-workbench.generated';
-import {
-	buildM3Tokens,
-	buildGeneratedThemeCss,
-	buildGeneratedThemeInlineCss,
-	CHRONOS_HOST_COLORS,
-	CHRONOS_HOST_COLOR_KEYS
-} from '../src/theme/m3-theme';
+import { m3DefaultTheme } from '../src/index';
+const m3DefaultWorkbenchColors = m3DefaultTheme.workbenchColors;
+import { buildM3Tokens, M3_BASE_COLORS } from '../src/m3-theme';
 
 describe('M3DefaultTheme', () => {
 	it('generates light and dark workbench colors', () => {
@@ -27,27 +22,11 @@ describe('M3DefaultTheme', () => {
 		expect(customTokens.primary).not.toEqual(defaultTokens.primary);
 	});
 
-	it('generated CSS includes host color overrides', () => {
-		const css = buildGeneratedThemeCss();
-		for (const key of CHRONOS_HOST_COLOR_KEYS) {
-			const value = CHRONOS_HOST_COLORS.light[key];
-			expect(css).toContain(`--color-${key}: ${value}`);
-		}
-	});
-
-	it('theme inline CSS maps tokens without hex :root values', () => {
-		const css = buildGeneratedThemeInlineCss();
-		expect(css).toContain('--color-border: var(--color-border-subtle)');
-		expect(css).toContain('--color-secondary-container: var(--color-secondary-container)');
-		expect(css).not.toMatch(/--color-surface:\s*#/);
-		expect(css).not.toContain('@layer tokens');
-	});
-
 	it('m3-default workbench colors match host surface overrides', () => {
 		const light = m3DefaultWorkbenchColors.light;
-		expect(light['color.surface']).toBe(CHRONOS_HOST_COLORS.light.surface);
-		expect(light['color.canvas']).toBe(CHRONOS_HOST_COLORS.light.canvas);
-		expect(light['color.danger']).toBe(CHRONOS_HOST_COLORS.light.danger);
+		expect(light['color.surface']).toBe(M3_BASE_COLORS.light.surface);
+		expect(light['color.canvas']).toBe(M3_BASE_COLORS.light.canvas);
+		expect(light['color.danger']).toBe(M3_BASE_COLORS.light.danger);
 	});
 
 	it('generated workbench snapshot matches live buildM3Tokens', () => {

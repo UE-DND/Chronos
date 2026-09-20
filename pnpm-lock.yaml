@@ -405,9 +405,9 @@ importers:
       '@chronos/core':
         specifier: workspace:*
         version: link:../../core
-      '@chronos/ui-kit':
-        specifier: workspace:*
-        version: link:../../ui-kit
+      '@ktibow/material-color-utilities-nightly':
+        specifier: ^0.4.1772748028000
+        version: 0.4.1772748028000
 
   packages/plugins/theme-yumemita:
     devDependencies:
@@ -435,9 +435,6 @@ importers:
       '@internationalized/date':
         specifier: ^3.12.4
         version: 3.12.4
-      '@ktibow/material-color-utilities-nightly':
-        specifier: ^0.4.1772748028000
-        version: 0.4.1772748028000
       bits-ui:
         specifier: ^2.19.0
         version: 2.19.2(@internationalized/date@3.12.4)(@sveltejs/kit@2.70.3(@sveltejs/vite-plugin-svelte@7.3.0(@voidzero-dev/vite-plus-core@0.3.3(@types/node@24.13.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(typescript@7.0.2))(svelte@5.57.0))(@voidzero-dev/vite-plus-core@0.3.3(@types/node@24.13.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(typescript@7.0.2))(svelte@5.57.0)(typescript@7.0.2))(svelte@5.57.0)
