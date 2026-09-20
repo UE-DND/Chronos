@@ -899,6 +899,44 @@ describe('profile preinstallation lifecycle', () => {
 		engine.dispose();
 	});
 
+	it('hot updates a JSON default to ESM and restores either format after failure', async () => {
+		const { engine, service, theme, colors } = await setupProfile();
+		const snapshot = JSON.parse(colors);
+		const code = `export default {
+			id: 'custom-theme', name: () => 'Custom', version: '1',
+			apply(ctx) { ctx.registerSlot('theme.definition', {
+				id: 'custom-default', name: 'Custom',
+				workbenchColors: ${JSON.stringify({
+					light: snapshot.variants.light.colors,
+					dark: snapshot.variants.dark.colors
+				})}
+			}); }
+		};`;
+		const update = { id: theme.id, code, colorsJson: colors, cssCode: null, iconThemeJson: null };
+		const original = service.getInstalled(theme.id);
+		await expect(
+			service.applyHotUpdate({ ...update, code: code.replace("'custom-default'", "'wrong'") })
+		).rejects.toThrow('ESM theme must register');
+		expect(service.getInstalled(theme.id)).toEqual(original);
+		expect(engine.themes.isSelectable('custom-default')).toBe(true);
+		expect(engine.themes.isSelectable('wrong')).toBe(false);
+		await service.applyHotUpdate(update);
+		expect(engine.isPluginLoaded(theme.id)).toBe(true);
+		const first = engine.themes.getTheme('custom-default');
+		await service.applyHotUpdate(update);
+		expect(engine.themes.getTheme('custom-default')).not.toBe(first);
+		await expect(
+			service.applyHotUpdate({ ...update, code: code.replace("'custom-default'", "'wrong'") })
+		).rejects.toThrow('ESM theme must register');
+		expect(engine.isPluginLoaded(theme.id)).toBe(true);
+		expect(engine.themes.isSelectable('wrong')).toBe(false);
+		expect(engine.defaultThemeId).toBe('custom-default');
+		expect(engine.state.activeThemeId).toBe('custom-default');
+		await expect(engine.unloadPlugin(theme.id)).rejects.toThrow('cannot be removed');
+		service.dispose();
+		engine.dispose();
+	});
+
 	it('keeps failed enables disabled and allows retry', async () => {
 		const { engine, service, profile, tool } = await setupProfile();
 		await service.prepareProfile({

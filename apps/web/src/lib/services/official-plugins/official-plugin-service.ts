@@ -344,8 +344,9 @@ export class OfficialPluginService implements Disposable {
 			this.profile?.defaultTheme.pluginId === candidate.manifest.id
 				? this.profile.defaultTheme
 				: undefined;
-		// JSON-only themes do not unload an engine plugin or need to release its removal guard.
-		if (required && this.engine.isPluginLoaded(candidate.manifest.id))
+		// Release the guard for both existing ESM runtimes and JSON-to-ESM replacements.
+		// JSON-to-JSON updates keep the selected default uninterrupted.
+		if (required && (candidate.code || this.engine.isPluginLoaded(candidate.manifest.id)))
 			this.engine.clearDefaultTheme();
 		try {
 			result = await replacePluginAssets(
