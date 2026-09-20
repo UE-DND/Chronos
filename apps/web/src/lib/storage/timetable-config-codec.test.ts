@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { encodeTimetableConfig, decodeTimetableConfig } from './timetable-config-codec';
-import { defaultPeriodTimes } from '$lib/models/defaults';
 
 const academicConfig = {
 	termStartDate: '2026-02-23',
@@ -15,24 +14,6 @@ const viewPrefs = {
 	showNonCurrentWeekCourses: true
 };
 
-function defaultDecoded() {
-	return {
-		schemaVersion: 1,
-		academicConfig: {
-			termStartDate: '',
-			startWeek: 1,
-			endWeek: 20,
-			periodTimes: defaultPeriodTimes()
-		},
-		importMetadata: { source: 'UNKNOWN' },
-		viewPrefs: {
-			showSaturday: true,
-			showSunday: true,
-			showNonCurrentWeekCourses: false
-		}
-	};
-}
-
 describe('TimetableConfigJsonCodec', () => {
 	it('decodes current config shape', () => {
 		const encoded = encodeTimetableConfig(academicConfig, importMetadata, viewPrefs);
@@ -44,19 +25,17 @@ describe('TimetableConfigJsonCodec', () => {
 		expect(decoded.schemaVersion).toBe(1);
 	});
 
-	it('fills missing fields with defaults', () => {
-		const decoded = decodeTimetableConfig('{}');
-		expect(decoded).toEqual(defaultDecoded());
-	});
-
-	it('fills nested academic defaults when only some fields are present', () => {
-		const decoded = decodeTimetableConfig(
-			JSON.stringify({ academicConfig: { termStartDate: '2026-02-23' } })
-		);
-		expect(decoded.academicConfig.termStartDate).toBe('2026-02-23');
-		expect(decoded.academicConfig.startWeek).toBe(1);
-		expect(decoded.academicConfig.endWeek).toBe(20);
-		expect(decoded.academicConfig.periodTimes).toEqual(defaultPeriodTimes());
+	it('rejects missing fields and non-current schemas instead of migrating them', () => {
+		const current = JSON.parse(encodeTimetableConfig(academicConfig, importMetadata, viewPrefs));
+		for (const schemaVersion of [undefined, 2, 3, '1']) {
+			expect(() => decodeTimetableConfig(JSON.stringify({ ...current, schemaVersion }))).toThrow();
+		}
+		for (const key of ['academicConfig', 'importMetadata', 'viewPrefs']) {
+			const incomplete = { ...current };
+			delete incomplete[key];
+			expect(() => decodeTimetableConfig(JSON.stringify(incomplete))).toThrow();
+		}
+		expect(() => decodeTimetableConfig('{}')).toThrow();
 	});
 
 	it('strips unknown keys and keeps empty periodTimes', () => {
@@ -78,7 +57,7 @@ describe('TimetableConfigJsonCodec', () => {
 		expect(decoded).not.toHaveProperty('extra');
 
 		const emptyPeriods = decodeTimetableConfig(
-			JSON.stringify({ academicConfig: { periodTimes: [] } })
+			encodeTimetableConfig({ ...academicConfig, periodTimes: [] }, importMetadata, viewPrefs)
 		);
 		expect(emptyPeriods.academicConfig.periodTimes).toEqual([]);
 	});
@@ -86,7 +65,10 @@ describe('TimetableConfigJsonCodec', () => {
 	it('decodes holiday calendar and custom metadata', () => {
 		const decoded = decodeTimetableConfig(
 			JSON.stringify({
+				schemaVersion: 1,
+				viewPrefs,
 				academicConfig: {
+					...academicConfig,
 					holidayCalendar: {
 						holidays: [{ date: '2026-10-01', label: '国庆' }],
 						syncedAt: 1,
@@ -106,11 +88,15 @@ describe('TimetableConfigJsonCodec', () => {
 		expect(decoded.customMetadata).toEqual({ plugin: { on: true } });
 	});
 
-	it('falls back to defaults for invalid JSON or wrong types', () => {
-		expect(decodeTimetableConfig('not-json')).toEqual(defaultDecoded());
-		expect(decodeTimetableConfig(JSON.stringify({ schemaVersion: '1' }))).toEqual(defaultDecoded());
-		expect(decodeTimetableConfig(JSON.stringify({ viewPrefs: { showSaturday: 1 } }))).toEqual(
-			defaultDecoded()
-		);
+	it('rejects invalid JSON and wrong field types', () => {
+		expect(() => decodeTimetableConfig('not-json')).toThrow();
+		expect(() =>
+			decodeTimetableConfig(
+				encodeTimetableConfig(academicConfig, importMetadata, {
+					...viewPrefs,
+					showSaturday: 1 as unknown as boolean
+				})
+			)
+		).toThrow();
 	});
 });

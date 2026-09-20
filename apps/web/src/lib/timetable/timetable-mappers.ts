@@ -22,16 +22,15 @@ export function toSettingsDraft(timetable: Timetable): TimetableSettingsDraft {
 		name: timetable.name,
 		academicConfig: {
 			termStartDate: academicCalendarService.normalizeTermStartDate(
-				timetable.academicConfig?.termStartDate ?? '',
+				timetable.academicConfig.termStartDate,
 				todayIsoDate()
 			),
 			// Preserve the stored startWeek verbatim: week dates resolve as
-			// termStart + (week - startWeek), so normalizing legacy offsets
-			// here would silently shift every week. Total-weeks editing keeps
+			// termStart + (week - startWeek). Total-weeks editing keeps
 			// the offset (endWeek = startWeek + total - 1).
-			startWeek: timetable.academicConfig?.startWeek ?? 1,
-			endWeek: timetable.academicConfig?.endWeek ?? 20,
-			periodTimes: (timetable.academicConfig?.periodTimes ?? []).map((period) => ({
+			startWeek: timetable.academicConfig.startWeek,
+			endWeek: timetable.academicConfig.endWeek,
+			periodTimes: timetable.academicConfig.periodTimes.map((period) => ({
 				index: period.index,
 				startTime: period.startTime,
 				endTime: period.endTime

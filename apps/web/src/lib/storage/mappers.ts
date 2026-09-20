@@ -46,10 +46,9 @@ export function courseFromRow(row: CourseRow): Course {
 }
 
 export function timetableToRow(timetable: Timetable): TimetableRow {
-	const importMetadata =
-		'importMetadata' in timetable && timetable.importMetadata
-			? timetable.importMetadata
-			: { source: 'UNKNOWN' };
+	const importMetadata = timetable.importMetadata
+		? timetable.importMetadata
+		: { source: 'UNKNOWN' };
 
 	return {
 		id: timetable.id,
@@ -66,7 +65,7 @@ export function timetableToRow(timetable: Timetable): TimetableRow {
 }
 
 export function timetableFromRow(row: TimetableRow, courses: CourseRow[]): Timetable {
-	const config = decodeTimetableConfig(row.configJson, row.id);
+	const config = decodeTimetableConfig(row.configJson);
 	return {
 		schemaVersion: config.schemaVersion,
 		id: row.id,

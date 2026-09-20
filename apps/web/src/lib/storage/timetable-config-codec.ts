@@ -1,5 +1,4 @@
 import type { AcademicConfig, ImportMetadata, PeriodTime, TimetableViewPrefs } from '@chronos/core';
-import { defaultPeriodTimes } from '$lib/models/defaults';
 import type { TimetableConfig, TimetableImportMetadata } from '$lib/models/timetable';
 
 const SCHEMA_VERSION = 1;
@@ -20,26 +19,17 @@ export function encodeTimetableConfig(
 	return JSON.stringify(config);
 }
 
-export function decodeTimetableConfig(configJson: string, timetableId?: string): TimetableConfig {
-	try {
-		return decodeParsedConfig(JSON.parse(configJson));
-	} catch (error) {
-		if (timetableId) {
-			console.warn(
-				`Failed to decode timetable config (id=${timetableId}, schema=${SCHEMA_VERSION})`,
-				error
-			);
-		}
-		return decodeParsedConfig({});
-	}
+export function decodeTimetableConfig(configJson: string): TimetableConfig {
+	return decodeParsedConfig(JSON.parse(configJson));
 }
 
 function decodeParsedConfig(raw: unknown): TimetableConfig {
 	const record = asRecord(raw);
+	if (record.schemaVersion !== SCHEMA_VERSION) throw new Error('unsupported timetable schema');
 	const importMetadata = slimImportMetadata(decodeImportMetadata(record.importMetadata));
 	const customMetadata = decodeCustomMetadata(record.customMetadata);
 	return {
-		schemaVersion: asInt(record.schemaVersion, SCHEMA_VERSION),
+		schemaVersion: SCHEMA_VERSION,
 		academicConfig: decodeAcademicConfig(record.academicConfig),
 		importMetadata,
 		viewPrefs: decodeViewPrefs(record.viewPrefs),
@@ -48,16 +38,13 @@ function decodeParsedConfig(raw: unknown): TimetableConfig {
 }
 
 function decodeAcademicConfig(raw: unknown): AcademicConfig {
-	const record = raw === undefined ? {} : asRecord(raw);
+	const record = asRecord(raw);
 	const holidayCalendar = decodeHolidayCalendar(record.holidayCalendar);
 	return {
-		termStartDate: asString(record.termStartDate, ''),
-		startWeek: asInt(record.startWeek, 1),
-		endWeek: asInt(record.endWeek, 20),
-		periodTimes:
-			record.periodTimes === undefined
-				? defaultPeriodTimes()
-				: asArray(record.periodTimes).map(decodePeriodTime),
+		termStartDate: asString(record.termStartDate),
+		startWeek: asInt(record.startWeek),
+		endWeek: asInt(record.endWeek),
+		periodTimes: asArray(record.periodTimes).map(decodePeriodTime),
 		...(holidayCalendar ? { holidayCalendar } : {})
 	};
 }
@@ -74,13 +61,10 @@ function decodePeriodTime(raw: unknown): PeriodTime {
 function decodeHolidayCalendar(raw: unknown): AcademicConfig['holidayCalendar'] {
 	if (raw === undefined) return undefined;
 	const record = asRecord(raw);
-	const holidays =
-		record.holidays === undefined
-			? []
-			: asArray(record.holidays).map((item) => {
-					const holiday = asRecord(item);
-					return { date: asString(holiday.date), label: asString(holiday.label) };
-				});
+	const holidays = asArray(record.holidays).map((item) => {
+		const holiday = asRecord(item);
+		return { date: asString(holiday.date), label: asString(holiday.label) };
+	});
 	const syncedAt = optionalNumber(record.syncedAt);
 	const syncedYears =
 		record.syncedYears === undefined
@@ -94,19 +78,19 @@ function decodeHolidayCalendar(raw: unknown): AcademicConfig['holidayCalendar'] 
 }
 
 function decodeViewPrefs(raw: unknown): TimetableViewPrefs {
-	const record = raw === undefined ? {} : asRecord(raw);
+	const record = asRecord(raw);
 	return {
-		showSaturday: asBoolean(record.showSaturday, true),
-		showSunday: asBoolean(record.showSunday, true),
-		showNonCurrentWeekCourses: asBoolean(record.showNonCurrentWeekCourses, false)
+		showSaturday: asBoolean(record.showSaturday),
+		showSunday: asBoolean(record.showSunday),
+		showNonCurrentWeekCourses: asBoolean(record.showNonCurrentWeekCourses)
 	};
 }
 
 function decodeImportMetadata(raw: unknown): { source: string; campusId?: string } {
-	const record = raw === undefined ? {} : asRecord(raw);
+	const record = asRecord(raw);
 	const campusId = optionalString(record.campusId);
 	return {
-		source: asString(record.source, 'UNKNOWN'),
+		source: asString(record.source),
 		...(campusId === undefined ? {} : { campusId })
 	};
 }
@@ -134,20 +118,17 @@ function asArray(value: unknown): unknown[] {
 	return value;
 }
 
-function asInt(value: unknown, fallback?: number): number {
-	if (value === undefined && fallback !== undefined) return fallback;
+function asInt(value: unknown): number {
 	if (typeof value === 'number' && Number.isInteger(value)) return value;
 	throw new Error('expected integer');
 }
 
-function asString(value: unknown, fallback?: string): string {
-	if (value === undefined && fallback !== undefined) return fallback;
+function asString(value: unknown): string {
 	if (typeof value === 'string') return value;
 	throw new Error('expected string');
 }
 
-function asBoolean(value: unknown, fallback: boolean): boolean {
-	if (value === undefined) return fallback;
+function asBoolean(value: unknown): boolean {
 	if (typeof value === 'boolean') return value;
 	throw new Error('expected boolean');
 }

@@ -97,7 +97,7 @@ export function createTimetable(
 	const importMetadata = normalizeImportMetadata(partial.importMetadata);
 	const courses = partial.courses ?? [];
 	return {
-		schemaVersion: partial.schemaVersion ?? CURRENT_TIMETABLE_SCHEMA_VERSION,
+		schemaVersion: CURRENT_TIMETABLE_SCHEMA_VERSION,
 		id: partial.id,
 		name: normalizeTimetableName(partial.name),
 		courses,
