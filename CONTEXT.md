@@ -20,12 +20,12 @@ Registered on `ChronosEnv` at engine construction. Runtime code reads `engine.st
 
 ## Timetable and UserPreferences
 
-Core owns the shapes. Web Dexie / Share codecs are strict Zod adapters (schemaVersion `1`).
+Core owns the shapes. Chronos-owned storage schemas and wire formats stay at version `1` before release; keep only the current contract, without migrations or legacy adapters. Web config decoding requires the current complete shape.
 
 - **Timetable**: courses, `academicConfig` (including `periodTimes`), `viewPrefs`, optional `importMetadata`, optional `customMetadata`. `academicConfig.holidayCalendar` is **plugin-managed** (`tool-calendar-holidays` syncs public holidays); core only renders holidays already on the timetable (`buildHolidayLookup`, grid column headers, muted courses).
 - **ImportMetadata**: `{ source: string; campusId?: string }`. Campus period tables live in `customMetadata['source-cqut']`, not on `importMetadata`.
 - **Weekend columns**: initial `showSaturday` / `showSunday` derive from course occupancy via core `deriveWeekendViewPrefs` — import-constructing plugins must use it; users override afterwards in details editing.
-- **UserPreferences** tokens: `themeMode` `light` \| `dark` \| `auto`; `paletteMode` (current `vibrant`, legacy-compat `wallpaper`); `timetableLayoutMode` `fixed` \| `compact`; `capsuleCornerStyle` `rounded` \| `sharp` \| `pill`; `visualThemeId`; optional `locale` (`zh-cn` \| `en`). Active icon theme is **derived**, never stored: engine resolves it from the active theme's `recommendedIconTheme` (fallback `host-default`) — see ADR 0026.
+- **UserPreferences** tokens: `themeMode` `light` \| `dark` \| `auto`; `wallpaperSource` `theme` | `custom` | `none`; `wallpaperColorEnabled`; `timetableLayoutMode` `fixed` \| `compact`; `capsuleCornerStyle` `rounded` \| `sharp` \| `pill`; `visualThemeId`; optional `locale` (`zh-cn` \| `en`). Active icon theme is **derived**, never stored: engine resolves it from the active theme's `recommendedIconTheme` (fallback `host-default`) — see ADR 0026.
 
 ## Period clock
 
@@ -69,7 +69,7 @@ See [ADR 0036](.agents/docs/adr/0036-plugin-kv-binary-storage.md). `IStorageServ
 
 - **Write**: `Blob` (carries `mimeType`) or `Uint8Array` (stored as `application/octet-stream`).
 - **Read**: binary keys always return `Blob`; JSON keys return parsed JSON. A key holds one kind only.
-- **Web host**: Dexie `pluginBinary` table (schema v2) stores raw `ArrayBuffer`; `PluginKvRepository` routes binary vs JSON.
+- **Web host**: Dexie `pluginBinary` table (schema v1) stores raw `ArrayBuffer`; `PluginKvRepository` routes binary vs JSON.
 - **Native bridge**: binary crosses the wire as `{ __binary, mimeType, base64 }` until a native host stores bytes directly.
 
 First production consumer: `tool-wallpaper` (`wallpaper_image` key).
@@ -108,15 +108,14 @@ No global conflict arbitrator. Behavior by resource type:
 | Same `plugin.id` reload                                                   | Unload then load                                                                                                 |
 | Profile builtin vs official install overlap                               | Builtin wins; official record deduped                                                                            |
 | Plugin uninstall with active theme                                        | `revertThemeIfNeeded` → defaults                                                                                 |
-| `dynamicColor:*` events                                                   | Broadcast; host keeps single `dynamicColorUri` (last emit wins)                                                  |
 
 ## Core shell (`core-shell`)
 
 Builtin plugin (`defineChronosPlugin`) registering `shell.bottom-bar.tab` and `mine.*` slots. Loaded first in every profile. Host tabs declare `hostPanel: 'timetable' | 'mine'`; the host switches views via `activeTabId` on `/` and branches on `hostPanel`, never on tab id literals (ADR 0029 / 0032). `defaultLaunch: true` sets initial tab via `resolveDefaultLaunchTab` (first `defaultLaunch` in registry order); fallback is `resolveHostPanelTab(tabs, 'timetable')`. Plugin tabs omit `hostPanel` and render through `resolveSlotOwner` + `PluginScreenContainer`. Secondary tools still use `/plugins/[pluginId]/...` or `IHostNavigation` for host-owned editors. Mine items without `sectionId` use `DEFAULT_MINE_SECTION_ID` (`app-support`). Search `keywords` come from the host catalog (`item.*.keywords`).
 
-## Dynamic color
+## Wallpaper color
 
-Kernel events: `dynamicColor:set`, `dynamicColor:changed`, `dynamicColor:hydrate`. Host `app-shell` bridges to `dynamicColorUri`; `ThemeContribution.dynamicColorAdapter` (`DynamicColorAdapter`) paints course palette from image URI. Scheme id `wallpaper` in preferences is legacy-compatible naming.
+The host owns wallpapers and palette extraction through `wallpaperSource` and `wallpaperColorEnabled`. No old preference or image migration is provided.
 
 ## Codec kit
 
@@ -124,7 +123,7 @@ Kernel events: `dynamicColor:set`, `dynamicColor:changed`, `dynamicColor:hydrate
 
 ## Share-link codec
 
-Canonical implementation: `@chronos/plugin-codec-share/share-link`. Slots: `import.source.tab` (`share-link`), `export.action` (`share-link`).
+Canonical implementation: `@chronos/plugin-codec-share/share-link`. Single wire format: `1.` + base64url(Deflate raw(binary + CRC32)); no Brotli or alternate-version decoder. Slots: `import.source.tab` (`share-link`), `export.action` (`share-link`).
 
 ## UI overlay port
 
