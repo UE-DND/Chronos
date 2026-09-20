@@ -1,7 +1,7 @@
 import type { ChronosEngine } from '@chronos/core';
 import { resolveThemeWorkbenchColors } from '@chronos/core';
 import { applyWorkbenchColors } from '@chronos/core';
-import { M3_DEFAULT_THEME_ID } from '$lib/appearance/color-scheme';
+import { m3DefaultWorkbenchColors } from '@chronos/ui-kit/theme/m3-default-workbench.generated';
 
 let previouslyAppliedThemeClass: string | null = null;
 let previouslyAppliedCustomVarKeys: string[] = [];
@@ -31,9 +31,9 @@ function clearCustomThemeStyles(target: HTMLElement) {
 
 export function applyActiveTheme(
 	engine: ChronosEngine,
-	activeThemeId: string,
+	activeThemeId: string | null,
 	isDark: boolean,
-	options?: { target?: HTMLElement }
+	options?: { target?: HTMLElement; wallpaperColorEnabled?: boolean }
 ): void {
 	const el =
 		options?.target ?? (typeof document !== 'undefined' ? document.documentElement : undefined);
@@ -43,7 +43,11 @@ export function applyActiveTheme(
 
 	clearCustomThemeStyles(el);
 
-	if (effectiveThemeId === M3_DEFAULT_THEME_ID) {
+	if (options?.wallpaperColorEnabled) {
+		previouslyAppliedCustomVarKeys = applyWorkbenchColors(
+			el,
+			m3DefaultWorkbenchColors[isDark ? 'dark' : 'light']
+		);
 		return;
 	}
 

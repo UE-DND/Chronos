@@ -17,11 +17,14 @@ export function createAppearance(paletteRef: CoursePaletteRef, onPaletteChanged?
 		const combined = signal ? AbortSignal.any([signal, task.signal]) : task.signal;
 		combined.throwIfAborted();
 		adapter.clearWallpaperTheme(document.documentElement);
-		applyActiveTheme(getAppEngine(), input.activeThemeId, input.isDark);
+		applyActiveTheme(getAppEngine(), input.activeThemeId, input.isDark, {
+			wallpaperColorEnabled: input.wallpaperColorEnabled
+		});
 		// Restore course colors with the base theme while the new image decodes.
-		const basePalette = input.themePaletteEntries?.length
-			? input.themePaletteEntries
-			: COURSE_PALETTE_ENTRIES;
+		const basePalette =
+			!input.wallpaperColorEnabled && input.themePaletteEntries?.length
+				? input.themePaletteEntries
+				: COURSE_PALETTE_ENTRIES;
 		coursePalette = basePalette;
 		paletteRef.current = basePalette;
 		onPaletteChanged?.();

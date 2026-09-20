@@ -1,7 +1,6 @@
 import type { CoursePaletteEntry } from '@chronos/core';
 import { COURSE_PALETTE_ENTRIES } from '@chronos/core';
 import type { WallpaperColorAdapter } from '$lib/wallpaper/wallpaper-theme';
-import { canUseWallpaperColors } from '$lib/wallpaper/wallpaper-policy';
 
 /** Keep in sync with app.html boot IIFE theme-color literals. */
 export const THEME_COLOR_LIGHT = '#0068B7';
@@ -11,7 +10,7 @@ export type ApplyAppearanceInput = {
 	wallpaperColorEnabled: boolean;
 	isDark: boolean;
 	wallpaperUri: string | null;
-	activeThemeId: string;
+	activeThemeId: string | null;
 	themePaletteEntries?: readonly CoursePaletteEntry[] | null;
 };
 
@@ -48,8 +47,11 @@ export async function applyAppearance(
 ): Promise<{ coursePalette: readonly CoursePaletteEntry[] }> {
 	const target =
 		options.target ?? (typeof document !== 'undefined' ? document.documentElement : undefined);
-	const { wallpaperColorEnabled, activeThemeId, isDark, wallpaperUri, themePaletteEntries } = input;
-	const basePalette = themePaletteEntries?.length ? themePaletteEntries : COURSE_PALETTE_ENTRIES;
+	const { wallpaperColorEnabled, isDark, wallpaperUri, themePaletteEntries } = input;
+	const basePalette =
+		!wallpaperColorEnabled && themePaletteEntries?.length
+			? themePaletteEntries
+			: COURSE_PALETTE_ENTRIES;
 	const { dynamicColorAdapter, signal } = options;
 
 	if (target) {
@@ -63,11 +65,7 @@ export async function applyAppearance(
 
 	abortIfNeeded(signal);
 
-	if (
-		canUseWallpaperColors(activeThemeId, wallpaperColorEnabled) &&
-		wallpaperUri &&
-		dynamicColorAdapter
-	) {
+	if (wallpaperColorEnabled && wallpaperUri && dynamicColorAdapter) {
 		try {
 			const { seed, coursePalette: wallpaperPalette } =
 				await dynamicColorAdapter.extractWallpaperSeed(wallpaperUri);
@@ -82,7 +80,7 @@ export async function applyAppearance(
 		}
 	}
 
-	if (themePaletteEntries && themePaletteEntries.length > 0) {
+	if (!wallpaperColorEnabled && themePaletteEntries && themePaletteEntries.length > 0) {
 		dynamicColorAdapter?.clearWallpaperTheme(target);
 		return { coursePalette: themePaletteEntries };
 	}

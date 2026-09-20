@@ -118,7 +118,7 @@ describe('applyAppearance', () => {
 		expect(result.coursePalette).toBe(COURSE_PALETTE_ENTRIES);
 	});
 
-	it('keeps plugin theme palette even when the saved switch is on', async () => {
+	it('uses wallpaper colors independently of the selected plugin theme', async () => {
 		const target = createFakeElement();
 		const customPalette = [{ background: '#fedcba', foreground: '#111' }];
 		const extractWallpaperSeed = vi.fn().mockResolvedValue({
@@ -141,10 +141,10 @@ describe('applyAppearance', () => {
 			{ target, dynamicColorAdapter }
 		);
 
-		expect(extractWallpaperSeed).not.toHaveBeenCalled();
-		expect(paintWallpaperTheme).not.toHaveBeenCalled();
-		expect(clearWallpaperTheme).toHaveBeenCalledWith(target);
-		expect(result.coursePalette).toBe(YUMEMITA_PALETTE_ENTRIES);
+		expect(extractWallpaperSeed).toHaveBeenCalledWith('blob:wallpaper');
+		expect(paintWallpaperTheme).toHaveBeenCalledWith(7, false, target);
+		expect(clearWallpaperTheme).not.toHaveBeenCalled();
+		expect(result.coursePalette).toBe(customPalette);
 	});
 
 	it('extracts and paints dynamic color theme when wallpaper palette has a uri', async () => {
@@ -347,4 +347,26 @@ describe('applyAppearance', () => {
 
 		expect(paintWallpaperTheme).not.toHaveBeenCalled();
 	});
+});
+
+describe('wallpaper mode fallback', () => {
+	it.each([null, 'blob:broken'])(
+		'uses the host palette when no colors can be extracted (%s)',
+		async (uri) => {
+			const { dynamicColorAdapter } = createDynamicColorAdapter({
+				extractWallpaperSeed: vi.fn().mockRejectedValue(new Error('decode'))
+			});
+			const result = await applyAppearance(
+				{
+					activeThemeId: 'non-m3',
+					wallpaperColorEnabled: true,
+					wallpaperUri: uri,
+					isDark: true,
+					themePaletteEntries: YUMEMITA_PALETTE_ENTRIES
+				},
+				{ target: createFakeElement(), dynamicColorAdapter }
+			);
+			expect(result.coursePalette).toBe(COURSE_PALETTE_ENTRIES);
+		}
+	);
 });

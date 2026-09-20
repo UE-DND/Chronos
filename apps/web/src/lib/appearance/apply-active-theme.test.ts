@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { ChronosEngine } from '@chronos/core';
-import { m3DefaultTheme } from '@chronos/ui-kit';
+import { m3DefaultTheme } from '@chronos/plugin-theme-m3';
 const YUMEMITA_THEME_ID = 'yumemita';
 import { applyActiveTheme } from './apply-active-theme';
 
@@ -179,6 +179,21 @@ describe('applyActiveTheme', () => {
 		expect(target.classList.contains('theme-custom')).toBe(true);
 		expect(styleMap.get('--color-primary')).toBe('#123456');
 		expect(styleMap.get('--shell-bottom-tab-active-bg')).toBe('transparent');
+		applyActiveTheme(engine, 'custom-theme', true, { target, wallpaperColorEnabled: true });
+		expect(target.classList.contains('theme-custom')).toBe(false);
+		expect(styleMap.get('--color-primary')).toBe(
+			m3DefaultTheme.workbenchColors.dark['color.primary']
+		);
+		applyActiveTheme(engine, 'custom-theme', false, { target });
+		expect(target.classList.contains('theme-custom')).toBe(true);
+		expect(styleMap.get('--color-primary')).toBe('#123456');
+		engine.themes.registerTheme(m3DefaultTheme);
+		applyActiveTheme(engine, 'm3-default', false, { target });
+		expect(target.classList.contains('theme-custom')).toBe(false);
+		expect(styleMap.get('--color-primary')).toBe(
+			m3DefaultTheme.workbenchColors.light['color.primary']
+		);
+
 		engine.dispose();
 	});
 });
