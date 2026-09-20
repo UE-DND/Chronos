@@ -27,7 +27,6 @@
 		"workbox-window": "^7.4.1"
 	},
 	"devDependencies": {
-		"@chronos/plugin-theme-miami": "workspace:*",
 		"@chronos/plugin-theme-yumemita": "workspace:*",
 		"@inlang/paraglide-js": "^2.25.0",
 		"@sveltejs/adapter-static": "^3.0.10",

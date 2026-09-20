@@ -21,6 +21,9 @@ export async function buildAllOfficialPlugins(
 
 	const paths = createOfficialPluginBuildPaths(root);
 
+	// Full builds must not publish stale assets from removed plugins.
+	rmSync(paths.staticBundleDir, { recursive: true, force: true });
+	rmSync(paths.manifestDir, { recursive: true, force: true });
 	mkdirSync(paths.compileDistDir, { recursive: true });
 	mkdirSync(paths.staticBundleDir, { recursive: true });
 	mkdirSync(paths.manifestDir, { recursive: true });
