@@ -2,18 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
 import { ChronosEngine } from '@chronos/core';
 import type { ChronosEnv } from '@chronos/core';
 import { DEFAULT_USER_PREFERENCES } from '@chronos/core';
-import { loadEsmPluginFromCode } from './plugin-bundle';
 import { OfficialPluginInstalledStore } from './installed-store';
-import { INSTALLED_STORAGE_KEY, OFFICIAL_PLUGINS_PLUGIN_ID } from './official-plugin-types';
-
-const SAMPLE_BUNDLE = `
-export default {
-  id: 'test-plugin',
-  name: function () { return 'Test'; },
-  version: '1.0.0',
-  apply: function (ctx) {}
-};
-`;
 
 function createMockEnv() {
 	const kv = new Map<string, unknown>();
@@ -62,6 +51,14 @@ describe('OfficialPluginInstalledStore', () => {
 		store = new OfficialPluginInstalledStore(engine);
 	});
 
+	it('rejects invalid development state without overwriting it', async () => {
+		const invalid = [{ obsolete: true }];
+		await engine.storage.setPluginData('core.official-plugins', 'installed_plugins', invalid);
+		await expect(store.load()).rejects.toThrow('Invalid plugin installation state');
+		expect(
+			await engine.storage.getPluginData('core.official-plugins', 'installed_plugins')
+		).toEqual(invalid);
+	});
 	it('notifies change listeners on persist', async () => {
 		const listener = vi.fn();
 		store.onChanged(listener);
@@ -79,40 +76,27 @@ describe('OfficialPluginInstalledStore', () => {
 				sha256: 'abc'
 			},
 			enabled: true,
+			origin: { kind: 'user' as const },
 			installedAt: 1
 		});
 		expect(listener).toHaveBeenCalled();
 	});
 
-	it('dedupes records overlapping profile builtins', async () => {
-		await engine.loadPlugin(await loadEsmPluginFromCode(SAMPLE_BUNDLE));
+	it('persists explicit removal and clears it only after reinstall succeeds', async () => {
 		await store.load();
-		store['cache'] = [
-			{
-				manifest: {
-					id: 'test-plugin',
-					name: { 'zh-CN': 'P' },
-					version: '1',
-					description: { 'zh-CN': 'P' },
-					author: 'Chronos',
-					type: 'tool',
-					bundleFormat: 'esm',
-					bundleUrl: '/b.js',
-					sha256: 'abc'
-				},
-				enabled: true,
-				installedAt: 1
-			}
-		];
-
-		const changed = await store.dedupeBuiltinOverlap();
-		expect(changed).toBe(true);
-		expect(store.getCache()).toHaveLength(0);
-
-		const stored = await engine.storage.getPluginData<unknown[]>(
-			OFFICIAL_PLUGINS_PLUGIN_ID,
-			INSTALLED_STORAGE_KEY
-		);
-		expect(stored).toEqual([]);
+		await store.remove('removed');
+		const restarted = new OfficialPluginInstalledStore(engine);
+		await restarted.load();
+		expect(restarted.getRemoved()).toEqual(['removed']);
+		expect(restarted.getCache()).toEqual([]);
+		await restarted.upsert({
+			manifest: { id: 'removed' } as never,
+			origin: { kind: 'user' },
+			enabled: true,
+			installedAt: 1
+		});
+		await store.load();
+		expect(store.getRemoved()).toEqual([]);
+		expect(store.getCache()).toHaveLength(1);
 	});
 });
