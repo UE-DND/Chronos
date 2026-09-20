@@ -40,12 +40,16 @@ jobs:
         include:
           - name: CQUT
             command: vp run build:cqut
+            license_path: apps/web/.vercel/output/static/licenses/third-party.json
           - name: CQUT offline
             command: vp run build:cqut-offline
+            license_path: apps/web/.vercel/output/static/licenses/third-party.json
           - name: Default
             command: vp run build:default
+            license_path: apps/web/.vercel/output/static/licenses/third-party.json
           - name: GitHub Pages
             command: vp run build:pages
+            license_path: apps/web/build/licenses/third-party.json
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -57,6 +61,7 @@ jobs:
 
       - run: vp install --frozen-lockfile
       - run: ${{ matrix.command }}
+      - run: test -s "${{ matrix.license_path }}"
       - run: vp run verify:official-plugins
 
   complete:
