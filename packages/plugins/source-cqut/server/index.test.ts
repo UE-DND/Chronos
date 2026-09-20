@@ -21,6 +21,13 @@ function createPreviewEvent(body: unknown) {
 }
 
 describe('handlePreview', () => {
+	it('rejects the removed username alias', async () => {
+		const response = await handlePreview(
+			createPreviewEvent({ username: 'stu001', password: 'secret' })
+		);
+		expect(response.status).toBe(400);
+	});
+
 	it('returns DataFormat error for invalid JSON body', async () => {
 		const response = await handlePreview(createPreviewEvent('not-json'));
 		const body = parsePluginServerResponse(await response.json());

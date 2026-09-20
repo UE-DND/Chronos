@@ -21,8 +21,7 @@ import { toUpstreamNetworkError } from './upstream-error';
 
 export interface FetchCqutScheduleInput {
 	account: string;
-	password?: string;
-	encryptedPassword?: string;
+	password: string;
 	weekNum?: string | null;
 	yearTerm?: string | null;
 }
@@ -38,7 +37,7 @@ export async function fetchCqutSchedule(
 ): Promise<AppResult<FetchCqutScheduleResult>> {
 	const jar = new CookieJar();
 	const signal = AbortSignal.timeout(TOTAL_FETCH_TIMEOUT_MS);
-	const password = input.password ?? input.encryptedPassword ?? '';
+	const password = input.password;
 
 	try {
 		const loginResult = await loginCas(jar, input.account, password, signal);

@@ -20,7 +20,6 @@ function toWireErrorKind(kind: AppError['kind']): PluginServerErrorKind {
 
 interface PreviewRequestBody {
 	account?: string;
-	username?: string;
 	password?: string;
 }
 
@@ -32,7 +31,7 @@ export const handlePreview: PluginServerHandler = async ({ request }) => {
 		return Response.json(pluginServerError('DataFormat', '请求格式错误'), { status: 400 });
 	}
 
-	const account = (body.account ?? body.username)?.trim() ?? '';
+	const account = body.account?.trim() ?? '';
 	const password = body.password?.trim() ?? '';
 	if (!account || !password) {
 		return Response.json(pluginServerError('Validation', '账号和密码不能为空'), { status: 400 });
