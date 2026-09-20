@@ -1,14 +1,4 @@
 /** Server deployment is independent of client installation state. */
-export const SERVER_PLUGIN_MODULES: Record<
-	string,
-	{ importPath: string; domains: readonly string[]; action: string }
-> = {
-	'source-cqut': {
-		importPath: '@chronos/plugin-source-cqut/server',
-		domains: ['cqut.edu.cn'],
-		action: 'preview'
-	}
-};
 export const DEPLOYMENTS: Record<string, { serverPlugins: string[] }> = {
 	'chronos-default': { serverPlugins: [] },
 	'chronos-cqut': { serverPlugins: ['source-cqut'] },

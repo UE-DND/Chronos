@@ -4,11 +4,10 @@ import {
 	resolveProfile,
 	resolveProfileId
 } from '$lib/profile-codegen/profile-definitions';
-import {
-	resolveDeployment,
-	SERVER_PLUGIN_MODULES
-} from '$lib/profile-codegen/deployment-definitions';
+import { resolveDeployment } from '$lib/profile-codegen/deployment-definitions';
 import { OFFICIAL_PLUGINS } from '../../../../../scripts/official-plugins.config';
+import { resolveOfficialServerPlugin } from '../../../../../scripts/official-plugin-build/server-definition';
+import { fileURLToPath } from 'node:url';
 describe('profile and deployment boundaries', () => {
 	it('preinstalls only market plugins and requires an enabled default provider', () => {
 		for (const profile of Object.values(CHRONOS_PROFILES)) {
@@ -25,7 +24,7 @@ describe('profile and deployment boundaries', () => {
 		}
 		expect(OFFICIAL_PLUGINS).toHaveLength(9);
 	});
-	it('selects server capabilities independently from the client profile', () => {
+	it('selects server capabilities independently from the client profile', async () => {
 		expect(
 			resolveDeployment({ CHRONOS_DEPLOYMENT: 'chronos-cqut', CHRONOS_PROFILE: 'chronos-default' })
 				.serverPlugins
@@ -34,7 +33,14 @@ describe('profile and deployment boundaries', () => {
 			[]
 		);
 		expect(resolveDeployment({ CHRONOS_DEPLOY_TARGET: 'pages' }).serverPlugins).toEqual([]);
-		expect(SERVER_PLUGIN_MODULES['source-cqut']?.domains).toEqual(['cqut.edu.cn']);
+		expect(resolveDeployment({ CHRONOS_DEPLOYMENT: 'chronos-default' }).serverPlugins).toEqual([]);
+		const cqut = OFFICIAL_PLUGINS.find((plugin) => plugin.id === 'source-cqut');
+		expect(cqut).toBeDefined();
+		const server = await resolveOfficialServerPlugin(
+			cqut!,
+			fileURLToPath(new URL('../../../../../', import.meta.url))
+		);
+		expect(server?.definition.proxy.domains).toEqual(['cqut.edu.cn']);
 	});
 	it('rejects unknown explicit choices and retains the deployment default', () => {
 		expect(() => resolveProfile('typo')).toThrow('Unknown profile');
