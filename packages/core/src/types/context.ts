@@ -75,7 +75,7 @@ export interface ChronosContext<Config extends object = Record<string, unknown>>
 		readonly currentTimetable: Readonly<Timetable> | null;
 		readonly activeWeek: number;
 		readonly currentPeriodIndex: number | null;
-		readonly activeThemeId: string;
+		readonly activeThemeId: string | null;
 		readonly activeIconThemeId: string;
 		readonly userPreferences: Readonly<UserPreferences>;
 		readonly now: Date;
@@ -143,7 +143,7 @@ export interface ChronosEvents {
 		todayIso: string;
 		frozen: boolean;
 	};
-	'theme:changed': { themeId: string };
+	'theme:changed': { themeId: string | null };
 	'iconTheme:changed': { iconThemeId: string };
 	'i18n:localeChanged': { locale: string };
 	'config:changed': { pluginId: string; config: Record<string, unknown> };

@@ -19,12 +19,19 @@ export class ThemeRegistry implements Disposable {
 		};
 	}
 
-	getTheme(id: string): ThemeContribution | undefined {
-		return this.slots.getSlotItem('theme.definition', id) as ThemeContribution | undefined;
+	getTheme(id: string | null): ThemeContribution | undefined {
+		return (id ? this.slots.getSlotItem('theme.definition', id) : undefined) as
+			| ThemeContribution
+			| undefined;
 	}
 
 	getThemes(): ReadonlyArray<ThemeContribution> {
 		return this.slots.get('theme.definition') as ReadonlyArray<ThemeContribution>;
+	}
+
+	isSelectable(id: string | null): boolean {
+		const theme = this.getTheme(id);
+		return !!theme && !(typeof theme.disabled === 'function' ? theme.disabled() : theme.disabled);
 	}
 
 	dispose(): void {

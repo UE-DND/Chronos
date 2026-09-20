@@ -1,5 +1,3 @@
-import { DEFAULT_VISUAL_THEME_ID } from '../theme/theme-defaults';
-
 export type ThemeMode = 'light' | 'dark' | 'auto';
 export type AppLocale = 'zh-cn' | 'en';
 export type WallpaperSource = 'custom' | 'theme' | 'none';
@@ -33,7 +31,7 @@ export interface UserPreferences {
 	hapticFeedbackEnabled: boolean;
 	reduceMotionEnabled: boolean;
 	currentPeriodHighlightEnabled: boolean;
-	/** Active visual theme id (e.g. m3-default, yumemita). */
+	/** Selected theme id; retained as wallpaper source in wallpaper color mode (e.g. m3-default, yumemita). */
 	visualThemeId?: string;
 	/** UI locale (zh-cn | en). */
 	locale?: AppLocale;
@@ -49,6 +47,5 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 	capsuleCornerStyle: 'sharp',
 	hapticFeedbackEnabled: true,
 	reduceMotionEnabled: false,
-	currentPeriodHighlightEnabled: false,
-	visualThemeId: DEFAULT_VISUAL_THEME_ID
+	currentPeriodHighlightEnabled: false
 };

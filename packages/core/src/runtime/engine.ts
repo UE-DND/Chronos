@@ -5,7 +5,7 @@ import {
 	DEFAULT_USER_PREFERENCES,
 	CURRENT_PREFERENCES_SCHEMA_VERSION
 } from '../domain/preferences';
-import { DEFAULT_VISUAL_THEME_ID, HOST_DEFAULT_ICON_THEME_ID } from '../theme/theme-defaults';
+import { HOST_DEFAULT_ICON_THEME_ID } from '../theme/theme-defaults';
 import { todayIsoDate } from '../algorithms/date';
 import type { ChronosEnv } from '../types/env';
 import type { Disposable } from '../types/services';
@@ -57,7 +57,8 @@ export class ChronosEngine implements EngineContextHost, Disposable {
 	private _timetables: TimetableListEntry[] = [];
 	private _activeWeek = 1;
 	private _currentPeriodIndex: number | null = null;
-	private _activeThemeId = DEFAULT_VISUAL_THEME_ID;
+	private _activeThemeId: string | null = null;
+	private defaultTheme: { pluginId: string; themeId: string } | null = null;
 	private _userPreferences: UserPreferences = { ...DEFAULT_USER_PREFERENCES };
 
 	private readonly actionHost: EngineActionHost;
@@ -117,6 +118,7 @@ export class ChronosEngine implements EngineContextHost, Disposable {
 			getUserPreferences: () => this._userPreferences,
 			setUserPreferences: (preferences) => {
 				this._userPreferences = preferences;
+				this.emitIconThemeChanged();
 			},
 			getActiveThemeId: () => this._activeThemeId,
 			setActiveThemeId: (themeId) => {
@@ -312,13 +314,47 @@ export class ChronosEngine implements EngineContextHost, Disposable {
 		return this.courseActions.deleteCourse(courseId);
 	}
 
-	setTheme(themeId: string): void {
+	get defaultThemeId(): string | null {
+		return this.defaultTheme?.themeId ?? null;
+	}
+
+	validateDefaultTheme(selection: { pluginId: string; themeId: string }): void {
+		if (
+			!this.themes.isSelectable(selection.themeId) ||
+			this.slots.resolveOwner('theme.definition', selection.themeId) !== selection.pluginId
+		) {
+			throw new Error(`Invalid default theme ${selection.themeId} from ${selection.pluginId}`);
+		}
+	}
+
+	configureDefaultTheme(selection: { pluginId: string; themeId: string }): void {
+		this.validateDefaultTheme(selection);
+		this.defaultTheme = selection;
+		this.setTheme(this.resolveThemeId(this._userPreferences.visualThemeId));
+	}
+
+	clearDefaultTheme(): void {
+		this.defaultTheme = null;
+		this.setTheme(null);
+	}
+
+	assertPluginRemovable(pluginId: string): void {
+		if (this.defaultTheme?.pluginId === pluginId)
+			throw new Error(`Default theme provider ${pluginId} cannot be removed`);
+	}
+
+	resolveThemeId(preferred?: string | null): string | null {
+		return preferred && this.themes.isSelectable(preferred) ? preferred : this.defaultThemeId;
+	}
+
+	setTheme(themeId: string | null): void {
 		this._activeThemeId = themeId;
 		this.events.emit('theme:changed', { themeId });
 		this.emitIconThemeChanged();
 	}
 
 	private resolveActiveIconThemeId(): string {
+		if (this._userPreferences.wallpaperColorEnabled) return HOST_DEFAULT_ICON_THEME_ID;
 		const recommended = this.themes.getTheme(this._activeThemeId)?.recommendedIconTheme;
 		if (recommended && this.iconThemes.getIconTheme(recommended)) {
 			return recommended;
@@ -334,6 +370,7 @@ export class ChronosEngine implements EngineContextHost, Disposable {
 		const plan = planRevertToDefaultThemes({
 			activeThemeId: this._activeThemeId,
 			preferences: this._userPreferences,
+			defaultThemeId: this.defaultThemeId,
 			themes: this.themes
 		});
 		if (!plan) return;
@@ -351,6 +388,7 @@ export class ChronosEngine implements EngineContextHost, Disposable {
 			schemaVersion: CURRENT_PREFERENCES_SCHEMA_VERSION
 		};
 		await this.storage.savePreferences(patch);
+		this.emitIconThemeChanged();
 		this.events.emit('preferences:updated', { preferences: this._userPreferences });
 	}
 
@@ -376,10 +414,18 @@ export class ChronosEngine implements EngineContextHost, Disposable {
 	async loadPlugin<Config extends object = Record<string, unknown>>(
 		plugin: ChronosPlugin<Config>
 	): Promise<Disposable> {
-		return this.pluginLifecycle.loadPlugin(plugin);
+		this.assertPluginRemovable(plugin.id);
+		const handle = await this.pluginLifecycle.loadPlugin(plugin);
+		return {
+			dispose: () => {
+				this.assertPluginRemovable(plugin.id);
+				handle.dispose();
+			}
+		};
 	}
 
 	async unloadPlugin(pluginId: string): Promise<void> {
+		this.assertPluginRemovable(pluginId);
 		return this.pluginLifecycle.unloadPlugin(pluginId);
 	}
 

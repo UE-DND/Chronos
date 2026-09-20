@@ -94,7 +94,7 @@ describe('ReactiveChronosController', () => {
 
 		expect(controller.currentTimetable).toBeNull();
 		expect(controller.activeWeek).toBe(1);
-		expect(controller.activeThemeId).toBe('m3-default');
+		expect(controller.activeThemeId).toBeNull();
 		expect(controller.userPreferences).toBeDefined();
 		expect(controller.currentLocale).toBe('zh-cn');
 		expect(controller.slotVersion).toBeGreaterThanOrEqual(1);

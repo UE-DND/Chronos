@@ -26,8 +26,8 @@ export interface EngineActionHost {
 	setTimetables(timetables: TimetableListEntry[]): void;
 	getUserPreferences(): UserPreferences;
 	setUserPreferences(preferences: UserPreferences): void;
-	getActiveThemeId(): string;
-	setActiveThemeId(themeId: string): void;
+	getActiveThemeId(): string | null;
+	setActiveThemeId(themeId: string | null): void;
 	getLocale(): string;
 	setLocale(locale: string): void;
 

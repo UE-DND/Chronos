@@ -24,7 +24,7 @@ export interface EngineContextHost {
 		readonly currentTimetable: Readonly<Timetable> | null;
 		readonly activeWeek: number;
 		readonly currentPeriodIndex: number | null;
-		readonly activeThemeId: string;
+		readonly activeThemeId: string | null;
 		readonly activeIconThemeId: string;
 		readonly userPreferences: Readonly<UserPreferences>;
 		readonly now: Date;

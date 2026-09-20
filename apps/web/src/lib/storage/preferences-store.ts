@@ -10,7 +10,6 @@ import type {
 import {
 	CURRENT_PREFERENCES_SCHEMA_VERSION,
 	DEFAULT_USER_PREFERENCES,
-	DEFAULT_VISUAL_THEME_ID,
 	PREFERENCE_STORAGE_KEYS
 } from '@chronos/core';
 
@@ -87,8 +86,7 @@ export class PreferencesStore {
 		const reduceMotionEnabled = reduceMotionRaw === '1';
 		const periodHighlightRaw = this.localStore.getItem(SETTINGS_KEYS.currentPeriodHighlightEnabled);
 		const currentPeriodHighlightEnabled = periodHighlightRaw === '1';
-		const visualThemeId =
-			this.localStore.getItem(SETTINGS_KEYS.visualThemeId)?.trim() || DEFAULT_VISUAL_THEME_ID;
+		const visualThemeId = this.localStore.getItem(SETTINGS_KEYS.visualThemeId)?.trim() || undefined;
 		const locale = normalizeLocale(this.localStore.getItem(SETTINGS_KEYS.locale));
 
 		return {

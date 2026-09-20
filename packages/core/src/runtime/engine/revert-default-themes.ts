@@ -1,39 +1,25 @@
 import type { UserPreferences } from '../../domain/preferences';
-import { DEFAULT_VISUAL_THEME_ID } from '../../theme/theme-defaults';
 import type { ThemeRegistry } from '../theme-registry';
-
 export interface RevertDefaultThemesInput {
-	activeThemeId: string;
+	activeThemeId: string | null;
+	defaultThemeId: string | null;
 	preferences: UserPreferences;
 	themes: ThemeRegistry;
 }
-
 export interface RevertDefaultThemesPlan {
 	nextThemeId?: string;
 	preferencesPatch: Partial<UserPreferences>;
 }
-
-/** Computes theme/preference rollback when plugin-owned themes are removed. */
 export function planRevertToDefaultThemes(
 	input: RevertDefaultThemesInput
 ): RevertDefaultThemesPlan | null {
-	const patch: Partial<UserPreferences> = {};
-	let nextThemeId: string | undefined;
-
+	const { defaultThemeId, themes, activeThemeId, preferences } = input;
+	if (!defaultThemeId || !themes.isSelectable(defaultThemeId)) return null;
 	if (
-		(input.activeThemeId !== DEFAULT_VISUAL_THEME_ID &&
-			!input.themes.getTheme(input.activeThemeId)) ||
-		(input.preferences.visualThemeId &&
-			input.preferences.visualThemeId !== DEFAULT_VISUAL_THEME_ID &&
-			!input.themes.getTheme(input.preferences.visualThemeId))
+		(activeThemeId && !themes.isSelectable(activeThemeId)) ||
+		(preferences.visualThemeId && !themes.isSelectable(preferences.visualThemeId))
 	) {
-		nextThemeId = DEFAULT_VISUAL_THEME_ID;
-		patch.visualThemeId = DEFAULT_VISUAL_THEME_ID;
+		return { nextThemeId: defaultThemeId, preferencesPatch: { visualThemeId: defaultThemeId } };
 	}
-
-	if (Object.keys(patch).length === 0) {
-		return null;
-	}
-
-	return { nextThemeId, preferencesPatch: patch };
+	return null;
 }

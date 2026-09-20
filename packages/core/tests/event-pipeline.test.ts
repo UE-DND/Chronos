@@ -4,7 +4,7 @@ import { EventPipeline } from '../src/runtime/event-pipeline';
 describe('EventPipeline', () => {
 	it('broadcasts events with emit', () => {
 		const pipeline = new EventPipeline();
-		const received: string[] = [];
+		const received: (string | null)[] = [];
 
 		pipeline.on('theme:changed', ({ themeId }) => {
 			received.push(themeId);
@@ -19,7 +19,7 @@ describe('EventPipeline', () => {
 
 	it('stops notifying after subscription is disposed', () => {
 		const pipeline = new EventPipeline();
-		const received: string[] = [];
+		const received: (string | null)[] = [];
 
 		const sub = pipeline.on('theme:changed', ({ themeId }) => {
 			received.push(themeId);

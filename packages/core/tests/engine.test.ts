@@ -816,3 +816,96 @@ describe('ChronosEngine in @chronos/core', () => {
 		engine.dispose();
 	});
 });
+
+describe('profile-owned default themes', () => {
+	it('starts without a theme and validates the default provider', async () => {
+		const { env } = createMockEnv();
+		const engine = new ChronosEngine({ env });
+		expect(engine.state.activeThemeId).toBeNull();
+		expect(() =>
+			engine.configureDefaultTheme({ pluginId: 'base', themeId: 'base-theme' })
+		).toThrow();
+		await engine.loadPlugin({
+			id: 'base',
+			name: 'Base',
+			version: '1',
+			apply(ctx) {
+				ctx.registerSlot('theme.definition', {
+					id: 'base-theme',
+					name: 'Base',
+					workbenchColors: { light: {}, dark: {} }
+				});
+			}
+		});
+		engine.configureDefaultTheme({ pluginId: 'base', themeId: 'base-theme' });
+		expect(engine.resolveThemeId('missing')).toBe('base-theme');
+		await expect(engine.unloadPlugin('base')).rejects.toThrow();
+		engine.dispose();
+	});
+	it('retains the selected theme while wallpaper colors use host icons', async () => {
+		const { env } = createMockEnv();
+		const engine = new ChronosEngine({ env });
+		engine.themes.registerTheme({
+			id: 'custom',
+			name: 'Custom',
+			recommendedIconTheme: 'custom-icons',
+			workbenchColors: { light: {}, dark: {} }
+		});
+		engine.iconThemes.registerIconTheme({ id: 'custom-icons', name: 'Icons' });
+		engine.setTheme('custom');
+		await engine.updatePreferences({ visualThemeId: 'custom', wallpaperColorEnabled: true });
+		expect(engine.state.activeThemeId).toBe('custom');
+		expect(engine.state.activeIconThemeId).toBe('host-default');
+		await engine.updatePreferences({ wallpaperColorEnabled: false });
+		expect(engine.state.activeIconThemeId).toBe('custom-icons');
+		engine.dispose();
+	});
+});
+
+describe('profile fallback lifecycle', () => {
+	it('falls back to a non-M3 profile without losing a pending selection', async () => {
+		const { env } = createMockEnv();
+		const engine = new ChronosEngine({ env });
+		await engine.updatePreferences({ visualThemeId: 'later', wallpaperColorEnabled: true });
+		const handle = await engine.loadPlugin({
+			id: 'base',
+			name: 'Base',
+			version: '1',
+			apply(ctx) {
+				ctx.registerSlot('theme.definition', {
+					id: 'base-theme',
+					name: 'Base',
+					workbenchColors: { light: {}, dark: {} }
+				});
+			}
+		});
+		expect(() =>
+			engine.configureDefaultTheme({ pluginId: 'wrong', themeId: 'base-theme' })
+		).toThrow();
+		engine.configureDefaultTheme({ pluginId: 'base', themeId: 'base-theme' });
+		expect(engine.state.activeThemeId).toBe('base-theme');
+		expect(engine.state.userPreferences.visualThemeId).toBe('later');
+		expect(() => handle.dispose()).toThrow();
+		engine.themes.registerTheme({
+			id: 'later',
+			name: 'Later',
+			workbenchColors: { light: {}, dark: {} }
+		});
+		engine.setTheme(engine.resolveThemeId(engine.state.userPreferences.visualThemeId));
+		expect(engine.state.activeThemeId).toBe('later');
+		engine.themes.registerTheme({
+			id: 'later',
+			name: 'Later',
+			disabled: true,
+			workbenchColors: { light: {}, dark: {} }
+		});
+		await engine.revertToDefaultThemes();
+		expect(engine.state.activeThemeId).toBe('base-theme');
+		expect(engine.state.userPreferences.visualThemeId).toBe('base-theme');
+		expect(engine.state.userPreferences.wallpaperColorEnabled).toBe(true);
+		engine.clearDefaultTheme();
+		handle.dispose();
+		expect(engine.themes.getTheme('base-theme')).toBeUndefined();
+		engine.dispose();
+	});
+});

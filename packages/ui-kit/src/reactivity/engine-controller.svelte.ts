@@ -37,7 +37,7 @@ export class ReactiveChronosController implements ChronosUiController {
 	>([]);
 	activeWeek = $state<number>(1);
 	currentPeriodIndex = $state<number | null>(null);
-	activeThemeId = $state<string>('m3-default');
+	activeThemeId = $state<string | null>(null);
 	activeIconThemeId = $state<string>('host-default');
 	userPreferences = $state<UserPreferences | null>(null);
 	currentLocale = $state<string>('zh-cn');
@@ -109,7 +109,7 @@ export class ReactiveChronosController implements ChronosUiController {
 					this.pushSnapshot();
 				}
 			),
-			this.engine.on('theme:changed', ({ themeId }: { themeId: string }) => {
+			this.engine.on('theme:changed', ({ themeId }) => {
 				this.activeThemeId = themeId;
 				this.pushSnapshot();
 			}),

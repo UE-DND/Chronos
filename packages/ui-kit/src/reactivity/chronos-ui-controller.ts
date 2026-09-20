@@ -17,7 +17,7 @@ export type ChronosUiSnapshot = {
 	timetables: Array<{ id: string; name: string; courseCount?: number; updatedAt: number }>;
 	activeWeek: number;
 	currentPeriodIndex: number | null;
-	activeThemeId: string;
+	activeThemeId: string | null;
 	activeIconThemeId: string;
 	userPreferences: UserPreferences | null;
 	currentLocale: string;
