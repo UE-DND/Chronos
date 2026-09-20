@@ -44,9 +44,9 @@ describe('shareCodecPlugin', () => {
 
 		const ctx = engine.getPluginContext('codec-share');
 		const exported = await exportSlot!.export(sampleTimetable, ctx);
-		expect(exported.filename).toBe('share-link.txt');
-		expect(exported.mimeType).toBe('application/x-chronos-share-link');
-		expect(exported.content).toContain('计算机课表');
+		expect(exported.filename).toBe('share-token.txt');
+		expect(exported.mimeType).toBe('text/plain');
+		expect(exported.content).toMatch(/^1\./);
 
 		const imported = await sourceSlot!.executeImport({ content: exported.content as string }, ctx);
 		expect(imported.name).toBe('计算机课表');
@@ -57,4 +57,37 @@ describe('shareCodecPlugin', () => {
 		expect(engine.slots.getSlotItem('import.source.tab', 'share-link')).toBeUndefined();
 		expect(engine.slots.getSlotItem('export.action', 'share-link')).toBeUndefined();
 	});
+});
+
+it.each([
+	null,
+	'https://chronos.test/s',
+	'https://chronos.test/Chronos/s',
+	'https://custom.test/import?via=app'
+])('exports through the host link capability: %s', async (url) => {
+	const { env } = createMockEnv();
+	const engine = new ChronosEngine({ env: { ...env, hostLinks: { getImportUrl: () => url } } });
+	await engine.loadPlugin(shareCodecPlugin);
+	const timetable = createTimetable({
+		id: 'round-trip',
+		name: 'round trip',
+		courses: [
+			createCourse({
+				id: 'course',
+				name: 'Math',
+				dayOfWeek: 1,
+				startPeriod: 1,
+				endPeriod: 1,
+				weeks: [1]
+			})
+		]
+	});
+	const slot = engine.slots.getSlotItem('export.action', 'share-link')!;
+	const result = await slot.export(timetable);
+	if (url) expect(result.content).toContain(url + '#1.');
+	else expect(result.content).toMatch(/^1\./);
+	const source = engine.slots.getSlotItem('import.source.tab', 'share-link')!;
+	const imported = await source.executeImport({ content: result.content });
+	expect(imported.name).toBe(timetable.name);
+	engine.dispose();
 });

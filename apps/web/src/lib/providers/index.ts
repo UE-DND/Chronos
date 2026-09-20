@@ -1,3 +1,4 @@
+import { resolve } from '$app/paths';
 import type { ChronosDB } from '$lib/storage/db';
 import { DexieStorageProvider } from './dexie-storage';
 import { WebHttpProxyProvider } from './web-http';
@@ -50,6 +51,10 @@ export function createWebChronosEnv(options?: WebProviderOptions) {
 	const providers = createWebProviders(options);
 	return {
 		platform: 'web' as const,
+		hostLinks: {
+			getImportUrl: () =>
+				typeof window === 'undefined' ? null : new URL(resolve('/s'), window.location.origin).href
+		},
 		http: providers.http,
 		storage: providers.storage,
 		runtime: providers.runtime,

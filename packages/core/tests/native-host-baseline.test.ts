@@ -163,9 +163,9 @@ describe('Native Host Baseline (iOS JSCore / Android QuickJS)', () => {
 		const exportSlot = engine.slots.getSlotItem('export.action', 'share-link');
 		expect(exportSlot).toBeDefined();
 		const exported = await exportSlot!.export(engine.state.currentTimetable!);
-		expect(exported.filename).toBe('share-link.txt');
-		expect(exported.mimeType).toBe('application/x-chronos-share-link');
-		expect(exported.content).toContain('原生宿主课表');
+		expect(exported.filename).toBe('share-token.txt');
+		expect(exported.mimeType).toBe('text/plain');
+		expect(exported.content).toMatch(/^1\./);
 
 		// 6. Verify config update in native host environment
 		const cqutCtx = engine.getPluginContext('source-cqut');

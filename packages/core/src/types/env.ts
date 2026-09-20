@@ -5,6 +5,7 @@ import type {
 	ICoursePresentationService,
 	IErrorCaptureService,
 	IStorageService,
+	IHostLinks,
 	VaultSecretOptions
 } from './services';
 
@@ -31,6 +32,7 @@ type ChronosEnvStorage = Pick<
 >;
 
 export interface ChronosEnv {
+	hostLinks?: IHostLinks;
 	readonly platform: PlatformType;
 
 	/** Network request and multi-step session maintenance abstraction */

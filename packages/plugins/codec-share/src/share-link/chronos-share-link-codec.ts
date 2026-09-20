@@ -87,10 +87,11 @@ export async function decodeSharePayload(
 	}
 }
 
-export async function encodeShareLink(timetable: Timetable, origin = ''): Promise<string> {
+export async function encodeShareLink(timetable: Timetable, importUrl: string): Promise<string> {
 	const payload = await encodeSharePayload(timetable);
-	const base = origin || (typeof window !== 'undefined' ? window.location.origin : '');
-	return `${base}/s#${payload}`;
+	const url = new URL(importUrl);
+	url.hash = payload;
+	return url.href;
 }
 
 export function formatShareClipboardText(
@@ -102,8 +103,13 @@ export function formatShareClipboardText(
 	return labels['share.clipboard.template'].replace('{name}', name).replace('{link}', link);
 }
 
-export async function estimateShareLinkLength(timetable: Timetable): Promise<number> {
-	return (await encodeSharePayload(timetable)).length;
+export async function estimateShareLinkLength(
+	timetable: Timetable,
+	importUrl: string | null
+): Promise<number> {
+	return importUrl === null
+		? (await encodeSharePayload(timetable)).length
+		: (await encodeShareLink(timetable, importUrl)).length;
 }
 
 function isValidSharePayloadFormat(payload: string): boolean {

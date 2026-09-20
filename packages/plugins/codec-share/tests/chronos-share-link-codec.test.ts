@@ -278,7 +278,7 @@ describe('chronos-share-link-codec', () => {
 		expect(decoded.value.importMetadata!.campusId).toBeUndefined();
 		expect(decoded.value.academicConfig.periodTimes).toEqual(SAMPLE_PERIOD_TIMES);
 
-		const link = await encodeShareLink(timetable, 'https://chronos.test');
+		const link = await encodeShareLink(timetable, 'https://chronos.test/s');
 		expect(link).toBe(`https://chronos.test/s#${payload}`);
 	});
 
@@ -397,7 +397,7 @@ describe('chronos-share-link-codec', () => {
 		const timetable = createLargeTimetable(15);
 		const payload = await encodeSharePayload(timetable);
 		expect(payload.length).toBeLessThan(520);
-		expect(await estimateShareLinkLength(timetable)).toBe(payload.length);
+		expect(await estimateShareLinkLength(timetable, null)).toBe(payload.length);
 	});
 
 	it('round-trips CQUT sparse week patterns from production import', async () => {
@@ -709,3 +709,12 @@ function createCqutLargeTimetable() {
 		importMetadata: { source: 'share-link' }
 	});
 }
+
+it('measures actual link length and preserves a custom host entry', async () => {
+	const timetable = sampleTimetable();
+	const entry = 'https://chronos.test/Chronos/import?source=external';
+	const link = await encodeShareLink(timetable, entry);
+	expect(link).toBe(entry + '#' + (await encodeSharePayload(timetable)));
+	expect(await estimateShareLinkLength(timetable, entry)).toBe(link.length);
+	await expect(encodeShareLink(timetable, '/s')).rejects.toThrow();
+});

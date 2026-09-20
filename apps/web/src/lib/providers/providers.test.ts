@@ -1,11 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vite-plus/test';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vite-plus/test';
 import {
 	DexieStorageProvider,
 	WebHttpProxyProvider,
 	PluginProxyHttpAdapter,
 	WebRuntimeProvider,
 	WebAnalyticsProvider,
-	createWebProviders
+	createWebProviders,
+	createWebChronosEnv
 } from './index';
 import { createCourse, createTimetable } from '@chronos/core';
 import type {
@@ -15,6 +16,13 @@ import type {
 	PluginDataRow,
 	TimetableRow
 } from '$lib/storage/db';
+
+const hostBase = vi.hoisted(() => ({ value: '' }));
+vi.mock('$app/paths', () => ({ base: '', resolve: (path: string) => hostBase.value + path }));
+afterEach(() => {
+	vi.unstubAllGlobals();
+	hostBase.value = '';
+});
 
 vi.mock('$lib/boot/plugin-proxy-meta.generated', () => ({
 	deploymentHasServerPlugins: vi.fn(() => true)
@@ -506,4 +514,20 @@ describe('Web Providers', () => {
 
 		vi.unstubAllGlobals();
 	});
+});
+
+it.each(['', '/Chronos'])('host links include the deployment base %s', (base) => {
+	hostBase.value = base;
+	vi.stubGlobal('window', {
+		addEventListener: vi.fn(),
+		removeEventListener: vi.fn(),
+		location: { origin: 'https://host.test', pathname: '/unrelated' }
+	});
+	const env = createWebChronosEnv({ database: createMockDb(), localStorage: new MockStorage() });
+	expect(env.hostLinks.getImportUrl()).toBe(`https://host.test${base}/s`);
+});
+it('host links are unavailable during SSR', () => {
+	vi.stubGlobal('window', undefined);
+	const env = createWebChronosEnv({ database: createMockDb(), localStorage: new MockStorage() });
+	expect(env.hostLinks.getImportUrl()).toBeNull();
 });

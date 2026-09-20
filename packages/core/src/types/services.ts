@@ -154,3 +154,9 @@ export interface IErrorCaptureService {
 	onCaptured(listener: (entry: CapturedError) => void): Disposable;
 }
 export const IErrorCaptureService = createServiceIdentifier<IErrorCaptureService>('errorCapture');
+
+/** Public import entry supplied by the host; null means token-only sharing. */
+export interface IHostLinks {
+	getImportUrl(): string | null;
+}
+export const IHostLinks = createServiceIdentifier<IHostLinks>('hostLinks');

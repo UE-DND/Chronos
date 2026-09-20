@@ -1,5 +1,6 @@
 import {
 	defineChronosPlugin,
+	IHostLinks,
 	ImportSlotError,
 	registerImportTab,
 	type ChronosMountable,
@@ -8,6 +9,7 @@ import {
 } from '@chronos/core';
 import {
 	decodeSharePayload,
+	encodeSharePayload,
 	encodeShareLink,
 	estimateShareLinkLength,
 	extractSharePayloadFromLocation,
@@ -88,6 +90,7 @@ export function createShareCodecPlugin(options: CreateShareCodecPluginOptions = 
 				}
 			});
 
+			const importUrl = () => ctx.tryService(IHostLinks)?.getImportUrl() ?? null;
 			ctx.registerSlot('export.action', {
 				id: 'share-link',
 				title: () => t('export.action.title'),
@@ -96,21 +99,28 @@ export function createShareCodecPlugin(options: CreateShareCodecPluginOptions = 
 				isPrimary: true,
 				description: () => t('export.action.description'),
 				async export(timetable: Timetable): Promise<ExportResult> {
-					const link = await encodeShareLink(timetable);
-					const clipboardText = formatShareClipboardText(timetable.name, link, clipboardLabels);
+					const url = importUrl();
+					const clipboardText =
+						url === null
+							? await encodeSharePayload(timetable)
+							: formatShareClipboardText(
+									timetable.name,
+									await encodeShareLink(timetable, url),
+									clipboardLabels
+								);
 					return {
-						filename: 'share-link.txt',
-						mimeType: 'application/x-chronos-share-link',
+						filename: url === null ? 'share-token.txt' : 'share-link.txt',
+						mimeType: url === null ? 'text/plain' : 'application/x-chronos-share-link',
 						content: clipboardText,
 						disposition: 'clipboard',
-						successMessage: () => t('export.success')
+						successMessage: () => t(url === null ? 'export.tokenSuccess' : 'export.success')
 					};
 				},
-				estimateLength: estimateShareLinkLength,
+				estimateLength: (timetable) => estimateShareLinkLength(timetable, importUrl()),
 				async checkWarning(timetable: Timetable): Promise<string | null> {
 					if (!timetable.courses?.length) return null;
 					try {
-						const length = await estimateShareLinkLength(timetable);
+						const length = await estimateShareLinkLength(timetable, importUrl());
 						if (length > 2000) {
 							return t('export.warning.large');
 						}

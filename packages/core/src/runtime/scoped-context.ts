@@ -57,6 +57,7 @@ export class ScopedContext<Config extends object = Record<string, unknown>>
 	tryService<T>(identifier: ServiceIdentifier<T>): T | undefined {
 		const key = identifier.key;
 		const env = this.host.env;
+		if (key === 'hostLinks') return env.hostLinks as T | undefined;
 		if (key === 'storage') return env.storage as T;
 		if (key === 'http') return env.http as T;
 		if (key === 'vault') return env.vault as T | undefined;
