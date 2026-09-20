@@ -62,9 +62,6 @@ export type HostAnalyticsEvent =
 	| 'about_clear_all_data'
 	| 'developer_easter_egg_open';
 
-/** @deprecated Use `HostAnalyticsEvent` */
-export type AnalyticsEvent = HostAnalyticsEvent;
-
 let client: PostHog | null = null;
 let pending: Array<[string, Record<string, string | number | boolean> | undefined]> | null = null;
 let analyticsPort: IAnalyticsService | null = null;
@@ -113,9 +110,6 @@ export function captureAnalyticsEvent(
 	}
 	pending?.push([name, properties]);
 }
-
-/** @deprecated Use `captureAnalyticsEvent` */
-export const capturePostHogEvent = captureAnalyticsEvent;
 
 /** UI telemetry facade — routes through `IAnalyticsService` when the engine port is bound. */
 export function trackEvent(
