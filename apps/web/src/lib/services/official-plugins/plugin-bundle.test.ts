@@ -32,6 +32,14 @@ describe('validatePluginManifest', () => {
 		}
 	);
 
+	it.each(['invalid', [null], [{ pluginId: 'source-cqut' }]])(
+		'rejects malformed optional capabilities: %j',
+		(optionalServerCapabilities) => {
+			expect(() =>
+				validatePluginManifest({ ...BASE_MANIFEST, optionalServerCapabilities })
+			).toThrow('optionalServerCapabilities');
+		}
+	);
 	it('accepts a valid bundle manifest', () => {
 		expect(() => validatePluginManifest(BASE_MANIFEST)).not.toThrow();
 	});

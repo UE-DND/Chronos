@@ -81,6 +81,24 @@ export function validatePluginManifest(
 		);
 	}
 
+	if (
+		m.optionalServerCapabilities !== undefined &&
+		(!Array.isArray(m.optionalServerCapabilities) ||
+			m.optionalServerCapabilities.some((entry: unknown) => {
+				if (!entry || typeof entry !== 'object') return true;
+				const capability = entry as Record<string, unknown>;
+				return (
+					typeof capability.pluginId !== 'string' ||
+					!capability.pluginId.trim() ||
+					typeof capability.action !== 'string' ||
+					!capability.action.trim()
+				);
+			}))
+	)
+		throw new Error(
+			'Invalid plugin manifest: optionalServerCapabilities must declare pluginId and action'
+		);
+
 	const hasBundle = typeof m.bundleUrl === 'string' && m.bundleUrl.length > 0;
 	const hasColors = typeof m.colorsUrl === 'string' && m.colorsUrl.length > 0;
 

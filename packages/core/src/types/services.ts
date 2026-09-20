@@ -38,6 +38,7 @@ export interface HttpResponse {
 }
 
 export interface IHttpService {
+	supportsPluginServer?(pluginId: string, action: string): boolean;
 	request(url: string, options?: HttpRequestOptions): Promise<HttpResponse>;
 	proxy?(
 		pluginId: string,

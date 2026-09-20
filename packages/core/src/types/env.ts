@@ -35,6 +35,7 @@ export interface ChronosEnv {
 
 	/** Network request and multi-step session maintenance abstraction */
 	http: {
+		supportsPluginServer?(pluginId: string, action: string): boolean;
 		/** Send request to upstream URL. Host transparently proxies or connects natively based on bypassCors */
 		request(url: string, options?: HttpRequestOptions): Promise<HttpResponse>;
 		/** Route a plugin-scoped request through the host server proxy (browser hosts with server plugins) */

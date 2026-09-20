@@ -11,7 +11,7 @@ export interface PluginManifest {
 	version: string;
 	description: Record<string, string>;
 	author: string;
-	type: 'theme' | 'source' | 'tool' | 'exporter';
+	type: 'theme' | 'source' | 'codec' | 'tool' | 'exporter';
 	/** Required when type is tool — utility vs developer tools in plugin center. */
 	toolGroup?: ToolGroup;
 	bundleFormat: BundleFormat;
@@ -31,6 +31,7 @@ export interface PluginManifest {
 	iconThemeUrl?: string;
 	iconThemeSha256?: string;
 	allowedDomains?: string[];
+	optionalServerCapabilities?: { pluginId: string; action: string }[];
 	configSchema?: ConfigSchema<Record<string, unknown>>;
 	icon?: string;
 	homepage?: string;
