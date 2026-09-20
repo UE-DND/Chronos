@@ -1,5 +1,7 @@
 # ADR 0019: Workbench 配色与图标主题平台
 
+> 2026-09-20 修订：自定义壁纸、动态取色和主题图片的当前职责与契约见 [ADR 0040](./0040-host-wallpaper-and-theme-assets.md)。本文相关插件实现描述为历史记录。
+
 - **状态**: Accepted（图标主题独立偏好设置已由 [ADR 0026](./0026-icon-theme-follows-color-scheme.md) 撤销）
 - **日期**: 2026-08-22
 - **关联提交**: `5846ecb`, `ff1ddcc`, `10e85c2`, `9170c20`, `8cc140d`, `bb0a961`, `d94af98`

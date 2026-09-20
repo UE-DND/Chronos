@@ -1,5 +1,7 @@
 # ADR 0039: 外壳壁纸合成层与冻结范围收窄
 
+> 2026-09-20 修订：自定义壁纸、动态取色和主题图片的当前职责与契约见 [ADR 0040](./0040-host-wallpaper-and-theme-assets.md)。本文相关插件实现描述为历史记录。
+
 - **状态**: Accepted
 - **日期**: 2026-09-19
 - **关联**: **部分修订** [ADR 0033](./0033-persistent-shell-freeze-and-secondary-view-transition.md)（冻结作用范围）；延续 [ADR 0016](./0016-round3-convergence-and-deprecated-removal.md) `dynamicColor:*` 契约；延续 [ADR 0036](./0036-plugin-kv-binary-storage.md) 壁纸 Blob 存储

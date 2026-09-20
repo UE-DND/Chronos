@@ -117,13 +117,13 @@ scripts                   官方插件构建与校验、主题令牌生成、别
 
 ### 分层拓扑
 
-| 包                                    | 角色                                                                                                       | 可依赖                                   |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `apps/web`                            | Web 宿主：SvelteKit 外壳、页面路由、Dexie/HTTP 适配器、transfer-state 导入流                               | core、ui-kit、plugins（经 Profile 装配） |
-| `packages/core` (`@chronos/core`)     | 微内核：引擎、服务容器、插槽树、领域模型、Schema 校验                                                      | 无运行时依赖                             |
-| `packages/ui-kit` (`@chronos/ui-kit`) | 与内核配套的 Svelte 组件库：响应式控制器、SchemaForm、插槽出口                                             | core                                     |
-| `packages/plugins/*`                  | 内置/官方插件（source-cqut、codec-share、codec-qrcode、tool-calendar-holidays、wallpaper、theme-yumemita） | core、ui-kit；彼此不依赖                 |
-| `packages/codec-kit`                  | 共享字节编解码原语（deflate/base64/CRC/varint/bitmask），普通 npm 依赖，非插件                             | —                                        |
+| 包                                    | 角色                                                                                            | 可依赖                                   |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `apps/web`                            | Web 宿主：SvelteKit 外壳、页面路由、Dexie/HTTP 适配器、transfer-state 导入流                    | core、ui-kit、plugins（经 Profile 装配） |
+| `packages/core` (`@chronos/core`)     | 微内核：引擎、服务容器、插槽树、领域模型、Schema 校验                                           | 无运行时依赖                             |
+| `packages/ui-kit` (`@chronos/ui-kit`) | 与内核配套的 Svelte 组件库：响应式控制器、SchemaForm、插槽出口                                  | core                                     |
+| `packages/plugins/*`                  | 内置/官方插件（source-cqut、codec-share、codec-qrcode、tool-calendar-holidays、theme-yumemita） | core、ui-kit；彼此不依赖                 |
+| `packages/codec-kit`                  | 共享字节编解码原语（deflate/base64/CRC/varint/bitmask），普通 npm 依赖，非插件                  | —                                        |
 
 依赖规则遵循单一方向原则：**宿主负责装配插件，插件不感知宿主实现**。插件之间禁止直接互相引用，共享的基础能力与编解码原语统一通过 `packages/codec-kit` 等通用库提供。
 
@@ -262,7 +262,7 @@ export default defineChronosPlugin({
 
 ### 配置 Schema
 
-`configSchema` 使用内核提供的声明式模式定义（`ConfigSchema`），支持文本、数字、布尔开关、日期选择、文件上传（含二进制读取）等丰富类型。宿主将使用 `SchemaForm` 自动渲染配置表单，并与 `defaultConfig` 合并持久化。可参考 `packages/plugins/theme-yumemita` 与 `packages/plugins/wallpaper` 的具体实现。
+`configSchema` 使用内核提供的声明式模式定义（`ConfigSchema`），支持文本、数字、布尔开关、日期选择、文件上传（含二进制读取）等丰富类型。宿主将使用 `SchemaForm` 自动渲染配置表单，并与 `defaultConfig` 合并持久化。可参考 `packages/plugins/theme-yumemita` 的具体实现。
 
 ### 网络请求
 
@@ -280,7 +280,7 @@ export default defineChronosPlugin({
 
 官方 UI 插件在 `bundle/entry.ts` 中引入 `bundle/styles.css`，该文件 `@import '@chronos/ui-kit/theme/plugin-tailwind.css'` 并 `@source` 插件自身 `src/`。构建时 Tailwind v4 只编译 utilities（无 Preflight），原子类写入自包含 `bundle.css`，宿主在插件 activate 时注入 `<style data-plugin-id>`，deactivate 时卸载。
 
-宿主 `layout.css` **不再** `@source` 官方在线 UI 插件（wallpaper / today / calendar-holidays / codec-qrcode）。Profile 内置插件（`source-cqut`、`codec-share`）仍随宿主编译，可保留 `@source`。
+宿主 `layout.css` **不再** `@source` 官方在线 UI 插件（today / calendar-holidays / codec-qrcode）。Profile 内置插件（`source-cqut`、`codec-share`）仍随宿主编译，可保留 `@source`。
 
 第三方插件应使用同一 CSS 入口契约。以下类仍由宿主全局提供，插件 CSS 不必重复产出：`text-*` 字阶（`typography.css`）、`ui-*` 模式、`.bottom-bar`。颜色原子类必须走 `plugin-tailwind.css` 的 `@theme inline` 桥，以便跟随宿主 CSS 变量与动态主题。
 
@@ -292,11 +292,11 @@ export default defineChronosPlugin({
 
 ### 分发形态
 
-| 形态              | 适用场景                                   | 交付要求                                                                                                                                                                                        |
-| ----------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Profile 内置      | 随应用发行的核心能力（如 source-cqut）     | 声明在 Profile 清单中，随宿主在进程内启动加载                                                                                                                                                   |
-| 官方在线 ESM 插件 | 包含业务逻辑与富 UI 的扩展（如 wallpaper） | 构建为自包含 ESM Bundle，Manifest 附带 SHA-256 哈希，版本与 `apps/web` 单源协同发版并在启动时静默同步（[ADR 0030](.agents/docs/adr/0030-official-plugin-version-co-shipping-and-host-sync.md)） |
-| JSON-only 主题    | 纯静态配色与图标资源（如 theme-yumemita）  | `ThemeManifest` 显式声明 `colorsUrl` / `iconThemeUrl` / `themeId`，不含任何 JavaScript 脚本                                                                                                     |
+| 形态              | 适用场景                                  | 交付要求                                                                                                                                                                                        |
+| ----------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Profile 内置      | 随应用发行的核心能力（如 source-cqut）    | 声明在 Profile 清单中，随宿主在进程内启动加载                                                                                                                                                   |
+| 官方在线 ESM 插件 | 包含业务逻辑与富 UI 的扩展（如 today）    | 构建为自包含 ESM Bundle，Manifest 附带 SHA-256 哈希，版本与 `apps/web` 单源协同发版并在启动时静默同步（[ADR 0030](.agents/docs/adr/0030-official-plugin-version-co-shipping-and-host-sync.md)） |
+| JSON-only 主题    | 纯静态配色与图标资源（如 theme-yumemita） | `ThemeManifest` 显式声明 `colorsUrl` / `iconThemeUrl` / `themeId`，不含任何 JavaScript 脚本                                                                                                     |
 
 发布流程见[新增官方插件](#新增官方插件)。
 
@@ -570,7 +570,7 @@ interface BottomTabSlotContribution {
 
 ### theme.definition
 
-详见 [ThemeContribution](#参考主题契约)：包含封闭的 Workbench 颜色键集、设计令牌、课程卡调色方案、可选的动态取色适配器以及推荐配对的图标主题。
+详见 [ThemeContribution](#参考主题契约)：包含封闭的 Workbench 颜色键集、设计令牌、课程卡调色方案、可选的壁纸图片以及推荐配对的图标主题。
 
 ### 自定义槽位
 
@@ -584,16 +584,16 @@ Chronos 的主题体系由「配色主题 + 派生图标主题」组成。类型
 
 `theme.definition` 插槽的扩展贡献，决定整套应用的视觉外观：
 
-| 字段                                             | 说明                                                                                                                                        |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id` / `name` / `description`                    | 主题标识与多语言本地化文案                                                                                                                  |
-| `workbenchColors`                                | **封闭键集**的界面基础色彩，包含 `light` 与 `dark` 两种模式；键名统一采用连字符命名规范（如 `--color-on-surface`）                          |
-| `getTokens(mode, seedColor?)`                    | 返回核心设计令牌（`surface` / `primary` / `outline` 等基础 Token 及自定义扩展）                                                             |
-| `resolveCoursePaint?`                            | 课程卡配色策略；未指定时使用内核默认调色盘                                                                                                  |
-| `paletteEntries?`                                | 静态或按模式配置的课程调色盘条目                                                                                                            |
-| `recommendedIconTheme?`                          | 推荐配对的图标主题 ID                                                                                                                       |
-| `supportsDynamicColor?` / `dynamicColorAdapter?` | 壁纸动态取色适配器：依次执行 `extractWallpaperSeed`（提取种子色）→ `paintWallpaperTheme`（应用配色）→ `clearWallpaperTheme`（清理动态配色） |
-| `className?` / `disabled?`                       | 自定义挂载样式类名与条件禁用标识                                                                                                            |
+| 字段                          | 说明                                                                                                               |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `id` / `name` / `description` | 主题标识与多语言本地化文案                                                                                         |
+| `workbenchColors`             | **封闭键集**的界面基础色彩，包含 `light` 与 `dark` 两种模式；键名统一采用连字符命名规范（如 `--color-on-surface`） |
+| `getTokens(mode, seedColor?)` | 返回核心设计令牌（`surface` / `primary` / `outline` 等基础 Token 及自定义扩展）                                    |
+| `resolveCoursePaint?`         | 课程卡配色策略；未指定时使用内核默认调色盘                                                                         |
+| `paletteEntries?`             | 静态或按模式配置的课程调色盘条目                                                                                   |
+| `recommendedIconTheme?`       | 推荐配对的图标主题 ID                                                                                              |
+| `wallpaper?`                  | 可选的图片 Blob；宿主管理展示和 Object URL，不修改用户自定义图片                                                   |
+| `className?` / `disabled?`    | 自定义挂载样式类名与条件禁用标识                                                                                   |
 
 ### 图标主题：派生而非持久化
 
@@ -605,14 +605,19 @@ Chronos 的主题体系由「配色主题 + 派生图标主题」组成。类型
 
 纯资源的无代码主题以 `ThemeManifest` 形式在线分发：Manifest 文件中显式声明 `themeId`、`colorsUrl` 与 `iconThemeUrl`，在安装后由 `OfficialPluginService` 使用轻量级无头 `ScopedContext` 直接注册资产——整个流程不包含任何 JavaScript 脚本打包与执行。
 
-包含动态取色、自定义特效等复杂逻辑的主题，则采用 ESM 插件形态开发与分发（参考 `packages/plugins/wallpaper`）。
+包含自定义逻辑的主题采用 ESM 插件形态开发与分发，也可直接声明 `ThemeContribution.wallpaper` 图片 Blob。取色属于宿主能力，不由插件提供。
 
-### 动态配色事件
+### 宿主壁纸与取色
 
-内核层定义了统一的动态取色事件规范：`dynamicColor:set`（携带图片 Blob 数据）、`dynamicColor:changed`（携带图片 URI 地址）、`dynamicColor:hydrate`（请求重放当前取色状态）。宿主 `AppShell` 仅维护最新的 `dynamicColorUri`（新事件覆盖旧值），交给主题 `dynamicColorAdapter` 取色，并由外壳 `ShellWallpaper` 绘制课表壁纸（[ADR 0039](.agents/docs/adr/0039-shell-wallpaper-compositor.md)）。偏好设置中的 `palette: 'wallpaper'` 用于指示启用动态取色通道。
+自定义壁纸在宿主 `/wallpaper/preview` 编辑，不再需要安装插件。主题可携带一张图片，JSON 主题声明 `wallpaper: { url, sha256 }`（相对 colors JSON 解析）；ESM 主题通过 `ThemeContribution.wallpaper?: Blob` 提供。官方构建从本地相对路径读取图片并自动生成发布路径和哈希。安装时校验、解码并保存图片，断网可用；禁用保留资源，卸载删除主题图片。
+
+壁纸来源 `wallpaperSource` 为 `custom | theme | none`，默认 `theme`。来源无图片时不显示壁纸。用户图片独立保存，切换模式或主题不删除图片。宿主 `images` 表负责自定义与主题图片，插件 KV 继续用于插件自己的私有数据。
 
 ### 用户偏好相关项
 
-- `visualThemeId`：用户当前选择的配色主题 ID。
-- `palette: 'vibrant' | 'wallpaper'`：调色板模式，其中 `wallpaper` 表示启用壁纸动态取色通道。
-- **注意**：系统中不存在独立的 `iconThemeId` 偏好项，请勿新增该配置字段。
+- `visualThemeId`：选择的配色主题 ID，同时决定推荐图标。
+- `wallpaperSource`：壁纸来源，与配色主题独立。
+- `wallpaperColorEnabled`：宿主取色开关，默认关闭，仅默认内置主题生效；插件主题下停用但保留偏好。
+- 不再存在 `paletteMode`、插件动态取色适配器及 `dynamicColor:*` 广播。按本次变更约定不提供旧数据迁移，用户自行清空旧数据。
+
+详见 [ADR 0040](.agents/docs/adr/0040-host-wallpaper-and-theme-assets.md)。

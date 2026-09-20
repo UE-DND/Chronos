@@ -1,5 +1,7 @@
 # ADR 0036: Plugin KV 二进制存储与 Dexie pluginBinary 表
 
+> 2026-09-20 修订：自定义壁纸、动态取色和主题图片的当前职责与契约见 [ADR 0040](./0040-host-wallpaper-and-theme-assets.md)。本文相关插件实现描述为历史记录。
+
 - **状态**: Accepted
 - **日期**: 2026-09-13
 - **关联提交**: `e564e1d`
