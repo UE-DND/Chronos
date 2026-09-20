@@ -29,7 +29,6 @@
 	"devDependencies": {
 		"@chronos/plugin-theme-miami": "workspace:*",
 		"@chronos/plugin-theme-yumemita": "workspace:*",
-		"@chronos/plugin-wallpaper": "workspace:*",
 		"@inlang/paraglide-js": "^2.25.0",
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/adapter-vercel": "^6.3.3",

@@ -25,7 +25,6 @@ function pluginRequiresTailwindSource(pluginId: string): boolean {
 
 const CSS_FINGERPRINTS: Record<string, readonly string[]> = {
 	'tool-today': ['bg-secondary-container', 'divide-outline'],
-	'tool-wallpaper': ['bg-canvas'],
 	'tool-calendar-holidays': ['text-error'],
 	'tool-qrcode': ['border-dashed'],
 	'tool-error-log': ['font-mono', 'divide-outline'],

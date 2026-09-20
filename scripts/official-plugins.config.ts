@@ -42,18 +42,6 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 		iconsJson: resolve(root, 'packages/plugins/theme-miami/theme-miami.icons.json')
 	},
 	{
-		id: 'tool-wallpaper',
-		type: 'tool',
-		toolGroup: 'utility',
-		sourceDir: 'wallpaper',
-		name: { 'zh-CN': '自定义壁纸', en: 'Custom Wallpaper' },
-		description: {
-			'zh-CN': '自定义课表页壁纸，支持动态取色',
-			en: 'Custom timetable wallpaper with dynamic color extraction'
-		},
-		entry: resolve(root, 'packages/plugins/wallpaper/bundle/entry.ts')
-	},
-	{
 		id: 'tool-qrcode',
 		type: 'tool',
 		toolGroup: 'utility',

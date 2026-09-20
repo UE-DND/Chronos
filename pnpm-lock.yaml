@@ -255,9 +255,6 @@ importers:
       '@chronos/plugin-theme-yumemita':
         specifier: workspace:*
         version: link:../../packages/plugins/theme-yumemita
-      '@chronos/plugin-wallpaper':
-        specifier: workspace:*
-        version: link:../../packages/plugins/wallpaper
       '@inlang/paraglide-js':
         specifier: ^2.25.0
         version: 2.25.2(@voidzero-dev/vite-plus-core@0.3.3(@types/node@24.13.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(typescript@7.0.2))(typescript@7.0.2)
@@ -427,21 +424,6 @@ importers:
       '@chronos/ui-kit':
         specifier: workspace:*
         version: link:../../ui-kit
-      svelte:
-        specifier: ^5.0.0
-        version: 5.57.0
-
-  packages/plugins/wallpaper:
-    dependencies:
-      '@chronos/core':
-        specifier: workspace:*
-        version: link:../../core
-      '@chronos/ui-kit':
-        specifier: workspace:*
-        version: link:../../ui-kit
-      '@ktibow/material-color-utilities-nightly':
-        specifier: ^0.4.1772748028000
-        version: 0.4.1772748028000
       svelte:
         specifier: ^5.0.0
         version: 5.57.0
