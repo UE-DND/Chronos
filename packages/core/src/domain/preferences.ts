@@ -7,7 +7,7 @@ export type WallpaperSource = 'custom' | 'theme' | 'none';
 export type TimetableLayoutMode = 'fixed' | 'compact';
 export type CapsuleCornerStyle = 'rounded' | 'sharp' | 'pill';
 
-export const CURRENT_PREFERENCES_SCHEMA_VERSION = 3;
+export const CURRENT_PREFERENCES_SCHEMA_VERSION = 1;
 
 export const PREFERENCE_STORAGE_KEYS = {
 	currentTimetableId: 'chronos_preferences:current_timetable_id',

@@ -81,12 +81,12 @@ export class PreferencesStore {
 			this.localStore.getItem(SETTINGS_KEYS.capsuleCornerStyle)
 		);
 		const hapticRaw = this.localStore.getItem(SETTINGS_KEYS.hapticFeedbackEnabled);
-		const hapticFeedbackEnabled = hapticRaw !== '0' && hapticRaw !== 'false';
+		const hapticFeedbackEnabled =
+			hapticRaw === null ? DEFAULT_USER_PREFERENCES.hapticFeedbackEnabled : hapticRaw === '1';
 		const reduceMotionRaw = this.localStore.getItem(SETTINGS_KEYS.reduceMotionEnabled);
-		const reduceMotionEnabled = reduceMotionRaw === '1' || reduceMotionRaw === 'true';
+		const reduceMotionEnabled = reduceMotionRaw === '1';
 		const periodHighlightRaw = this.localStore.getItem(SETTINGS_KEYS.currentPeriodHighlightEnabled);
-		const currentPeriodHighlightEnabled =
-			periodHighlightRaw === '1' || periodHighlightRaw === 'true';
+		const currentPeriodHighlightEnabled = periodHighlightRaw === '1';
 		const visualThemeId =
 			this.localStore.getItem(SETTINGS_KEYS.visualThemeId)?.trim() || DEFAULT_VISUAL_THEME_ID;
 		const locale = normalizeLocale(this.localStore.getItem(SETTINGS_KEYS.locale));

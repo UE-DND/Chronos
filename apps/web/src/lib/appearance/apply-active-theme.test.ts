@@ -57,7 +57,7 @@ describe('applyActiveTheme', () => {
 					setActiveTimetableId: async () => {},
 					queryCourses: async () => [],
 					getPreferences: async () => ({
-						schemaVersion: 2,
+						schemaVersion: 1,
 						themeMode: 'auto',
 						wallpaperSource: 'theme',
 						wallpaperColorEnabled: false,
@@ -125,7 +125,7 @@ describe('applyActiveTheme', () => {
 					setActiveTimetableId: async () => {},
 					queryCourses: async () => [],
 					getPreferences: async () => ({
-						schemaVersion: 2,
+						schemaVersion: 1,
 						themeMode: 'auto',
 						wallpaperSource: 'theme',
 						wallpaperColorEnabled: false,
