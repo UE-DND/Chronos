@@ -111,7 +111,7 @@ describe('Grid & Display Models in @chronos/core', () => {
 		).toHaveLength(1);
 	});
 
-	it('keeps legacy course-driven rows when no periods are configured', () => {
+	it('shows no rows or courses when no periods are configured', () => {
 		const course = createCourse({
 			id: 'c1',
 			name: '课',
@@ -126,10 +126,10 @@ describe('Grid & Display Models in @chronos/core', () => {
 		expect(timetable.academicConfig.periodTimes).toHaveLength(0);
 
 		const grid = calculateTimetableGrid('2026-03-04', 1, timetable);
-		expect(grid.displayedPeriodCount).toBe(3);
+		expect(grid.displayedPeriodCount).toBe(0);
 		expect(
 			buildTimetableCourseDisplayModels(timetable, new Set([1, 2, 3, 4, 5, 6, 7]), 1)
-		).toHaveLength(1);
+		).toHaveLength(0);
 	});
 
 	it('builds course display models including future candidates when enabled', () => {
@@ -159,6 +159,16 @@ describe('Grid & Display Models in @chronos/core', () => {
 			id: 't1',
 			name: '测试课表',
 			courses: [course1, course2],
+			academicConfig: {
+				termStartDate: '2026-03-02',
+				startWeek: 1,
+				endWeek: 20,
+				periodTimes: Array.from({ length: 4 }, (_, i) => ({
+					index: i + 1,
+					startTime: '08:00',
+					endTime: '08:45'
+				}))
+			},
 			viewPrefs: {
 				showSaturday: true,
 				showSunday: true,

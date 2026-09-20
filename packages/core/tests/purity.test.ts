@@ -18,7 +18,17 @@ describe('@chronos/core ECMAScript Purity', () => {
 		const timetable = Core.createTimetable({
 			id: 't1',
 			name: '计算机学院课表',
-			courses: [course]
+			courses: [course],
+			academicConfig: {
+				termStartDate: '2026-03-02',
+				startWeek: 1,
+				endWeek: 20,
+				periodTimes: Array.from({ length: 4 }, (_, i) => ({
+					index: i + 1,
+					startTime: '08:00',
+					endTime: '08:45'
+				}))
+			}
 		});
 
 		const grid = Core.calculateTimetableGrid('2026-03-03', 1, timetable);

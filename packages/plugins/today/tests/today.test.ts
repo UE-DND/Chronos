@@ -111,7 +111,20 @@ describe('today plugin', () => {
 			startPeriod: 2,
 			endPeriod: 2
 		});
-		const timetable = createTimetable({ id: 'main', name: 'Main', courses: [courseA, courseB] });
+		const timetable = createTimetable({
+			id: 'main',
+			name: 'Main',
+			courses: [courseA, courseB],
+			academicConfig: {
+				termStartDate: '2026-03-02',
+				startWeek: 1,
+				endWeek: 20,
+				periodTimes: [
+					{ index: 1, startTime: '08:00', endTime: '08:45' },
+					{ index: 2, startTime: '08:55', endTime: '09:40' }
+				]
+			}
+		});
 		const lookup = assignCourseDisplayColors(timetable.courses, COURSE_PALETTE_ENTRIES);
 
 		const { env, timetables } = createMockEnv({
