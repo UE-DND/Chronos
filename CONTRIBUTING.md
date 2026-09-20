@@ -94,6 +94,8 @@ vp install
 | `vp run bundle:analyze`                                                       | 构建并分析前端包体积构成                   |
 | `vp run icons:png`                                                            | 从 SVG 源资产重新生成各尺寸 PWA 图标       |
 
+`vp run dev` 与宿主构建命令（`vp run build`、`vp run build:<profile>`、`vp run build:pages`）会先分析客户端打包依赖并生成 `static/licenses/third-party.json`，然后启动开发服务器或正式构建。请使用 `vp run` 入口，避免跳过许可证预生成。
+
 ### 仓库布局
 
 ```
@@ -114,7 +116,7 @@ scripts                   官方插件构建与校验、主题令牌生成、别
 
 1. 提交前确保 `vp run check` 与 `vp run test` 全部通过；
 2. 修改内核契约时，同步更新[参考：端口契约](#参考端口契约)与对应 ADR 的修订记录；
-3. 涉及官方插件源码变更时，本地 `vp run build:official-plugins` 或 `vp build` 须通过（构建脚本内置产物哈希自校验）；
+3. 涉及官方插件源码变更时，本地 `vp run build:official-plugins` 或 `vp run build` 须通过（构建脚本内置产物哈希自校验）；
 4. 避免引入双轨实现：当同一功能存在新旧两种实现方式时，应先收敛或废弃旧实现，再进行扩展，保持单一事实来源。
 
 ## 架构地图
@@ -291,7 +293,7 @@ export default defineChronosPlugin({
 
 第三方插件应使用同一 CSS 入口契约。以下类仍由宿主全局提供，插件 CSS 不必重复产出：`text-*` 字阶（`typography.css`）、`ui-*` 模式、`.bottom-bar`。颜色原子类必须走 `plugin-tailwind.css` 的 `@theme inline` 桥，以便跟随宿主 CSS 变量与动态主题。
 
-开发态 HMR 将产物写入 `dist/dev-plugins/{pluginId}/{rev}/` 并生成带修订号的 manifest（不写 `static/official-plugins`）。Vite dev server 通过 middleware 按 `/official-plugins/bundles/{pluginId}/{rev}/…` 提供资源，缺失修订返回 404，无修订的生产 URL 仍走 static；完整安装链路验证请执行 `node --experimental-strip-types scripts/build-official-plugins.ts` 或 `vp build`。
+开发态 HMR 将产物写入 `dist/dev-plugins/{pluginId}/{rev}/` 并生成带修订号的 manifest（不写 `static/official-plugins`）。Vite dev server 通过 middleware 按 `/official-plugins/bundles/{pluginId}/{rev}/…` 提供资源，缺失修订返回 404，无修订的生产 URL 仍走 static；完整安装链路验证请执行 `node --experimental-strip-types scripts/build-official-plugins.ts` 或 `vp run build`。
 
 `MountableSlotOutlet` 会把宿主 Svelte context 传给 `CHRONOS_MOUNTABLE.mount()`，但仅对**进程内**、与宿主共享 Svelte 运行时的组件有效（如 Profile 内置 `source-cqut` / `codec-share`）。官方自包含 ESM 插件自带独立 Svelte 运行时，其组件内 `getContext()` 无法读取宿主 context；应通过 props / engine API 获取数据。
 
@@ -334,7 +336,7 @@ export default defineChronosPlugin({
 
 官方插件产物**不纳入版本库**，由宿主构建或开发服务器自动生成：
 
-- `vp build` / `vp run build:*`：构建宿主前自动产出 Bundle / Manifest / `catalog.json`（含哈希自校验）
+- `vp run build` / `vp run build:*`：构建宿主前自动产出 Bundle / Manifest / `catalog.json`（含哈希自校验）
 - `vp run dev`：首次启动时若缺少 `catalog.json` 会自动构建
 - `vp run build:official-plugins`：仅改插件源码时的快速迭代命令
 - `vp run verify:official-plugins`：对已有产物执行独立校验（可选）
@@ -358,7 +360,7 @@ export default defineChronosPlugin({
 
 ### 验证清单
 
-- [ ] `vp run build:official-plugins` 或 `vp build` 通过（含内置哈希校验）
+- [ ] `vp run build:official-plugins` 或 `vp run build` 通过（含内置哈希校验）
 - [ ] 安装 → 启用 → 禁用 → 卸载 全生命周期流程正常，卸载后主题正确回退为默认项
 - [ ] 切换应用语言后插件文案正常跟随切换（具备多语言支持时）
 - [ ] 宿主代码无插件特判：在宿主源码中 `grep` 不应出现该插件的 ID（Catalog 配置文件除外）
