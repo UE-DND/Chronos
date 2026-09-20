@@ -481,7 +481,7 @@ describe('OfficialPluginService', () => {
 				return httpResponse({
 					json: async <T>() =>
 						({
-							version: 2,
+							version: 1,
 							updatedAt: Date.now(),
 							manifests: [OFFICIAL_MANIFEST_URL]
 						}) as T
@@ -605,7 +605,7 @@ describe('OfficialPluginService', () => {
 				return httpResponse({
 					json: async <T>() =>
 						({
-							version: 2,
+							version: 1,
 							updatedAt: Date.now(),
 							manifests: [OFFICIAL_MANIFEST_URL]
 						}) as T

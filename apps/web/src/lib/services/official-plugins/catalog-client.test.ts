@@ -73,6 +73,17 @@ describe('OfficialPluginCatalogClient', () => {
 		await expect(client.fetchCatalog()).rejects.toThrow(/Invalid official plugin catalog/);
 	});
 
+	it('rejects catalog versions outside the current format', async () => {
+		for (const version of [undefined, 2, 3]) {
+			httpRequest.mockResolvedValueOnce(
+				httpResponse({
+					json: async <T>() => ({ version, updatedAt: 1, manifests: ['/m.json'] }) as T
+				})
+			);
+			await expect(client.fetchCatalog()).rejects.toThrow(/Invalid official plugin catalog/);
+		}
+	});
+
 	it('fetches valid catalog', async () => {
 		httpRequest.mockResolvedValueOnce(
 			httpResponse({

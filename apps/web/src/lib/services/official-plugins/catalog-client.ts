@@ -19,7 +19,7 @@ export class OfficialPluginCatalogClient {
 		}
 
 		const catalog = (await response.json()) as OfficialPluginCatalog;
-		if (!catalog || !Array.isArray(catalog.manifests)) {
+		if (!catalog || catalog.version !== 1 || !Array.isArray(catalog.manifests)) {
 			throw new Error('Invalid official plugin catalog schema format');
 		}
 

@@ -47,7 +47,7 @@ export async function buildAllOfficialPlugins(
 	}
 
 	const catalog = {
-		version: 2,
+		version: 1,
 		updatedAt: Number(process.env.SOURCE_DATE_EPOCH ?? Date.now()),
 		manifests: OFFICIAL_PLUGINS.map((p) => `/official-plugins/manifests/${p.id}.manifest.json`)
 	};

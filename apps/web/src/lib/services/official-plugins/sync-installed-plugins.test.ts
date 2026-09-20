@@ -104,7 +104,7 @@ describe('buildCatalogManifestMap', () => {
 		const manifest: PluginManifest = { ...BASE_MANIFEST, version: '0.4.1' };
 		const map = await buildCatalogManifestMap(
 			{
-				version: 2,
+				version: 1,
 				updatedAt: 1,
 				manifests: ['/official-plugins/manifests/test-plugin.manifest.json']
 			},
