@@ -8,7 +8,8 @@
 	import { dismissSnackbar, snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
-	import { estimateAppDataBytes, formatAppDataSize } from '$lib/storage/clear-app-data';
+	import { estimateAppDataBytes } from '$lib/storage/clear-app-data';
+	import { formatBytes } from '$lib/utils/format-bytes';
 	import { isSwUpdatePending, onSwUpdateAvailable } from '$lib/client/pwa-sw';
 	import {
 		APP_VERSION,
@@ -40,7 +41,7 @@
 		dataUsageBytes === null
 			? hostT('about.storage.calculating')
 			: hostT('about.storage.usage', {
-					size: formatAppDataSize(dataUsageBytes)
+					size: formatBytes(dataUsageBytes)
 				})
 	);
 

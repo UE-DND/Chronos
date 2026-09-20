@@ -5,6 +5,7 @@ import type { OfficialPluginDef } from '../official-plugins.config.ts';
 import { pluginAssetUrl, pluginDevAssetUrl } from './urls.ts';
 
 export interface OfficialPluginAssetPayload {
+	wallpaperBytes?: Uint8Array;
 	code: string | null;
 	cssCode: string | null;
 	colorsJson: string | null;
@@ -51,6 +52,12 @@ function applyAssetManifestFields(
 	assets: OfficialPluginAssetPayload,
 	urlFor: (fileName: string) => string
 ): void {
+	manifest.downloadSizeBytes =
+		[assets.code, assets.cssCode, assets.colorsJson, assets.iconThemeJson].reduce(
+			(total, text) => total + Buffer.byteLength(text ?? '', 'utf8'),
+			0
+		) + (assets.wallpaperBytes?.byteLength ?? 0);
+
 	if (assets.colorsJson) {
 		manifest.colorsUrl = urlFor('colors.json');
 		manifest.colorsSha256 = createHash('sha256').update(assets.colorsJson).digest('hex');

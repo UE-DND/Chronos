@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { estimateStorageBytes, formatAppDataSize } from './clear-app-data';
+import { estimateStorageBytes } from './clear-app-data';
+import { formatBytes } from '$lib/utils/format-bytes';
 
 function createMemoryStorage(initial: Record<string, string> = {}): Storage {
 	const map = new Map(Object.entries(initial));
@@ -32,10 +33,10 @@ describe('estimateStorageBytes', () => {
 	});
 });
 
-describe('formatAppDataSize', () => {
+describe('formatBytes', () => {
 	it('formats bytes, kilobytes, and megabytes', () => {
-		expect(formatAppDataSize(512)).toBe('512 B');
-		expect(formatAppDataSize(1536)).toBe('1.5 KB');
-		expect(formatAppDataSize(2 * 1024 * 1024)).toBe('2.0 MB');
+		expect(formatBytes(512)).toBe('512 B');
+		expect(formatBytes(1536)).toBe('1.5 KB');
+		expect(formatBytes(2 * 1024 * 1024)).toBe('2.0 MB');
 	});
 });

@@ -6,7 +6,7 @@ const releaseVersion = '0.0.0-test';
 
 describe('buildManifestForPlugin', () => {
 	it('includes bundle and css hashes when assets are present', () => {
-		const code = 'export default { id: "tool-today" };';
+		const code = 'export default { id: "tool-today", name: "今日😀" };';
 		const cssCode = '.x { color: red; }';
 
 		const manifest = buildManifestForPlugin(
@@ -22,6 +22,7 @@ describe('buildManifestForPlugin', () => {
 			releaseVersion
 		);
 
+		expect(manifest.downloadSizeBytes).toBe(Buffer.byteLength(code) + Buffer.byteLength(cssCode));
 		expect(manifest.version).toBe(releaseVersion);
 		expect(manifest.bundleUrl).toBe('/official-plugins/bundles/tool-today/bundle.js');
 		expect(manifest.sha256).toBe(createHash('sha256').update(code).digest('hex'));

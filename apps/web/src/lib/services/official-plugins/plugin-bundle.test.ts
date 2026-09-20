@@ -16,6 +16,22 @@ const BASE_MANIFEST: PluginManifest = {
 };
 
 describe('validatePluginManifest', () => {
+	it.each([0, 394272, Number.MAX_SAFE_INTEGER])(
+		'accepts declared asset size %s',
+		(downloadSizeBytes) => {
+			expect(() => validatePluginManifest({ ...BASE_MANIFEST, downloadSizeBytes })).not.toThrow();
+		}
+	);
+
+	it.each([-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1, '1024', null])(
+		'rejects invalid declared asset size %s',
+		(downloadSizeBytes) => {
+			expect(() => validatePluginManifest({ ...BASE_MANIFEST, downloadSizeBytes })).toThrow(
+				/downloadSizeBytes/
+			);
+		}
+	);
+
 	it('accepts a valid bundle manifest', () => {
 		expect(() => validatePluginManifest(BASE_MANIFEST)).not.toThrow();
 	});

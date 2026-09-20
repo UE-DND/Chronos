@@ -132,6 +132,7 @@ export const zhCn = {
 	'plugins.link.installing': '正在从链接安装…',
 	'plugins.link.placeholder': 'https://example.com/plugin.manifest.json',
 	'plugins.link.source': '来源：{origin}，请确认信任该来源后再安装',
+	'plugins.size': '大小：{size}',
 	'plugins.notify.installed': '插件「{pluginId}」已安装并启用',
 	'plugins.notify.uninstalled': '插件「{pluginId}」已卸载',
 	'plugins.notify.enabled': '已启用插件「{pluginId}」',

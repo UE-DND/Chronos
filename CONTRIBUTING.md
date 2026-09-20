@@ -607,6 +607,10 @@ Chronos 的主题体系由「配色主题 + 派生图标主题」组成。类型
 
 `IconThemeContribution` 图标主题的交付方式保持一致：通过 JSON 资源声明图标映射集合，宿主底栏等组件统一消费 `ShellIconRef`（可为注册表键名或结构化图标描述符）。
 
+### 插件市场资源大小
+
+插件清单可声明 `downloadSizeBytes`，用于市场展示安装资源总大小。它是所有安装资源（ESM、CSS、主题 JSON、图标 JSON 和壁纸）的原始字节数之和；文本使用 UTF-8 字节数，不包含清单自身、HTTP 压缩或运行时额外请求。官方生产和开发构建自动生成此字段；第三方插件可按同一口径填写非负安全整数，未声明时不显示大小。该字段仅用于展示，资源完整性仍由 SHA-256 校验。
+
 ### JSON-only 主题分发
 
 纯资源的无代码主题以 `ThemeManifest` 形式在线分发：Manifest 文件中显式声明 `themeId`、`colorsUrl` 与 `iconThemeUrl`，在安装后由 `OfficialPluginService` 使用轻量级无头 `ScopedContext` 直接注册资产——整个流程不包含任何 JavaScript 脚本打包与执行。

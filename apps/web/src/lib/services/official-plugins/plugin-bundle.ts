@@ -70,6 +70,17 @@ export function validatePluginManifest(
 		throw new Error('Invalid plugin manifest: bundleFormat must be esm');
 	}
 
+	if (
+		m.downloadSizeBytes !== undefined &&
+		(typeof m.downloadSizeBytes !== 'number' ||
+			!Number.isSafeInteger(m.downloadSizeBytes) ||
+			m.downloadSizeBytes < 0)
+	) {
+		throw new Error(
+			'Invalid plugin manifest: downloadSizeBytes must be a non-negative safe integer'
+		);
+	}
+
 	const hasBundle = typeof m.bundleUrl === 'string' && m.bundleUrl.length > 0;
 	const hasColors = typeof m.colorsUrl === 'string' && m.colorsUrl.length > 0;
 

@@ -134,6 +134,7 @@ export const en = {
 	'plugins.link.installing': 'Installing from link…',
 	'plugins.link.placeholder': 'https://example.com/plugin.manifest.json',
 	'plugins.link.source': 'Source: {origin}. Only install if you trust this source',
+	'plugins.size': 'Size: {size}',
 	'plugins.notify.installed': 'Plugin "{pluginId}" installed and enabled',
 	'plugins.notify.uninstalled': 'Plugin "{pluginId}" uninstalled',
 	'plugins.notify.enabled': 'Plugin "{pluginId}" enabled',

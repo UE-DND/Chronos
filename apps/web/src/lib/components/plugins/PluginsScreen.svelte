@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatBytes } from '$lib/utils/format-bytes';
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
 	import { onMount } from 'svelte';
 	import {
@@ -583,11 +584,20 @@
 													{desc}
 												</p>
 											{/if}
-											{#if manifest.author}
+											{#if manifest.author || manifest.downloadSizeBytes !== undefined}
 												<div class="mt-1 flex flex-wrap items-center gap-1">
-													<span class="text-caption text-on-surface-variant/70">
-														by {manifest.author}
-													</span>
+													{#if manifest.author}
+														<span class="text-caption text-on-surface-variant/70"
+															>by {manifest.author}</span
+														>
+													{/if}
+													{#if manifest.downloadSizeBytes !== undefined}
+														<span class="text-caption text-on-surface-variant/70">
+															{hostT('plugins.size', {
+																size: formatBytes(manifest.downloadSizeBytes)
+															})}
+														</span>
+													{/if}
 												</div>
 											{/if}
 										</div>

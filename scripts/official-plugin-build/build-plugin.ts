@@ -22,6 +22,7 @@ export interface BuildOfficialPluginOptions {
 }
 
 export interface OfficialPluginBuildResult {
+	wallpaperBytes?: Uint8Array;
 	id: string;
 	type: 'theme' | 'tool';
 	rev?: string;
@@ -126,7 +127,8 @@ export async function buildOfficialPluginAssets(
 				code,
 				cssCode,
 				colorsJson,
-				iconThemeJson
+				iconThemeJson,
+				wallpaperBytes
 			};
 		} catch (error) {
 			rmSync(outDir, { recursive: true, force: true });
@@ -140,6 +142,7 @@ export async function buildOfficialPluginAssets(
 		code,
 		cssCode,
 		colorsJson,
-		iconThemeJson
+		iconThemeJson,
+		wallpaperBytes
 	};
 }

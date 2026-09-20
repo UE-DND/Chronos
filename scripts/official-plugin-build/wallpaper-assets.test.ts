@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
+import { buildManifestForPlugin } from './build-manifest';
 import { buildOfficialPluginAssets } from './build-plugin';
 import { createOfficialPluginBuildPaths } from './paths';
 import { createDevOfficialPluginBundleMiddleware } from './dev-bundle-middleware';
@@ -47,6 +48,16 @@ describe('theme wallpaper build', () => {
 					? paths.devRevDir('theme-image', 'rev1')
 					: paths.pluginBundleDir('theme-image');
 			expect(readFileSync(resolve(dir, 'wallpaper.image'))).toEqual(Buffer.from(bytes));
+			const manifest =
+				result.manifest ??
+				buildManifestForPlugin(
+					{ id: 'theme-image', type: 'theme', sourceDir, name: { en: 'Test' }, description: {} },
+					result,
+					'1.0.0'
+				);
+			expect(manifest.downloadSizeBytes).toBe(
+				readFileSync(resolve(dir, 'colors.json')).byteLength + bytes.byteLength
+			);
 			if (mode === 'dev') {
 				const next = vi.fn();
 				const end = vi.fn();

@@ -15,6 +15,8 @@ export interface PluginManifest {
 	/** Required when type is tool — utility vs developer tools in plugin center. */
 	toolGroup?: ToolGroup;
 	bundleFormat: BundleFormat;
+	/** Total uncompressed asset bytes (UTF-8 text plus wallpaper), excluding the manifest. */
+	downloadSizeBytes?: number;
 	/** ESM plugin bundle (optional when colorsUrl is provided for theme plugins). */
 	bundleUrl?: string;
 	sha256?: string;
