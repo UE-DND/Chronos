@@ -4,7 +4,7 @@ import type { Connect } from 'vite';
 import { createOfficialPluginBuildPaths } from './paths.ts';
 
 const DEV_BUNDLE_WITH_REV_PATH =
-	/^\/official-plugins\/bundles\/([^/]+)\/([^/]+)\/(bundle\.js|bundle\.css|colors\.json|icons\.json)$/;
+	/^\/official-plugins\/bundles\/([^/]+)\/([^/]+)\/(bundle\.js|bundle\.css|colors\.json|icons\.json|wallpaper\.image)$/;
 
 export function createDevOfficialPluginBundleMiddleware(
 	monorepoRoot: string
@@ -27,12 +27,16 @@ export function createDevOfficialPluginBundleMiddleware(
 			return;
 		}
 
-		const content = readFileSync(filePath, 'utf8');
-		const contentType = fileName.endsWith('.css')
-			? 'text/css; charset=utf-8'
-			: fileName.endsWith('.js')
-				? 'text/javascript; charset=utf-8'
-				: 'application/json; charset=utf-8';
+		const content =
+			fileName === 'wallpaper.image' ? readFileSync(filePath) : readFileSync(filePath, 'utf8');
+		const contentType =
+			fileName === 'wallpaper.image'
+				? 'application/octet-stream'
+				: fileName.endsWith('.css')
+					? 'text/css; charset=utf-8'
+					: fileName.endsWith('.js')
+						? 'text/javascript; charset=utf-8'
+						: 'application/json; charset=utf-8';
 
 		res.statusCode = 200;
 		res.setHeader('Content-Type', contentType);

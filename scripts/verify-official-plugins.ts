@@ -107,6 +107,23 @@ export function verifyOfficialPlugins(): void {
 		const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;
 		const pluginId = typeof manifest.id === 'string' && manifest.id ? manifest.id : manifestUrl;
 
+		if (typeof manifest.colorsUrl === 'string') {
+			const colorPath = resolve(webPublicDir, manifest.colorsUrl.replace(/^\//, ''));
+			if (existsSync(colorPath)) {
+				const wallpaper = JSON.parse(readFileSync(colorPath, 'utf8')).wallpaper;
+				if (wallpaper) {
+					const imagePath = resolve(dirname(colorPath), wallpaper.url);
+					if (
+						!existsSync(imagePath) ||
+						createHash('sha256').update(readFileSync(imagePath)).digest('hex') !== wallpaper.sha256
+					) {
+						console.error(`✗ ${pluginId}: wallpaper integrity mismatch`);
+						failures++;
+					}
+				}
+			}
+		}
+
 		for (const [urlField, hashField] of ASSET_FIELDS) {
 			const url = manifest[urlField];
 			const expected = manifest[hashField];

@@ -1,5 +1,6 @@
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import type { OfficialPluginDef } from '../official-plugins.config.ts';
 import {
 	compileOfficialPluginEntry,
@@ -48,6 +49,7 @@ export async function buildOfficialPluginAssets(
 	}
 	mkdirSync(outDir, { recursive: true });
 
+	let wallpaperBytes: Uint8Array | undefined;
 	let code: string | null = null;
 	let cssCode: string | null = null;
 	let colorsJson: string | null = null;
@@ -55,6 +57,19 @@ export async function buildOfficialPluginAssets(
 
 	if (plugin.colorsJson && existsSync(plugin.colorsJson)) {
 		colorsJson = readFileSync(plugin.colorsJson, 'utf8');
+		const colors = JSON.parse(colorsJson);
+		if (colors.wallpaper) {
+			const sourceUrl = colors.wallpaper.url;
+			if (typeof sourceUrl !== 'string' || !sourceUrl || /^[a-z]+:/i.test(sourceUrl))
+				throw new Error('Theme wallpaper must be a local image path');
+			wallpaperBytes = readFileSync(resolve(dirname(plugin.colorsJson), sourceUrl));
+			colors.wallpaper = {
+				url: './wallpaper.image',
+				sha256: createHash('sha256').update(wallpaperBytes).digest('hex')
+			};
+			colorsJson = JSON.stringify(colors);
+			if (mode === 'production') writeFileSync(resolve(outDir, 'wallpaper.image'), wallpaperBytes);
+		}
 		if (mode === 'production') {
 			writeFileSync(resolve(outDir, 'colors.json'), colorsJson, 'utf8');
 		}
@@ -99,7 +114,7 @@ export async function buildOfficialPluginAssets(
 			const published = publishDevPluginBuild({
 				plugin,
 				rev,
-				files: { code, cssCode, colorsJson, iconThemeJson },
+				files: { code, cssCode, colorsJson, iconThemeJson, wallpaperBytes },
 				releaseVersion,
 				paths
 			});

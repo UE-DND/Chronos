@@ -6,6 +6,7 @@ import { buildDevManifestForPlugin, writeDevPluginManifest } from './build-manif
 import { createOfficialPluginBuildPaths, type OfficialPluginBuildPaths } from './paths.ts';
 
 export interface DevPluginBuildFiles {
+	wallpaperBytes?: Uint8Array;
 	code: string | null;
 	cssCode: string | null;
 	colorsJson: string | null;
@@ -28,6 +29,7 @@ export interface PublishDevPluginBuildResult {
 
 function writeDevAssetFiles(dir: string, files: DevPluginBuildFiles): void {
 	mkdirSync(dir, { recursive: true });
+	if (files.wallpaperBytes) writeFileSync(resolve(dir, 'wallpaper.image'), files.wallpaperBytes);
 
 	if (files.code) {
 		writeFileSync(resolve(dir, OFFICIAL_PLUGIN_BUNDLE_JS), files.code, 'utf8');
