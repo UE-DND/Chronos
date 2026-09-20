@@ -1,15 +1,15 @@
 <script lang="ts">
+	import { PLUGIN_PROXY_ENTRIES } from '$lib/boot/plugin-proxy-meta.generated';
 	import { formatBytes } from '$lib/utils/format-bytes';
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
 	import { onMount } from 'svelte';
 	import {
 		getOfficialPluginService,
-		getProfileBuiltinPlugins,
 		getAppController,
 		ensureEngineFullyReady
 	} from '$lib/services/app-engine';
 	import type { InstalledOfficialPluginRecord } from '$lib/services/official-plugins/official-plugin-service';
-	import type { ChronosPlugin, PluginManifest, ConfigSchema } from '@chronos/core';
+	import type { PluginManifest, ConfigSchema } from '@chronos/core';
 	import { resolveLocaleMapText } from '@chronos/core';
 	import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -21,7 +21,6 @@
 	import type { EdgeBarAction } from '@chronos/ui-kit';
 	import PluginConfigModal from './PluginConfigModal.svelte';
 	import { snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
-	import { resolveColorSchemeId } from '$lib/appearance/color-scheme';
 	import { groupCatalogManifestsByCategory } from '$lib/services/official-plugins/catalog-sort';
 	import {
 		getPluginCategoryMeta,
@@ -38,10 +37,7 @@
 	const BUILTIN_CATALOG_URL = '/official-plugins/catalog.json';
 
 	const officialPlugins = getOfficialPluginService();
-	let profileBuiltinPlugins = $state.raw<ChronosPlugin[]>([...getProfileBuiltinPlugins()]);
 	const appController = getAppController();
-	const visualThemeId = $derived(appController.activeThemeId);
-	const activeColorSchemeId = $derived(resolveColorSchemeId(visualThemeId));
 
 	let activeTab = $state<'installed' | 'official'>('installed');
 	const edgeActions = $derived.by((): EdgeBarAction[] =>
@@ -58,6 +54,7 @@
 			: []
 	);
 
+	let preinstallFailures = $state.raw<[string, string][]>([]);
 	let installedRecords = $state.raw<InstalledOfficialPluginRecord[]>([]);
 	let catalogManifests = $state.raw<Array<{ url: string; manifest: PluginManifest }>>([]);
 	let queueTasks = $state.raw<ReadonlyArray<PluginInstallTask>>([]);
@@ -98,6 +95,7 @@
 
 	function refreshInstalled() {
 		installedRecords = [...officialPlugins.listInstalled()];
+		preinstallFailures = [...officialPlugins.listFailures()];
 	}
 
 	function refreshQueue() {
@@ -106,7 +104,6 @@
 
 	onMount(() => {
 		void ensureEngineFullyReady().then(async () => {
-			profileBuiltinPlugins = [...getProfileBuiltinPlugins()];
 			refreshInstalled();
 			refreshQueue();
 			await loadOfficialCatalog();
@@ -168,7 +165,7 @@
 			{
 				value: 'installed',
 				label: hostT('plugins.tab.installed', {
-					count: profileBuiltinPlugins.length + installedRecords.length
+					count: installedRecords.length
 				})
 			},
 			{ value: 'official', label: hostT('plugins.tab.market') }
@@ -185,15 +182,7 @@
 	}
 
 	function isInstalled(pluginId: string): boolean {
-		return (
-			profileBuiltinPlugins.some((p) => p.id === pluginId) ||
-			installedRecords.some((r) => r.manifest.id === pluginId)
-		);
-	}
-
-	function isThemePluginInUse(manifest: PluginManifest, enabled: boolean): boolean {
-		// themeId 由构建期从 colors JSON 显式写入，宿主不猜测 id 前缀
-		return Boolean(enabled && manifest.themeId && activeColorSchemeId === manifest.themeId);
+		return installedRecords.some((r) => r.manifest.id === pluginId);
 	}
 
 	function handleInstall(manifest: PluginManifest, manifestUrl?: string) {
@@ -305,69 +294,14 @@
 
 <FormScreenLayout class="text-on-surface" header={tabHeader} actions={edgeActions}>
 	{#if activeTab === 'installed'}
-		<section class="ui-section">
-			<div class="flex items-center justify-between px-1">
-				<h3 class="text-label-large font-medium text-on-surface">
-					{hostT('plugins.builtin.heading')}
-				</h3>
-				<span class="text-label-small text-on-surface-variant"
-					>{hostT('plugins.builtin.count', {
-						count: profileBuiltinPlugins.length
-					})}</span
+		{#if preinstallFailures.length}
+			<section class="ui-section">
+				{#each preinstallFailures as [id, error] (id)}<p>{id}: {error}</p>{/each}
+				<Button onclick={() => officialPlugins.retryPreinstall()}
+					>{hostT('plugins.preinstall.retry')}</Button
 				>
-			</div>
-
-			<div class="ui-section-surface divide-y divide-border/40">
-				{#each profileBuiltinPlugins as plugin (plugin.id)}
-					{@const name = resolveManifestText(plugin.name)}
-					{@const desc = resolveManifestText(plugin.description)}
-					{@const meta = getPluginCategoryMeta(
-						resolvePluginCatalogCategory({
-							category: plugin.category,
-							toolGroup: plugin.toolGroup
-						})
-					)}
-					<div
-						class="flex items-center justify-between gap-3 p-3 transition-colors hover:bg-surface-variant/30"
-					>
-						<div class="flex min-w-0 flex-1 flex-col justify-center">
-							<div class="flex flex-wrap items-center gap-1.5">
-								<span class="text-body-medium line-clamp-1 font-medium text-on-surface">
-									{name}
-								</span>
-								<span
-									class="text-label-small py-0.2 text-caption rounded-full px-1.5 font-medium {meta.badgeClass}"
-								>
-									{meta.label}
-								</span>
-							</div>
-							{#if desc}
-								<p class="text-body-small mt-0.5 line-clamp-1 text-on-surface-variant">
-									{desc}
-								</p>
-							{/if}
-						</div>
-						<div class="flex shrink-0 items-center gap-1.5">
-							{#if plugin.configSchema}
-								<Button
-									variant="outlined"
-									class="h-7.5 px-2.5 text-xs font-normal"
-									onclick={() => handleOpenConfig(plugin.id, name, plugin.configSchema)}
-								>
-									<TuneFill class="mr-1 size-3.5" />
-									{hostT('plugins.action.settings')}
-								</Button>
-							{:else}
-								<span class="text-label-small text-on-surface-variant/80">
-									{hostT('plugins.builtin.defaultEnabled')}
-								</span>
-							{/if}
-						</div>
-					</div>
-				{/each}
-			</div>
-		</section>
-
+			</section>
+		{/if}
 		{#if activeInstallTasks.length > 0}
 			<section class="ui-section">
 				<div class="flex items-center justify-between px-1">
@@ -460,13 +394,6 @@
 										>
 											{meta.label}
 										</span>
-										{#if isThemePluginInUse(record.manifest, record.enabled)}
-											<span
-												class="text-label-small py-0.2 text-caption rounded-full bg-primary-container/80 px-1.5 font-medium text-on-primary-container"
-											>
-												{hostT('plugins.badge.inUse')}
-											</span>
-										{/if}
 									</div>
 									{#if desc}
 										<p class="text-body-small mt-0.5 line-clamp-1 text-on-surface-variant">
@@ -479,18 +406,26 @@
 										</p>
 									{/if}
 								</div>
+								{#if officialPlugins.isPreinstalledPlugin(record.manifest.id)}
+									<span
+										class="text-label-small shrink-0 rounded-full bg-surface-variant px-2 py-0.5 text-on-surface-variant"
+										>{hostT('plugins.preinstall.label')}</span
+									>
+								{/if}
 							</div>
 
 							<div class="flex items-center justify-between gap-2">
-								<Button
-									variant="text"
-									tone="danger"
-									class="text-caption h-6 shrink-0 px-1.5"
-									disabled={isBusy}
-									onclick={() => promptUninstall(record.manifest.id, name)}
-								>
-									{hostT('common.uninstall')}
-								</Button>
+								{#if !officialPlugins.isPreinstalledPlugin(record.manifest.id)}
+									<Button
+										variant="text"
+										tone="danger"
+										class="text-caption h-6 shrink-0 px-1.5"
+										disabled={isBusy}
+										onclick={() => promptUninstall(record.manifest.id, name)}
+									>
+										{hostT('common.uninstall')}
+									</Button>
+								{/if}
 
 								<div class="flex shrink-0 items-center gap-1.5">
 									{#if record.manifest.configSchema}
@@ -505,16 +440,18 @@
 											{hostT('plugins.action.settings')}
 										</Button>
 									{/if}
-									<span class="text-label-small text-on-surface-variant">
-										{hostT('plugins.action.enable')}
-									</span>
-									<Switch
-										size="sm"
-										checked={record.enabled}
-										disabled={isBusy}
-										onCheckedChange={(checked) =>
-											handleToggleEnabled(record.manifest.id, checked === true)}
-									/>
+									{#if !officialPlugins.isPreinstalledPlugin(record.manifest.id)}
+										<span class="text-label-small text-on-surface-variant">
+											{hostT('plugins.action.enable')}
+										</span>
+										<Switch
+											size="sm"
+											checked={record.enabled}
+											disabled={isBusy}
+											onCheckedChange={(checked) =>
+												handleToggleEnabled(record.manifest.id, checked === true)}
+										/>
+									{/if}
 								</div>
 							</div>
 						</div>
@@ -582,6 +519,11 @@
 											{#if desc}
 												<p class="text-body-small mt-0.5 line-clamp-1 text-on-surface-variant">
 													{desc}
+												</p>
+											{/if}
+											{#if manifest.optionalServerCapabilities?.some((cap) => !PLUGIN_PROXY_ENTRIES.some((entry) => entry.pluginId === cap.pluginId && entry.action === cap.action))}
+												<p class="text-body-small mt-1 text-on-surface-variant">
+													{hostT('plugins.online.unavailable')}
 												</p>
 											{/if}
 											{#if manifest.author || manifest.downloadSizeBytes !== undefined}

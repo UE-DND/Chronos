@@ -1,4 +1,8 @@
 export const en = {
+	'plugins.online.unavailable':
+		'Online sync is unavailable in this deployment; HTML import is available.',
+	'plugins.preinstall.retry': 'Retry preinstallation',
+	'plugins.preinstall.label': 'Preinstalled',
 	'wallpaper.preview.title': 'Choose wallpaper',
 	'wallpaper.preview.description': 'Preview your timetable, choose, crop or delete a custom image',
 	'wallpaper.settings.saveFailed': 'Could not save settings. Please try again.',
@@ -108,7 +112,6 @@ export const en = {
 	'plugins.installed.heading': 'Installed plugins',
 	'plugins.empty.installed': 'Plugins installed from the marketplace will appear here',
 	'plugins.empty.browse': 'Browse the marketplace',
-	'plugins.badge.inUse': 'In use',
 	'plugins.badge.installed': 'Installed',
 	'plugins.action.settings': 'Settings',
 	'plugins.action.enable': 'Enable',
@@ -167,6 +170,7 @@ export const en = {
 	'transfer.import.intro': 'Import your timetable using one of these methods:',
 	'transfer.import.fetching': 'Fetching…',
 	'transfer.import.submit': 'Import timetable',
+	'transfer.import.installPlugin': 'Install a data source or codec from the plugin market',
 	'transfer.import.noPlugin': 'No timetable import plugin available',
 	'transfer.export.intro': 'Share "{name}" using one of these methods:',
 	'transfer.export.noTimetable': 'No timetable available to export',

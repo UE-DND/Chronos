@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appRouteHref } from '$lib/navigation/routes';
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
 	import { resolveLocalizedText } from '@chronos/core';
 	import { trackEvent } from '$lib/client/analytics';
@@ -131,6 +132,9 @@
 				class="ui-section-surface ui-section-surface--comfortable text-center text-on-surface-variant"
 			>
 				{hostT('transfer.import.noPlugin')}
+				<a class="ui-btn ui-btn-text mt-3" href={appRouteHref('/plugins')}
+					>{hostT('transfer.import.installPlugin')}</a
+				>
 			</div>
 		{/if}
 	</div>

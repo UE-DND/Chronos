@@ -1,4 +1,7 @@
 export const zhCn = {
+	'plugins.online.unavailable': '当前部署不提供在线同步，仍可导入 HTML 课表。',
+	'plugins.preinstall.retry': '重试预安装',
+	'plugins.preinstall.label': '预安装',
 	'wallpaper.preview.title': '选择壁纸',
 	'wallpaper.preview.description': '查看课表效果，选择、裁剪或删除自定义图片',
 	'wallpaper.settings.saveFailed': '设置保存失败，请重试',
@@ -107,7 +110,6 @@ export const zhCn = {
 	'plugins.installed.heading': '已安装插件',
 	'plugins.empty.installed': '从插件市场安装的插件会显示在这里',
 	'plugins.empty.browse': '浏览插件市场',
-	'plugins.badge.inUse': '使用中',
 	'plugins.badge.installed': '已安装',
 	'plugins.action.settings': '设置',
 	'plugins.action.enable': '启用',
@@ -165,6 +167,7 @@ export const zhCn = {
 	'transfer.import.intro': '使用以下方式导入课程表：',
 	'transfer.import.fetching': '获取中…',
 	'transfer.import.submit': '导入课表',
+	'transfer.import.installPlugin': '前往插件市场安装数据源或编解码插件',
 	'transfer.import.noPlugin': '未发现可用的课表导入插件',
 	'transfer.export.intro': '将「{name}」使用以下方式分享：',
 	'transfer.export.noTimetable': '当前没有可导出的课表',
