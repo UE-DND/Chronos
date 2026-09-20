@@ -914,6 +914,10 @@ describe('profile preinstallation lifecycle', () => {
 		};`;
 		const update = { id: theme.id, code, colorsJson: colors, cssCode: null, iconThemeJson: null };
 		const original = service.getInstalled(theme.id);
+		const selections: (string | null)[] = [];
+		engine.on('theme:changed', ({ themeId }) => {
+			selections.push(themeId);
+		});
 		await expect(
 			service.applyHotUpdate({ ...update, code: code.replace("'custom-default'", "'wrong'") })
 		).rejects.toThrow('ESM theme must register');
@@ -932,6 +936,7 @@ describe('profile preinstallation lifecycle', () => {
 		expect(engine.themes.isSelectable('wrong')).toBe(false);
 		expect(engine.defaultThemeId).toBe('custom-default');
 		expect(engine.state.activeThemeId).toBe('custom-default');
+		expect(selections).not.toContain(null);
 		await expect(engine.unloadPlugin(theme.id)).rejects.toThrow('cannot be removed');
 		service.dispose();
 		engine.dispose();

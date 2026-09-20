@@ -344,21 +344,21 @@ export class OfficialPluginService implements Disposable {
 			this.profile?.defaultTheme.pluginId === candidate.manifest.id
 				? this.profile.defaultTheme
 				: undefined;
-		// Release the guard for both existing ESM runtimes and JSON-to-ESM replacements.
-		// JSON-to-JSON updates keep the selected default uninterrupted.
-		if (required && (candidate.code || this.engine.isPluginLoaded(candidate.manifest.id)))
-			this.engine.clearDefaultTheme();
 		try {
-			result = await replacePluginAssets(
-				{
-					installedStore: this.installedStore,
-					runtimeActivator: this.runtimeActivator,
-					isDisposed: () => this.disposed,
-					validate: required ? () => this.engine.validateDefaultTheme(required) : undefined
-				},
-				next,
-				{ ...options, forceEnabled: this.isPreinstalledPlugin(candidate.manifest.id) }
-			);
+			const replace = () =>
+				replacePluginAssets(
+					{
+						installedStore: this.installedStore,
+						runtimeActivator: this.runtimeActivator,
+						isDisposed: () => this.disposed,
+						validate: required ? () => this.engine.validateDefaultTheme(required) : undefined
+					},
+					next,
+					{ ...options, forceEnabled: this.isPreinstalledPlugin(candidate.manifest.id) }
+				);
+			result = required
+				? await this.engine.withPluginReplacement(candidate.manifest.id, replace)
+				: await replace();
 		} catch (error) {
 			if (id) await this.images.delete(id).catch(console.error);
 			throw error;

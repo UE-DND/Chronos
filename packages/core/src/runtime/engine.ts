@@ -58,6 +58,7 @@ export class ChronosEngine implements EngineContextHost, Disposable {
 	private _activeWeek = 1;
 	private _currentPeriodIndex: number | null = null;
 	private _activeThemeId: string | null = null;
+	private readonly replacingPlugins = new Set<string>();
 	private defaultTheme: { pluginId: string; themeId: string } | null = null;
 	private _userPreferences: UserPreferences = { ...DEFAULT_USER_PREFERENCES };
 
@@ -338,8 +339,20 @@ export class ChronosEngine implements EngineContextHost, Disposable {
 		this.setTheme(null);
 	}
 
+	/** Allows a host transaction to replace runtime assets without clearing theme selection. */
+	async withPluginReplacement<T>(pluginId: string, replace: () => Promise<T>): Promise<T> {
+		if (this.replacingPlugins.has(pluginId))
+			throw new Error(`Plugin ${pluginId} is already being replaced`);
+		this.replacingPlugins.add(pluginId);
+		try {
+			return await replace();
+		} finally {
+			this.replacingPlugins.delete(pluginId);
+		}
+	}
+
 	assertPluginRemovable(pluginId: string): void {
-		if (this.defaultTheme?.pluginId === pluginId)
+		if (this.defaultTheme?.pluginId === pluginId && !this.replacingPlugins.has(pluginId))
 			throw new Error(`Default theme provider ${pluginId} cannot be removed`);
 	}
 
