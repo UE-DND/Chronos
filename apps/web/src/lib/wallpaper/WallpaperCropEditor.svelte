@@ -16,7 +16,7 @@
 		exportCroppedImage,
 		imageDisplaySize,
 		imageTopLeft,
-		loadImageFromSource,
+		loadImageFromUrl,
 		zoomAtPoint,
 		type CropTransform
 	} from './crop-image';
@@ -160,13 +160,12 @@
 	$effect(() => {
 		const blob = source;
 		let cancelled = false;
-		let objectUrl: string | null = null;
+		const objectUrl = URL.createObjectURL(blob);
 
 		void (async () => {
 			try {
-				const image = await loadImageFromSource(blob);
+				const image = await loadImageFromUrl(objectUrl);
 				if (cancelled) return;
-				objectUrl = URL.createObjectURL(blob);
 				imageEl = image;
 				previewUrl = objectUrl;
 				naturalWidth = image.naturalWidth || image.width;
@@ -177,13 +176,15 @@
 						: 1;
 				transform = { scale: coverScale, offsetX: 0, offsetY: 0 };
 			} catch {
+				if (cancelled) return;
+				controller.notify(pt('screen.error.importFailed'), 'error');
 				onCancel();
 			}
 		})();
 
 		return () => {
 			cancelled = true;
-			if (objectUrl) URL.revokeObjectURL(objectUrl);
+			URL.revokeObjectURL(objectUrl);
 			previewUrl = null;
 			imageEl = null;
 		};

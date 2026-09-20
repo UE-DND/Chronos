@@ -163,16 +163,12 @@ export function zoomAtPoint(
 	);
 }
 
-export async function loadImageFromSource(source: Blob | File): Promise<HTMLImageElement> {
+/** The caller owns the URL and must keep it alive until the image is no longer used. */
+export async function loadImageFromUrl(sourceUrl: string): Promise<HTMLImageElement> {
 	const image = new Image();
-	const objectUrl = URL.createObjectURL(source);
-	try {
-		image.src = objectUrl;
-		await image.decode();
-		return image;
-	} finally {
-		URL.revokeObjectURL(objectUrl);
-	}
+	image.src = sourceUrl;
+	await image.decode();
+	return image;
 }
 
 export async function exportCroppedImage(
