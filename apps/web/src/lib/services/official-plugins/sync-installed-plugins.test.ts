@@ -4,7 +4,6 @@ import type { InstalledOfficialPluginRecord } from './official-plugin-types';
 import {
 	buildCatalogManifestMap,
 	isOfficialCatalogManifestUrl,
-	recordNeedsCssBackfill,
 	shouldSyncInstalledPlugin
 } from './sync-installed-plugins';
 
@@ -43,31 +42,6 @@ describe('isOfficialCatalogManifestUrl', () => {
 	});
 });
 
-describe('recordNeedsCssBackfill', () => {
-	it('detects tool plugins with bundle but no cssCode', () => {
-		expect(
-			recordNeedsCssBackfill(
-				record({
-					manifest: BASE_MANIFEST,
-					code: 'export default {}'
-				})
-			)
-		).toBe(true);
-	});
-
-	it('ignores records that already have cssCode', () => {
-		expect(
-			recordNeedsCssBackfill(
-				record({
-					manifest: BASE_MANIFEST,
-					code: 'export default {}',
-					cssCode: '.x{color:red}'
-				})
-			)
-		).toBe(false);
-	});
-});
-
 describe('shouldSyncInstalledPlugin', () => {
 	it('skips when versions already match and assets are complete', () => {
 		expect(
@@ -83,7 +57,7 @@ describe('shouldSyncInstalledPlugin', () => {
 		).toBe(false);
 	});
 
-	it('syncs same-version tool plugins missing cssCode', () => {
+	it('does not backfill same-version tool plugins missing cssCode', () => {
 		expect(
 			shouldSyncInstalledPlugin(
 				record({
@@ -93,7 +67,11 @@ describe('shouldSyncInstalledPlugin', () => {
 				}),
 				'0.4.1'
 			)
-		).toBe(true);
+		).toBe(false);
+	});
+
+	it('does not infer an official source for records without a manifest URL', () => {
+		expect(shouldSyncInstalledPlugin(record({ manifest: BASE_MANIFEST }), '0.4.1')).toBe(false);
 	});
 
 	it('syncs stale official plugins', () => {
