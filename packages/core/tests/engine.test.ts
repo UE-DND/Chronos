@@ -329,6 +329,116 @@ describe('ChronosEngine in @chronos/core', () => {
 		expect(engine.slots.get('import.source.tab').length).toBe(0);
 	});
 
+	it.each(['sync', 'async'] as const)(
+		'rolls back a %s plugin activation failure and allows retry',
+		async (failureMode) => {
+			const { env } = createMockEnv();
+			const engine = new ChronosEngine({ env });
+			const failure = new Error('Activation failed');
+			const onHydrate = vi.fn();
+			const resourceDispose = vi.fn();
+			const pluginDispose = vi.fn(async () => {
+				await Promise.resolve();
+			});
+			const loaded = vi.fn();
+			const unloaded = vi.fn();
+			engine.on('plugin:loaded', loaded);
+			engine.on('plugin:unloaded', unloaded);
+			await env.storage.setPluginData('failing-plugin', 'saved', { keep: true });
+			const plugin: ChronosPlugin = {
+				id: 'failing-plugin',
+				name: 'Failing plugin',
+				version: '1.0.0',
+				apply(ctx) {
+					ctx.i18n.registerMessages({ en: { title: 'Temporary title' } });
+					ctx.registerSlot('mine.item', {
+						id: 'temporary',
+						sectionId: 'app-support',
+						title: 'Temporary'
+					});
+					ctx.on('dynamicColor:hydrate', onHydrate);
+					ctx.addDisposable({ dispose: resourceDispose });
+					if (failureMode === 'async') return Promise.reject(failure);
+					throw failure;
+				},
+				dispose: pluginDispose
+			};
+			try {
+				await expect(engine.loadPlugin(plugin)).rejects.toBe(failure);
+				expect(engine.isPluginLoaded(plugin.id)).toBe(false);
+				expect(engine.slots.get('mine.item')).toEqual([]);
+				expect(engine.slots.resolveOwner('mine.item', 'temporary')).toBeUndefined();
+				expect(engine.i18nCatalog.t(plugin.id, 'title', 'en')).toBeUndefined();
+				engine.events.emit('dynamicColor:hydrate', undefined);
+				expect(onHydrate).not.toHaveBeenCalled();
+				expect(resourceDispose).toHaveBeenCalledTimes(1);
+				expect(pluginDispose).toHaveBeenCalledTimes(1);
+				expect(loaded).not.toHaveBeenCalled();
+				expect(unloaded).not.toHaveBeenCalled();
+				expect(await env.storage.getPluginData(plugin.id, 'saved')).toEqual({ keep: true });
+				await engine.unloadPlugin(plugin.id);
+				expect(pluginDispose).toHaveBeenCalledTimes(1);
+				await engine.loadPlugin({ ...plugin, apply: () => {} });
+				expect(engine.isPluginLoaded(plugin.id)).toBe(true);
+				expect(loaded).toHaveBeenCalledTimes(1);
+				await engine.unloadPlugin(plugin.id);
+				expect(pluginDispose).toHaveBeenCalledTimes(2);
+			} finally {
+				engine.dispose();
+			}
+		}
+	);
+
+	it('awaits failed activation cleanup and preserves the original error when cleanup fails', async () => {
+		const { env } = createMockEnv();
+		const engine = new ChronosEngine({ env });
+		const failure = new Error('Activation failed');
+		const resourceDispose = vi.fn();
+		let finishCleanup!: () => void;
+		const cleanupGate = new Promise<void>((resolve) => {
+			finishCleanup = resolve;
+		});
+		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+		let settled = false;
+		const pluginDispose = vi.fn(async () => {
+			await cleanupGate;
+			throw new Error('Plugin cleanup failed');
+		});
+		try {
+			const loading = engine.loadPlugin({
+				id: 'failing-cleanup',
+				name: 'Failing cleanup',
+				version: '1.0.0',
+				apply(ctx) {
+					ctx.addDisposable({ dispose: resourceDispose });
+					ctx.addDisposable({
+						dispose: () => {
+							throw new Error('Resource cleanup failed');
+						}
+					});
+					throw failure;
+				},
+				dispose: pluginDispose
+			});
+			const result = loading.catch((error: unknown) => {
+				settled = true;
+				return error;
+			});
+			await Promise.resolve();
+			await Promise.resolve();
+			expect(pluginDispose).toHaveBeenCalledTimes(1);
+			expect(resourceDispose).toHaveBeenCalledTimes(1);
+			expect(settled).toBe(false);
+			finishCleanup();
+			expect(await result).toBe(failure);
+			expect(log).toHaveBeenCalledTimes(2);
+		} finally {
+			finishCleanup();
+			engine.dispose();
+			log.mockRestore();
+		}
+	});
+
 	it('disposes all subsystems on engine.dispose()', async () => {
 		const { env } = createMockEnv();
 		const engine = new ChronosEngine({ env });

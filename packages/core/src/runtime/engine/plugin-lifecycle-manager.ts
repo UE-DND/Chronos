@@ -82,7 +82,18 @@ export class PluginLifecycleManager {
 		}
 
 		const context = new ScopedContext(plugin.id, this.host, initialConfig);
-		await plugin.apply(context);
+		try {
+			await plugin.apply(context);
+		} catch (error) {
+			// Failed activations never enter loadedPlugins, so unloadPlugin cannot clean them up.
+			context.dispose();
+			try {
+				await plugin.dispose?.();
+			} catch (cleanupError) {
+				console.error(`[ChronosEngine] Error rolling back plugin "${plugin.id}":`, cleanupError);
+			}
+			throw error;
+		}
 		this.loadedPlugins.set(plugin.id, { plugin, context });
 		this.events.emit('plugin:loaded', { pluginId: plugin.id });
 	}
