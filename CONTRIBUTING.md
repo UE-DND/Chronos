@@ -174,13 +174,13 @@ import.source.tab 插槽（每个数据源提供一个扩展贡献）
 
 ### 事件与动态配色
 
-引擎内部事件通过统一的 `EventPipeline` 分发（`emit` / `on` 广播模型）。主题相关的 `dynamicColor:set / changed / hydrate` 是内核的通用取色契约：由壁纸等插件触发事件，宿主 `AppShell` 桥接并更新 `dynamicColorUri`，最终调用当前主题的 `dynamicColorAdapter` 进行取色与界面渲染。历史上的串行守卫（serial）与瀑布变换（waterfall）拦截机制已在 0.5.x 移除，请勿重新引入。
+引擎内部事件通过统一的 `EventPipeline` 分发。壁纸配色通过当前主题的 `resolveWallpaperColors` 能力调用，不使用 `dynamicColor:*` 广播。历史串行守卫和瀑布变换不再保留。
 
 ### 主题系统与设计 Token
 
 主题通过 `theme.definition` 插槽提供扩展贡献，包含封闭的 Workbench 界面颜色键集合、设计令牌与课程调色方案。图标主题不再提供独立选择项，而是根据当前激活配色方案中的 `recommendedIconTheme` 自动派生（[ADR 0026](.agents/docs/adr/0026-icon-theme-follows-color-scheme.md)）。
 
-设计 Token 统一定义于 `apps/web/src/lib/theme/` 目录下（[ADR 0034](.agents/docs/adr/0034-design-token-layering.md)），自底向上划分为生成色彩、排版标尺（`text-*`）、圆角规范、布局间距与组件层级（`ui-*`）五个层次。宿主全局界面色彩统一从 `CHRONOS_HOST_COLORS` 单一数据源派生。详细规则见[参考：主题契约](#参考主题契约)。
+设计 Token 统一定义于 `apps/web/src/lib/theme/` 目录下（[ADR 0034](.agents/docs/adr/0034-design-token-layering.md)），自底向上划分为生成色彩、排版标尺（`text-*`）、圆角规范、布局间距与组件层级（`ui-*`）五个层次。界面颜色由所选主题提供，首屏从 Profile 默认插件的静态资源生成；M3 算法和资源生成只属于 `theme-m3`。详细规则见[参考：主题契约](#参考主题契约)。
 
 ### 外壳常驻保活与视图过渡
 
@@ -591,20 +591,19 @@ Chronos 的主题体系由「配色主题 + 派生图标主题」组成。类型
 
 `theme.definition` 插槽的扩展贡献，决定整套应用的视觉外观：
 
-| 字段                          | 说明                                                                                                               |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `id` / `name` / `description` | 主题标识与多语言本地化文案                                                                                         |
-| `workbenchColors`             | **封闭键集**的界面基础色彩，包含 `light` 与 `dark` 两种模式；键名统一采用连字符命名规范（如 `--color-on-surface`） |
-| `getTokens(mode, seedColor?)` | 返回核心设计令牌（`surface` / `primary` / `outline` 等基础 Token 及自定义扩展）                                    |
-| `resolveCoursePaint?`         | 课程卡配色策略；未指定时使用内核默认调色盘                                                                         |
-| `paletteEntries?`             | 静态或按模式配置的课程调色盘条目                                                                                   |
-| `recommendedIconTheme?`       | 推荐配对的图标主题 ID                                                                                              |
-| `wallpaper?`                  | 可选的图片 Blob；宿主管理展示和 Object URL，不修改用户自定义图片                                                   |
-| `className?` / `disabled?`    | 自定义挂载样式类名与条件禁用标识                                                                                   |
+| 字段                                                | 说明                                                                                                               |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `id` / `name` / `description`                       | 主题标识与多语言本地化文案                                                                                         |
+| `workbenchColors`                                   | **封闭键集**的界面基础色彩，包含 `light` 与 `dark` 两种模式；键名统一采用连字符命名规范（如 `--color-on-surface`） |
+| `resolveWallpaperColors?({ pixels, mode, signal })` | 接收 RGBA 像素，返回 `{ workbenchColors, coursePalette? }` 或 Promise；不得操作宿主 DOM                            |
+| `paletteEntries?`                                   | 静态或按模式配置的课程调色盘条目                                                                                   |
+| `recommendedIconTheme?`                             | 推荐配对的图标主题 ID                                                                                              |
+| `wallpaper?`                                        | 可选的图片 Blob；宿主管理展示和 Object URL，不修改用户自定义图片                                                   |
+| `className?` / `disabled?`                          | 自定义挂载样式类名与条件禁用标识                                                                                   |
 
 ### 图标主题：派生而非持久化
 
-用户无需单独选择图标主题。系统始终根据当前激活配色主题中声明的 `recommendedIconTheme` 决定生效的图标主题（默认回退至 `host-default`；宿主壁纸取色模式始终使用 `host-default`），且该派生设置不会作为独立偏好持久化。切换配色主题时，图标主题将自动随之切换——这符合 [ADR 0026](.agents/docs/adr/0026-icon-theme-follows-color-scheme.md) 对 [ADR 0019](.agents/docs/adr/0019-workbench-color-and-icon-theme-platform.md) 双模型拆分的修正。
+用户无需单独选择图标主题。系统始终根据当前激活配色主题中声明的 `recommendedIconTheme` 决定生效的图标主题（默认回退至 `host-default`），且该派生设置不会作为独立偏好持久化。切换配色主题时，图标主题将自动随之切换——这符合 [ADR 0026](.agents/docs/adr/0026-icon-theme-follows-color-scheme.md) 对 [ADR 0019](.agents/docs/adr/0019-workbench-color-and-icon-theme-platform.md) 双模型拆分的修正。
 
 `IconThemeContribution` 图标主题的交付方式保持一致：通过 JSON 资源声明图标映射集合，宿主底栏等组件统一消费 `ShellIconRef`（可为注册表键名或结构化图标描述符）。
 
@@ -616,7 +615,7 @@ Chronos 的主题体系由「配色主题 + 派生图标主题」组成。类型
 
 纯资源的无代码主题以 `ThemeManifest` 形式在线分发：Manifest 文件中显式声明 `themeId`、`colorsUrl` 与 `iconThemeUrl`，在安装后由 `OfficialPluginService` 使用轻量级无头 `ScopedContext` 直接注册资产——整个流程不包含任何 JavaScript 脚本打包与执行。
 
-包含自定义逻辑的主题采用 ESM 插件形态开发与分发，也可直接声明 `ThemeContribution.wallpaper` 图片 Blob。取色属于宿主能力，不由插件提供。
+包含自定义逻辑的主题采用 ESM 插件形态开发与分发，也可直接声明 `ThemeContribution.wallpaper` 图片 Blob。宿主负责图片解码，配色算法由主题通过 `resolveWallpaperColors` 提供。
 
 ### 宿主壁纸与取色
 
@@ -628,9 +627,17 @@ Chronos 的主题体系由「配色主题 + 派生图标主题」组成。类型
 
 - `visualThemeId`：选择的配色主题 ID，同时决定推荐图标。
 - `wallpaperSource`：壁纸来源，与配色主题独立。
-- `wallpaperColorEnabled`：宿主取色选项，默认关闭；位于“已安装主题”下方独立栏的覆盖开关，开启时保留所选主题作为壁纸来源，界面使用宿主 M3 基础外观与动态配色。
+- `wallpaperColorEnabled`：宿主取色选项，默认关闭；位于“已安装主题”下方独立栏的覆盖开关，开启时保留所选主题作为壁纸来源，界面使用所选主题的基础外观及其动态配色能力。
 - 不再存在 `paletteMode`、插件动态取色适配器及 `dynamicColor:*` 广播。按本次变更约定不提供旧数据迁移，用户自行清空旧数据。
 
-默认主题由 profile 必填的 `defaultTheme: { pluginId, themeId }` 声明，提供者必须装配并启用，首屏前完成加载与校验。当前各 profile 预安装市场中的 `theme-m3` 纯 JSON 插件；已安装时不显示重复安装入口。运行 `vp run theme:generate` 同步市场配色 JSON 与宿主基础颜色。宿主不隐式注册主题。无用户选择或所选主题已移除时回退到 profile 默认主题。取色开启时保留主题壁纸，仅默认主题搭配自定义壁纸来源时可启用取色；条件失效自动关闭并恢复主题配色。详见 [ADR 0041](.agents/docs/adr/0041-profile-owned-default-theme.md)。
+默认主题由 profile 必填的 `defaultTheme: { pluginId, themeId }` 声明，提供者必须装配并启用，首屏前完成加载与校验。当前各 profile 预安装市场中的 `theme-m3` 静态颜色 JSON + ESM 插件；已安装时不显示重复安装入口。运行 `vp run theme:generate` 调用统一插件构建，并从默认主题静态资源生成首屏颜色。宿主不隐式注册主题。无用户选择或所选主题已移除时回退到 profile 默认主题。取色开启时保留主题壁纸，仅支持 `resolveWallpaperColors` 的默认主题搭配自定义壁纸来源时可启用取色；条件失效自动关闭并恢复主题配色。详见 [ADR 0041](.agents/docs/adr/0041-profile-owned-default-theme.md)。
 
 详见 [ADR 0040](.agents/docs/adr/0040-host-wallpaper-and-theme-assets.md)。
+
+### 宿主链接与挂载契约
+
+`ChronosEnv.hostLinks?: IHostLinks` 提供 `getImportUrl(): string | null`，插件通过 `ctx.tryService(IHostLinks)` 使用。Web 返回包含部署 base 的完整入口；缺省或 null 时分享插件导出裸口令。`encodeShareLink(timetable, importUrl)` 的 URL 参数必填，插件不探测浏览器位置。
+
+`ChronosMountable.mount` 必须返回对象 `{ update?(props): void; unmount(): void }`。函数返回形式不再支持。出口验证 handle 并按实例清理；mount 抛错前由插件自行回滚副作用。
+
+主题插件可在发行配置声明 `prepareResources`，模块导出 `prepareResources()`。颜色算法和资源生成属于插件，通用构建器仅编排。默认主题必须提供完整静态颜色 JSON；带 ESM 时只由 ESM 注册颜色主题，并验证静态资源一致性。详见 [ADR 0043](.agents/docs/adr/0043-theme-owned-color-runtime-and-plugin-host-contracts.md)。

@@ -1,5 +1,7 @@
 # ADR 0041: Profile 装配默认主题与独立壁纸取色
 
+> 2026-09-20 修订：主题配色算法归属、M3 ESM 分发、首屏资源与壁纸取色以 [ADR 0043](./0043-theme-owned-color-runtime-and-plugin-host-contracts.md) 为准。
+
 - 状态：Accepted
 - 日期：2026-09-20
 - 修订：ADR 0026、0040

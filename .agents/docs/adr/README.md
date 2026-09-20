@@ -47,6 +47,7 @@
 | [ADR 0039](./0039-shell-wallpaper-compositor.md)                            | **外壳壁纸合成层与冻结范围收窄**                                      | Accepted                                           | `apps/web`, `packages/ui-kit`                                                                 | 壁纸抬出可冻结/可隐藏子树；`.shell-content` 冻结；合成层以 `<img>` 常驻解码并预热编辑模糊                                      |
 
 | [ADR 0040](./0040-host-wallpaper-and-theme-assets.md) | **宿主壁纸与主题图片资源** | Accepted | `apps/web`, `core`, `ui-kit`, `scripts` | 自定义壁纸内置，主题声明图片，默认主题取色开关与二进制离线资源 |
+| [ADR 0043](./0043-theme-owned-color-runtime-and-plugin-host-contracts.md) | **主题拥有配色算法、宿主链接端口与单一挂载契约** | Accepted | `packages/*`, `apps/web`, `scripts` | M3 自主生成与动态配色、默认主题首屏、分享入口端口、对象挂载生命周期 |
 
 ---
 

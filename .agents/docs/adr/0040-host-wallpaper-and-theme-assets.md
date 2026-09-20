@@ -1,5 +1,7 @@
 # ADR 0040: 宿主壁纸与主题图片资源
 
+> 2026-09-20 修订：主题配色算法归属、M3 ESM 分发、首屏资源与壁纸取色以 [ADR 0043](./0043-theme-owned-color-runtime-and-plugin-host-contracts.md) 为准。
+
 - **状态**: Accepted
 - **日期**: 2026-09-20
 - **关联**: 取代 ADR 0014；修订 ADR 0012、0016、0019、0036；保留 ADR 0039 的外壳合成层
