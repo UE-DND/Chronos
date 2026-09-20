@@ -14,6 +14,7 @@ interface BeforeInstallPromptEvent extends Event {
 interface Window {
 	__chronosInstallPrompt?: BeforeInstallPromptEvent | null;
 	__chronosHideBootFallback?: () => void;
+	__chronosShowBootFailure?: () => void;
 	__chronosAppMounted?: boolean;
 }
 

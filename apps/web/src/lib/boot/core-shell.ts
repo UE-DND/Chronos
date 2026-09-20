@@ -1,5 +1,5 @@
-import type { ChronosContext } from '@chronos/core';
-import { DEFAULT_MINE_SECTION_ID, defineChronosPlugin, type PluginTranslate } from '@chronos/core';
+import type { ChronosEngine } from '@chronos/core';
+import { DEFAULT_MINE_SECTION_ID, type PluginTranslate } from '@chronos/core';
 import { pwaInstallController } from '$lib/client/pwa-install.svelte';
 import { CORE_SHELL_MESSAGES } from '$lib/boot/core-shell-messages';
 
@@ -12,7 +12,10 @@ function keywordList(t: PluginTranslate, key: string): string[] {
 		.filter(Boolean);
 }
 
-function registerCoreShellSlots(ctx: ChronosContext, t: PluginTranslate): void {
+function registerCoreShellSlots(
+	ctx: { registerSlot: ChronosEngine['slots']['register'] },
+	t: PluginTranslate
+): void {
 	ctx.registerSlot('shell.bottom-bar.tab', {
 		id: 'timetable',
 		label: () => t('tab.timetable'),
@@ -160,15 +163,12 @@ function registerCoreShellSlots(ctx: ChronosContext, t: PluginTranslate): void {
 	});
 }
 
-export const coreShellPlugin = defineChronosPlugin({
-	id: CORE_SHELL_PLUGIN_ID,
-	messages: CORE_SHELL_MESSAGES,
-	nameKey: 'plugin.name',
-	descriptionKey: 'plugin.description',
-	version: 'builtin',
-	category: 'tool',
-	order: 0,
-	apply(ctx, t) {
-		registerCoreShellSlots(ctx, t);
-	}
-});
+export function registerHostShell(engine: ChronosEngine): void {
+	engine.i18nCatalog.register(CORE_SHELL_PLUGIN_ID, CORE_SHELL_MESSAGES);
+	registerCoreShellSlots(
+		{
+			registerSlot: (name, contribution) => engine.slots.register(name, contribution, 'host.shell')
+		},
+		(key, params) => engine.translateForPlugin(CORE_SHELL_PLUGIN_ID, key, params)
+	);
+}

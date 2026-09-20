@@ -1,8 +1,6 @@
 @import 'tailwindcss';
 @source '..';
 @source '../../../../packages/ui-kit/src';
-@source '../../../../packages/plugins/source-cqut/src';
-@source '../../../../packages/plugins/codec-share/src';
 @import '../../../../packages/ui-kit/src/timetable-preview/timetable-dynamic-tint.css';
 @import '../lib/theme/generated-colors.css';
 @import '../lib/theme/typography.css';

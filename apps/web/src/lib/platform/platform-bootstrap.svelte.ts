@@ -31,37 +31,42 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 		registerHyperellipse();
 		connectivity.init();
 
-		void ensureEngineReady().then((engine) => {
-			configureHostI18n({
-				onLocaleChanged: (handler) => engine.events.on('i18n:localeChanged', handler)
-			});
-			deps.shell.init();
-			deps.timetableScreen.init(deps.shell);
-			// Gate first so the async install init cannot auto-popup behind onboarding.
-			pwaInstallController.setInstallPromptGate(() => onboardingController.open);
-			void pwaInstallController.init();
-			initAnalytics();
-			window.__chronosHideBootFallback?.();
-
-			disposeOfflineUx = attachOfflineUx(connectivity);
-
-			disposeEffects = $effect.root(() => {
-				$effect(() => {
-					if (deps.timetableScreen.state.hasLoadedAppState) {
-						onboardingController.maybeShow(Boolean(deps.timetableScreen.state.currentTimetable));
-					}
+		void ensureEngineReady()
+			.then((engine) => {
+				configureHostI18n({
+					onLocaleChanged: (handler) => engine.events.on('i18n:localeChanged', handler)
 				});
+				deps.shell.init();
+				deps.timetableScreen.init(deps.shell);
+				// Gate first so the async install init cannot auto-popup behind onboarding.
+				pwaInstallController.setInstallPromptGate(() => onboardingController.open);
+				void pwaInstallController.init();
+				initAnalytics();
+				window.__chronosHideBootFallback?.();
 
-				$effect(() => {
-					if (onboardingController.open) {
-						pwaInstallController.cancelScheduledDialog();
-						pwaInstallController.dismiss({ track: false });
-					} else {
-						pwaInstallController.tryScheduleInstallDialog();
-					}
+				disposeOfflineUx = attachOfflineUx(connectivity);
+
+				disposeEffects = $effect.root(() => {
+					$effect(() => {
+						if (deps.timetableScreen.state.hasLoadedAppState) {
+							onboardingController.maybeShow(Boolean(deps.timetableScreen.state.currentTimetable));
+						}
+					});
+
+					$effect(() => {
+						if (onboardingController.open) {
+							pwaInstallController.cancelScheduledDialog();
+							pwaInstallController.dismiss({ track: false });
+						} else {
+							pwaInstallController.tryScheduleInstallDialog();
+						}
+					});
 				});
+			})
+			.catch((error) => {
+				console.error('[bootstrap] Failed to initialize profile', error);
+				window.__chronosShowBootFailure?.();
 			});
-		});
 
 		return () => {
 			disposeEffects?.();

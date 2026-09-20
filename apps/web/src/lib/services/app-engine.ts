@@ -1,16 +1,14 @@
-import { ChronosEngine, ProfileManager, DEFAULT_VISUAL_THEME_ID } from '@chronos/core';
-import type { ChronosPlugin, ChronosProfile } from '@chronos/core';
+import { ChronosEngine } from '@chronos/core';
 import { createWebChronosEnv, type WebProviderOptions } from '$lib/providers';
-import { ReactiveChronosController, m3DefaultTheme } from '@chronos/ui-kit';
+import { ReactiveChronosController } from '@chronos/ui-kit';
 import { getOverlayHistoryPort } from '$lib/navigation/overlay-history-port';
 import { resolveActiveProfile } from '$lib/boot/profile-registry';
-import { resolveBuiltinPlugin, resolveProfileBuiltinPlugins } from '$lib/boot/profile-bootstrap';
-import { EAGER_BUILTIN_PLUGIN_IDS } from '$lib/profile-codegen/profile-definitions';
+import { registerHostShell } from '$lib/boot/core-shell';
 
 import { OfficialPluginService } from '$lib/services/official-plugins/official-plugin-service';
 import { snackbar } from '$lib/components/ui/snackbar-state.svelte';
 import { bindAnalyticsPort } from '$lib/client/analytics';
-import { profileHasServerPlugins } from '$lib/boot/plugin-proxy-meta.generated';
+import { deploymentHasServerPlugins } from '$lib/boot/plugin-proxy-meta.generated';
 import { detectSystemAppLocale, syncAppLocaleOnStartup } from '$lib/i18n/locale-sync';
 import { HOST_MESSAGES, HOST_UI_PLUGIN_ID } from '$lib/i18n/host-messages';
 import {
@@ -24,8 +22,6 @@ let sharedController: ReactiveChronosController | null = null;
 let sharedOfficialPlugins: OfficialPluginService | null = null;
 let enginePhase1Promise: Promise<ChronosEngine> | null = null;
 let enginePhase2Promise: Promise<void> | null = null;
-let profileManager: ProfileManager | null = null;
-let resolvedProfilePlugins: ChronosPlugin[] = [];
 let sharedCoursePaletteRef: CoursePaletteRef | null = null;
 
 function getSharedCoursePaletteRef(): CoursePaletteRef {
@@ -51,7 +47,7 @@ function createEngine(options?: WebProviderOptions): ChronosEngine {
 
 	const env = createWebChronosEnv({
 		...options,
-		enablePluginProxy: profileHasServerPlugins(),
+		enablePluginProxy: deploymentHasServerPlugins(),
 		coursePresentation,
 		navigation: {
 			openCourseEditor(courseId: string) {
@@ -65,7 +61,6 @@ function createEngine(options?: WebProviderOptions): ChronosEngine {
 	const engine = new ChronosEngine({
 		env,
 		initialLocale: typeof navigator !== 'undefined' ? detectSystemAppLocale() : 'zh-cn',
-		presetThemes: [m3DefaultTheme],
 		presetI18nCatalogs: [{ pluginId: HOST_UI_PLUGIN_ID, messages: HOST_MESSAGES }],
 		onNotification: (message) => {
 			if (typeof window !== 'undefined') {
@@ -81,47 +76,34 @@ function createEngine(options?: WebProviderOptions): ChronosEngine {
 async function applyThemeFromPreferences(engine: ChronosEngine): Promise<void> {
 	const prefs = await engine.storage.getPreferences();
 	syncAppLocaleOnStartup(engine);
-	const visualThemeId = prefs?.visualThemeId ?? DEFAULT_VISUAL_THEME_ID;
-	if (engine.themes.getTheme(visualThemeId)) {
-		engine.setTheme(visualThemeId);
-	} else if (engine.themes.getTheme(DEFAULT_VISUAL_THEME_ID)) {
-		engine.setTheme(DEFAULT_VISUAL_THEME_ID);
-	}
-}
-
-function scheduleBuiltinPluginCatalog(profile: ChronosProfile, manager: ProfileManager): void {
-	void resolveProfileBuiltinPlugins(profile).then((plugins) => {
-		if (profileManager === manager) {
-			resolvedProfilePlugins = plugins;
-		}
-	});
+	engine.setTheme(engine.resolveThemeId(prefs?.visualThemeId));
 }
 
 async function bootstrapEnginePhase1(engine: ChronosEngine): Promise<void> {
-	profileManager = new ProfileManager(engine);
-	const profile = resolveActiveProfile();
-	await profileManager.loadPlugins(profile, resolveBuiltinPlugin, (pluginId) =>
-		(EAGER_BUILTIN_PLUGIN_IDS as readonly string[]).includes(pluginId)
-	);
-	scheduleBuiltinPluginCatalog(profile, profileManager);
+	registerHostShell(engine);
+	sharedOfficialPlugins ??= new OfficialPluginService(engine);
+	await sharedOfficialPlugins.prepareProfile(resolveActiveProfile());
 	await applyThemeFromPreferences(engine);
 }
 
 async function bootstrapEnginePhase2(engine: ChronosEngine): Promise<void> {
-	const profile = resolveActiveProfile();
-	if (profileManager) {
-		await profileManager.loadPlugins(
-			profile,
-			resolveBuiltinPlugin,
-			(pluginId) => !(EAGER_BUILTIN_PLUGIN_IDS as readonly string[]).includes(pluginId)
-		);
-	}
-	resolvedProfilePlugins = await resolveProfileBuiltinPlugins(profile);
-
-	if (!sharedOfficialPlugins) {
-		sharedOfficialPlugins = new OfficialPluginService(engine);
-	}
+	if (!sharedOfficialPlugins) throw new Error('Plugin service not prepared');
 	await sharedOfficialPlugins.init();
+	const preferred = engine.state.userPreferences.visualThemeId;
+	if (preferred && !engine.themes.isSelectable(preferred)) {
+		const service = sharedOfficialPlugins;
+		const records = service.listInstalled();
+		// JSON themes declare their ID. Failed ESM plugins may contribute arbitrary theme IDs.
+		const couldRecover =
+			service.listFailures().size > 0 ||
+			records.some(
+				(record) =>
+					record.enabled &&
+					((!record.manifest.colorsUrl && !service.isPluginActive(record.manifest.id)) ||
+						record.manifest.themeId === preferred)
+			);
+		if (!couldRecover) await engine.revertToDefaultThemes();
+	}
 	await applyThemeFromPreferences(engine);
 }
 
@@ -177,7 +159,11 @@ export function getAppEngine(options?: WebProviderOptions): ChronosEngine {
 	if (!sharedEngine) {
 		sharedEngine = createEngine(options);
 	}
-	void ensureEngineReady(options);
+	if (typeof window !== 'undefined')
+		void ensureEngineReady(options).catch((error) => {
+			console.error('[app-engine] Bootstrap failed', error);
+			if (typeof window !== 'undefined') window.__chronosShowBootFailure?.();
+		});
 	return sharedEngine;
 }
 
@@ -201,32 +187,24 @@ export function getOfficialPluginService(options?: WebProviderOptions): Official
 	return sharedOfficialPlugins;
 }
 
-export function getProfileBuiltinPlugins(): ChronosPlugin[] {
-	if (resolvedProfilePlugins.length > 0) {
-		return resolvedProfilePlugins;
-	}
-	return [...(profileManager?.listLoadedPlugins() ?? [])];
-}
-
 export async function resetAppToInitialState(): Promise<void> {
 	const engine = await ensureEngineFullyReady();
+	const service = getOfficialPluginService();
+	await service.resetAfterFactoryClear();
 	await engine.clearAllData();
-	await getOfficialPluginService().resetAfterFactoryClear();
 	const profile = resolveActiveProfile();
-	resolvedProfilePlugins = [];
-	if (!profileManager) {
-		profileManager = new ProfileManager(engine);
-	}
-	await profileManager.applyProfile(profile, resolveBuiltinPlugin);
-	resolvedProfilePlugins = await resolveProfileBuiltinPlugins(profile);
-	engine.setTheme(profile.defaultTheme ?? DEFAULT_VISUAL_THEME_ID);
+	await service.prepareProfile(profile);
+	await service.init();
+	await engine.updatePreferences({
+		visualThemeId: profile.defaultTheme.themeId,
+		wallpaperColorEnabled: false,
+		wallpaperSource: 'theme'
+	});
+	engine.setTheme(profile.defaultTheme.themeId);
 }
 
 /** Disposes the shared host engine and teardown state. */
 export function disposeAppEngine(): void {
-	resolvedProfilePlugins = [];
-	profileManager?.dispose();
-	profileManager = null;
 	sharedOfficialPlugins?.dispose();
 	sharedOfficialPlugins = null;
 	sharedController?.dispose();

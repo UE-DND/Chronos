@@ -147,6 +147,8 @@
 					);
 				}
 
+				window.__chronosShowBootFailure = showBootFailure;
+
 				window.__chronosHideBootFallback = function () {
 					window.__chronosAppMounted = true;
 					clearBootFailureTimer();

@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import { afterAll } from 'vite-plus/test';
 import { describe, it, expect, beforeEach, vi } from 'vite-plus/test';
 import { PREFERENCE_STORAGE_KEYS } from '@chronos/core';
 import {
@@ -5,7 +7,7 @@ import {
 	disposeAppEngine,
 	ensureEngineReady,
 	ensureEngineFullyReady,
-	getProfileBuiltinPlugins
+	getOfficialPluginService
 } from './app-engine';
 import type { ChronosDB } from '$lib/storage/db';
 import {
@@ -54,6 +56,11 @@ function createMockDb(): ChronosDB {
 			})),
 			bulkPut: vi.fn(async () => {}),
 			bulkDelete: vi.fn(async () => {})
+		},
+		pluginBinary: {
+			get: vi.fn(async () => undefined),
+			delete: vi.fn(async () => {}),
+			put: vi.fn(async () => {})
 		},
 		pluginData: {
 			get: vi.fn(async () => undefined),
@@ -115,8 +122,11 @@ describe('app-engine bootstrap', () => {
 		const mockDb = createMockDb();
 		const mockStore = new MockLocalStorage();
 		await ensureEngineFullyReady({ database: mockDb, localStorage: mockStore });
-		const ids = getProfileBuiltinPlugins().map((plugin) => plugin.id);
-		expect(ids).toContain('core-shell');
+		const ids = getOfficialPluginService()
+			.listInstalled()
+			.map((plugin) => plugin.manifest.id);
+		expect(ids).not.toContain('core-shell');
+		expect(ids).toContain('theme-m3');
 		expect(ids.length).toBeGreaterThan(1);
 	});
 
@@ -138,12 +148,14 @@ describe('app-engine bootstrap', () => {
 				author: 'Chronos',
 				type: 'theme',
 				bundleFormat: 'esm',
+				themeId: 'yumemita',
 				colorsUrl: '/theme-yumemita.colors.json',
 				colorsSha256: 'x'
 			},
 			colorsJson: themeColorsJson,
 			manifestUrl: 'https://example.com/theme-yumemita.manifest.json',
 			enabled: true,
+			origin: { kind: 'user' as const },
 			installedAt: 1
 		};
 
@@ -152,7 +164,7 @@ describe('app-engine bootstrap', () => {
 			id: installedPluginDataId,
 			pluginId: OFFICIAL_PLUGINS_PLUGIN_ID,
 			key: INSTALLED_STORAGE_KEY,
-			valueJson: JSON.stringify([installedThemePlugin]),
+			valueJson: JSON.stringify({ records: [installedThemePlugin], removed: [], seeded: true }),
 			updatedAt: 1
 		};
 		const mockDb = createMockDb();
@@ -204,11 +216,87 @@ describe('app-engine bootstrap', () => {
 			await fullyReady;
 			expect(settled).toBe(true);
 
-			const ids = getProfileBuiltinPlugins().map((plugin) => plugin.id);
+			const ids = getOfficialPluginService()
+				.listInstalled()
+				.map((plugin) => plugin.manifest.id);
 			expect(ids).toContain('codec-share');
 			expect(ids.length).toBeGreaterThan(1);
 		} finally {
 			vi.unstubAllGlobals();
 		}
 	});
+});
+
+describe('theme preferences during deferred boot', () => {
+	it('keeps a pending choice until restoration confirms it is absent', async () => {
+		disposeAppEngine();
+		let resume: (() => void) | undefined;
+		vi.stubGlobal('requestIdleCallback', (cb: () => void) => {
+			resume = cb;
+			return 1;
+		});
+		const store = new MockLocalStorage();
+		store.setItem(PREFERENCE_STORAGE_KEYS.visualThemeId, 'removed');
+		try {
+			const engine = await ensureEngineReady({ database: createMockDb(), localStorage: store });
+			expect(engine.state.activeThemeId).toBe('m3-default');
+			expect(store.getItem(PREFERENCE_STORAGE_KEYS.visualThemeId)).toBe('removed');
+			resume?.();
+			await ensureEngineFullyReady();
+			expect(store.getItem(PREFERENCE_STORAGE_KEYS.visualThemeId)).toBe('m3-default');
+		} finally {
+			disposeAppEngine();
+			vi.unstubAllGlobals();
+		}
+	});
+	it('preserves a choice when its installed theme temporarily fails to activate', async () => {
+		disposeAppEngine();
+		const db = createMockDb();
+		const record: InstalledOfficialPluginRecord = {
+			manifest: {
+				id: 'theme-broken',
+				name: { en: 'Broken' },
+				description: { en: '' },
+				author: 'Test',
+				version: '1',
+				type: 'theme',
+				bundleFormat: 'esm',
+				themeId: 'broken',
+				colorsUrl: '/broken.json'
+			},
+			colorsJson: 'invalid json',
+			enabled: true,
+			origin: { kind: 'user' as const },
+			installedAt: 1
+		};
+		const key = `${OFFICIAL_PLUGINS_PLUGIN_ID}:${INSTALLED_STORAGE_KEY}`;
+		Object.defineProperty(db.pluginData, 'get', {
+			value: vi.fn(async (id: string) =>
+				id === key
+					? { valueJson: JSON.stringify({ records: [record], removed: [], seeded: true }) }
+					: undefined
+			)
+		});
+		const store = new MockLocalStorage();
+		store.setItem(PREFERENCE_STORAGE_KEYS.visualThemeId, 'broken');
+		const engine = await ensureEngineFullyReady({ database: db, localStorage: store });
+		expect(engine.state.activeThemeId).toBe('m3-default');
+		expect(store.getItem(PREFERENCE_STORAGE_KEYS.visualThemeId)).toBe('broken');
+		disposeAppEngine();
+	});
+});
+
+beforeEach(() => {
+	vi.stubGlobal('fetch', async (input: string | URL | Request) => {
+		const url = new URL(
+			input instanceof Request ? input.url : input.toString(),
+			'http://localhost'
+		);
+		const bytes = await readFile(new URL(`../../../static${url.pathname}`, import.meta.url));
+		return new Response(bytes, { status: 200 });
+	});
+});
+afterAll(() => {
+	disposeAppEngine();
+	vi.unstubAllGlobals();
 });
