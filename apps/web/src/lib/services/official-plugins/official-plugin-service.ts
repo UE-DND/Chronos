@@ -1,8 +1,9 @@
+import { planPreinstall } from './preinstall-policy';
 import { ImageRepository } from '$lib/storage/image-repository';
 import { resolveManifestForDownload } from './manifest-url';
 import { hostT } from '$lib/i18n/host-i18n.svelte';
-import type { ChronosEngine, Disposable, PluginManifest } from '@chronos/core';
-import { PLUGIN_CONFIG_STORAGE_KEY } from '@chronos/core';
+import type { ChronosEngine, ChronosProfile, Disposable, PluginManifest } from '@chronos/core';
+import { PLUGIN_CONFIG_STORAGE_KEY, validateProfile } from '@chronos/core';
 import { APP_VERSION } from '$lib/config/app-meta';
 import { isAbortError, swallowAbortRejection } from './abort-utils';
 import { OfficialPluginAssetPipeline } from './asset-pipeline';
@@ -20,7 +21,7 @@ import {
 	type PluginInstallTask,
 	type PluginInstallProgress
 } from './install-queue';
-import { shouldSyncInstalledPlugin, syncInstalledPluginsWithHost } from './sync-installed-plugins';
+import { syncInstalledPluginsWithHost } from './sync-installed-plugins';
 
 export type { InstalledOfficialPluginRecord } from './official-plugin-types';
 export type {
@@ -56,7 +57,91 @@ function createOfficialPluginServiceDeps(engine: ChronosEngine): OfficialPluginS
 
 export class OfficialPluginService implements Disposable {
 	private readonly images: ImageRepository;
+	private profile?: ChronosProfile;
+	private loaded = false;
+	private failures = new Map<string, string>();
 	private initialized = false;
+	private initPromise?: Promise<void>;
+	private lifecycle = new AbortController();
+	private installs = new Map<string, Promise<void>>();
+
+	isPreinstalledPlugin(id: string): boolean {
+		return this.profile?.preinstall.some((entry) => entry.id === id) ?? false;
+	}
+	listFailures(): ReadonlyMap<string, string> {
+		return this.failures;
+	}
+	private assertUserRemoval(id: string): void {
+		if (this.isPreinstalledPlugin(id)) throw new Error(`Preinstalled plugin ${id} is required`);
+		this.engine.assertPluginRemovable(id);
+	}
+
+	async prepareProfile(profile: ChronosProfile): Promise<void> {
+		validateProfile(profile);
+		this.profile = profile;
+		await this.loadInstalledStore();
+		if (!this.installedStore.isSeeded) {
+			if (profile.preferences) await this.engine.updatePreferences(profile.preferences);
+			await this.installedStore.markSeeded();
+		}
+		const id = profile.defaultTheme.pluginId;
+		const cached = this.installedStore.find(id);
+		if (cached) {
+			try {
+				await this.runtimeActivator.activate({ ...cached, enabled: true });
+				this.engine.validateDefaultTheme(profile.defaultTheme);
+				if (!cached.enabled || this.installedStore.getRemoved().includes(id))
+					await this.installedStore.setEnabled(id, true);
+			} catch (error) {
+				console.error('[preinstall] Default cache could not activate', error);
+				await this.installPreinstall(id);
+			}
+		} else await this.installPreinstall(id);
+		this.engine.configureDefaultTheme(profile.defaultTheme);
+	}
+
+	private async installPreinstall(id: string): Promise<void> {
+		const entry = this.profile?.preinstall.find((p) => p.id === id);
+		if (!entry || !this.profile) throw new Error(`Unknown preinstall: ${id}`);
+		const url = `/official-plugins/manifests/${id}.manifest.json`;
+		const manifest = await this.fetchManifest(url);
+		if (manifest.id !== id) throw new Error(`Preinstall manifest ID mismatch: ${id}`);
+		await this.install(manifest, url, {
+			silent: true,
+			system: true,
+			preinstall: {
+				profileId: this.profile.profileId,
+				enabled: entry.enabled !== false,
+				config: entry.config
+			}
+		});
+	}
+
+	async retryPreinstall(): Promise<void> {
+		if (!this.profile) return;
+		const pending = planPreinstall(
+			this.profile,
+			this.listInstalled().filter((record) => !this.failures.has(record.manifest.id))
+		);
+		for (const entry of pending) {
+			try {
+				const cached = this.installedStore.find(entry.id);
+				if (cached) {
+					await this.runtimeActivator.activate({ ...cached, enabled: true });
+					await this.installedStore.setEnabled(entry.id, true);
+				} else await this.installPreinstall(entry.id);
+				this.failures.delete(entry.id);
+			} catch (error) {
+				this.failures.set(entry.id, String(error));
+			}
+		}
+		for (const id of this.installedStore.getRemoved()) {
+			const record = this.installedStore.find(id);
+			if (record?.enabled && this.isPreinstalledPlugin(id))
+				await this.installedStore.upsert(record);
+		}
+		this.installedStore.notify();
+	}
 	private disposed = false;
 	private readonly hotUpdates = new Map<
 		string,
@@ -95,9 +180,18 @@ export class OfficialPluginService implements Disposable {
 	}
 
 	async init(): Promise<void> {
+		if (this.initPromise) return this.initPromise;
+		this.initPromise = this.initialize().catch((error) => {
+			this.initPromise = undefined;
+			throw error;
+		});
+		return this.initPromise;
+	}
+	private async initialize(): Promise<void> {
 		if (this.initialized || this.disposed) return;
 		await this.loadInstalledStore();
-		await this.activateCachedPlugins();
+		await this.retryPreinstall();
+		await this.activateInstalledFromCache();
 		this.initialized = true;
 		this.installedStore.notify();
 		await this.syncWithHostCatalog();
@@ -106,18 +200,9 @@ export class OfficialPluginService implements Disposable {
 	}
 
 	private async loadInstalledStore(): Promise<void> {
+		if (this.loaded) return;
 		await this.installedStore.load();
-		await this.installedStore.dedupeBuiltinOverlap();
-	}
-
-	private async activateCachedPlugins(): Promise<void> {
-		const pendingSyncIds = new Set(
-			this.installedStore
-				.getCache()
-				.filter((record) => shouldSyncInstalledPlugin(record, this.hostVersion))
-				.map((record) => record.manifest.id)
-		);
-		await this.activateInstalledFromCache({ skipIds: pendingSyncIds });
+		this.loaded = true;
 	}
 
 	private async syncWithHostCatalog(): Promise<void> {
@@ -125,7 +210,8 @@ export class OfficialPluginService implements Disposable {
 			hostVersion: this.hostVersion,
 			catalogClient: this.catalogClient,
 			getInstalledRecords: () => this.installedStore.getCache(),
-			install: (manifest, manifestUrl, options) => this.install(manifest, manifestUrl, options)
+			install: (manifest, manifestUrl, options) =>
+				this.install(manifest, manifestUrl, { ...options, system: true })
 		});
 	}
 
@@ -141,10 +227,13 @@ export class OfficialPluginService implements Disposable {
 	private async activateInstalledFromCache(options?: { skipIds?: Set<string> }): Promise<void> {
 		for (const record of this.installedStore.getCache()) {
 			if (options?.skipIds?.has(record.manifest.id)) continue;
-			if (record.enabled) {
+			if (record.enabled && !this.runtimeActivator.isActive(record.manifest.id)) {
 				try {
 					await this.runtimeActivator.activate(record);
+					this.failures.delete(record.manifest.id);
 				} catch (err) {
+					if (this.isPreinstalledPlugin(record.manifest.id))
+						this.failures.set(record.manifest.id, String(err));
 					console.error(
 						`[OfficialPluginService] Failed to load plugin ${record.manifest.id}:`,
 						err
@@ -175,7 +264,7 @@ export class OfficialPluginService implements Disposable {
 	async applyHotUpdate(
 		data: {
 			id: string;
-			type?: 'theme' | 'tool';
+			type?: 'theme' | 'tool' | 'source' | 'codec';
 			manifest?: Record<string, unknown>;
 			code: string | null;
 			cssCode: string | null;
@@ -251,19 +340,28 @@ export class OfficialPluginService implements Disposable {
 		if (id && options?.wallpaper) await this.images.put(id, options.wallpaper);
 		const next = { ...candidate, wallpaperAssetId: id };
 		let result: InstalledOfficialPluginRecord;
+		const required =
+			this.profile?.defaultTheme.pluginId === candidate.manifest.id
+				? this.profile.defaultTheme
+				: undefined;
+		if (required) this.engine.clearDefaultTheme();
 		try {
 			result = await replacePluginAssets(
 				{
 					installedStore: this.installedStore,
 					runtimeActivator: this.runtimeActivator,
-					isDisposed: () => this.disposed
+					isDisposed: () => this.disposed,
+					validate: required ? () => this.engine.validateDefaultTheme(required) : undefined
 				},
 				next,
-				options
+				{ ...options, forceEnabled: this.isPreinstalledPlugin(candidate.manifest.id) }
 			);
 		} catch (error) {
 			if (id) await this.images.delete(id).catch(console.error);
 			throw error;
+		} finally {
+			if (!this.disposed && required && this.engine.themes.isSelectable(required.themeId))
+				this.engine.configureDefaultTheme(required);
 		}
 		if (previous?.wallpaperAssetId && previous.wallpaperAssetId !== id) {
 			await this.images.delete(previous.wallpaperAssetId).catch(console.error);
@@ -274,8 +372,26 @@ export class OfficialPluginService implements Disposable {
 	async install(
 		manifest: PluginManifest,
 		manifestUrl?: string,
+		options?: Parameters<OfficialPluginService['performInstall']>[2]
+	): Promise<void> {
+		if (this.disposed) throw new DOMException('Aborted', 'AbortError');
+		const pending = this.installs.get(manifest.id);
+		if (pending) return pending;
+		const operation = this.performInstall(manifest, manifestUrl, options);
+		this.installs.set(manifest.id, operation);
+		try {
+			await operation;
+		} finally {
+			if (this.installs.get(manifest.id) === operation) this.installs.delete(manifest.id);
+		}
+	}
+	private async performInstall(
+		manifest: PluginManifest,
+		manifestUrl?: string,
 		options?: {
 			silent?: boolean;
+			system?: boolean;
+			preinstall?: { profileId: string; enabled: boolean; config?: Record<string, unknown> };
 			signal?: AbortSignal;
 			onProgress?: (progress: {
 				stage: PluginInstallStage;
@@ -284,9 +400,12 @@ export class OfficialPluginService implements Disposable {
 			}) => void;
 		}
 	): Promise<void> {
-		const signal = options?.signal;
+		const signal = options?.signal
+			? AbortSignal.any([options.signal, this.lifecycle.signal])
+			: this.lifecycle.signal;
 		signal?.throwIfAborted?.();
 		validatePluginManifest(manifest);
+		if (!options?.system) this.assertUserRemoval(manifest.id);
 
 		const existingSnapshot = this.installedStore.find(manifest.id);
 
@@ -301,12 +420,20 @@ export class OfficialPluginService implements Disposable {
 
 			const record: InstalledOfficialPluginRecord = {
 				manifest,
+				origin:
+					existingSnapshot?.origin ??
+					(options?.preinstall
+						? { kind: 'profile', profileId: options.preinstall.profileId }
+						: { kind: 'user' }),
+				initialConfig: existingSnapshot
+					? existingSnapshot.initialConfig
+					: options?.preinstall?.config,
 				code: assets.code ?? null,
 				colorsJson: assets.colorsJson ?? null,
 				iconThemeJson: assets.iconThemeJson ?? null,
 				cssCode: assets.cssCode ?? null,
 				manifestUrl: manifestUrl ?? existingSnapshot?.manifestUrl,
-				enabled: existingSnapshot?.enabled ?? true,
+				enabled: existingSnapshot?.enabled ?? options?.preinstall?.enabled ?? true,
 				installedAt: existingSnapshot?.installedAt ?? Date.now()
 			};
 
@@ -341,6 +468,7 @@ export class OfficialPluginService implements Disposable {
 	}
 
 	async uninstall(pluginId: string): Promise<void> {
+		this.assertUserRemoval(pluginId);
 		await this.cancelHotUpdate(pluginId);
 		await this.runtimeActivator.deactivate(pluginId, { revertThemes: true });
 		const record = this.installedStore.find(pluginId);
@@ -368,6 +496,7 @@ export class OfficialPluginService implements Disposable {
 	}
 
 	async disable(pluginId: string): Promise<void> {
+		this.assertUserRemoval(pluginId);
 		await this.cancelHotUpdate(pluginId);
 		const record = this.installedStore.find(pluginId);
 		if (!record) {
@@ -395,13 +524,27 @@ export class OfficialPluginService implements Disposable {
 	}
 
 	async resetAfterFactoryClear(): Promise<void> {
+		this.lifecycle.abort();
+		for (const update of this.hotUpdates.values()) update.controller.abort();
+		await Promise.allSettled([
+			...this.installs.values(),
+			...[...this.hotUpdates.values()].map((update) => update.settled)
+		]);
+		this.lifecycle = new AbortController();
+		this.initPromise = undefined;
 		this.installQueue.cancelAll();
+		this.engine.clearDefaultTheme();
 		this.runtimeActivator.disposeAll();
 		this.installedStore.clear();
+		this.failures.clear();
+		this.initialized = false;
+		this.loaded = false;
 	}
 
 	dispose(): void {
 		this.disposed = true;
+		this.lifecycle.abort();
+		this.engine.clearDefaultTheme();
 		for (const update of this.hotUpdates.values()) update.controller.abort();
 		this.hmrDisposable?.dispose();
 		this.installQueue.dispose();

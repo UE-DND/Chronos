@@ -289,7 +289,7 @@ describe('OfficialPluginService', () => {
 		).not.toBeNull();
 	});
 
-	it('skips init reload for profile-builtin plugins already loaded', async () => {
+	it('keeps one installed record and activation across repeated initialization', async () => {
 		const hash = await engine.env.runtime.sha256(SAMPLE_BUNDLE);
 		const manifest: PluginManifest = {
 			id: 'test-plugin',
@@ -307,28 +307,34 @@ describe('OfficialPluginService', () => {
 		await engine.loadPlugin(await loadEsmPluginFromCode(SAMPLE_BUNDLE));
 		expect(engine.slots.getSlotItem('mine.item', 'test-item')).toBeDefined();
 
-		await engine.storage.setPluginData('core.official-plugins', 'installed_plugins', [
-			{
-				manifest,
-				code: SAMPLE_BUNDLE,
-				enabled: true,
-				installedAt: Date.now()
-			}
-		]);
+		await engine.storage.setPluginData('core.official-plugins', 'installed_plugins', {
+			records: [
+				{
+					manifest,
+					code: SAMPLE_BUNDLE,
+					enabled: true,
+					origin: { kind: 'user' as const },
+					installedAt: Date.now()
+				}
+			],
+			removed: [],
+			seeded: true
+		});
 
 		const loadPluginSpy = vi.spyOn(engine, 'loadPlugin');
 		await service.init();
 
-		expect(loadPluginSpy).not.toHaveBeenCalled();
+		await service.init();
+		expect(loadPluginSpy).toHaveBeenCalledTimes(1);
 		expect(engine.isPluginLoaded('test-plugin')).toBe(true);
 		expect(engine.slots.getSlotItem('mine.item', 'test-item')).toBeDefined();
-		expect(service.listInstalled()).toHaveLength(0);
+		expect(service.listInstalled()).toHaveLength(1);
 
-		const stored = await engine.storage.getPluginData<unknown[]>(
+		const stored = await engine.storage.getPluginData<{ records: unknown[] }>(
 			'core.official-plugins',
 			'installed_plugins'
 		);
-		expect(stored).toEqual([]);
+		expect(stored?.records).toHaveLength(1);
 	});
 
 	it('resetAfterFactoryClear unloads plugins and clears installed cache', async () => {
@@ -413,16 +419,21 @@ describe('OfficialPluginService', () => {
 			sha256: hash
 		};
 
-		await engine.storage.setPluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY, [
-			{
-				manifest: completeManifest,
-				code: SAMPLE_BUNDLE,
-				cssCode: '.x{color:red}',
-				manifestUrl: OFFICIAL_MANIFEST_URL,
-				enabled: true,
-				installedAt: Date.now()
-			}
-		]);
+		await engine.storage.setPluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY, {
+			records: [
+				{
+					manifest: completeManifest,
+					code: SAMPLE_BUNDLE,
+					cssCode: '.x{color:red}',
+					manifestUrl: OFFICIAL_MANIFEST_URL,
+					enabled: true,
+					origin: { kind: 'user' as const },
+					installedAt: Date.now()
+				}
+			],
+			removed: [],
+			seeded: true
+		});
 
 		const syncSpy = vi
 			.spyOn(
@@ -466,15 +477,20 @@ describe('OfficialPluginService', () => {
 			version: '0.4.1'
 		};
 
-		await engine.storage.setPluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY, [
-			{
-				manifest: staleManifest,
-				code: SAMPLE_BUNDLE,
-				manifestUrl: OFFICIAL_MANIFEST_URL,
-				enabled: true,
-				installedAt: Date.now()
-			}
-		]);
+		await engine.storage.setPluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY, {
+			records: [
+				{
+					manifest: staleManifest,
+					code: SAMPLE_BUNDLE,
+					manifestUrl: OFFICIAL_MANIFEST_URL,
+					enabled: true,
+					origin: { kind: 'user' as const },
+					installedAt: Date.now()
+				}
+			],
+			removed: [],
+			seeded: true
+		});
 
 		httpRequest.mockImplementation(async (url: string) => {
 			if (url === '/official-plugins/catalog.json') {
@@ -521,15 +537,20 @@ describe('OfficialPluginService', () => {
 		};
 		const manifestUrl = 'https://cdn.example.com/plugins/link/manifest.json';
 
-		await engine.storage.setPluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY, [
-			{
-				manifest,
-				code: SAMPLE_BUNDLE,
-				manifestUrl,
-				enabled: true,
-				installedAt: Date.now()
-			}
-		]);
+		await engine.storage.setPluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY, {
+			records: [
+				{
+					manifest,
+					code: SAMPLE_BUNDLE,
+					manifestUrl,
+					enabled: true,
+					origin: { kind: 'user' as const },
+					installedAt: Date.now()
+				}
+			],
+			removed: [],
+			seeded: true
+		});
 
 		await service.init();
 
@@ -552,15 +573,20 @@ describe('OfficialPluginService', () => {
 			sha256: hash
 		};
 
-		await engine.storage.setPluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY, [
-			{
-				manifest: staleManifest,
-				code: SAMPLE_BUNDLE,
-				manifestUrl: OFFICIAL_MANIFEST_URL,
-				enabled: true,
-				installedAt: Date.now()
-			}
-		]);
+		await engine.storage.setPluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY, {
+			records: [
+				{
+					manifest: staleManifest,
+					code: SAMPLE_BUNDLE,
+					manifestUrl: OFFICIAL_MANIFEST_URL,
+					enabled: true,
+					origin: { kind: 'user' as const },
+					installedAt: Date.now()
+				}
+			],
+			removed: [],
+			seeded: true
+		});
 
 		httpRequest.mockRejectedValueOnce(new Error('offline'));
 
@@ -587,15 +613,20 @@ describe('OfficialPluginService', () => {
 			version: '0.4.1'
 		};
 
-		await engine.storage.setPluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY, [
-			{
-				manifest: staleManifest,
-				code: SAMPLE_BUNDLE,
-				manifestUrl: OFFICIAL_MANIFEST_URL,
-				enabled: true,
-				installedAt: Date.now()
-			}
-		]);
+		await engine.storage.setPluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY, {
+			records: [
+				{
+					manifest: staleManifest,
+					code: SAMPLE_BUNDLE,
+					manifestUrl: OFFICIAL_MANIFEST_URL,
+					enabled: true,
+					origin: { kind: 'user' as const },
+					installedAt: Date.now()
+				}
+			],
+			removed: [],
+			seeded: true
+		});
 		await engine.storage.setPluginData('test-plugin', PLUGIN_CONFIG_STORAGE_KEY, {
 			enabled: true
 		});
@@ -794,5 +825,169 @@ describe('OfficialPluginService', () => {
 		expect(rollbackService.isPluginActive('test-plugin')).toBe(true);
 
 		deactivateSpy.mockRestore();
+	});
+});
+
+describe('profile preinstallation lifecycle', () => {
+	async function setupProfile() {
+		const { env, httpRequest } = createMockEnv();
+		const engine = new ChronosEngine({ env });
+		await engine.init();
+		const colors = JSON.stringify({
+			id: 'custom-default',
+			name: 'Custom',
+			variants: {
+				light: { colors: { 'color.primary': '#123456' } },
+				dark: { colors: { 'color.primary': '#654321' } }
+			}
+		});
+		const theme: PluginManifest = {
+			id: 'custom-theme',
+			name: { en: 'Custom' },
+			description: {},
+			author: 'Test',
+			version: '0.4.1',
+			type: 'theme',
+			bundleFormat: 'esm',
+			themeId: 'custom-default',
+			colorsUrl: '/custom.json',
+			colorsSha256: await env.runtime.sha256(colors)
+		};
+		const tool: PluginManifest = {
+			id: 'test-plugin',
+			name: { en: 'Tool' },
+			description: {},
+			author: 'Test',
+			version: '0.4.1',
+			type: 'tool',
+			toolGroup: 'utility',
+			bundleFormat: 'esm',
+			bundleUrl: '/test.js',
+			sha256: await env.runtime.sha256(SAMPLE_BUNDLE)
+		};
+		httpRequest.mockImplementation(async (url: string) => {
+			const path = new URL(url, 'http://localhost').pathname;
+			if (path.endsWith('custom-theme.manifest.json'))
+				return httpResponse({ json: async <T>() => theme as T });
+			if (path.endsWith('test-plugin.manifest.json'))
+				return httpResponse({ json: async <T>() => tool as T });
+			if (path === '/custom.json') return httpResponse({ text: async () => colors });
+			if (path === '/test.js') return httpResponse({ text: async () => SAMPLE_BUNDLE });
+			throw new Error(`Unexpected URL ${url}`);
+		});
+		const profile = {
+			profileId: 'custom',
+			name: 'Custom',
+			defaultTheme: { pluginId: theme.id, themeId: 'custom-default' },
+			preinstall: [{ id: theme.id }, { id: tool.id, config: { answer: 42 } }]
+		};
+		const service = createService(engine);
+		await service.prepareProfile(profile);
+		return { engine, env, httpRequest, profile, service, theme, tool, colors };
+	}
+	it('boots a non-M3 default first and shares records with market management', async () => {
+		const { engine, service } = await setupProfile();
+		expect(engine.state.activeThemeId).toBe('custom-default');
+		expect(service.listInstalled()).toHaveLength(1);
+		await service.init();
+		expect(service.listInstalled()).toHaveLength(2);
+		expect(service.getInstalled('test-plugin')?.origin).toEqual({
+			kind: 'profile',
+			profileId: 'custom'
+		});
+		expect(engine.getPluginContext('test-plugin').config.answer).toBe(42);
+		await expect(service.disable('custom-theme')).rejects.toThrow('required');
+		await expect(service.uninstall('custom-theme')).rejects.toThrow('required');
+		service.dispose();
+		engine.dispose();
+	});
+	it('restores required installs and configuration, and releases plugins removed from the profile', async () => {
+		const { engine, service, profile, tool } = await setupProfile();
+		await service.init();
+		await expect(service.disable(tool.id)).rejects.toThrow('required');
+		await expect(service.uninstall(tool.id)).rejects.toThrow('required');
+		const store = new OfficialPluginInstalledStore(engine);
+		await store.load();
+		await store.upsert({
+			...service.getInstalled(tool.id)!,
+			origin: { kind: 'user' },
+			enabled: false
+		});
+		await engine.storage.setPluginData(tool.id, '__config__', { answer: 99 });
+		service.dispose();
+		const second = createService(engine);
+		await second.prepareProfile({
+			...profile,
+			preinstall: [{ id: 'custom-theme' }, { id: tool.id, config: { answer: 0 } }]
+		});
+		await second.init();
+		expect(second.getInstalled(tool.id)?.enabled).toBe(true);
+		expect(second.isPreinstalledPlugin(tool.id)).toBe(true);
+		expect(second.getInstalled(tool.id)?.origin).toEqual({ kind: 'user' });
+		await expect(second.uninstall(tool.id)).rejects.toThrow('required');
+		expect(second.getInstalled(tool.id)?.initialConfig).toEqual({ answer: 42 });
+		await second.enable(tool.id);
+		expect(engine.getPluginContext(tool.id).config.answer).toBe(99);
+		await second.prepareProfile({ ...profile, preinstall: [{ id: 'custom-theme' }] });
+		expect(second.isPreinstalledPlugin(tool.id)).toBe(false);
+		await second.disable(tool.id);
+		await second.uninstall(tool.id);
+		second.dispose();
+		const third = createService(engine);
+		await third.prepareProfile(profile);
+		await third.init();
+		expect(third.getInstalled(tool.id)?.enabled).toBe(true);
+		const state = await engine.storage.getPluginData<{ removed: string[] }>(
+			OFFICIAL_PLUGINS_PLUGIN_ID,
+			INSTALLED_STORAGE_KEY
+		);
+		expect(state?.removed).not.toContain(tool.id);
+		third.dispose();
+		engine.dispose();
+	});
+	it('activates verified stale default cache offline and rolls back an invalid replacement', async () => {
+		const { engine, service, profile, httpRequest, theme } = await setupProfile();
+		const original = service.getInstalled(theme.id);
+		service.dispose();
+		httpRequest.mockRejectedValue(new Error('offline'));
+		const restarted = createService(engine, '0.4.2');
+		await restarted.prepareProfile(profile);
+		expect(engine.defaultThemeId).toBe('custom-default');
+		await restarted.init();
+		expect(engine.themes.isSelectable('custom-default')).toBe(true);
+		const wrong = JSON.stringify({
+			id: 'wrong',
+			name: 'Wrong',
+			variants: { light: { colors: {} }, dark: { colors: {} } }
+		});
+		await expect(
+			restarted.applyHotUpdate({
+				id: theme.id,
+				code: null,
+				cssCode: null,
+				colorsJson: wrong,
+				iconThemeJson: null
+			})
+		).rejects.toThrow('Invalid default theme');
+		expect(restarted.getInstalled(theme.id)).toEqual(original);
+		expect(engine.defaultThemeId).toBe('custom-default');
+		expect(engine.themes.isSelectable('wrong')).toBe(false);
+		restarted.dispose();
+		engine.dispose();
+	});
+	it('overrides an old user removal for a newly required default provider', async () => {
+		const { engine, service, profile, theme } = await setupProfile();
+		service.dispose();
+		await engine.storage.setPluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY, {
+			records: [],
+			removed: [theme.id],
+			seeded: true
+		});
+		const next = createService(engine);
+		await next.prepareProfile(profile);
+		expect(next.getInstalled(theme.id)?.enabled).toBe(true);
+		expect(engine.defaultThemeId).toBe('custom-default');
+		next.dispose();
+		engine.dispose();
 	});
 });
