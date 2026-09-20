@@ -3,6 +3,7 @@
 @source '../../../../packages/ui-kit/src';
 @import '../../../../packages/ui-kit/src/timetable-preview/timetable-dynamic-tint.css';
 @import '../lib/theme/generated-colors.css';
+@import '@chronos/ui-kit/theme/theme-inline.generated.css';
 @import '../lib/theme/typography.css';
 @import '../../../../packages/ui-kit/src/theme/radius.css';
 @import '../lib/theme/layout-tokens.css';

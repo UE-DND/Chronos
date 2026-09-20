@@ -1,24 +1,24 @@
-/* generated, do not edit */
-
+/* generated from Profile default theme; do not edit */
 @layer tokens {
-	:root {
-		--color-surface: #f9f9fe;
+	:root:not(.chronos-theme-active) {
+		--color-surface: #ffffff;
+		--color-on-surface: #2e333a;
+		--color-primary: #416189;
+		--color-on-primary: #f8f8ff;
+		--color-surface-variant: #f2f3fa;
+		--color-outline: #cbd5e1;
 		--color-surface-dim: #d6dae4;
 		--color-surface-bright: #f9f9fe;
 		--color-surface-container-lowest: #fff;
 		--color-surface-container-low: #f2f3fa;
-		--color-surface-container: #eceef5;
-		--color-surface-container-high: #e5e8f0;
+		--color-surface-container: #ffffff;
+		--color-surface-container-high: #f1f5f9;
 		--color-surface-container-highest: #dfe2ec;
-		--color-on-surface: #2e333a;
 		--color-on-surface-variant: #5b5f67;
-		--color-outline: #777b83;
-		--color-outline-variant: #aeb2bb;
+		--color-outline-variant: #e2e8f0;
 		--color-inverse-surface: #0c0e12;
 		--color-inverse-on-surface: #9c9da1;
-		--color-primary: #416189;
 		--color-primary-dim: #35557c;
-		--color-on-primary: #f8f8ff;
 		--color-primary-container: #a9c9f7;
 		--color-on-primary-container: #204168;
 		--color-primary-fixed: #a9c9f7;
@@ -63,34 +63,30 @@
 		--color-canvas: #f0f4f8;
 		--color-ink: #0b1f33;
 		--color-border-subtle: #d4e0eb;
-		--color-surface: #ffffff;
-		--color-surface-container: #ffffff;
-		--color-surface-container-high: #f1f5f9;
-		--color-outline: #cbd5e1;
-		--color-outline-variant: #e2e8f0;
 		--color-success: #15803d;
 		--color-warning: #b45309;
 		--color-danger: #e60012;
 	}
 
-	.dark {
-		--color-surface: #0c0e12;
+	:root.dark:not(.chronos-theme-active) {
+		--color-surface: #1e2026;
+		--color-on-surface: #e2e5ef;
+		--color-primary: #b0c8ec;
+		--color-on-primary: #2a415f;
+		--color-surface-variant: #111418;
+		--color-outline: #334155;
 		--color-surface-dim: #0c0e12;
 		--color-surface-bright: #282c34;
 		--color-surface-container-lowest: #000;
 		--color-surface-container-low: #111418;
-		--color-surface-container: #161a1f;
-		--color-surface-container-high: #1c2026;
+		--color-surface-container: #1e2026;
+		--color-surface-container-high: #24262e;
 		--color-surface-container-highest: #21262d;
-		--color-on-surface: #e2e5ef;
 		--color-on-surface-variant: #a7abb4;
-		--color-outline: #71767e;
-		--color-outline-variant: #444850;
+		--color-outline-variant: #2e3038;
 		--color-inverse-surface: #f9f9fe;
 		--color-inverse-on-surface: #535559;
-		--color-primary: #b0c8ec;
 		--color-primary-dim: #a3bade;
-		--color-on-primary: #2a415f;
 		--color-primary-container: #3d5472;
 		--color-on-primary-container: #d4e4ff;
 		--color-primary-fixed: #b9d0f5;
@@ -103,14 +99,26 @@
 		--color-on-secondary: #364151;
 		--color-secondary-container: #313c4c;
 		--color-on-secondary-container: #b4c0d4;
+		--color-secondary-fixed: #d8e3f8;
+		--color-secondary-fixed-dim: #c9d5ea;
+		--color-on-secondary-fixed: #354050;
+		--color-on-secondary-fixed-variant: #515c6d;
 		--color-tertiary: #e7deff;
 		--color-tertiary-dim: #dacdff;
 		--color-on-tertiary: #554c75;
+		--color-tertiary-container: #dacdff;
+		--color-on-tertiary-container: #4c436c;
+		--color-tertiary-fixed: #dacdff;
+		--color-tertiary-fixed-dim: #ccc0f0;
+		--color-on-tertiary-fixed: #393057;
+		--color-on-tertiary-fixed-variant: #564c76;
 		--color-error: #fa746f;
 		--color-error-dim: #c54d4a;
 		--color-on-error: #490006;
 		--color-error-container: #871f21;
 		--color-on-error-container: #ff9993;
+		--color-shadow: #000;
+		--color-scrim: #000;
 		--color-on-on-primary: #b0c8ec;
 		--color-primary-container-subtle: #142d4a;
 		--color-on-primary-container-subtle: #95adcf;
@@ -123,85 +131,8 @@
 		--color-canvas: #121316;
 		--color-ink: #f8fafc;
 		--color-border-subtle: #2e3038;
-		--color-surface: #1e2026;
-		--color-surface-container: #1e2026;
-		--color-surface-container-high: #24262e;
-		--color-outline: #334155;
-		--color-outline-variant: #2e3038;
 		--color-success: #4ade80;
 		--color-warning: #fb923c;
 		--color-danger: #e60012;
 	}
-}
-
-@theme inline {
-	--color-surface: var(--color-surface);
-	--color-surface-dim: var(--color-surface-dim);
-	--color-surface-bright: var(--color-surface-bright);
-	--color-surface-container-lowest: var(--color-surface-container-lowest);
-	--color-surface-container-low: var(--color-surface-container-low);
-	--color-surface-container: var(--color-surface-container);
-	--color-surface-container-high: var(--color-surface-container-high);
-	--color-surface-container-highest: var(--color-surface-container-highest);
-	--color-on-surface: var(--color-on-surface);
-	--color-on-surface-variant: var(--color-on-surface-variant);
-	--color-outline: var(--color-outline);
-	--color-outline-variant: var(--color-outline-variant);
-	--color-inverse-surface: var(--color-inverse-surface);
-	--color-inverse-on-surface: var(--color-inverse-on-surface);
-	--color-primary: var(--color-primary);
-	--color-primary-dim: var(--color-primary-dim);
-	--color-on-primary: var(--color-on-primary);
-	--color-primary-container: var(--color-primary-container);
-	--color-on-primary-container: var(--color-on-primary-container);
-	--color-primary-fixed: var(--color-primary-fixed);
-	--color-primary-fixed-dim: var(--color-primary-fixed-dim);
-	--color-on-primary-fixed: var(--color-on-primary-fixed);
-	--color-on-primary-fixed-variant: var(--color-on-primary-fixed-variant);
-	--color-inverse-primary: var(--color-inverse-primary);
-	--color-secondary: var(--color-secondary);
-	--color-secondary-dim: var(--color-secondary-dim);
-	--color-on-secondary: var(--color-on-secondary);
-	--color-secondary-container: var(--color-secondary-container);
-	--color-on-secondary-container: var(--color-on-secondary-container);
-	--color-secondary-fixed: var(--color-secondary-fixed);
-	--color-secondary-fixed-dim: var(--color-secondary-fixed-dim);
-	--color-on-secondary-fixed: var(--color-on-secondary-fixed);
-	--color-on-secondary-fixed-variant: var(--color-on-secondary-fixed-variant);
-	--color-tertiary: var(--color-tertiary);
-	--color-tertiary-dim: var(--color-tertiary-dim);
-	--color-on-tertiary: var(--color-on-tertiary);
-	--color-tertiary-container: var(--color-tertiary-container);
-	--color-on-tertiary-container: var(--color-on-tertiary-container);
-	--color-tertiary-fixed: var(--color-tertiary-fixed);
-	--color-tertiary-fixed-dim: var(--color-tertiary-fixed-dim);
-	--color-on-tertiary-fixed: var(--color-on-tertiary-fixed);
-	--color-on-tertiary-fixed-variant: var(--color-on-tertiary-fixed-variant);
-	--color-error: var(--color-error);
-	--color-error-dim: var(--color-error-dim);
-	--color-on-error: var(--color-on-error);
-	--color-error-container: var(--color-error-container);
-	--color-on-error-container: var(--color-on-error-container);
-	--color-shadow: var(--color-shadow);
-	--color-scrim: var(--color-scrim);
-	--color-on-on-primary: var(--color-on-on-primary);
-	--color-primary-container-subtle: var(--color-primary-container-subtle);
-	--color-on-primary-container-subtle: var(--color-on-primary-container-subtle);
-	--color-secondary-container-subtle: var(--color-secondary-container-subtle);
-	--color-on-secondary-container-subtle: var(--color-on-secondary-container-subtle);
-	--color-tertiary-container-subtle: var(--color-tertiary-container-subtle);
-	--color-on-tertiary-container-subtle: var(--color-on-tertiary-container-subtle);
-	--color-error-container-subtle: var(--color-error-container-subtle);
-	--color-on-error-container-subtle: var(--color-on-error-container-subtle);
-	--color-brand: var(--color-primary);
-	--color-brand-muted: var(--color-primary-container-subtle);
-	--color-soft-blue: var(--color-inverse-primary);
-	--color-surface-variant: var(--color-surface-container-low);
-	--color-canvas: var(--color-canvas);
-	--color-ink: var(--color-ink);
-	--color-success: var(--color-success);
-	--color-warning: var(--color-warning);
-	--color-danger: var(--color-danger);
-	--color-border-subtle: var(--color-border-subtle);
-	--color-border: var(--color-border-subtle);
 }

@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -42,6 +43,10 @@ export async function buildOfficialPluginAssets(
 	options: BuildOfficialPluginOptions
 ): Promise<OfficialPluginBuildResult> {
 	const { root, releaseVersion, createAliasRecord, mode } = options;
+	if (plugin.prepareResources) {
+		const preparer = await import(pathToFileURL(plugin.prepareResources).href);
+		await preparer.prepareResources();
+	}
 	const paths = options.paths ?? createOfficialPluginBuildPaths(root);
 	const outDir = mode === 'dev' ? paths.devTempDir(plugin.id) : paths.pluginBundleDir(plugin.id);
 

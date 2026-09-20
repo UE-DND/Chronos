@@ -10,6 +10,7 @@ type OfficialPluginBase = {
 	/** packages/plugins source directory */
 	sourceDir: string;
 	entry?: string;
+	prepareResources?: string;
 	optionalServerCapabilities?: { pluginId: string; action: string }[];
 	colorsJson?: string;
 	iconsJson?: string;
@@ -50,6 +51,8 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 		id: 'theme-m3',
 		type: 'theme',
 		sourceDir: 'theme-m3',
+		prepareResources: resolve(root, 'packages/plugins/theme-m3/build.ts'),
+		entry: resolve(root, 'packages/plugins/theme-m3/src/index.ts'),
 		tailwindSource: false,
 		name: { 'zh-CN': 'Material 3', en: 'Material 3' },
 		description: {

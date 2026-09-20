@@ -16,35 +16,29 @@ import {
 	createChronosAliasRecord
 } from '../../scripts/resolve-chronos-aliases.ts';
 import { OFFICIAL_PLUGINS } from '../../scripts/official-plugins.config.ts';
-import { writeGeneratedThemeCss } from './src/lib/theme/theme';
+import { writeDefaultThemeCss } from '../../scripts/generate-default-theme.ts';
 import { writeGeneratedVersionJson } from './src/lib/content/releases/version-generator';
 import { chronosLicensePlugin } from './src/lib/legal/chronos-license-plugin';
 import { chronosProfilePlugin } from './src/lib/profile-codegen/chronos-profile-plugin';
 import { resolveProfile, resolveProfileId } from './src/lib/profile-codegen/profile-definitions';
-import {
-	createOfficialPluginsPlugin,
-	defaultBuildOfficialPlugins
-} from './src/lib/services/official-plugins/chronos-official-plugins-plugin';
+import { defaultBuildOfficialPlugins } from '../../scripts/official-plugin-build/build-for-host.ts';
 import { chronosPluginHmrPlugin } from './src/lib/dev/chronos-plugin-hmr-vite.ts';
 
 const webRoot = fileURLToPath(new URL('.', import.meta.url));
 const monorepoRoot = fileURLToPath(new URL('../..', import.meta.url));
 
-function chronosThemeTokensPlugin() {
+function chronosVersionPlugin() {
 	return {
-		name: 'chronos-theme-tokens',
+		name: 'chronos-version',
 		configureServer() {
-			writeGeneratedThemeCss();
 			writeGeneratedVersionJson();
 		},
 		buildStart() {
-			writeGeneratedThemeCss();
 			writeGeneratedVersionJson();
 		}
 	};
 }
 
-const officialPluginsCatalogPath = resolve(webRoot, 'static/official-plugins/catalog.json');
 const buildOfficialPluginsScript = resolve(monorepoRoot, 'scripts/build-official-plugins.ts');
 
 const isPagesBuild = process.env.CHRONOS_DEPLOY_TARGET === 'pages';
@@ -60,9 +54,20 @@ function resolveManualChunk(id: string): string | undefined {
 	return undefined;
 }
 
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd(), 'PUBLIC_');
-	const isBuild = command === 'build';
+	let bootColors: ReturnType<typeof writeDefaultThemeCss> | undefined;
+	if (!process.env.VITEST) {
+		defaultBuildOfficialPlugins(
+			monorepoRoot,
+			buildOfficialPluginsScript,
+			'prepare plugin resources before host compilation'
+		);
+		bootColors = writeDefaultThemeCss(
+			monorepoRoot,
+			resolveProfile(resolveProfileId()).defaultTheme
+		);
+	}
 
 	return {
 		resolve: {
@@ -123,13 +128,8 @@ export default defineConfig(({ command, mode }) => {
 			materialSymbolsWeightPlugin(),
 			chronosProfilePlugin(webRoot),
 			preinstallPrecachePlugin(webRoot, resolveProfile(resolveProfileId()), basePath),
-			chronosThemeTokensPlugin(),
-			createOfficialPluginsPlugin({
-				catalogPath: officialPluginsCatalogPath,
-				buildCommand: (reason) =>
-					defaultBuildOfficialPlugins(monorepoRoot, buildOfficialPluginsScript, reason),
-				isBuild
-			}),
+			chronosVersionPlugin(),
+
 			chronosPluginHmrPlugin({
 				monorepoRoot,
 				plugins: OFFICIAL_PLUGINS,
@@ -156,8 +156,9 @@ export default defineConfig(({ command, mode }) => {
 					name: 'Chronos',
 					short_name: 'Chronos',
 					description: '课程表应用',
-					theme_color: '#0068B7',
-					background_color: '#f0f4f8',
+					...(bootColors
+						? { theme_color: bootColors.themeColor, background_color: bootColors.backgroundColor }
+						: {}),
 					display: 'standalone',
 					display_override: ['standalone', 'minimal-ui'],
 					start_url: `${basePath}/`,
