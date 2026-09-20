@@ -6,11 +6,6 @@ import type { Course } from '../packages/core/src/index.ts';
 import { createTimetable } from '../packages/core/src/index.ts';
 import { encodeTimetableToBinary } from '../packages/plugins/codec-share/src/share-link/chronos-share-binary.ts';
 import { appendCrc32 } from '../packages/codec-kit/src/index.ts';
-import {
-	brotliCompressShare,
-	brotliDecompressShare,
-	ensureShareLinkBrotliReady
-} from '../packages/plugins/codec-share/src/share-link/share-link-brotli.ts';
 
 interface BenchmarkCase {
 	label: string;
@@ -120,9 +115,9 @@ function runCase(testCase: BenchmarkCase): BenchmarkResult[] {
 
 	results.push(
 		bench(
-			'brotli:11 (current)',
-			(data) => brotliCompressShare(data),
-			(data) => brotliDecompressShare(data),
+			'deflate-raw (current)',
+			(data) => zlib.deflateRawSync(data),
+			(data) => zlib.inflateRawSync(data),
 			input
 		)
 	);
@@ -164,7 +159,7 @@ function runCase(testCase: BenchmarkCase): BenchmarkResult[] {
 }
 
 function printResults(testCase: BenchmarkCase, results: BenchmarkResult[]): void {
-	const baseline = results.find((entry) => entry.algorithm === 'brotli:11 (current)');
+	const baseline = results.find((entry) => entry.algorithm === 'deflate-raw (current)');
 	console.log(`\n=== ${testCase.label} ===`);
 	console.log(`raw binary (+CRC): ${testCase.binary.length} bytes`);
 	if (baseline) {
@@ -444,7 +439,6 @@ const cases: BenchmarkCase[] = [
 	{ label: '25 courses (CQUT)', binary: toBinary(createCqutLargeTimetable()) }
 ];
 
-await ensureShareLinkBrotliReady();
 console.log('Chronos share-link compression benchmark');
 console.log('payload chars = len("1." + base64url(compressed))');
 

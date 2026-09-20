@@ -15,9 +15,3 @@ export type {
 	ShareClipboardLabels,
 	ShareDecodeLabels
 } from './chronos-share-link-codec';
-export {
-	ensureShareLinkBrotliReady,
-	brotliCompressShare,
-	brotliDecompressShare,
-	SHARE_BROTLI_QUALITY
-} from './share-link-brotli';

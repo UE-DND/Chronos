@@ -12,17 +12,14 @@ import {
 	base64UrlToBytes
 } from '@chronos/codec-kit';
 import {
-	compressShareAdaptive,
-	decompressShareAdaptive,
-	SHARE_LINK_VERSION_BROTLI,
-	SHARE_LINK_VERSION_DEFLATE,
+	compressShare,
+	decompressShare,
 	ShareDecompressionTooLargeError
-} from './share-link-brotli';
+} from './share-link-compression';
 import { SHARE_CODEC_MESSAGES } from '../messages';
 
-export const SHARE_LINK_VERSION = SHARE_LINK_VERSION_BROTLI;
+export const SHARE_LINK_VERSION = 1;
 export const SHARE_LINK_PREFIX = `${SHARE_LINK_VERSION}.`;
-export const SHARE_LINK_PREFIX_DEFLATE = `${SHARE_LINK_VERSION_DEFLATE}.`;
 export const SHARE_LINK_WARNING_LENGTH = 800;
 /** Upper bound for encoded share payloads (worst legit timetable encodes to ~10K chars). */
 export const MAX_SHARE_PAYLOAD_CHARS = 65_536;
@@ -53,18 +50,7 @@ function shareFailure<T>(errorMessage: string): ShareLinkResult<T> {
 
 export async function encodeSharePayload(timetable: Timetable): Promise<string> {
 	const binary = appendCrc32(encodeTimetableToBinary(timetable));
-	const { version, bytes } = await compressShareAdaptive(binary);
-	const prefix =
-		version === SHARE_LINK_VERSION_DEFLATE ? SHARE_LINK_PREFIX_DEFLATE : SHARE_LINK_PREFIX;
-	return `${prefix}${bytesToBase64Url(bytes)}`;
-}
-
-function parseShareLinkVersion(payload: string): { version: number; encoded: string } | null {
-	const dot = payload.indexOf('.');
-	if (dot <= 0) return null;
-	const v = Number(payload.slice(0, dot));
-	if (!Number.isInteger(v) || v < 1) return null;
-	return { version: v, encoded: payload.slice(dot + 1) };
+	return `${SHARE_LINK_PREFIX}${bytesToBase64Url(await compressShare(binary))}`;
 }
 
 export async function decodeSharePayload(
@@ -75,17 +61,13 @@ export async function decodeSharePayload(
 	if (normalized.length > MAX_SHARE_PAYLOAD_CHARS) {
 		return shareFailure(labels['share.error.corrupted']);
 	}
-	const parsed = parseShareLinkVersion(normalized);
-	if (
-		!parsed ||
-		(parsed.version !== SHARE_LINK_VERSION_BROTLI && parsed.version !== SHARE_LINK_VERSION_DEFLATE)
-	) {
+	if (!normalized.startsWith(SHARE_LINK_PREFIX)) {
 		return shareFailure(labels['share.error.unsupported']);
 	}
 
 	try {
-		const compressed = base64UrlToBytes(parsed.encoded);
-		const decompressed = await decompressShareAdaptive(parsed.version, compressed);
+		const compressed = base64UrlToBytes(normalized.slice(SHARE_LINK_PREFIX.length));
+		const decompressed = await decompressShare(compressed);
 		const verified = verifyAndStripCrc32(decompressed);
 		if (!verified) throw new ShareBinaryDecodeError('checksum mismatch');
 		return shareSuccess(decodeBinaryToTimetable(verified));
@@ -125,10 +107,7 @@ export async function estimateShareLinkLength(timetable: Timetable): Promise<num
 }
 
 function isValidSharePayloadFormat(payload: string): boolean {
-	const dot = payload.indexOf('.');
-	if (dot <= 0) return false;
-	const v = Number(payload.slice(0, dot));
-	return v === SHARE_LINK_VERSION_BROTLI || v === SHARE_LINK_VERSION_DEFLATE;
+	return payload.startsWith(SHARE_LINK_PREFIX);
 }
 
 /**

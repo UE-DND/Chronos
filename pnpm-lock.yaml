@@ -365,10 +365,6 @@ importers:
       '@chronos/ui-kit':
         specifier: workspace:*
         version: link:../../ui-kit
-    optionalDependencies:
-      brotli-wasm:
-        specifier: ^3.0.1
-        version: 3.0.1
 
   packages/plugins/error-log:
     dependencies:
@@ -2645,10 +2641,6 @@ packages:
   brace-expansion@5.0.12:
     resolution: {integrity: sha512-YovQ3rzhaLMIrDjNDMkNS01tea93qhEhG5xy8f6+R0l+dw3Ki+5sCoIoI942iuLZTHWogWktgwVDhU09iNEimQ==}
     engines: {node: 20 || >=22}
-
-  brotli-wasm@3.0.1:
-    resolution: {integrity: sha512-U3K72/JAi3jITpdhZBqzSUq+DUY697tLxOuFXB+FpAE/Ug+5C3VZrv4uA674EUZHxNAuQ9wETXNqQkxZD6oL4A==}
-    engines: {node: '>=v18.0.0'}
 
   browserslist@4.29.0:
     resolution: {integrity: sha512-3GSvyjvDI4Dur1Meg2BekJquu5uF+9R9a1+5M1Mde192eZoXbeXjzgOsgqPS2V8D5wrrip0gR5Hf/GhWQ9ZzaA==}
@@ -6062,9 +6054,6 @@ snapshots:
   brace-expansion@5.0.12:
     dependencies:
       balanced-match: 4.0.4
-
-  brotli-wasm@3.0.1:
-    optional: true
 
   browserslist@4.29.0:
     dependencies:

@@ -16,7 +16,7 @@ import {
 	extractSharePayloadFromLocation,
 	extractSharePayloadFromText,
 	formatShareClipboardText,
-	SHARE_LINK_PREFIX_DEFLATE
+	SHARE_LINK_PREFIX
 } from '../src/share-link/chronos-share-link-codec';
 import { SHARE_CODEC_MESSAGES } from '../src/messages';
 
@@ -269,7 +269,7 @@ describe('chronos-share-link-codec', () => {
 	it('round-trips share payload and link', async () => {
 		const timetable = sampleTimetable();
 		const payload = await encodeSharePayload(timetable);
-		expect(payload.startsWith(SHARE_LINK_PREFIX_DEFLATE)).toBe(true);
+		expect(payload.startsWith('1.')).toBe(true);
 
 		const decoded = await decodeSharePayload(payload);
 		expect(decoded.ok).toBe(true);
@@ -280,6 +280,18 @@ describe('chronos-share-link-codec', () => {
 
 		const link = await encodeShareLink(timetable, 'https://chronos.test');
 		expect(link).toBe(`https://chronos.test/s#${payload}`);
+	});
+
+	it('rejects other versions of an otherwise valid payload', async () => {
+		const payload = await encodeSharePayload(sampleTimetable());
+		for (const prefix of ['2.', '3.', '01.', '1e0.']) {
+			const candidate = prefix + payload.slice(payload.indexOf('.') + 1);
+			expect(await decodeSharePayload(candidate)).toEqual({
+				ok: false,
+				errorMessage: SHARE_CODEC_MESSAGES['zh-cn']['share.error.unsupported']
+			});
+			expect(extractSharePayloadFromText(candidate)).toBeNull();
+		}
 	});
 
 	it('rejects invalid versions and truncated payloads', async () => {
@@ -303,10 +315,10 @@ describe('chronos-share-link-codec', () => {
 
 	it('rejects checksum mismatches with a clear message', async () => {
 		const payload = await encodeSharePayload(sampleTimetable());
-		const compressed = base64UrlToTestBytes(payload.slice(SHARE_LINK_PREFIX_DEFLATE.length));
+		const compressed = base64UrlToTestBytes(payload.slice(SHARE_LINK_PREFIX.length));
 		const inflated = await inflateRaw(compressed);
 		inflated[inflated.length - 1]! ^= 0x01;
-		const tampered = `${SHARE_LINK_PREFIX_DEFLATE}${bytesToTestBase64Url(await deflateRaw(inflated))}`;
+		const tampered = `${SHARE_LINK_PREFIX}${bytesToTestBase64Url(await deflateRaw(inflated))}`;
 		const decoded = await decodeSharePayload(tampered);
 
 		expect(decoded.ok).toBe(false);
@@ -315,7 +327,7 @@ describe('chronos-share-link-codec', () => {
 	});
 
 	it('rejects oversized payloads without decoding', async () => {
-		const bomb = `2.${'A'.repeat(70_000)}`;
+		const bomb = `1.${'A'.repeat(70_000)}`;
 		const decoded = await decodeSharePayload(bomb);
 
 		expect(decoded.ok).toBe(false);
@@ -326,7 +338,7 @@ describe('chronos-share-link-codec', () => {
 	it('rejects decompression bombs that exceed the output cap', async () => {
 		const repetitive = new Uint8Array(300_000).fill(0x41);
 		const { bytesToBase64Url } = await import('@chronos/codec-kit');
-		const bomb = `2.${bytesToBase64Url(await deflateRaw(repetitive))}`;
+		const bomb = `1.${bytesToBase64Url(await deflateRaw(repetitive))}`;
 		expect(bomb.length).toBeLessThan(65_536);
 		const decoded = await decodeSharePayload(bomb);
 
