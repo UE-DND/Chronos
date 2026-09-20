@@ -16,7 +16,6 @@ export function createClockPlugin(options: CreateClockPluginOptions = {}) {
 		id: CLOCK_PLUGIN_ID,
 		messages: CLOCK_MESSAGES,
 		nameKey: 'plugin.name',
-		descriptionKey: 'plugin.description',
 		category: 'tool',
 		toolGroup: 'dev',
 		order: 55,

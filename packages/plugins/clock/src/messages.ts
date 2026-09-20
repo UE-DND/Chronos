@@ -3,7 +3,6 @@ import type { PluginMessageCatalog } from '@chronos/core';
 export const CLOCK_MESSAGES = {
 	'zh-cn': {
 		'plugin.name': '自定义时间',
-		'plugin.description': '冻结课表当前日期和时间',
 		'mine.title': '自定义时间',
 		'mine.keywords': '时间,日期,冻结,时钟,调试,预览,clock,time,date',
 		'screen.title': '自定义时间',
@@ -30,7 +29,6 @@ export const CLOCK_MESSAGES = {
 	},
 	en: {
 		'plugin.name': 'Custom Date & Time',
-		'plugin.description': "Freeze the timetable's current date and time",
 		'mine.title': 'Custom date & time',
 		'mine.keywords': 'time,date,freeze,clock,debug,preview',
 		'screen.title': 'Custom Date & Time',

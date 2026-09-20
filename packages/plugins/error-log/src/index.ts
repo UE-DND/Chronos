@@ -15,7 +15,6 @@ export function createErrorLogPlugin(options: CreateErrorLogPluginOptions = {}) 
 		id: ERROR_LOG_PLUGIN_ID,
 		messages: ERROR_LOG_MESSAGES,
 		nameKey: 'plugin.name',
-		descriptionKey: 'plugin.description',
 		category: 'tool',
 		toolGroup: 'dev',
 		order: 50,

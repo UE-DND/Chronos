@@ -83,10 +83,7 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 		toolGroup: 'dev',
 		sourceDir: 'error-log',
 		name: { 'zh-CN': '错误日志', en: 'Error Log' },
-		description: {
-			'zh-CN': '记录未处理异常与 console.error，便于排查问题',
-			en: 'Capture unhandled errors and console.error'
-		},
+		description: {},
 		entry: resolve(root, 'packages/plugins/error-log/bundle/entry.ts')
 	},
 	{
@@ -95,10 +92,7 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 		toolGroup: 'dev',
 		sourceDir: 'clock',
 		name: { 'zh-CN': '自定义时间', en: 'Custom Date & Time' },
-		description: {
-			'zh-CN': '冻结课表当前日期和时间',
-			en: "Freeze the timetable's current date and time"
-		},
+		description: {},
 		entry: resolve(root, 'packages/plugins/clock/bundle/entry.ts')
 	}
 ];

@@ -3,7 +3,6 @@ import type { PluginMessageCatalog } from '@chronos/core';
 export const ERROR_LOG_MESSAGES = {
 	'zh-cn': {
 		'plugin.name': '错误日志',
-		'plugin.description': '记录未处理异常与 console.error，便于排查问题',
 		'mine.title': '错误日志',
 		'mine.keywords': '错误,日志,异常,console,error,log,debug',
 		'screen.title': '错误日志',
@@ -17,7 +16,6 @@ export const ERROR_LOG_MESSAGES = {
 	},
 	en: {
 		'plugin.name': 'Error Log',
-		'plugin.description': 'Capture unhandled errors and console.error for debugging',
 		'mine.title': 'Error Log',
 		'mine.keywords': 'error,log,exception,console,debug',
 		'screen.title': 'Error Log',
