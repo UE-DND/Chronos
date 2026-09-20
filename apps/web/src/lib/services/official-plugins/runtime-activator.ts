@@ -1,3 +1,4 @@
+import { ImageRepository } from '$lib/storage/image-repository';
 import type { ChronosEngine, Disposable } from '@chronos/core';
 import {
 	createIconThemeFromJson,
@@ -19,7 +20,8 @@ export class OfficialPluginRuntimeActivator {
 
 	constructor(
 		private readonly engine: ChronosEngine,
-		private readonly isInstalled: (pluginId: string) => boolean
+		private readonly isInstalled: (pluginId: string) => boolean,
+		private readonly images = new ImageRepository()
 	) {}
 
 	isActive(pluginId: string): boolean {
@@ -34,7 +36,7 @@ export class OfficialPluginRuntimeActivator {
 
 		const disposables: Disposable[] = [];
 		try {
-			disposables.push(...this.activateThemeAssets(record));
+			disposables.push(...(await this.activateThemeAssets(record)));
 			disposables.push(...(await this.activateBundledPlugin(record)));
 
 			const composite: Disposable = {
@@ -53,26 +55,36 @@ export class OfficialPluginRuntimeActivator {
 		}
 	}
 
-	private activateThemeAssets(record: InstalledOfficialPluginRecord): Disposable[] {
+	private async activateThemeAssets(record: InstalledOfficialPluginRecord): Promise<Disposable[]> {
 		const manifest = record.manifest;
 		if (!record.colorsJson && !record.iconThemeJson) return [];
 
+		// Parse all resources before registering either contribution, so invalid icons
+		// cannot leave the new color theme registered during an update rollback.
+		const colorTheme = record.colorsJson
+			? createThemeFromColorJson(parseColorThemeJson(JSON.parse(record.colorsJson)))
+			: undefined;
+		const iconTheme = record.iconThemeJson
+			? createIconThemeFromJson(parseIconThemeJson(JSON.parse(record.iconThemeJson)))
+			: undefined;
 		const disposables: Disposable[] = [];
-		if (record.colorsJson) {
+		if (colorTheme) {
+			const wallpaper = record.wallpaperAssetId
+				? await this.images.get(record.wallpaperAssetId)
+				: undefined;
+			if (record.wallpaperAssetId && !wallpaper) throw new Error('Missing cached theme wallpaper');
 			disposables.push(
 				this.engine.themes.registerTheme(
-					createThemeFromColorJson(parseColorThemeJson(JSON.parse(record.colorsJson))),
+					{
+						...colorTheme,
+						...(wallpaper ? { wallpaper } : {})
+					},
 					manifest.id
 				)
 			);
 		}
-		if (record.iconThemeJson) {
-			disposables.push(
-				this.engine.iconThemes.registerIconTheme(
-					createIconThemeFromJson(parseIconThemeJson(JSON.parse(record.iconThemeJson))),
-					manifest.id
-				)
-			);
+		if (iconTheme) {
+			disposables.push(this.engine.iconThemes.registerIconTheme(iconTheme, manifest.id));
 		}
 		return disposables;
 	}
@@ -105,7 +117,7 @@ export class OfficialPluginRuntimeActivator {
 		}
 		this.cssInjector.remove(pluginId);
 		if (options?.revertThemes && this.isInstalled(pluginId)) {
-			void this.engine.revertToDefaultThemes();
+			await this.engine.revertToDefaultThemes();
 		}
 	}
 

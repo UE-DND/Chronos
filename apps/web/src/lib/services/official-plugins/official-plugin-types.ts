@@ -4,6 +4,7 @@ export const OFFICIAL_PLUGINS_PLUGIN_ID = 'core.official-plugins';
 export const INSTALLED_STORAGE_KEY = 'installed_plugins';
 
 export interface InstalledOfficialPluginRecord {
+	wallpaperAssetId?: string;
 	manifest: PluginManifest;
 	code?: string | null;
 	colorsJson?: string | null;
@@ -15,6 +16,7 @@ export interface InstalledOfficialPluginRecord {
 }
 
 export interface OfficialPluginAssets {
+	wallpaper?: Blob;
 	code?: string | null;
 	colorsJson?: string | null;
 	iconThemeJson?: string | null;

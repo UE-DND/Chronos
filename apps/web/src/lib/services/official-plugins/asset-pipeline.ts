@@ -1,3 +1,6 @@
+import { parseColorThemeJson } from '@chronos/core';
+import { validateImage } from '$lib/wallpaper/validate-image';
+import { resolveManifestAssetUrl } from './manifest-url';
 import type { PluginManifest } from '@chronos/core';
 import type { ChronosEngine } from '@chronos/core';
 import type { OfficialPluginAssets } from './official-plugin-types';
@@ -102,7 +105,39 @@ export class OfficialPluginAssetPipeline {
 			percent: 85
 		});
 
-		return { code, colorsJson, iconThemeJson, cssCode };
+		const wallpaper = await this.downloadThemeWallpaper(
+			colorsJson,
+			resolvedManifest.colorsUrl,
+			options?.signal
+		);
+		return { code, colorsJson, iconThemeJson, cssCode, ...(wallpaper ? { wallpaper } : {}) };
+	}
+
+	async downloadThemeWallpaper(
+		colorsJson: string | null,
+		colorsUrl?: string,
+		signal?: AbortSignal
+	): Promise<Blob | undefined> {
+		if (!colorsJson) return undefined;
+		const raw = JSON.parse(colorsJson);
+		if (!raw.wallpaper) return undefined;
+		const asset = parseColorThemeJson(raw).wallpaper!;
+		if (!colorsUrl) throw new Error('Theme wallpaper requires a colors URL');
+		const url = resolveManifestAssetUrl(colorsUrl, asset.url);
+		const response = await this.engine.http.request(withIntegrityBust(url, asset.sha256), {
+			method: 'GET',
+			signal
+		});
+		if (!response.ok) throw new Error('Failed to download theme wallpaper');
+		const bytes = await response.bytes();
+		signal?.throwIfAborted();
+		const hash = await this.engine.runtime.sha256(bytes);
+		if (hash.toLowerCase() !== asset.sha256.toLowerCase())
+			throw new Error('Theme wallpaper integrity check failed');
+		const blob = new Blob([new Uint8Array(bytes)]);
+		await validateImage(blob);
+		signal?.throwIfAborted();
+		return blob;
 	}
 
 	private async downloadTextAsset(

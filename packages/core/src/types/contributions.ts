@@ -22,6 +22,8 @@ export interface ThemeContribution {
 	readonly description?: LocalizedText;
 	readonly disabled?: boolean | (() => boolean);
 	readonly supportsDynamicColor?: boolean;
+	/** Optional decoded image asset; the host owns its display and object URL. */
+	readonly wallpaper?: Blob;
 	readonly className?: string;
 	readonly workbenchColors: ThemeWorkbenchColors;
 	readonly recommendedIconTheme?: string;

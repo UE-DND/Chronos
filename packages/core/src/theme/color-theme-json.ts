@@ -5,6 +5,7 @@ import { validateWorkbenchColors } from './workbench-colors';
 export type ColorThemeJsonCoursePalette = Record<'light' | 'dark', readonly CoursePaletteEntry[]>;
 
 export interface ColorThemeJson {
+	wallpaper?: { url: string; sha256: string };
 	id: string;
 	name: Record<string, string> | string;
 	description?: Record<string, string> | string;
@@ -32,6 +33,19 @@ export function parseColorThemeJson(raw: unknown): ColorThemeJson {
 	const variants = data.variants as Record<string, unknown>;
 	if (!variants.light || !variants.dark) {
 		throw new Error('Invalid color theme JSON: variants must include light and dark');
+	}
+	if (data.wallpaper !== undefined) {
+		const image = data.wallpaper as Record<string, unknown> | null;
+		if (
+			!image ||
+			typeof image !== 'object' ||
+			typeof image.url !== 'string' ||
+			!image.url.trim() ||
+			typeof image.sha256 !== 'string' ||
+			!/^[a-f0-9]{64}$/i.test(image.sha256)
+		) {
+			throw new Error('Invalid theme wallpaper: require url and SHA-256');
+		}
 	}
 	return data as unknown as ColorThemeJson;
 }

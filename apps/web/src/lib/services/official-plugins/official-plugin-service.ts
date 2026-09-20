@@ -1,3 +1,5 @@
+import { ImageRepository } from '$lib/storage/image-repository';
+import { resolveManifestForDownload } from './manifest-url';
 import { hostT } from '$lib/i18n/host-i18n.svelte';
 import type { ChronosEngine, Disposable, PluginManifest } from '@chronos/core';
 import { PLUGIN_CONFIG_STORAGE_KEY } from '@chronos/core';
@@ -36,6 +38,7 @@ export interface OfficialPluginServiceDeps {
 	runtimeActivator: OfficialPluginRuntimeActivator;
 	installQueue?: OfficialPluginInstallQueue;
 	hostVersion?: string;
+	images?: ImageRepository;
 }
 
 function createOfficialPluginServiceDeps(engine: ChronosEngine): OfficialPluginServiceDeps {
@@ -52,6 +55,7 @@ function createOfficialPluginServiceDeps(engine: ChronosEngine): OfficialPluginS
 }
 
 export class OfficialPluginService implements Disposable {
+	private readonly images: ImageRepository;
 	private initialized = false;
 	private disposed = false;
 	private readonly hotUpdates = new Map<
@@ -71,6 +75,7 @@ export class OfficialPluginService implements Disposable {
 		deps?: OfficialPluginServiceDeps
 	) {
 		const resolved = deps ?? createOfficialPluginServiceDeps(engine);
+		this.images = resolved.images ?? new ImageRepository();
 		this.catalogClient = resolved.catalogClient;
 		this.assetPipeline = resolved.assetPipeline;
 		this.installedStore = resolved.installedStore;
@@ -192,8 +197,8 @@ export class OfficialPluginService implements Disposable {
 		const candidate: InstalledOfficialPluginRecord = {
 			...existing,
 			manifest: nextManifest as InstalledOfficialPluginRecord['manifest'],
-			code: isTheme ? null : data.code,
-			cssCode: isTheme ? null : data.cssCode,
+			code: data.code,
+			cssCode: data.cssCode,
 			colorsJson: isTheme ? data.colorsJson : null,
 			iconThemeJson: isTheme ? data.iconThemeJson : null
 		};
@@ -203,11 +208,24 @@ export class OfficialPluginService implements Disposable {
 		const signal = options?.signal
 			? AbortSignal.any([options.signal, controller.signal])
 			: controller.signal;
-		const settled = this.replacePluginAssets(candidate, {
-			preserveInstalledAt: true,
-			signal,
-			revertThemesOnDeactivate: false
-		});
+		const resolvedManifest = resolveManifestForDownload(candidate.manifest, candidate.manifestUrl);
+		const settled = (async () => {
+			const wallpaper =
+				candidate.colorsJson && JSON.parse(candidate.colorsJson).wallpaper
+					? await this.assetPipeline.downloadThemeWallpaper(
+							candidate.colorsJson,
+							resolvedManifest.colorsUrl,
+							signal
+						)
+					: undefined;
+			signal.throwIfAborted();
+			return this.replacePluginAssets(candidate, {
+				wallpaper,
+				preserveInstalledAt: true,
+				signal,
+				revertThemesOnDeactivate: false
+			});
+		})();
 		const update = { controller, settled };
 		this.hotUpdates.set(data.id, update);
 		try {
@@ -217,23 +235,40 @@ export class OfficialPluginService implements Disposable {
 		}
 	}
 
-	private replacePluginAssets(
+	private async replacePluginAssets(
 		candidate: InstalledOfficialPluginRecord,
 		options?: {
 			preserveInstalledAt?: boolean;
 			revertThemesOnDeactivate?: boolean;
 			signal?: AbortSignal;
+			wallpaper?: Blob;
 		}
 	): Promise<InstalledOfficialPluginRecord> {
-		return replacePluginAssets(
-			{
-				installedStore: this.installedStore,
-				runtimeActivator: this.runtimeActivator,
-				isDisposed: () => this.disposed
-			},
-			candidate,
-			options
-		);
+		const previous = this.installedStore.find(candidate.manifest.id);
+		const id = options?.wallpaper
+			? `theme:${candidate.manifest.id}:${crypto.randomUUID()}`
+			: undefined;
+		if (id && options?.wallpaper) await this.images.put(id, options.wallpaper);
+		const next = { ...candidate, wallpaperAssetId: id };
+		let result: InstalledOfficialPluginRecord;
+		try {
+			result = await replacePluginAssets(
+				{
+					installedStore: this.installedStore,
+					runtimeActivator: this.runtimeActivator,
+					isDisposed: () => this.disposed
+				},
+				next,
+				options
+			);
+		} catch (error) {
+			if (id) await this.images.delete(id).catch(console.error);
+			throw error;
+		}
+		if (previous?.wallpaperAssetId && previous.wallpaperAssetId !== id) {
+			await this.images.delete(previous.wallpaperAssetId).catch(console.error);
+		}
+		return result;
 	}
 
 	async install(
@@ -279,8 +314,9 @@ export class OfficialPluginService implements Disposable {
 			options?.onProgress?.({ stage: 'installing', percent: 96 });
 
 			await this.replacePluginAssets(record, {
+				wallpaper: assets.wallpaper,
 				preserveInstalledAt: Boolean(existingSnapshot),
-				revertThemesOnDeactivate: true,
+				revertThemesOnDeactivate: false,
 				signal
 			});
 
@@ -311,7 +347,9 @@ export class OfficialPluginService implements Disposable {
 	async uninstall(pluginId: string): Promise<void> {
 		await this.cancelHotUpdate(pluginId);
 		await this.runtimeActivator.deactivate(pluginId, { revertThemes: true });
+		const record = this.installedStore.find(pluginId);
 		await this.installedStore.remove(pluginId);
+		if (record?.wallpaperAssetId) await this.images.delete(record.wallpaperAssetId);
 		await this.engine.storage.clearPluginData?.(pluginId);
 		this.installQueue.clearFinished(pluginId);
 		this.engine.notify(hostT('plugins.notify.uninstalled', { pluginId }), 'info');
