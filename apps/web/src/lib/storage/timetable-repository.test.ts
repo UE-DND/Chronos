@@ -55,7 +55,7 @@ function createMockDb(): ChronosDB {
 describe('TimetableRepository', () => {
 	it('returns null when getTimetable read fails', async () => {
 		const database = createMockDb();
-		vi.mocked(database.timetables.get).mockRejectedValueOnce(new Error('idb unavailable'));
+		vi.spyOn(database.timetables, 'get').mockRejectedValueOnce(new Error('idb unavailable'));
 		const repo = new TimetableRepository(database);
 
 		await expect(repo.getTimetable('missing')).resolves.toBeNull();
@@ -63,7 +63,7 @@ describe('TimetableRepository', () => {
 
 	it('returns empty list when listTimetables read fails', async () => {
 		const database = createMockDb();
-		vi.mocked(database.timetables.orderBy).mockImplementationOnce(() => {
+		vi.spyOn(database.timetables, 'orderBy').mockImplementationOnce(() => {
 			throw new Error('idb unavailable');
 		});
 		const repo = new TimetableRepository(database);
@@ -73,7 +73,7 @@ describe('TimetableRepository', () => {
 
 	it('propagates saveTimetable write failures', async () => {
 		const database = createMockDb();
-		vi.mocked(database.transaction).mockRejectedValueOnce(new Error('write failed'));
+		vi.spyOn(database, 'transaction').mockRejectedValueOnce(new Error('write failed'));
 		const repo = new TimetableRepository(database);
 		const timetable = createTimetable({
 			id: 'tt-1',
