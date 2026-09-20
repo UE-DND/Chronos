@@ -142,11 +142,11 @@ export function createAppShell() {
 		await controller.updatePreferences(patch);
 	}
 
-	async function setColorScheme(schemeId: string) {
+	async function setColorScheme(schemeId: string, wallpaperColorEnabled = false) {
 		const themeId = resolveColorSchemeThemeId(schemeId);
 		if (!engine.themes.getTheme(themeId)) return;
 		controller.setTheme(themeId);
-		await updatePreferences({ visualThemeId: themeId });
+		await updatePreferences({ visualThemeId: themeId, wallpaperColorEnabled });
 	}
 
 	async function setVisualTheme(themeId: string) {

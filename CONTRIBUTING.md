@@ -623,7 +623,7 @@ Chronos 的主题体系由「配色主题 + 派生图标主题」组成。类型
 
 - `visualThemeId`：选择的配色主题 ID，同时决定推荐图标。
 - `wallpaperSource`：壁纸来源，与配色主题独立。
-- `wallpaperColorEnabled`：宿主取色开关，默认关闭，仅默认内置主题生效；插件主题下停用但保留偏好。
+- `wallpaperColorEnabled`：宿主取色选项，默认关闭；与默认配色、插件主题在配色方案中互斥选择，选择取色时使用默认内置主题。
 - 不再存在 `paletteMode`、插件动态取色适配器及 `dynamicColor:*` 广播。按本次变更约定不提供旧数据迁移，用户自行清空旧数据。
 
 详见 [ADR 0040](.agents/docs/adr/0040-host-wallpaper-and-theme-assets.md)。

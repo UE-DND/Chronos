@@ -1,5 +1,5 @@
 export const en = {
-	'wallpaper.preview.title': 'Wallpaper preview & crop',
+	'wallpaper.preview.title': 'Choose wallpaper',
 	'wallpaper.preview.description': 'Preview your timetable, choose, crop or delete a custom image',
 	'wallpaper.settings.saveFailed': 'Could not save settings. Please try again.',
 	'wallpaper.screen.title': 'Set timetable wallpaper',
@@ -22,8 +22,6 @@ export const en = {
 	'wallpaper.source.label': 'Wallpaper source',
 	'wallpaper.colors.title': 'Colors from wallpaper',
 	'wallpaper.colors.description': 'Use the current wallpaper to color the default theme',
-	'wallpaper.colors.unavailable':
-		'Unavailable with plugin themes; restored when using the default theme',
 	'wallpaper.item': 'Wallpaper & themes',
 
 	// shell (core navigation)

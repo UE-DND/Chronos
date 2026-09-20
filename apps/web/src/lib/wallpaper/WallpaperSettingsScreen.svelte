@@ -12,12 +12,15 @@
 	import { trackEvent } from '$lib/client/analytics';
 	import { haptic } from '$lib/haptic/haptic';
 	import Radio from '$lib/components/ui/Radio.svelte';
-	import Switch from '$lib/components/ui/Switch.svelte';
 	import MineSection from '$lib/components/mine/MineSection.svelte';
 	import MineRow from '$lib/components/mine/MineRow.svelte';
 	let { shell }: { shell: AppShellController } = $props();
 	const visualThemeId = $derived(shell.controller.activeThemeId);
 	const activeColorSchemeId = $derived(resolveColorSchemeId(visualThemeId));
+	const wallpaperColorsSelected = $derived(
+		visualThemeId === DEFAULT_VISUAL_THEME_ID &&
+			(shell.controller.userPreferences?.wallpaperColorEnabled ?? false)
+	);
 	const activeLocale = $derived(normalizeAppLocale(shell.controller.currentLocale));
 	const source = $derived(shell.controller.userPreferences?.wallpaperSource ?? 'theme');
 	const sources = ['none', 'custom', 'theme'] as const;
@@ -61,12 +64,13 @@
 		return [...builtin, ...pluginThemes];
 	});
 
-	async function selectColorScheme(schemeId: string) {
+	async function selectColorScheme(schemeId: string, wallpaperColorEnabled = false) {
 		const option = colorSchemeOptions.find((entry) => entry.id === schemeId);
 		if (!option || option.disabled) return;
 		haptic.light();
 		trackEvent('settings_color_scheme_change', { schemeId });
-		await shell.setColorScheme(schemeId);
+		trackEvent('wallpaper_colors_change', { enabled: wallpaperColorEnabled });
+		await shell.setColorScheme(schemeId, wallpaperColorEnabled);
 	}
 </script>
 
@@ -84,22 +88,15 @@
 			</MineRow>
 		{/each}
 	</MineSection>
-	<MineSection>
-		<MineRow
-			href="/wallpaper/preview"
-			title={hostT('wallpaper.preview.title')}
-			supporting={hostT('wallpaper.preview.description')}
-		/>
-	</MineSection>
+	{#if source === 'custom'}
+		<MineSection>
+			<MineRow href="/wallpaper/preview" title={hostT('wallpaper.preview.title')} />
+		</MineSection>
+	{/if}
 	<MineSection title={hostT('display.section.colorScheme')}>
 		{#each colorSchemeOptions as option (option.id)}
-			{@const selected = activeColorSchemeId === option.id}
-			<MineRow
-				label={true}
-				title={option.label}
-				supporting={option.description}
-				onclick={() => !option.disabled && selectColorScheme(option.id)}
-			>
+			{@const selected = !wallpaperColorsSelected && activeColorSchemeId === option.id}
+			<MineRow label={true} title={option.label} supporting={option.description}>
 				{#snippet trailing()}
 					<Radio
 						name="color-scheme"
@@ -110,27 +107,12 @@
 				{/snippet}
 			</MineRow>
 		{/each}
-	</MineSection>
-
-	<MineSection>
-		<MineRow
-			label
-			title={hostT('wallpaper.colors.title')}
-			supporting={hostT(
-				visualThemeId === DEFAULT_VISUAL_THEME_ID
-					? 'wallpaper.colors.description'
-					: 'wallpaper.colors.unavailable'
-			)}
-		>
+		<MineRow label title={hostT('wallpaper.colors.title')}>
 			{#snippet trailing()}
-				<Switch
-					checked={shell.controller.userPreferences?.wallpaperColorEnabled ?? false}
-					disabled={visualThemeId !== DEFAULT_VISUAL_THEME_ID}
-					onCheckedChange={(enabled) => {
-						if (visualThemeId !== DEFAULT_VISUAL_THEME_ID) return;
-						trackEvent('wallpaper_colors_change', { enabled });
-						void shell.updatePreferences({ wallpaperColorEnabled: enabled });
-					}}
+				<Radio
+					name="color-scheme"
+					checked={wallpaperColorsSelected}
+					onchange={() => selectColorScheme(BUILTIN_COLOR_SCHEME_VIBRANT, true)}
 				/>
 			{/snippet}
 		</MineRow>

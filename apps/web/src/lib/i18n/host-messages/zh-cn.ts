@@ -1,5 +1,5 @@
 export const zhCn = {
-	'wallpaper.preview.title': '壁纸预览与裁剪',
+	'wallpaper.preview.title': '选择壁纸',
 	'wallpaper.preview.description': '查看课表效果，选择、裁剪或删除自定义图片',
 	'wallpaper.settings.saveFailed': '设置保存失败，请重试',
 	'wallpaper.screen.title': '设置课表壁纸',
@@ -22,7 +22,6 @@ export const zhCn = {
 	'wallpaper.source.label': '壁纸来源',
 	'wallpaper.colors.title': '从壁纸取色',
 	'wallpaper.colors.description': '使用当前壁纸调整默认主题配色',
-	'wallpaper.colors.unavailable': '使用插件主题时不可取色，切回默认主题后恢复',
 	'wallpaper.item': '壁纸与主题',
 
 	// shell (core navigation)
