@@ -324,11 +324,7 @@ export class OfficialPluginService implements Disposable {
 
 			if (options?.silent) return;
 
-			if (manifest.type === 'theme') {
-				this.engine.notify(hostT('plugins.notify.themeInstalled'), 'info');
-			} else {
-				this.engine.notify(hostT('plugins.notify.installed', { pluginId: manifest.id }), 'info');
-			}
+			this.engine.notify(hostT('plugins.notify.installed', { pluginId: manifest.id }), 'info');
 		} catch (err: unknown) {
 			if (signal?.aborted || isAbortError(err)) {
 				throw new DOMException('Aborted', 'AbortError');
