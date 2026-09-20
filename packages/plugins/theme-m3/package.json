@@ -1,0 +1,12 @@
+{
+	"name": "@chronos/plugin-theme-m3",
+	"version": "0.1.0",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"dependencies": {
+		"@chronos/core": "workspace:*",
+		"@chronos/ui-kit": "workspace:*"
+	}
+}

@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vite-plus/test';
 import { createWorkbenchColorsFromTokens } from '@chronos/core/theme/workbench-colors';
-import { m3DefaultTheme } from '../src/theme/m3-default-theme';
 import { m3DefaultWorkbenchColors } from '../src/theme/m3-default-workbench.generated';
 import {
 	buildM3Tokens,
@@ -12,11 +11,11 @@ import {
 
 describe('M3DefaultTheme', () => {
 	it('generates light and dark workbench colors', () => {
-		const light = m3DefaultTheme.workbenchColors.light;
+		const light = m3DefaultWorkbenchColors.light;
 		expect(light['color.surface']).toBeDefined();
 		expect(light['color.primary']).toBeDefined();
 
-		const dark = m3DefaultTheme.workbenchColors.dark;
+		const dark = m3DefaultWorkbenchColors.dark;
 		expect(dark['color.surface']).toBeDefined();
 		expect(dark['color.primary']).toBeDefined();
 		expect(dark['color.surface']).not.toEqual(light['color.surface']);
@@ -45,7 +44,7 @@ describe('M3DefaultTheme', () => {
 	});
 
 	it('m3-default workbench colors match host surface overrides', () => {
-		const light = m3DefaultTheme.workbenchColors.light;
+		const light = m3DefaultWorkbenchColors.light;
 		expect(light['color.surface']).toBe(CHRONOS_HOST_COLORS.light.surface);
 		expect(light['color.canvas']).toBe(CHRONOS_HOST_COLORS.light.canvas);
 		expect(light['color.danger']).toBe(CHRONOS_HOST_COLORS.light.danger);

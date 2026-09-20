@@ -1,0 +1,71 @@
+{
+	"id": "m3-default",
+	"name": {
+		"zh-cn": "Material 3",
+		"en": "Material 3"
+	},
+	"variants": {
+		"light": {
+			"colors": {
+				"color.surface": "#ffffff",
+				"color.on-surface": "#2e333a",
+				"color.primary": "#416189",
+				"color.on-primary": "#f8f8ff",
+				"color.surface-variant": "#f2f3fa",
+				"color.outline": "#cbd5e1",
+				"color.surface-container-high": "#f1f5f9",
+				"color.outline-variant": "#e2e8f0",
+				"color.primary-dim": "#35557c",
+				"color.primary-container": "#a9c9f7",
+				"color.on-primary-container": "#204168",
+				"color.inverse-primary": "#a9c9f7",
+				"color.secondary": "#546071",
+				"color.secondary-dim": "#495465",
+				"color.on-secondary": "#f8f8ff",
+				"color.secondary-container": "#d8e3f8",
+				"color.on-secondary-container": "#475263",
+				"color.primary-container-subtle": "#c5dcff",
+				"color.on-primary-container-subtle": "#2e4e75",
+				"color.secondary-container-subtle": "#cfdbef",
+				"color.on-secondary-container-subtle": "#424d5e",
+				"color.canvas": "#f0f4f8",
+				"color.ink": "#0b1f33",
+				"color.border-subtle": "#d4e0eb",
+				"color.success": "#15803d",
+				"color.warning": "#b45309",
+				"color.danger": "#e60012"
+			}
+		},
+		"dark": {
+			"colors": {
+				"color.surface": "#1e2026",
+				"color.on-surface": "#e2e5ef",
+				"color.primary": "#b0c8ec",
+				"color.on-primary": "#2a415f",
+				"color.surface-variant": "#111418",
+				"color.outline": "#334155",
+				"color.surface-container-high": "#24262e",
+				"color.outline-variant": "#2e3038",
+				"color.primary-dim": "#a3bade",
+				"color.primary-container": "#3d5472",
+				"color.on-primary-container": "#d4e4ff",
+				"color.inverse-primary": "#496080",
+				"color.secondary": "#bcc7db",
+				"color.secondary-dim": "#aeb9cd",
+				"color.on-secondary": "#364151",
+				"color.secondary-container": "#313c4c",
+				"color.on-secondary-container": "#b4c0d4",
+				"color.primary-container-subtle": "#142d4a",
+				"color.on-primary-container-subtle": "#95adcf",
+				"color.secondary-container-subtle": "#222d3c",
+				"color.on-secondary-container-subtle": "#a0acbf",
+				"color.canvas": "#121316",
+				"color.ink": "#f8fafc",
+				"color.border-subtle": "#2e3038",
+				"color.success": "#4ade80",
+				"color.warning": "#fb923c",
+				"color.danger": "#e60012"
+			}
+		}
+	}
+}

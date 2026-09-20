@@ -4,7 +4,7 @@ import {
 	parseColorThemeJson,
 	type ThemeContribution
 } from '@chronos/core';
-import { m3DefaultTheme } from '@chronos/ui-kit';
+import { m3DefaultTheme } from '@chronos/plugin-theme-m3';
 describe('ThemeContribution', () => {
 	it('allows image contributions without any dynamic color adapter', () => {
 		const wallpaper = new Blob(['image']);

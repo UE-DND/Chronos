@@ -221,6 +221,9 @@ importers:
       '@chronos/plugin-codec-share':
         specifier: workspace:*
         version: link:../../packages/plugins/codec-share
+      '@chronos/plugin-theme-m3':
+        specifier: workspace:*
+        version: link:../../packages/plugins/theme-m3
       '@chronos/ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
@@ -396,6 +399,15 @@ importers:
       linkedom:
         specifier: ^0.18.13
         version: 0.18.13
+
+  packages/plugins/theme-m3:
+    dependencies:
+      '@chronos/core':
+        specifier: workspace:*
+        version: link:../../core
+      '@chronos/ui-kit':
+        specifier: workspace:*
+        version: link:../../ui-kit
 
   packages/plugins/theme-yumemita:
     devDependencies:

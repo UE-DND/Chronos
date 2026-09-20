@@ -15,6 +15,7 @@
 			"types": "./src/*",
 			"default": "./src/*"
 		},
+		"./theme/m3-default-workbench.generated": "./src/theme/m3-default-workbench.generated.ts",
 		"./theme/m3-theme": {
 			"types": "./src/theme/m3-theme.ts",
 			"import": "./src/theme/m3-theme.ts",

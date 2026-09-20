@@ -1,7 +1,6 @@
 /// <reference types="svelte" />
 export * from './reactivity/engine-controller.svelte';
 export type { ChronosUiController, ChronosUiSnapshot } from './reactivity/chronos-ui-controller';
-export { m3DefaultTheme } from './theme/m3-default-theme';
 export { default as SchemaForm } from './schema-form/SchemaForm.svelte';
 export { default as SegmentedControl } from './components/SegmentedControl.svelte';
 export type { Segment as SegmentedControlSegment } from './components/segmented-control';

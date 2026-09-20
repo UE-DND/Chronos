@@ -6,7 +6,7 @@ import {
 	buildGeneratedThemeInlineCss,
 	buildM3Tokens
 } from '@chronos/ui-kit/theme/m3-theme';
-import { writeIfChanged } from '../build-utils/write-if-changed';
+import { writeIfChanged } from '../build-utils/write-if-changed.ts';
 
 const themeDir = dirname(fileURLToPath(import.meta.url));
 const generatedThemePath = resolve(themeDir, 'generated-colors.css');
@@ -20,8 +20,25 @@ const generatedWorkbenchPath = fileURLToPath(
 	)
 );
 
+const generatedM3JsonPath = fileURLToPath(
+	new URL('../../../../../packages/plugins/theme-m3/theme-m3.colors.json', import.meta.url)
+);
+
 function writeGeneratedM3DefaultWorkbench(): void {
 	const workbench = createWorkbenchColorsFromTokens(buildM3Tokens('light'), buildM3Tokens('dark'));
+	writeIfChanged(
+		generatedM3JsonPath,
+		`${JSON.stringify(
+			{
+				id: 'm3-default',
+				name: { 'zh-cn': 'Material 3', en: 'Material 3' },
+				variants: { light: { colors: workbench.light }, dark: { colors: workbench.dark } }
+			},
+			null,
+			'\t'
+		)}\n`
+	);
+
 	writeIfChanged(
 		generatedWorkbenchPath,
 		`/* generated, do not edit */

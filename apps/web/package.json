@@ -15,6 +15,7 @@
 	},
 	"dependencies": {
 		"@chronos/core": "workspace:*",
+		"@chronos/plugin-theme-m3": "workspace:*",
 		"@chronos/plugin-codec-share": "workspace:*",
 		"@chronos/ui-kit": "workspace:*",
 		"@material-symbols-svg/svelte": "^0.14.0",

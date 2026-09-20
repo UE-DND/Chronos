@@ -171,8 +171,9 @@ export function designTokensToWorkbenchColors(
 ): Record<string, string> {
 	const colors: Record<string, string> = {};
 	for (const [key, value] of Object.entries(tokens)) {
-		if (typeof value === 'string' && value.length > 0) {
-			colors[tokenKeyToWorkbenchColorKey(key)] = value;
+		const colorKey = tokenKeyToWorkbenchColorKey(key);
+		if (isWorkbenchColorKey(colorKey) && typeof value === 'string' && value.length > 0) {
+			colors[colorKey] = value;
 		}
 	}
 	return colors;
