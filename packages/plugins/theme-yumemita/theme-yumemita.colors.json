@@ -3,6 +3,10 @@
 	"name": { "zh-CN": "YUMEMITA", "en": "YUMEMITA" },
 	"className": "theme-yumemita",
 	"recommendedIconTheme": "yumemita",
+	"wallpaper": {
+		"url": "./wallpaper.jpg",
+		"sha256": "7312605cef8ce963ad0dfa034412574eaa638edddecc9b317762ab492742dc0f"
+	},
 	"coursePalette": {
 		"light": [
 			{ "background": "#FFEE55", "foreground": "#1a1a1a" },
