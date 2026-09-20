@@ -899,6 +899,56 @@ describe('profile preinstallation lifecycle', () => {
 		engine.dispose();
 	});
 
+	it('keeps failed enables disabled and allows retry', async () => {
+		const { engine, service, profile, tool } = await setupProfile();
+		await service.prepareProfile({
+			...profile,
+			preinstall: [{ id: profile.defaultTheme.pluginId }]
+		});
+		await service.install(tool);
+		await service.disable(tool.id);
+		const load = vi
+			.spyOn(engine, 'loadPlugin')
+			.mockRejectedValueOnce(new Error('activation failed'));
+		await expect(service.enable(tool.id)).rejects.toThrow('activation failed');
+		expect(service.getInstalled(tool.id)?.enabled).toBe(false);
+		expect(service.isPluginActive(tool.id)).toBe(false);
+		const store = new OfficialPluginInstalledStore(engine);
+		await store.load();
+		expect(store.find(tool.id)?.enabled).toBe(false);
+		await service.enable(tool.id);
+		expect(service.isPluginActive(tool.id)).toBe(true);
+		expect(service.getInstalled(tool.id)?.enabled).toBe(true);
+		load.mockRestore();
+		service.dispose();
+		engine.dispose();
+	});
+
+	it('rolls back activation when persisting the enabled flag fails', async () => {
+		const { engine, service, profile, tool } = await setupProfile();
+		await service.prepareProfile({
+			...profile,
+			preinstall: [{ id: profile.defaultTheme.pluginId }]
+		});
+		await service.install(tool);
+		await service.disable(tool.id);
+		const load = vi
+			.spyOn(engine.storage, 'setPluginData')
+			.mockRejectedValueOnce(new Error('storage failed'));
+		await expect(service.enable(tool.id)).rejects.toThrow('storage failed');
+		expect(service.getInstalled(tool.id)?.enabled).toBe(false);
+		expect(service.isPluginActive(tool.id)).toBe(false);
+		const store = new OfficialPluginInstalledStore(engine);
+		await store.load();
+		expect(store.find(tool.id)?.enabled).toBe(false);
+		await service.enable(tool.id);
+		expect(service.isPluginActive(tool.id)).toBe(true);
+		expect(service.getInstalled(tool.id)?.enabled).toBe(true);
+		load.mockRestore();
+		service.dispose();
+		engine.dispose();
+	});
+
 	it('boots a non-M3 default first and shares records with market management', async () => {
 		const { engine, service } = await setupProfile();
 		expect(engine.state.activeThemeId).toBe('custom-default');

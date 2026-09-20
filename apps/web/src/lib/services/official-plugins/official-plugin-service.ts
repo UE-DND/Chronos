@@ -489,10 +489,12 @@ export class OfficialPluginService implements Disposable {
 		}
 		if (record.enabled && this.runtimeActivator.isActive(pluginId)) return;
 
-		await this.installedStore.setEnabled(pluginId, true);
-		const updated = this.installedStore.find(pluginId);
-		if (updated) {
-			await this.runtimeActivator.activate(updated);
+		await this.runtimeActivator.activate({ ...record, enabled: true });
+		try {
+			await this.installedStore.setEnabled(pluginId, true);
+		} catch (error) {
+			await this.runtimeActivator.deactivate(pluginId, { revertThemes: true });
+			throw error;
 		}
 		this.engine.notify(hostT('plugins.notify.enabled', { pluginId }), 'info');
 	}
