@@ -2,9 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createAppShell } from './app-shell.svelte';
 
 const mocks = vi.hoisted(() => ({
-	preferences: { timetableLayoutMode: 'compact' as 'compact' | 'fixed' },
+	preferences: {
+		timetableLayoutMode: 'compact' as 'compact' | 'fixed',
+		wallpaperSource: 'custom' as 'custom' | 'none' | 'theme',
+		wallpaperColorEnabled: true
+	},
 	updatePreferences: vi.fn().mockResolvedValue(undefined),
-	applyAppearance: vi.fn().mockResolvedValue(undefined)
+	applyAppearance: vi.fn().mockResolvedValue(undefined),
+	setTheme: vi.fn()
 }));
 
 vi.mock('$lib/appearance/appearance.svelte', () => ({
@@ -30,13 +35,16 @@ vi.mock('$lib/services/app-engine', () => ({
 		activeThemeId: 'm3-default',
 		currentTimetable: null,
 		timetables: [],
-		updatePreferences: mocks.updatePreferences
+		updatePreferences: mocks.updatePreferences,
+		setTheme: mocks.setTheme
 	}),
 	getAppEngine: () => ({
 		state: { activeThemeId: 'm3-default' },
+		defaultThemeId: 'm3-default',
 		events: { emit: vi.fn() },
 		on: () => ({ dispose: vi.fn() }),
-		themes: { getTheme: () => null }
+		themes: { getTheme: () => null, isSelectable: (id: string) => id === 'custom' },
+		resolveThemeId: () => 'm3-default'
 	}),
 	getSharedCoursePaletteRef: () => ({}),
 	notifyCoursePaletteChanged: vi.fn(),
@@ -108,5 +116,37 @@ describe('app shell timetable layout in compact landscape', () => {
 		expect(shell.state.compactLandscape).toBe(false);
 		expect(shell.state.effectiveTimetableLayoutMode).toBe('compact');
 		shell.destroy();
+	});
+});
+
+describe('theme selection and wallpaper color override', () => {
+	it.each(['none', 'theme'] as const)(
+		'closes wallpaper colors when source becomes %s',
+		async (wallpaperSource) => {
+			const shell = createAppShell();
+			await shell.updatePreferences({ wallpaperSource });
+			expect(mocks.updatePreferences).toHaveBeenLastCalledWith({
+				wallpaperSource,
+				wallpaperColorEnabled: false
+			});
+		}
+	);
+
+	it('closes wallpaper colors when switching away from the default theme', async () => {
+		mocks.updatePreferences.mockClear();
+		mocks.setTheme.mockClear();
+		const shell = createAppShell();
+		await shell.updatePreferences({ wallpaperColorEnabled: true });
+		expect(mocks.updatePreferences).toHaveBeenCalledWith({ wallpaperColorEnabled: true });
+		expect(mocks.setTheme).not.toHaveBeenCalled();
+		await shell.setVisualTheme('custom');
+		expect(mocks.updatePreferences).toHaveBeenLastCalledWith({
+			visualThemeId: 'custom',
+			wallpaperColorEnabled: false
+		});
+		expect(mocks.setTheme).toHaveBeenCalledWith('custom');
+		await shell.updatePreferences({ wallpaperColorEnabled: false });
+		expect(mocks.updatePreferences).toHaveBeenLastCalledWith({ wallpaperColorEnabled: false });
+		expect(mocks.setTheme).toHaveBeenCalledTimes(1);
 	});
 });

@@ -1,7 +1,6 @@
 import { createAppearance } from '$lib/appearance/appearance.svelte';
 import { createWallpaperController } from '$lib/wallpaper/wallpaper-controller.svelte';
 import { hostT } from '$lib/i18n/host-i18n.svelte';
-import { resolveColorSchemeThemeId } from '$lib/appearance/color-scheme';
 import { pwaInstallController } from '$lib/client/pwa-install.svelte';
 import {
 	getAppController,
@@ -17,7 +16,6 @@ import type {
 	UserPreferences
 } from '@chronos/core';
 import { applyReduceMotionClass } from '@chronos/ui-kit';
-import { DEFAULT_VISUAL_THEME_ID } from '@chronos/core';
 import { untrack } from 'svelte';
 
 function resolveDark(themeMode: ThemeMode, systemPrefersDark: boolean): boolean {
@@ -52,6 +50,19 @@ export function createAppShell() {
 		)
 	);
 	const hasWallpaper = $derived(Boolean(wallpaperUri));
+	function canUseWallpaperColors(
+		themeId: string | null,
+		source: UserPreferences['wallpaperSource'] | undefined
+	) {
+		return Boolean(themeId && themeId === engine.defaultThemeId && source === 'custom');
+	}
+	const wallpaperColorsAvailable = $derived.by(() => {
+		void controller.slotVersion;
+		return canUseWallpaperColors(
+			controller.activeThemeId,
+			controller.userPreferences?.wallpaperSource
+		);
+	});
 
 	function init() {
 		if (typeof window !== 'undefined' && !mediaQueryCleanup) {
@@ -83,8 +94,7 @@ export function createAppShell() {
 		disposeAppearanceEffects = $effect.root(() => {
 			$effect(() => {
 				void controller.slotVersion;
-				const preferred = controller.userPreferences?.visualThemeId ?? DEFAULT_VISUAL_THEME_ID;
-				const themeId = engine.themes.getTheme(preferred) ? preferred : DEFAULT_VISUAL_THEME_ID;
+				const themeId = engine.resolveThemeId(controller.userPreferences?.visualThemeId);
 				untrack(() => {
 					if (engine.state.activeThemeId !== themeId) engine.setTheme(themeId);
 				});
@@ -96,9 +106,23 @@ export function createAppShell() {
 				untrack(() => wallpaper.select(source, theme?.wallpaper));
 			});
 			$effect(() => {
+				const available = wallpaperColorsAvailable;
+				const enabled = controller.userPreferences?.wallpaperColorEnabled;
+				// Wait for profile assembly before correcting restored preferences.
+				if (controller.activeThemeId && engine.defaultThemeId && enabled && !available) {
+					untrack(
+						() =>
+							void updatePreferences({ wallpaperColorEnabled: false }).catch(() => {
+								controller.notify(hostT('wallpaper.settings.saveFailed'), 'error');
+							})
+					);
+				}
+			});
+			$effect(() => {
 				const dark = isDark;
 				void controller.slotVersion;
-				const wallpaperColorEnabled = controller.userPreferences?.wallpaperColorEnabled ?? false;
+				const wallpaperColorEnabled =
+					wallpaperColorsAvailable && (controller.userPreferences?.wallpaperColorEnabled ?? false);
 				const activeThemeId = controller.activeThemeId;
 
 				const theme = engine.themes.getTheme(activeThemeId);
@@ -139,17 +163,19 @@ export function createAppShell() {
 	}
 
 	async function updatePreferences(patch: Partial<UserPreferences>) {
-		await controller.updatePreferences(patch);
-	}
-
-	async function setColorScheme(schemeId: string, wallpaperColorEnabled = false) {
-		const themeId = resolveColorSchemeThemeId(schemeId);
-		if (!engine.themes.getTheme(themeId)) return;
-		controller.setTheme(themeId);
-		await updatePreferences({ visualThemeId: themeId, wallpaperColorEnabled });
+		const themeId = patch.visualThemeId ?? controller.activeThemeId;
+		const source = patch.wallpaperSource ?? controller.userPreferences?.wallpaperSource;
+		const enabled =
+			patch.wallpaperColorEnabled ?? controller.userPreferences?.wallpaperColorEnabled;
+		await controller.updatePreferences(
+			enabled && !canUseWallpaperColors(themeId, source)
+				? { ...patch, wallpaperColorEnabled: false }
+				: patch
+		);
 	}
 
 	async function setVisualTheme(themeId: string) {
+		if (!engine.themes.isSelectable(themeId)) return;
 		controller.setTheme(themeId);
 		await updatePreferences({ visualThemeId: themeId });
 	}
@@ -203,6 +229,7 @@ export function createAppShell() {
 				compactLandscape,
 				effectiveTimetableLayoutMode,
 				hasWallpaper,
+				wallpaperColorsAvailable,
 				wallpaperUri
 			};
 		},
@@ -217,7 +244,6 @@ export function createAppShell() {
 		destroy,
 		updatePreferences,
 		setThemeMode,
-		setColorScheme,
 		setVisualTheme,
 		setTimetableLayoutMode,
 		setCapsuleCornerStyle,

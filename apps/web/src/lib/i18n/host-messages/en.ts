@@ -24,9 +24,12 @@ export const en = {
 	'wallpaper.source.theme': 'Follow theme',
 	'wallpaper.source.none': 'None',
 	'wallpaper.source.label': 'Wallpaper source',
+	'wallpaper.themes.installed': 'Installed themes',
 	'wallpaper.colors.title': 'Colors from wallpaper',
-	'wallpaper.colors.description': 'Use the current wallpaper to color the default theme',
-	'wallpaper.item': 'Wallpaper & themes',
+	'wallpaper.colors.description': 'Use colors from the current wallpaper',
+	'wallpaper.theme.default': 'Profile default',
+	'wallpaper.source.themeEmpty': 'This theme has no wallpaper',
+	'wallpaper.item': 'Themes & wallpaper',
 
 	// shell (core navigation)
 	'tab.timetable': 'Timetable',
@@ -77,7 +80,6 @@ export const en = {
 	// display
 	'display.section.locale': 'Language',
 	'display.section.themeMode': 'Theme mode',
-	'display.section.colorScheme': 'Color scheme',
 	'display.section.layout': 'Timetable page style',
 	'display.periodHighlight.label': 'Highlight current period',
 	'display.periodHighlight.desc': 'Highlight the current period in the sidebar and scroll to it',

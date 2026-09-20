@@ -23,9 +23,12 @@ export const zhCn = {
 	'wallpaper.source.theme': '跟随主题',
 	'wallpaper.source.none': '无壁纸',
 	'wallpaper.source.label': '壁纸来源',
+	'wallpaper.themes.installed': '已安装主题',
 	'wallpaper.colors.title': '从壁纸取色',
-	'wallpaper.colors.description': '使用当前壁纸调整默认主题配色',
-	'wallpaper.item': '壁纸与主题',
+	'wallpaper.colors.description': '使用当前壁纸生成配色',
+	'wallpaper.theme.default': '默认',
+	'wallpaper.source.themeEmpty': '当前主题未提供壁纸',
+	'wallpaper.item': '主题与壁纸',
 
 	// shell (core navigation)
 	'tab.timetable': '课表',
@@ -76,7 +79,6 @@ export const zhCn = {
 	// display
 	'display.section.locale': '语言',
 	'display.section.themeMode': '主题模式',
-	'display.section.colorScheme': '配色方案',
 	'display.section.layout': '课表页样式',
 	'display.periodHighlight.label': '高亮当前节次',
 	'display.periodHighlight.desc': '在课表左侧高亮当前时间段，并自动滚动定位',
@@ -507,7 +509,7 @@ export const zhCn = {
 	'offline.fetch.error': '当前处于离线状态，无法加载内容。连接网络后重试。',
 	'offline.fetch.title': '当前处于离线状态',
 	'offline.fetch.description': '无法加载内容。连接网络后重试。',
-	'offline.import.blocked': '在线导入需要网络连接。可改用「分享链接」或「HTML 文件」导入课表。',
+	'offline.import.blocked': '在线导入需要网络连接。可改用「分享口令」或「HTML 文件」导入课表。',
 
 	// route
 	'route.plugins': '插件中心',
