@@ -155,7 +155,7 @@ scripts                   官方插件构建与校验、主题令牌生成、别
 
 全部业务插件通过 `OfficialPluginService` 安装、校验和激活。Profile 的 `preinstall` 指定必须安装并启用的插件列表及首次安装配置；预安装从发行包的同源市场目录读取，与用户手动安装使用同一资源和记录。当前预安装项禁止用户禁用或卸载；启动补回缺失项、重新启用禁用项并清除对应卸载记录，不覆盖已有配置。保护与列表右侧的“预安装”标签均以当前 Profile 为准，移出列表后保留安装并恢复普通管理权限。宿主直接注册核心导航，不存在独立内置插件轨。
 
-Profile 必填 `defaultTheme: { pluginId, themeId }`，其提供者必须预安装并启用，用户不能禁用或卸载。首屏先激活并验证默认主题，后台恢复其余插件；优先使用缓存，更新失败保留旧资源。主题 JSON 与 ESM 插件都使用统一 Owner 追踪。详见 [ADR 0042](.agents/docs/adr/0042-unified-plugin-preinstallation.md)。
+Profile 必填 `defaultTheme: { pluginId, themeId }`，其提供者必须预安装并启用，用户不能禁用或卸载。首屏先激活并验证默认主题，后台恢复其余插件；优先使用缓存，更新失败保留旧资源。主题 JSON 与 ESM 插件都使用统一 Owner 追踪。默认提供者更新时，宿主通过 `engine.withPluginReplacement(pluginId, operation)` 在替换及回滚期间临时允许运行时卸载，不清空默认主题配置或当前主题 ID；事务结束自动恢复卸载保护。主题实例暂时缺席或动态取色尚未完成时保留上一帧颜色及课程调色板，新结果校验通过后同步接管，取色失败才恢复该主题静态外观。详见 [ADR 0042](.agents/docs/adr/0042-unified-plugin-preinstallation.md)。
 
 ### 导入管道
 

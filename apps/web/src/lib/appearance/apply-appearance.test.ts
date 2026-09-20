@@ -31,6 +31,40 @@ function input(
 const readPixels = async () => new Uint8ClampedArray([255, 0, 0, 255]);
 afterEach(() => vi.unstubAllGlobals());
 describe('theme-owned wallpaper colors', () => {
+	it.each(['success', 'failure', 'cancel'])(
+		'retains rendered colors until replacement settles: %s',
+		async (outcome) => {
+			const { el, values } = target();
+			values.set('--color-primary', '#112233');
+			const pending = Promise.withResolvers<{ workbenchColors: Record<string, string> }>();
+			const started = Promise.withResolvers<void>();
+			const ac = new AbortController();
+			const applyBaseTheme = vi.fn(() => values.set('--color-primary', '#445566'));
+			const task = applyAppearance(
+				input(() => {
+					started.resolve();
+					return pending.promise;
+				}),
+				{ target: el, readPixels, signal: ac.signal, applyBaseTheme }
+			);
+			await started.promise;
+			expect(values.get('--color-primary')).toBe('#112233');
+			expect(applyBaseTheme).not.toHaveBeenCalled();
+			if (outcome === 'cancel') ac.abort();
+			if (outcome === 'failure') pending.reject(new Error('failed'));
+			else pending.resolve({ workbenchColors: { 'color.primary': '#778899' } });
+			if (outcome === 'cancel') {
+				await expect(task).rejects.toMatchObject({ name: 'AbortError' });
+				expect(applyBaseTheme).not.toHaveBeenCalled();
+				expect(values.get('--color-primary')).toBe('#112233');
+			} else {
+				await task;
+				expect(applyBaseTheme).toHaveBeenCalledTimes(1);
+				expect(values.get('--color-primary')).toBe(outcome === 'success' ? '#778899' : '#445566');
+			}
+		}
+	);
+
 	it('uses a non-M3 theme and preserves its palette when no dynamic palette is returned', async () => {
 		const { el, values } = target();
 		const resolver = vi.fn(() => ({ workbenchColors: { 'color.primary': '#abcdef' } }));

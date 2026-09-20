@@ -16,18 +16,13 @@ export function createAppearance(paletteRef: CoursePaletteRef, onPaletteChanged?
 		pending = task;
 		const combined = signal ? AbortSignal.any([signal, task.signal]) : task.signal;
 		combined.throwIfAborted();
-		applyActiveTheme(getAppEngine(), input.activeThemeId, input.isDark, {});
-		// Restore course colors with the base theme while the new image decodes.
-		const basePalette = input.themePaletteEntries?.length
-			? input.themePaletteEntries
-			: COURSE_PALETTE_ENTRIES;
-		coursePalette = basePalette;
-		paletteRef.current = basePalette;
-		onPaletteChanged?.();
+		// A missing selected instance is a temporary replacement gap.
+		if (input.activeThemeId && !input.theme) return;
 		try {
 			const result = await applyAppearance(input, {
 				target: document.documentElement,
 				readPixels,
+				applyBaseTheme: () => applyActiveTheme(getAppEngine(), input.activeThemeId, input.isDark),
 				isCurrent: () => getAppEngine().themes.getTheme(input.activeThemeId) === input.theme,
 				signal: combined
 			});

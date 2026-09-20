@@ -30,6 +30,7 @@ export async function applyAppearance(
 		readPixels?: (uri: string, signal: AbortSignal) => Promise<Uint8ClampedArray>;
 		signal?: AbortSignal;
 		isCurrent?: () => boolean;
+		applyBaseTheme?: () => void;
 	} = {}
 ): Promise<{ coursePalette: readonly CoursePaletteEntry[] }> {
 	const target =
@@ -44,19 +45,25 @@ export async function applyAppearance(
 			throw new DOMException('Stale theme', 'AbortError');
 	};
 	check();
-	if (target) {
-		target.classList.toggle('dark', input.isDark);
-		target.style.colorScheme = input.isDark ? 'dark' : 'light';
-		syncThemeChrome(target, input.isDark);
-	}
+	const commitBase = () => {
+		check();
+		options.applyBaseTheme?.();
+		if (target) {
+			target.classList.toggle('dark', input.isDark);
+			target.style.colorScheme = input.isDark ? 'dark' : 'light';
+			syncThemeChrome(target, input.isDark);
+		}
+	};
 	if (
 		!target ||
 		!input.wallpaperColorEnabled ||
 		!input.wallpaperUri ||
 		!input.theme?.resolveWallpaperColors ||
 		!options.readPixels
-	)
+	) {
+		commitBase();
 		return { coursePalette: basePalette };
+	}
 	try {
 		const pixels = await options.readPixels(input.wallpaperUri, signal);
 		check();
@@ -80,12 +87,14 @@ export async function applyAppearance(
 			)
 		)
 			throw new Error('Invalid wallpaper course palette');
+		commitBase();
 		applyWorkbenchColors(target, validated.colors);
 		syncThemeChrome(target, input.isDark);
 		return { coursePalette: result.coursePalette?.length ? result.coursePalette : basePalette };
 	} catch (error) {
 		check();
 		console.warn('[appearance] Theme wallpaper colors failed', error);
+		commitBase();
 		return { coursePalette: basePalette };
 	}
 }
