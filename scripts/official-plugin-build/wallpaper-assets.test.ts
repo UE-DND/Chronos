@@ -19,6 +19,10 @@ describe('theme wallpaper build', () => {
 			root = mkdtempSync(resolve(tmpdir(), 'chronos-theme-wallpaper-'));
 			const sourceDir = resolve(root, 'theme');
 			mkdirSync(sourceDir);
+			writeFileSync(
+				resolve(sourceDir, 'package.json'),
+				'{"name":"@fixture/theme-image","exports":{}}'
+			);
 			const bytes = new Uint8Array([0, 255, 127, 128]);
 			writeFileSync(resolve(sourceDir, 'image.png'), bytes);
 			const colorsJson = resolve(sourceDir, 'theme.json');

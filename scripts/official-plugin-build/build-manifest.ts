@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { OfficialPluginDef } from '../official-plugins.config.ts';
+import type { ResolvedServerPlugin } from './server-definition.ts';
 import { pluginAssetUrl, pluginDevAssetUrl } from './urls.ts';
 
 export interface OfficialPluginAssetPayload {
@@ -15,7 +16,8 @@ export interface OfficialPluginAssetPayload {
 export function buildManifestForPlugin(
 	plugin: OfficialPluginDef,
 	assets: OfficialPluginAssetPayload,
-	releaseVersion: string
+	releaseVersion: string,
+	serverPlugin?: ResolvedServerPlugin | null
 ): Record<string, unknown> {
 	const manifest: Record<string, unknown> = {
 		id: plugin.id,
@@ -30,8 +32,10 @@ export function buildManifestForPlugin(
 		manifest.toolGroup = plugin.toolGroup;
 	}
 
-	if (plugin.optionalServerCapabilities)
-		manifest.optionalServerCapabilities = plugin.optionalServerCapabilities;
+	if (serverPlugin)
+		manifest.optionalServerCapabilities = [
+			{ pluginId: serverPlugin.id, action: serverPlugin.definition.proxy.action }
+		];
 
 	applyAssetManifestFields(manifest, assets, (fileName) => pluginAssetUrl(plugin.id, fileName));
 
@@ -90,7 +94,8 @@ export function buildDevManifestForPlugin(
 	plugin: OfficialPluginDef,
 	assets: OfficialPluginAssetPayload,
 	releaseVersion: string,
-	rev: string
+	rev: string,
+	serverPlugin?: ResolvedServerPlugin | null
 ): Record<string, unknown> {
 	const manifest: Record<string, unknown> = {
 		id: plugin.id,
@@ -105,6 +110,10 @@ export function buildDevManifestForPlugin(
 	if (plugin.type === 'tool') {
 		manifest.toolGroup = plugin.toolGroup;
 	}
+	if (serverPlugin)
+		manifest.optionalServerCapabilities = [
+			{ pluginId: serverPlugin.id, action: serverPlugin.definition.proxy.action }
+		];
 
 	applyAssetManifestFields(manifest, assets, (fileName) =>
 		pluginDevAssetUrl(plugin.id, rev, fileName)

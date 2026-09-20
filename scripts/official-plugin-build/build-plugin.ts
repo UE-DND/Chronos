@@ -10,6 +10,7 @@ import {
 } from './compile-entry.ts';
 import { publishDevPluginBuild } from './dev-publish.ts';
 import { createOfficialPluginBuildPaths, type OfficialPluginBuildPaths } from './paths.ts';
+import { resolveOfficialServerPlugin } from './server-definition.ts';
 
 export type OfficialPluginBuildMode = 'production' | 'dev';
 
@@ -117,8 +118,10 @@ export async function buildOfficialPluginAssets(
 	if (mode === 'dev') {
 		const rev = options.rev ?? createDevRevision();
 		try {
+			const serverPlugin = await resolveOfficialServerPlugin(plugin, root);
 			const published = publishDevPluginBuild({
 				plugin,
+				serverPlugin,
 				rev,
 				files: { code, cssCode, colorsJson, iconThemeJson, wallpaperBytes },
 				releaseVersion,

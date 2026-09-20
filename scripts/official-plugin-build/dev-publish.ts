@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { OfficialPluginDef } from '../official-plugins.config.ts';
+import type { ResolvedServerPlugin } from './server-definition.ts';
 import { OFFICIAL_PLUGIN_BUNDLE_CSS, OFFICIAL_PLUGIN_BUNDLE_JS } from './compile-entry.ts';
 import { buildDevManifestForPlugin, writeDevPluginManifest } from './build-manifest.ts';
 import { createOfficialPluginBuildPaths, type OfficialPluginBuildPaths } from './paths.ts';
@@ -15,6 +16,7 @@ export interface DevPluginBuildFiles {
 
 export interface PublishDevPluginBuildOptions {
 	plugin: OfficialPluginDef;
+	serverPlugin?: ResolvedServerPlugin | null;
 	rev: string;
 	files: DevPluginBuildFiles;
 	releaseVersion: string;
@@ -48,7 +50,7 @@ function writeDevAssetFiles(dir: string, files: DevPluginBuildFiles): void {
 export function publishDevPluginBuild(
 	options: PublishDevPluginBuildOptions
 ): PublishDevPluginBuildResult {
-	const { plugin, rev, files, releaseVersion } = options;
+	const { plugin, serverPlugin, rev, files, releaseVersion } = options;
 	const paths = options.paths ?? createOfficialPluginBuildPaths(options.root ?? process.cwd());
 	const pluginDir = paths.devOutDir(plugin.id);
 	const tempDir = paths.devTempDir(plugin.id);
@@ -57,7 +59,7 @@ export function publishDevPluginBuild(
 	rmSync(tempDir, { recursive: true, force: true });
 	writeDevAssetFiles(tempDir, files);
 
-	const manifest = buildDevManifestForPlugin(plugin, files, releaseVersion, rev);
+	const manifest = buildDevManifestForPlugin(plugin, files, releaseVersion, rev, serverPlugin);
 	writeFileSync(
 		resolve(tempDir, 'manifest.json'),
 		`${JSON.stringify(manifest, null, '\t')}\n`,

@@ -11,7 +11,6 @@ type OfficialPluginBase = {
 	sourceDir: string;
 	entry?: string;
 	prepareResources?: string;
-	optionalServerCapabilities?: { pluginId: string; action: string }[];
 	colorsJson?: string;
 	iconsJson?: string;
 	/** JSON-only assets skip self-contained bundle.css verification (default: has entry) */
@@ -37,7 +36,6 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 	},
 	{
 		id: 'source-cqut',
-		optionalServerCapabilities: [{ pluginId: 'source-cqut', action: 'preview' }],
 		type: 'source',
 		sourceDir: 'source-cqut',
 		name: { 'zh-CN': '重庆理工大学', en: 'CQUT' },

@@ -4,6 +4,7 @@ import { createChronosAliasRecord } from '../resolve-chronos-aliases.ts';
 import { verifyOfficialPlugins } from '../verify-official-plugins.ts';
 import { OFFICIAL_PLUGINS } from '../official-plugins.config.ts';
 import { buildManifestForPlugin, writePluginManifest } from './build-manifest.ts';
+import { resolveOfficialServerPlugin } from './server-definition.ts';
 import { buildOfficialPluginAssets } from './build-plugin.ts';
 import { createOfficialPluginBuildPaths } from './paths.ts';
 export interface BuildAllOfficialPluginsOptions {
@@ -44,7 +45,8 @@ export async function buildAllOfficialPlugins(
 			mode: 'production'
 		});
 
-		const manifest = buildManifestForPlugin(plugin, assets, releaseVersion);
+		const serverPlugin = await resolveOfficialServerPlugin(plugin, root);
+		const manifest = buildManifestForPlugin(plugin, assets, releaseVersion, serverPlugin);
 		writePluginManifest(paths.manifestDir, plugin.id, manifest);
 		console.log(`${plugin.id}: manifest updated`);
 	}
