@@ -1,6 +1,9 @@
 {
 	"id": "yumemita",
-	"name": { "zh-CN": "YUMEMITA", "en": "YUMEMITA" },
+	"name": {
+		"zh-CN": "YUMEMITA",
+		"en": "YUMEMITA"
+	},
 	"className": "theme-yumemita",
 	"recommendedIconTheme": "yumemita",
 	"wallpaper": {
@@ -9,20 +12,56 @@
 	},
 	"coursePalette": {
 		"light": [
-			{ "background": "#FFEE55", "foreground": "#1a1a1a" },
-			{ "background": "#FFBBCC", "foreground": "#1a1a1a" },
-			{ "background": "#4477CC", "foreground": "#fff" },
-			{ "background": "#9977CC", "foreground": "#fff" },
-			{ "background": "#EE5577", "foreground": "#fff" },
-			{ "background": "#4D5B4C", "foreground": "#fff" }
+			{
+				"background": "#FFEE55",
+				"foreground": "#1a1a1a"
+			},
+			{
+				"background": "#FFBBCC",
+				"foreground": "#1a1a1a"
+			},
+			{
+				"background": "#4477CC",
+				"foreground": "#fff"
+			},
+			{
+				"background": "#9977CC",
+				"foreground": "#fff"
+			},
+			{
+				"background": "#EE5577",
+				"foreground": "#fff"
+			},
+			{
+				"background": "#4D5B4C",
+				"foreground": "#fff"
+			}
 		],
 		"dark": [
-			{ "background": "#FFEE55", "foreground": "#1a1a1a" },
-			{ "background": "#FFBBCC", "foreground": "#1a1a1a" },
-			{ "background": "#4477CC", "foreground": "#fff" },
-			{ "background": "#9977CC", "foreground": "#fff" },
-			{ "background": "#EE5577", "foreground": "#fff" },
-			{ "background": "#4D5B4C", "foreground": "#fff" }
+			{
+				"background": "#FFEE55",
+				"foreground": "#1a1a1a"
+			},
+			{
+				"background": "#FFBBCC",
+				"foreground": "#1a1a1a"
+			},
+			{
+				"background": "#4477CC",
+				"foreground": "#fff"
+			},
+			{
+				"background": "#9977CC",
+				"foreground": "#fff"
+			},
+			{
+				"background": "#EE5577",
+				"foreground": "#fff"
+			},
+			{
+				"background": "#4D5B4C",
+				"foreground": "#fff"
+			}
 		]
 	},
 	"variants": {
@@ -52,7 +91,53 @@
 				"leadingIcon.background": "color-mix(in srgb, #ff7788 75%, transparent)",
 				"leadingIcon.color": "#fff",
 				"timetable.period.activeBackground": "transparent",
-				"timetable.period.activeBackgroundImage": "linear-gradient(to bottom, #ff7788, #2288dd)"
+				"timetable.period.activeBackgroundImage": "linear-gradient(to bottom, #ff7788, #2288dd)",
+				"color.surface-dim": "#ffffff",
+				"color.surface-bright": "#ffffff",
+				"color.surface-container-lowest": "#ffffff",
+				"color.surface-container-low": "#ffffff",
+				"color.surface-container": "#ffffff",
+				"color.surface-container-high": "#ffffff",
+				"color.surface-container-highest": "#ffffff",
+				"color.on-surface-variant": "#2e333a",
+				"color.outline-variant": "#cbd5e1",
+				"color.inverse-surface": "#2e333a",
+				"color.inverse-on-surface": "#ffffff",
+				"color.primary-fixed": "#2288dd",
+				"color.primary-fixed-dim": "#2288dd",
+				"color.on-primary-fixed": "#fff",
+				"color.on-primary-fixed-variant": "#fff",
+				"color.secondary-fixed": "#ff7788",
+				"color.secondary-fixed-dim": "#ff7788",
+				"color.on-secondary-fixed": "#fff",
+				"color.on-secondary-fixed-variant": "#fff",
+				"color.tertiary": "#ff7788",
+				"color.tertiary-dim": "#ff7788",
+				"color.on-tertiary": "#fff",
+				"color.tertiary-container": "#ff7788",
+				"color.on-tertiary-container": "#fff",
+				"color.tertiary-fixed": "#ff7788",
+				"color.tertiary-fixed-dim": "#ff7788",
+				"color.on-tertiary-fixed": "#fff",
+				"color.on-tertiary-fixed-variant": "#fff",
+				"color.error": "#ee5577",
+				"color.error-dim": "#ee5577",
+				"color.on-error": "#fff",
+				"color.error-container": "#ee5577",
+				"color.on-error-container": "#fff",
+				"color.shadow": "#000000",
+				"color.scrim": "#000000",
+				"color.on-on-primary": "#fff",
+				"color.tertiary-container-subtle": "#ff7788",
+				"color.on-tertiary-container-subtle": "#fff",
+				"color.error-container-subtle": "#ee5577",
+				"color.on-error-container-subtle": "#fff",
+				"color.canvas": "#ffffff",
+				"color.ink": "#2e333a",
+				"color.border-subtle": "#cbd5e1",
+				"color.success": "#4d5b4c",
+				"color.warning": "#997722",
+				"color.danger": "#ee5577"
 			}
 		},
 		"dark": {
@@ -81,7 +166,53 @@
 				"leadingIcon.background": "color-mix(in srgb, #ff7788 75%, transparent)",
 				"leadingIcon.color": "#fff",
 				"timetable.period.activeBackground": "transparent",
-				"timetable.period.activeBackgroundImage": "linear-gradient(to bottom, #ff7788, #2288dd)"
+				"timetable.period.activeBackgroundImage": "linear-gradient(to bottom, #ff7788, #2288dd)",
+				"color.surface-dim": "#1e2026",
+				"color.surface-bright": "#1e2026",
+				"color.surface-container-lowest": "#1e2026",
+				"color.surface-container-low": "#1e2026",
+				"color.surface-container": "#1e2026",
+				"color.surface-container-high": "#1e2026",
+				"color.surface-container-highest": "#1e2026",
+				"color.on-surface-variant": "#f8fafc",
+				"color.outline-variant": "#334155",
+				"color.inverse-surface": "#f8fafc",
+				"color.inverse-on-surface": "#1e2026",
+				"color.primary-fixed": "#2288dd",
+				"color.primary-fixed-dim": "#2288dd",
+				"color.on-primary-fixed": "#fff",
+				"color.on-primary-fixed-variant": "#fff",
+				"color.secondary-fixed": "#ff7788",
+				"color.secondary-fixed-dim": "#ff7788",
+				"color.on-secondary-fixed": "#fff",
+				"color.on-secondary-fixed-variant": "#fff",
+				"color.tertiary": "#ff7788",
+				"color.tertiary-dim": "#ff7788",
+				"color.on-tertiary": "#fff",
+				"color.tertiary-container": "#ff7788",
+				"color.on-tertiary-container": "#fff",
+				"color.tertiary-fixed": "#ff7788",
+				"color.tertiary-fixed-dim": "#ff7788",
+				"color.on-tertiary-fixed": "#fff",
+				"color.on-tertiary-fixed-variant": "#fff",
+				"color.error": "#ee5577",
+				"color.error-dim": "#ee5577",
+				"color.on-error": "#fff",
+				"color.error-container": "#ee5577",
+				"color.on-error-container": "#fff",
+				"color.shadow": "#000000",
+				"color.scrim": "#000000",
+				"color.on-on-primary": "#fff",
+				"color.tertiary-container-subtle": "#ff7788",
+				"color.on-tertiary-container-subtle": "#fff",
+				"color.error-container-subtle": "#ee5577",
+				"color.on-error-container-subtle": "#fff",
+				"color.canvas": "#1e2026",
+				"color.ink": "#f8fafc",
+				"color.border-subtle": "#334155",
+				"color.success": "#a4c6a2",
+				"color.warning": "#ffee55",
+				"color.danger": "#ee5577"
 			}
 		}
 	}

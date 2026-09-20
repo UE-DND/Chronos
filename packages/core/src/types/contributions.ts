@@ -8,7 +8,18 @@ export interface ThemeWorkbenchColors {
 	dark: Record<string, string>;
 }
 
+export interface WallpaperColors {
+	workbenchColors: Record<string, string>;
+	coursePalette?: readonly CoursePaletteEntry[];
+}
+
 export interface ThemeContribution {
+	readonly resolveWallpaperColors?: (input: {
+		pixels: Uint8ClampedArray;
+		mode: 'light' | 'dark';
+		signal: AbortSignal;
+	}) => WallpaperColors | Promise<WallpaperColors>;
+
 	readonly id: string;
 	readonly name: LocalizedText;
 	readonly description?: LocalizedText;

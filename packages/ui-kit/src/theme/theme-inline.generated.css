@@ -1,5 +1,4 @@
-/* generated, do not edit */
-
+/* Semantic theme contract; no palette values. */
 @theme inline {
 	--color-surface: var(--color-surface);
 	--color-surface-dim: var(--color-surface-dim);
@@ -59,15 +58,15 @@
 	--color-on-tertiary-container-subtle: var(--color-on-tertiary-container-subtle);
 	--color-error-container-subtle: var(--color-error-container-subtle);
 	--color-on-error-container-subtle: var(--color-on-error-container-subtle);
-	--color-brand: var(--color-primary);
-	--color-brand-muted: var(--color-primary-container-subtle);
-	--color-soft-blue: var(--color-inverse-primary);
-	--color-surface-variant: var(--color-surface-container-low);
 	--color-canvas: var(--color-canvas);
 	--color-ink: var(--color-ink);
+	--color-border-subtle: var(--color-border-subtle);
 	--color-success: var(--color-success);
 	--color-warning: var(--color-warning);
 	--color-danger: var(--color-danger);
-	--color-border-subtle: var(--color-border-subtle);
+	--color-brand: var(--color-primary);
+	--color-brand-muted: var(--color-primary-container-subtle);
+	--color-soft-blue: var(--color-inverse-primary);
 	--color-border: var(--color-border-subtle);
+	--color-surface-variant: var(--color-surface-container-low);
 }
