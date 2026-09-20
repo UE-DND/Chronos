@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getAllContexts, untrack } from 'svelte';
-	import { isChronosMountable } from '@chronos/core';
+	import { isChronosMountable, isChronosMountHandle, type ChronosMountHandle } from '@chronos/core';
 
 	interface Props {
 		/** A contribution whose `component` may be a CHRONOS_MOUNTABLE bundle UI. */
@@ -17,9 +17,7 @@
 
 	const mountable = $derived(isChronosMountable(component));
 
-	let mountHandle = $state<
-		{ update?(props: Record<string, unknown>): void; unmount?(): void } | undefined
-	>();
+	let mountHandle = $state.raw<ChronosMountHandle | undefined>();
 
 	$effect(() => {
 		if (!containerEl || !mountable) {
@@ -29,8 +27,14 @@
 
 		const targetComponent = component;
 		const initialProps = untrack(() => props);
+		let handle: ChronosMountHandle;
 		try {
-			mountHandle = targetComponent.mount(containerEl, initialProps, parentContext);
+			handle = targetComponent.mount(containerEl, initialProps, parentContext);
+			if (!isChronosMountHandle(handle))
+				throw new Error(
+					'Invalid mount handle: expected an object with unmount() and optional update()'
+				);
+			mountHandle = handle;
 		} catch (error) {
 			console.error('[MountableSlotOutlet] mount failed:', error);
 			mountHandle = undefined;
@@ -39,11 +43,11 @@
 
 		return () => {
 			try {
-				mountHandle?.unmount?.();
+				handle.unmount();
 			} catch (error) {
 				console.error('[MountableSlotOutlet] unmount failed:', error);
 			} finally {
-				mountHandle = undefined;
+				if (mountHandle === handle) mountHandle = undefined;
 			}
 		};
 	});
