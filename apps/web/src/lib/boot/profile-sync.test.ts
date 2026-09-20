@@ -1,58 +1,45 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
 	CHRONOS_PROFILES,
-	SERVER_PLUGIN_MODULES,
-	CLIENT_BUILTIN_PLUGIN_MODULES,
-	enabledServerPluginIds,
-	resolveActiveBuiltinPluginIds,
-	resolveActiveServerPluginIds,
+	resolveProfile,
 	resolveProfileId
 } from '$lib/profile-codegen/profile-definitions';
-
-describe('profile definitions single source', () => {
-	it('exposes the same profile ids at runtime and in codegen input', () => {
-		const registryIds = Object.values(CHRONOS_PROFILES)
-			.map((p) => p.profileId)
-			.sort();
-		const definitionIds = Object.keys(CHRONOS_PROFILES).sort();
-		expect(registryIds).toEqual(definitionIds);
-	});
-
-	it('derives server plugins from the server flag on enabled builtins', () => {
-		expect(enabledServerPluginIds(CHRONOS_PROFILES['chronos-cqut']!)).toEqual(['source-cqut']);
-		expect(enabledServerPluginIds(CHRONOS_PROFILES['chronos-cqut-offline']!)).toEqual([]);
-		expect(enabledServerPluginIds(CHRONOS_PROFILES['chronos-default']!)).toEqual([]);
-	});
-
-	it('references only plugin ids known to the profiles', () => {
-		const known = new Set(
-			Object.values(CHRONOS_PROFILES).flatMap((p) => p.plugins.map((e) => e.id))
-		);
-		for (const serverPluginId of Object.keys(SERVER_PLUGIN_MODULES)) {
-			expect(known.has(serverPluginId)).toBe(true);
+import {
+	resolveDeployment,
+	SERVER_PLUGIN_MODULES
+} from '$lib/profile-codegen/deployment-definitions';
+import { OFFICIAL_PLUGINS } from '../../../../../scripts/official-plugins.config';
+describe('profile and deployment boundaries', () => {
+	it('preinstalls only market plugins and requires an enabled default provider', () => {
+		for (const profile of Object.values(CHRONOS_PROFILES)) {
+			expect(resolveProfile(profile.profileId)).toBe(profile);
+			expect(
+				profile.preinstall.every((entry) => OFFICIAL_PLUGINS.some((p) => p.id === entry.id))
+			).toBe(true);
+			expect(
+				profile.preinstall.some(
+					(entry) => entry.id === profile.defaultTheme.pluginId && entry.enabled !== false
+				)
+			).toBe(true);
+			expect(profile.preinstall.some((entry) => entry.id === 'core-shell')).toBe(false);
 		}
+		expect(OFFICIAL_PLUGINS).toHaveLength(9);
 	});
-
-	it('keeps proxy domains on the server module table', () => {
+	it('selects server capabilities independently from the client profile', () => {
+		expect(
+			resolveDeployment({ CHRONOS_DEPLOYMENT: 'chronos-cqut', CHRONOS_PROFILE: 'chronos-default' })
+				.serverPlugins
+		).toEqual(['source-cqut']);
+		expect(resolveDeployment({ CHRONOS_DEPLOYMENT: 'chronos-cqut-offline' }).serverPlugins).toEqual(
+			[]
+		);
+		expect(resolveDeployment({ CHRONOS_DEPLOY_TARGET: 'pages' }).serverPlugins).toEqual([]);
 		expect(SERVER_PLUGIN_MODULES['source-cqut']?.domains).toEqual(['cqut.edu.cn']);
 	});
-
-	it('codegen builtin imports cover every enabled profile plugin', () => {
-		const profileId = resolveProfileId();
-		for (const pluginId of resolveActiveBuiltinPluginIds(profileId)) {
-			expect(CLIENT_BUILTIN_PLUGIN_MODULES[pluginId]).toBeDefined();
-		}
-		for (const pluginId of resolveActiveServerPluginIds(profileId)) {
-			expect(SERVER_PLUGIN_MODULES[pluginId]).toBeDefined();
-		}
-	});
-
-	it('resolves profile id from env with a single pages fallback', () => {
+	it('rejects unknown explicit choices and retains the deployment default', () => {
+		expect(() => resolveProfile('typo')).toThrow('Unknown profile');
+		expect(() => resolveDeployment({ CHRONOS_DEPLOYMENT: 'typo' })).toThrow('Unknown deployment');
 		expect(resolveProfileId({})).toBe('chronos-cqut');
 		expect(resolveProfileId({ CHRONOS_DEPLOY_TARGET: 'pages' })).toBe('chronos-default');
-		expect(
-			resolveProfileId({ CHRONOS_PROFILE: 'chronos-cqut-offline', CHRONOS_DEPLOY_TARGET: 'pages' })
-		).toBe('chronos-cqut-offline');
-		expect(resolveProfileId({ CHRONOS_PROFILE: 'chronos-default' })).toBe('chronos-default');
 	});
 });

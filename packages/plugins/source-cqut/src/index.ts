@@ -28,17 +28,13 @@ export interface CreateCqutPluginOptions {
 	htmlComponent?: ChronosMountable;
 }
 
-export interface CqutPluginConfig {
-	disabledSlots?: string[];
-}
-
 export function createCqutPlugin(options: CreateCqutPluginOptions = {}) {
 	const {
 		onlineComponent = mountableSvelteComponent(CqutOnlineImportTab),
 		htmlComponent = mountableSvelteComponent(EduHtmlImportTab)
 	} = options;
 
-	return defineChronosPlugin<CqutPluginConfig>({
+	return defineChronosPlugin({
 		id: 'source-cqut',
 		messages: SOURCE_CQUT_MESSAGES,
 		nameKey: 'plugin.name',
@@ -52,7 +48,6 @@ export function createCqutPlugin(options: CreateCqutPluginOptions = {}) {
 			registerCqutImportTabs({
 				ctx,
 				t,
-				disabledSlots: new Set(ctx.config.disabledSlots ?? []),
 				onlineComponent,
 				htmlComponent
 			});

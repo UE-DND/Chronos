@@ -150,11 +150,11 @@ describe('Native Host Baseline (iOS JSCore / Android QuickJS)', () => {
 		const shareHandle = await engine.loadPlugin(shareCodecPlugin);
 		const cqutHandle = await engine.loadPlugin(cqutPlugin);
 
-		expect(engine.slots.get('import.source.tab').length).toBeGreaterThanOrEqual(3);
+		expect(engine.slots.get('import.source.tab').length).toBeGreaterThanOrEqual(2);
 		expect(engine.slots.get('export.action').length).toBeGreaterThanOrEqual(1);
 
 		expect(engine.slots.getSlotItem('import.source.tab', 'share-link')).toBeDefined();
-		expect(engine.slots.getSlotItem('import.source.tab', 'cqut-online')).toBeDefined();
+		expect(engine.slots.getSlotItem('import.source.tab', 'cqut-online')).toBeUndefined();
 		expect(engine.slots.getSlotItem('import.source.tab', 'edu-html')).toBeDefined();
 		expect(engine.slots.getSlotItem('export.action', 'share-link')).toBeDefined();
 		expect(engine.slots.getSlotItem('export.action', 'share-json')).toBeUndefined();

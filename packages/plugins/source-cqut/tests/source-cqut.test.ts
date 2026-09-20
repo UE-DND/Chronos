@@ -66,6 +66,7 @@ function createMockEnv(httpResponse?: HttpResponse): ChronosEnv {
 	return {
 		platform: 'web',
 		http: {
+			supportsPluginServer: () => true,
 			request: vi.fn(async () => httpResponse ?? defaultResponse),
 			proxy: vi.fn(async () => httpResponse ?? defaultResponse)
 		},
@@ -267,15 +268,13 @@ describe('cqutPlugin', () => {
 		expect(timetable.viewPrefs.showSunday).toBe(false);
 	});
 
-	it('skips cqut-online slot when disabledSlots includes it', async () => {
+	it('keeps HTML import but omits online sync when the deployment lacks its capability', async () => {
 		const env = createMockEnv();
 		const engine = new ChronosEngine({ env });
 		await engine.init();
 
-		const handle = await engine.loadPlugin({
-			...cqutPlugin,
-			defaultConfig: { disabledSlots: ['cqut-online'] }
-		});
+		env.http.supportsPluginServer = () => false;
+		const handle = await engine.loadPlugin(cqutPlugin);
 
 		expect(engine.slots.getSlotItem('import.source.tab', 'cqut-online')).toBeUndefined();
 		expect(engine.slots.getSlotItem('import.source.tab', 'edu-html')).toBeDefined();

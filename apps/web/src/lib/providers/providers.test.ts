@@ -17,10 +17,10 @@ import type {
 } from '$lib/storage/db';
 
 vi.mock('$lib/boot/plugin-proxy-meta.generated', () => ({
-	profileHasServerPlugins: vi.fn(() => true)
+	deploymentHasServerPlugins: vi.fn(() => true)
 }));
 
-import { profileHasServerPlugins } from '$lib/boot/plugin-proxy-meta.generated';
+import { deploymentHasServerPlugins } from '$lib/boot/plugin-proxy-meta.generated';
 
 class MockStorage implements Storage {
 	private map = new Map<string, string>();
@@ -393,14 +393,14 @@ describe('Web Providers', () => {
 	});
 
 	it('WebHttpProxyProvider rejects bypassCors when server plugins are disabled', async () => {
-		vi.mocked(profileHasServerPlugins).mockReturnValue(false);
+		vi.mocked(deploymentHasServerPlugins).mockReturnValue(false);
 		const http = new WebHttpProxyProvider();
 
 		await expect(http.request('https://example.com/api', { bypassCors: true })).rejects.toThrow(
 			'Server-side proxy is not available in this build'
 		);
 
-		vi.mocked(profileHasServerPlugins).mockReturnValue(true);
+		vi.mocked(deploymentHasServerPlugins).mockReturnValue(true);
 	});
 
 	it('WebRuntimeProvider supports sha256 hashing', async () => {

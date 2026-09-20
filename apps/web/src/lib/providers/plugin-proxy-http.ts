@@ -1,3 +1,4 @@
+import { PLUGIN_PROXY_ENTRIES } from '$lib/boot/plugin-proxy-meta.generated';
 import type { HttpResponse, IHttpService } from '@chronos/core';
 import { mergeAbortSignals } from '$lib/utils/abort-signal';
 import {
@@ -40,6 +41,11 @@ function buildProxyResponse(
  */
 export class PluginProxyHttpAdapter implements IHttpService {
 	constructor(private readonly inner: IHttpService) {}
+	supportsPluginServer(pluginId: string, action: string): boolean {
+		return PLUGIN_PROXY_ENTRIES.some(
+			(entry) => entry.pluginId === pluginId && entry.action === action
+		);
+	}
 
 	async request(url: string, options?: Parameters<IHttpService['request']>[1]) {
 		return this.inner.request(url, options);

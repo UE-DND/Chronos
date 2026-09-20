@@ -1,6 +1,7 @@
+import { base } from '$app/paths';
 import type { HttpRequestOptions, HttpResponse, IHttpService } from '@chronos/core';
 import { mergeAbortSignals } from '$lib/utils/abort-signal';
-import { profileHasServerPlugins } from '$lib/boot/plugin-proxy-meta.generated';
+import { deploymentHasServerPlugins } from '$lib/boot/plugin-proxy-meta.generated';
 
 /**
  * Checks whether a given hostname is a private or loopback IP address (anti-SSRF).
@@ -68,7 +69,7 @@ export class WebHttpProxyProvider implements IHttpService {
 				: undefined;
 
 		try {
-			if (options?.bypassCors && !profileHasServerPlugins()) {
+			if (options?.bypassCors && !deploymentHasServerPlugins()) {
 				throw new Error('Server-side proxy is not available in this build');
 			}
 
@@ -113,7 +114,19 @@ export class WebHttpProxyProvider implements IHttpService {
 			);
 			const requestSignal = abortSignals.length > 0 ? mergeAbortSignals(abortSignals) : undefined;
 
-			const response = await fetch(url, {
+			let requestUrl = url;
+			if (base && url.startsWith('/official-plugins/')) requestUrl = `${base}${url}`;
+			else if (base && typeof window !== 'undefined') {
+				const parsed = new URL(url, window.location.origin);
+				if (
+					parsed.origin === window.location.origin &&
+					parsed.pathname.startsWith('/official-plugins/')
+				) {
+					parsed.pathname = `${base}${parsed.pathname}`;
+					requestUrl = parsed.href;
+				}
+			}
+			const response = await fetch(requestUrl, {
 				method: options?.method ?? 'GET',
 				headers,
 				body,

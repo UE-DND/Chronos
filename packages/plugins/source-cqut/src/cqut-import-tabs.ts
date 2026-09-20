@@ -28,7 +28,6 @@ const SOURCE_CQUT_PLUGIN_ID = 'source-cqut';
 export interface RegisterCqutImportTabsOptions {
 	ctx: ChronosContext;
 	t: (key: string) => string;
-	disabledSlots: Set<string>;
 	onlineComponent: ChronosMountable;
 	htmlComponent: ChronosMountable;
 }
@@ -84,12 +83,12 @@ async function executeCqutHtmlImport(
 
 /** Register CQUT online and edu-html import slots when not disabled in plugin config. */
 export function registerCqutImportTabs(options: RegisterCqutImportTabsOptions): void {
-	const { ctx, t, disabledSlots, onlineComponent, htmlComponent } = options;
+	const { ctx, t, onlineComponent, htmlComponent } = options;
 	const cqutImportSchema = createCqutImportSchema(t);
 	const htmlImportSchema = createHtmlImportSchema(t);
 	const htmlConfirmSchema = createHtmlConfirmSchema(t);
 
-	if (!disabledSlots.has('cqut-online')) {
+	if (ctx.service(IHttpService).supportsPluginServer?.('source-cqut', 'preview')) {
 		registerImportTab<CqutImportForm>(ctx, {
 			id: 'cqut-online',
 			title: () => t('import.online.tab.title'),
@@ -102,7 +101,7 @@ export function registerCqutImportTabs(options: RegisterCqutImportTabsOptions): 
 		});
 	}
 
-	if (!disabledSlots.has('edu-html')) {
+	{
 		registerImportTab<HtmlImportForm & HtmlConfirmForm>(ctx, {
 			id: 'edu-html',
 			title: () => t('import.html.tab.title'),
