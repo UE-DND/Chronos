@@ -39,9 +39,8 @@
 	const officialPlugins = getOfficialPluginService();
 	let profileBuiltinPlugins = $state.raw<ChronosPlugin[]>([...getProfileBuiltinPlugins()]);
 	const appController = getAppController();
-	const paletteMode = $derived(appController.userPreferences?.paletteMode ?? 'vibrant');
 	const visualThemeId = $derived(appController.activeThemeId);
-	const activeColorSchemeId = $derived(resolveColorSchemeId(paletteMode, visualThemeId));
+	const activeColorSchemeId = $derived(resolveColorSchemeId(visualThemeId));
 
 	let activeTab = $state<'installed' | 'official'>('installed');
 	const edgeActions = $derived.by((): EdgeBarAction[] =>

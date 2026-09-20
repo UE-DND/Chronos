@@ -26,7 +26,7 @@
 	const shell = getContext<AppShellController>('appShell');
 
 	const coursePalette = $derived(shell.appearance.coursePalette);
-	const hasDynamicColorBackground = $derived(shell.state.hasDynamicColorBackground);
+	const hasWallpaper = $derived(shell.state.hasWallpaper);
 	const layoutMode = $derived(shell.state.effectiveTimetableLayoutMode);
 	const capsuleCornerStyle = $derived(
 		shell.controller.userPreferences?.capsuleCornerStyle ?? 'sharp'
@@ -91,7 +91,7 @@
 			<TimetableWeekSwiper
 				{screen}
 				{active}
-				hasDynamicBackground={hasDynamicColorBackground}
+				hasDynamicBackground={hasWallpaper}
 				{coursePalette}
 				{layoutMode}
 				{capsuleCornerStyle}

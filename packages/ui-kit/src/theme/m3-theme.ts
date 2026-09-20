@@ -1,3 +1,4 @@
+import { argbFromRgb, QuantizerCelebi, Score } from '@ktibow/material-color-utilities-nightly';
 import {
 	ContrastCurve,
 	DynamicColor,
@@ -365,4 +366,21 @@ export function buildM3Tokens(mode: 'light' | 'dark', seedColor?: string): Recor
 		outline: tokens['outline'] ?? (isDark ? '#938f99' : '#79747e'),
 		...tokens
 	};
+}
+
+export function colorsFromImageBytes(bytes: Uint8ClampedArray): {
+	seed: number;
+	ranked: number[];
+} {
+	const pixels: number[] = [];
+	for (let i = 0; i < bytes.length; i += 4) {
+		const r = bytes[i];
+		const g = bytes[i + 1];
+		const b = bytes[i + 2];
+		const a = bytes[i + 3];
+		if (a < 255) continue;
+		pixels.push(argbFromRgb(r, g, b));
+	}
+	const ranked = Score.score(QuantizerCelebi.quantize(pixels, 128), { desired: 6 });
+	return { seed: ranked[0], ranked };
 }

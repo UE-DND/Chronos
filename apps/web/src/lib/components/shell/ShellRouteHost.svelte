@@ -62,7 +62,7 @@
 			timetableScreen.interaction.drag?.overDeleteZone
 		)
 	);
-	const wallpaperUri = $derived(shell.state.dynamicColorUri);
+	const wallpaperUri = $derived(shell.state.wallpaperUri);
 	const wallpaperRevealed = $derived(
 		isShellWallpaperRevealed({
 			wallpaperUri,

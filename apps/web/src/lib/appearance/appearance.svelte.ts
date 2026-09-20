@@ -1,59 +1,48 @@
-import { COURSE_PALETTE_ENTRIES, type DynamicColorAdapter } from '@chronos/core';
+import { COURSE_PALETTE_ENTRIES, type CoursePaletteEntry } from '@chronos/core';
 import type { CoursePaletteRef } from '$lib/services/course-presentation-port';
-
 import { getAppEngine } from '$lib/services/app-engine';
+import { createWallpaperThemeAdapter } from '$lib/wallpaper/wallpaper-theme';
 import { applyAppearance, type ApplyAppearanceInput } from './apply-appearance';
-import { isDynamicColorPaletteMode } from './color-scheme';
+import { applyActiveTheme } from './apply-active-theme';
 
 export function createAppearance(paletteRef: CoursePaletteRef, onPaletteChanged?: () => void) {
-	let coursePalette =
-		$state.raw<readonly import('@chronos/core').CoursePaletteEntry[]>(COURSE_PALETTE_ENTRIES);
-
-	function resolveDynamicAdapter(
-		activeThemeId: string,
-		paletteMode: string
-	): DynamicColorAdapter | null {
-		const engine = getAppEngine();
-		const readAdapter = (themeId: string) =>
-			engine.themes.getTheme(themeId)?.dynamicColorAdapter ?? null;
-
-		if (isDynamicColorPaletteMode(paletteMode)) {
-			const fromPalette = readAdapter(paletteMode);
-			if (fromPalette) return fromPalette;
-		}
-
-		return readAdapter(activeThemeId);
-	}
-
+	let coursePalette = $state.raw<readonly CoursePaletteEntry[]>(COURSE_PALETTE_ENTRIES);
+	const adapter = createWallpaperThemeAdapter();
+	let pending: AbortController | undefined;
 	async function apply(input: ApplyAppearanceInput, signal?: AbortSignal) {
 		if (typeof document === 'undefined') return;
-
-		const dynamicColorAdapter = resolveDynamicAdapter(input.activeThemeId, input.paletteMode);
-
+		pending?.abort();
+		const task = new AbortController();
+		pending = task;
+		const combined = signal ? AbortSignal.any([signal, task.signal]) : task.signal;
+		combined.throwIfAborted();
+		adapter.clearWallpaperTheme(document.documentElement);
+		applyActiveTheme(getAppEngine(), input.activeThemeId, input.isDark);
+		// Restore course colors with the base theme while the new image decodes.
+		const basePalette = input.themePaletteEntries?.length
+			? input.themePaletteEntries
+			: COURSE_PALETTE_ENTRIES;
+		coursePalette = basePalette;
+		paletteRef.current = basePalette;
+		onPaletteChanged?.();
 		try {
 			const result = await applyAppearance(input, {
 				target: document.documentElement,
-				dynamicColorAdapter: dynamicColorAdapter ?? undefined,
-				signal
+				dynamicColorAdapter: adapter,
+				signal: combined
 			});
-			if (signal?.aborted) return;
+			if (combined.aborted) return;
 			coursePalette = result.coursePalette;
 			paletteRef.current = result.coursePalette;
 			onPaletteChanged?.();
 		} catch (error) {
-			if (signal?.aborted) return;
-			throw error;
+			if (!combined.aborted) throw error;
 		}
 	}
-
 	function destroy() {
-		if (typeof document === 'undefined') return;
-		const engine = getAppEngine();
-		const paletteMode = engine.state.userPreferences?.paletteMode ?? 'vibrant';
-		const adapter = resolveDynamicAdapter(engine.state.activeThemeId, paletteMode);
-		adapter?.clearWallpaperTheme(document.documentElement);
+		pending?.abort();
+		adapter.clearWallpaperTheme();
 	}
-
 	return {
 		get coursePalette() {
 			return coursePalette;

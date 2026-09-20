@@ -1,5 +1,5 @@
-import type { ChronosEngine, PaletteMode } from '@chronos/core';
-import { PALETTE_MODE_VIBRANT, resolveThemeWorkbenchColors } from '@chronos/core';
+import type { ChronosEngine } from '@chronos/core';
+import { resolveThemeWorkbenchColors } from '@chronos/core';
 import { applyWorkbenchColors } from '@chronos/core';
 import { M3_DEFAULT_THEME_ID } from '$lib/appearance/color-scheme';
 
@@ -29,31 +29,17 @@ function clearCustomThemeStyles(target: HTMLElement) {
 	}
 }
 
-export function resolveEffectiveThemeId(
-	engine: ChronosEngine,
-	activeThemeId: string,
-	paletteMode?: PaletteMode
-): string {
-	const currentTheme = engine.themes.getTheme(activeThemeId);
-	const effectiveThemeId =
-		(paletteMode !== undefined && paletteMode !== PALETTE_MODE_VIBRANT && paletteMode !== '') ||
-		currentTheme?.supportsDynamicColor
-			? M3_DEFAULT_THEME_ID
-			: activeThemeId;
-	return effectiveThemeId;
-}
-
 export function applyActiveTheme(
 	engine: ChronosEngine,
 	activeThemeId: string,
 	isDark: boolean,
-	options?: { paletteMode?: PaletteMode; target?: HTMLElement }
+	options?: { target?: HTMLElement }
 ): void {
 	const el =
 		options?.target ?? (typeof document !== 'undefined' ? document.documentElement : undefined);
 	if (!el) return;
 
-	const effectiveThemeId = resolveEffectiveThemeId(engine, activeThemeId, options?.paletteMode);
+	const effectiveThemeId = activeThemeId;
 
 	clearCustomThemeStyles(el);
 

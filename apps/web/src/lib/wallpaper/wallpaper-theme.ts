@@ -1,33 +1,23 @@
-import { argbFromRgb, QuantizerCelebi, Score } from '@ktibow/material-color-utilities-nightly';
-import type { CoursePaletteEntry, DynamicColorAdapter } from '@chronos/core';
-import { coursePaletteFromSources, schemeAccentCssVars } from '@chronos/ui-kit/theme/m3-theme';
+import type { CoursePaletteEntry } from '@chronos/core';
+import {
+	colorsFromImageBytes,
+	coursePaletteFromSources,
+	schemeAccentCssVars
+} from '@chronos/ui-kit/theme/m3-theme';
+
+export interface WallpaperColorAdapter {
+	extractWallpaperSeed(
+		uri: string
+	): Promise<{ seed: number; coursePalette: readonly CoursePaletteEntry[] }>;
+	paintWallpaperTheme(seed: number, isDark: boolean, target: HTMLElement): void;
+	clearWallpaperTheme(target?: HTMLElement): void;
+}
 
 const MAX_EDGE = 128;
 
-export function colorsFromImageBytes(bytes: Uint8ClampedArray): {
-	seed: number;
-	ranked: number[];
-} {
-	const pixels: number[] = [];
-	for (let i = 0; i < bytes.length; i += 4) {
-		const r = bytes[i];
-		const g = bytes[i + 1];
-		const b = bytes[i + 2];
-		const a = bytes[i + 3];
-		if (a < 255) continue;
-		pixels.push(argbFromRgb(r, g, b));
-	}
-	const ranked = Score.score(QuantizerCelebi.quantize(pixels, 128), { desired: 6 });
-	return { seed: ranked[0], ranked };
-}
-
-/**
- * Creates an isolated dynamic-color adapter. All mutable state (applied CSS
- * keys, seed cache) lives in the closure so concurrent plugin instances never
- * share state across load/unload cycles — same isolation contract as
- * `createWallpaperRuntime` (ADR 0016 §3).
- */
-export function createWallpaperThemeAdapter(): DynamicColorAdapter {
+export { colorsFromImageBytes } from '@chronos/ui-kit/theme/m3-theme';
+/** Host-owned extraction cache and dynamic CSS overlay. */
+export function createWallpaperThemeAdapter(): WallpaperColorAdapter {
 	let appliedKeys: string[] = [];
 	let cachedUri: string | null = null;
 	let cachedSeed: number | null = null;

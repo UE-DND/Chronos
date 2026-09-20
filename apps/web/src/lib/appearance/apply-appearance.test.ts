@@ -1,9 +1,6 @@
+import type { WallpaperColorAdapter } from '$lib/wallpaper/wallpaper-theme';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import {
-	COURSE_PALETTE_ENTRIES,
-	type CoursePaletteEntry,
-	type DynamicColorAdapter
-} from '@chronos/core';
+import { COURSE_PALETTE_ENTRIES, type CoursePaletteEntry } from '@chronos/core';
 import colorsJson from '@chronos/plugin-theme-yumemita/colors.json';
 
 const YUMEMITA_THEME_ID = 'yumemita';
@@ -50,7 +47,7 @@ function createDynamicColorAdapter(
 		extractWallpaperSeed,
 		paintWallpaperTheme,
 		clearWallpaperTheme
-	} as DynamicColorAdapter;
+	} as WallpaperColorAdapter;
 
 	return { dynamicColorAdapter, extractWallpaperSeed, paintWallpaperTheme, clearWallpaperTheme };
 }
@@ -62,9 +59,9 @@ describe('applyAppearance', () => {
 
 		const result = await applyAppearance(
 			{
-				paletteMode: 'vibrant',
+				wallpaperColorEnabled: false,
 				isDark: false,
-				dynamicColorUri: null,
+				wallpaperUri: null,
 				activeThemeId: 'm3-default'
 			},
 			{ target, dynamicColorAdapter }
@@ -82,9 +79,9 @@ describe('applyAppearance', () => {
 
 		const result = await applyAppearance(
 			{
-				paletteMode: 'vibrant',
+				wallpaperColorEnabled: false,
 				isDark: true,
-				dynamicColorUri: null,
+				wallpaperUri: null,
 				activeThemeId: YUMEMITA_THEME_ID,
 				themePaletteEntries: YUMEMITA_PALETTE_ENTRIES
 			},
@@ -97,7 +94,7 @@ describe('applyAppearance', () => {
 		expect(result.coursePalette).toBe(YUMEMITA_PALETTE_ENTRIES);
 	});
 
-	it('does not paint dynamic color when paletteMode is vibrant but uri exists', async () => {
+	it('does not paint dynamic color when the switch is off but uri exists', async () => {
 		const target = createFakeElement();
 		const extractWallpaperSeed = vi.fn();
 		const { dynamicColorAdapter, paintWallpaperTheme, clearWallpaperTheme } =
@@ -107,9 +104,9 @@ describe('applyAppearance', () => {
 
 		const result = await applyAppearance(
 			{
-				paletteMode: 'vibrant',
+				wallpaperColorEnabled: false,
 				isDark: false,
-				dynamicColorUri: 'blob:wallpaper',
+				wallpaperUri: 'blob:wallpaper',
 				activeThemeId: 'm3-default'
 			},
 			{ target, dynamicColorAdapter }
@@ -121,7 +118,7 @@ describe('applyAppearance', () => {
 		expect(result.coursePalette).toBe(COURSE_PALETTE_ENTRIES);
 	});
 
-	it('prefers dynamic color palette over active theme palette entries', async () => {
+	it('keeps plugin theme palette even when the saved switch is on', async () => {
 		const target = createFakeElement();
 		const customPalette = [{ background: '#fedcba', foreground: '#111' }];
 		const extractWallpaperSeed = vi.fn().mockResolvedValue({
@@ -135,19 +132,19 @@ describe('applyAppearance', () => {
 
 		const result = await applyAppearance(
 			{
-				paletteMode: 'wallpaper',
+				wallpaperColorEnabled: true,
 				isDark: false,
-				dynamicColorUri: 'blob:wallpaper',
+				wallpaperUri: 'blob:wallpaper',
 				activeThemeId: YUMEMITA_THEME_ID,
 				themePaletteEntries: YUMEMITA_PALETTE_ENTRIES
 			},
 			{ target, dynamicColorAdapter }
 		);
 
-		expect(extractWallpaperSeed).toHaveBeenCalledWith('blob:wallpaper');
-		expect(paintWallpaperTheme).toHaveBeenCalledWith(7, false, target);
-		expect(clearWallpaperTheme).not.toHaveBeenCalledWith(target);
-		expect(result.coursePalette).toBe(customPalette);
+		expect(extractWallpaperSeed).not.toHaveBeenCalled();
+		expect(paintWallpaperTheme).not.toHaveBeenCalled();
+		expect(clearWallpaperTheme).toHaveBeenCalledWith(target);
+		expect(result.coursePalette).toBe(YUMEMITA_PALETTE_ENTRIES);
 	});
 
 	it('extracts and paints dynamic color theme when wallpaper palette has a uri', async () => {
@@ -163,9 +160,9 @@ describe('applyAppearance', () => {
 
 		const result = await applyAppearance(
 			{
-				paletteMode: 'wallpaper',
+				wallpaperColorEnabled: true,
 				isDark: false,
-				dynamicColorUri: 'blob:wallpaper',
+				wallpaperUri: 'blob:wallpaper',
 				activeThemeId: 'm3-default'
 			},
 			{ target, dynamicColorAdapter }
@@ -183,9 +180,9 @@ describe('applyAppearance', () => {
 
 		const result = await applyAppearance(
 			{
-				paletteMode: 'wallpaper',
+				wallpaperColorEnabled: true,
 				isDark: false,
-				dynamicColorUri: null,
+				wallpaperUri: null,
 				activeThemeId: 'm3-default'
 			},
 			{ target, dynamicColorAdapter }
@@ -207,9 +204,9 @@ describe('applyAppearance', () => {
 
 		const result = await applyAppearance(
 			{
-				paletteMode: 'wallpaper',
+				wallpaperColorEnabled: true,
 				isDark: true,
-				dynamicColorUri: 'blob:broken',
+				wallpaperUri: 'blob:broken',
 				activeThemeId: 'm3-default'
 			},
 			{ target, dynamicColorAdapter }
@@ -253,9 +250,9 @@ describe('applyAppearance', () => {
 
 		await applyAppearance(
 			{
-				paletteMode: 'vibrant',
+				wallpaperColorEnabled: false,
 				isDark: true,
-				dynamicColorUri: null,
+				wallpaperUri: null,
 				activeThemeId: 'm3-default'
 			},
 			{ target: documentElement, dynamicColorAdapter }
@@ -267,9 +264,9 @@ describe('applyAppearance', () => {
 
 		await applyAppearance(
 			{
-				paletteMode: 'vibrant',
+				wallpaperColorEnabled: false,
 				isDark: false,
-				dynamicColorUri: null,
+				wallpaperUri: null,
 				activeThemeId: 'm3-default'
 			},
 			{ target: documentElement, dynamicColorAdapter }
@@ -309,9 +306,9 @@ describe('applyAppearance', () => {
 
 		await applyAppearance(
 			{
-				paletteMode: 'vibrant',
+				wallpaperColorEnabled: false,
 				isDark: true,
-				dynamicColorUri: null,
+				wallpaperUri: null,
 				activeThemeId: 'm3-default'
 			},
 			{ target, dynamicColorAdapter }
@@ -339,9 +336,9 @@ describe('applyAppearance', () => {
 		await expect(
 			applyAppearance(
 				{
-					paletteMode: 'wallpaper',
+					wallpaperColorEnabled: true,
 					isDark: false,
-					dynamicColorUri: 'blob:wallpaper',
+					wallpaperUri: 'blob:wallpaper',
 					activeThemeId: 'm3-default'
 				},
 				{ target, dynamicColorAdapter, signal: controller.signal }

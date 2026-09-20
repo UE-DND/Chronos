@@ -14,7 +14,7 @@
 		displayedWeek?: number;
 		coursePalette?: readonly CoursePaletteEntry[];
 		hasDynamicBackground?: boolean;
-		dynamicColorUri?: string | null;
+		wallpaperUri?: string | null;
 		interactive?: boolean;
 		fit?: TimetableWallpaperFit;
 	}
@@ -24,7 +24,7 @@
 		displayedWeek: propDisplayedWeek,
 		coursePalette: propCoursePalette,
 		hasDynamicBackground = false,
-		dynamicColorUri = null,
+		wallpaperUri = null,
 		interactive = false,
 		fit = 'cover'
 	}: Props = $props();
@@ -68,7 +68,7 @@
 
 {#if timetable && gridModel}
 	<TimetableWallpaperLayer
-		wallpaperUri={hasDynamicBackground && dynamicColorUri ? dynamicColorUri : null}
+		wallpaperUri={hasDynamicBackground && wallpaperUri ? wallpaperUri : null}
 		{fit}
 	>
 		<TimetablePreviewGrid
@@ -77,7 +77,7 @@
 			{courseDisplayModels}
 			coursePalette={resolvedPalette}
 			{paletteCourses}
-			hasDynamicBackground={hasDynamicBackground && Boolean(dynamicColorUri)}
+			hasDynamicBackground={hasDynamicBackground && Boolean(wallpaperUri)}
 			{layoutMode}
 			{capsuleCornerStyle}
 			{interactive}

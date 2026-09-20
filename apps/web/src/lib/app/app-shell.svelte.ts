@@ -1,6 +1,7 @@
 import { createAppearance } from '$lib/appearance/appearance.svelte';
-import { applyActiveTheme } from '$lib/appearance/apply-active-theme';
-import { buildColorSchemePatch } from '$lib/appearance/color-scheme';
+import { createWallpaperController } from '$lib/wallpaper/wallpaper-controller.svelte';
+import { hostT } from '$lib/i18n/host-i18n.svelte';
+import { resolveColorSchemeThemeId } from '$lib/appearance/color-scheme';
 import { pwaInstallController } from '$lib/client/pwa-install.svelte';
 import {
 	getAppController,
@@ -11,12 +12,13 @@ import {
 } from '$lib/services/app-engine';
 import type {
 	CapsuleCornerStyle,
-	PaletteMode,
 	ThemeMode,
 	TimetableLayoutMode,
 	UserPreferences
 } from '@chronos/core';
 import { applyReduceMotionClass } from '@chronos/ui-kit';
+import { DEFAULT_VISUAL_THEME_ID } from '@chronos/core';
+import { untrack } from 'svelte';
 
 function resolveDark(themeMode: ThemeMode, systemPrefersDark: boolean): boolean {
 	if (themeMode === 'dark') return true;
@@ -29,9 +31,9 @@ export function createAppShell() {
 	let compactLandscape = $state(false);
 	let mediaQueryCleanup: (() => void) | null = null;
 	let landscapeQueryCleanup: (() => void) | null = null;
-	let dynamicColorCleanup: (() => void) | null = null;
 	let disposeAppearanceEffects: (() => void) | null = null;
-	let dynamicColorUri = $state<string | null>(null);
+	const wallpaper = createWallpaperController();
+	const wallpaperUri = $derived(wallpaper.state.uri);
 	const appearance = createAppearance(getSharedCoursePaletteRef(), notifyCoursePaletteChanged);
 	const controller = getAppController();
 	const engine = getAppEngine();
@@ -49,7 +51,7 @@ export function createAppShell() {
 			controller.timetables.length > 0
 		)
 	);
-	const hasDynamicColorBackground = $derived(Boolean(dynamicColorUri));
+	const hasWallpaper = $derived(Boolean(wallpaperUri));
 
 	function init() {
 		if (typeof window !== 'undefined' && !mediaQueryCleanup) {
@@ -71,12 +73,7 @@ export function createAppShell() {
 			landscapeQueryCleanup = () => mediaQuery.removeEventListener('change', onChange);
 		}
 
-		dynamicColorCleanup?.();
-		const dynamicColorSub = engine.on('dynamicColor:changed', ({ uri }) => {
-			dynamicColorUri = uri;
-		});
-		dynamicColorCleanup = () => dynamicColorSub.dispose();
-		engine.events.emit('dynamicColor:hydrate', undefined);
+		wallpaper.init(() => engine.notify(hostT('wallpaper.screen.error.importFailed'), 'error'));
 
 		// The appearance pipeline lives here (not in platform-bootstrap): this
 		// controller already owns engine/theme/preference reactivity, so the
@@ -85,11 +82,24 @@ export function createAppShell() {
 		disposeAppearanceEffects?.();
 		disposeAppearanceEffects = $effect.root(() => {
 			$effect(() => {
+				void controller.slotVersion;
+				const preferred = controller.userPreferences?.visualThemeId ?? DEFAULT_VISUAL_THEME_ID;
+				const themeId = engine.themes.getTheme(preferred) ? preferred : DEFAULT_VISUAL_THEME_ID;
+				untrack(() => {
+					if (engine.state.activeThemeId !== themeId) engine.setTheme(themeId);
+				});
+			});
+			$effect(() => {
+				void controller.slotVersion;
+				const theme = engine.themes.getTheme(controller.activeThemeId);
+				const source = controller.userPreferences?.wallpaperSource ?? 'theme';
+				untrack(() => wallpaper.select(source, theme?.wallpaper));
+			});
+			$effect(() => {
 				const dark = isDark;
-				const paletteMode = controller.userPreferences?.paletteMode ?? 'vibrant';
+				void controller.slotVersion;
+				const wallpaperColorEnabled = controller.userPreferences?.wallpaperColorEnabled ?? false;
 				const activeThemeId = controller.activeThemeId;
-
-				applyActiveTheme(engine, activeThemeId, dark, { paletteMode });
 
 				const theme = engine.themes.getTheme(activeThemeId);
 				const mode = dark ? 'dark' : 'light';
@@ -99,16 +109,14 @@ export function createAppShell() {
 						: (theme?.paletteEntries ?? null);
 
 				const ac = new AbortController();
-				void appearance.apply(
-					{
-						isDark: dark,
-						paletteMode,
-						dynamicColorUri,
-						activeThemeId,
-						themePaletteEntries
-					},
-					ac.signal
-				);
+				const input = {
+					isDark: dark,
+					wallpaperColorEnabled,
+					wallpaperUri,
+					activeThemeId,
+					themePaletteEntries
+				};
+				untrack(() => void appearance.apply(input, ac.signal));
 				return () => ac.abort();
 			});
 
@@ -124,8 +132,8 @@ export function createAppShell() {
 		mediaQueryCleanup = null;
 		landscapeQueryCleanup?.();
 		landscapeQueryCleanup = null;
-		dynamicColorCleanup?.();
-		dynamicColorCleanup = null;
+		wallpaper.destroy();
+		appearance.destroy();
 		disposeAppearanceEffects?.();
 		disposeAppearanceEffects = null;
 	}
@@ -135,12 +143,10 @@ export function createAppShell() {
 	}
 
 	async function setColorScheme(schemeId: string) {
-		const patch = buildColorSchemePatch(schemeId);
-		controller.setTheme(patch.themeId);
-		await updatePreferences({
-			paletteMode: patch.paletteMode,
-			visualThemeId: patch.visualThemeId
-		});
+		const themeId = resolveColorSchemeThemeId(schemeId);
+		if (!engine.themes.getTheme(themeId)) return;
+		controller.setTheme(themeId);
+		await updatePreferences({ visualThemeId: themeId });
 	}
 
 	async function setVisualTheme(themeId: string) {
@@ -155,10 +161,6 @@ export function createAppShell() {
 	async function setTimetableLayoutMode(mode: TimetableLayoutMode) {
 		if (compactLandscape && mode === 'compact') return;
 		await updatePreferences({ timetableLayoutMode: mode });
-	}
-
-	async function setPaletteMode(mode: PaletteMode) {
-		await updatePreferences({ paletteMode: mode });
 	}
 
 	async function setCapsuleCornerStyle(style: CapsuleCornerStyle) {
@@ -187,7 +189,7 @@ export function createAppShell() {
 
 	async function clearAllData() {
 		await resetAppToInitialState();
-		dynamicColorUri = null;
+		await wallpaper.clear();
 		// localStorage chronos:* keys are wiped by storage; drop in-memory PWA flags too.
 		pwaInstallController.resetInstalledFlag();
 		pwaInstallController.dismiss({ track: false });
@@ -200,8 +202,8 @@ export function createAppShell() {
 				isDark,
 				compactLandscape,
 				effectiveTimetableLayoutMode,
-				hasDynamicColorBackground,
-				dynamicColorUri
+				hasWallpaper,
+				wallpaperUri
 			};
 		},
 		get appearance() {
@@ -210,6 +212,7 @@ export function createAppShell() {
 		get controller() {
 			return controller;
 		},
+		wallpaper,
 		init,
 		destroy,
 		updatePreferences,
@@ -217,7 +220,6 @@ export function createAppShell() {
 		setColorScheme,
 		setVisualTheme,
 		setTimetableLayoutMode,
-		setPaletteMode,
 		setCapsuleCornerStyle,
 		setHapticFeedbackEnabled,
 		setReduceMotionEnabled,

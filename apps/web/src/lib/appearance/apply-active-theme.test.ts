@@ -33,7 +33,7 @@ function createFakeElement() {
 }
 
 describe('applyActiveTheme', () => {
-	it('clears plugin theme styling when wallpaper palette mode is active', () => {
+	it('keeps plugin theme styling independent of the wallpaper', () => {
 		const engine = new ChronosEngine({
 			env: {
 				platform: 'web',
@@ -59,7 +59,9 @@ describe('applyActiveTheme', () => {
 					getPreferences: async () => ({
 						schemaVersion: 2,
 						themeMode: 'auto',
-						paletteMode: 'wallpaper',
+						wallpaperSource: 'theme',
+						wallpaperColorEnabled: false,
+
 						timetableLayoutMode: 'fixed',
 						capsuleCornerStyle: 'rounded',
 						hapticFeedbackEnabled: true,
@@ -84,14 +86,18 @@ describe('applyActiveTheme', () => {
 			}
 		});
 		engine.themes.registerTheme(m3DefaultTheme);
+		engine.themes.registerTheme({
+			...m3DefaultTheme,
+			id: YUMEMITA_THEME_ID,
+			className: 'theme-yumemita'
+		});
 		const target = createFakeElement();
 
 		applyActiveTheme(engine, YUMEMITA_THEME_ID, false, {
-			paletteMode: 'wallpaper',
 			target
 		});
 
-		expect(target.classList.contains('theme-yumemita')).toBe(false);
+		expect(target.classList.contains('theme-yumemita')).toBe(true);
 		engine.dispose();
 	});
 
@@ -121,7 +127,9 @@ describe('applyActiveTheme', () => {
 					getPreferences: async () => ({
 						schemaVersion: 2,
 						themeMode: 'auto',
-						paletteMode: 'vibrant',
+						wallpaperSource: 'theme',
+						wallpaperColorEnabled: false,
+
 						timetableLayoutMode: 'fixed',
 						capsuleCornerStyle: 'rounded',
 						hapticFeedbackEnabled: true,
@@ -165,7 +173,6 @@ describe('applyActiveTheme', () => {
 		const styleMap = (target as HTMLElement & { getStyle: () => Map<string, string> }).getStyle();
 
 		applyActiveTheme(engine, 'custom-theme', false, {
-			paletteMode: 'vibrant',
 			target
 		});
 

@@ -8,7 +8,16 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('$lib/appearance/appearance.svelte', () => ({
-	createAppearance: () => ({ apply: mocks.applyAppearance })
+	createAppearance: () => ({ apply: mocks.applyAppearance, destroy: vi.fn() })
+}));
+
+vi.mock('$lib/wallpaper/wallpaper-controller.svelte', () => ({
+	createWallpaperController: () => ({
+		state: { uri: null },
+		init: vi.fn(),
+		select: vi.fn(),
+		destroy: vi.fn()
+	})
 }));
 
 vi.mock('$lib/appearance/apply-active-theme', () => ({ applyActiveTheme: vi.fn() }));
@@ -24,6 +33,7 @@ vi.mock('$lib/services/app-engine', () => ({
 		updatePreferences: mocks.updatePreferences
 	}),
 	getAppEngine: () => ({
+		state: { activeThemeId: 'm3-default' },
 		events: { emit: vi.fn() },
 		on: () => ({ dispose: vi.fn() }),
 		themes: { getTheme: () => null }

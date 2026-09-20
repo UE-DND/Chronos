@@ -1,14 +1,16 @@
-import type { DynamicColorAdapter, PaletteMode, CoursePaletteEntry } from '@chronos/core';
-import { PALETTE_MODE_VIBRANT, resolveCoursePalette } from '@chronos/core';
+import type { CoursePaletteEntry } from '@chronos/core';
+import { COURSE_PALETTE_ENTRIES } from '@chronos/core';
+import type { WallpaperColorAdapter } from '$lib/wallpaper/wallpaper-theme';
+import { canUseWallpaperColors } from '$lib/wallpaper/wallpaper-policy';
 
 /** Keep in sync with app.html boot IIFE theme-color literals. */
 export const THEME_COLOR_LIGHT = '#0068B7';
 export const THEME_COLOR_DARK = '#1a1c1e';
 
 export type ApplyAppearanceInput = {
-	paletteMode: PaletteMode;
+	wallpaperColorEnabled: boolean;
 	isDark: boolean;
-	dynamicColorUri: string | null;
+	wallpaperUri: string | null;
 	activeThemeId: string;
 	themePaletteEntries?: readonly CoursePaletteEntry[] | null;
 };
@@ -40,13 +42,14 @@ export async function applyAppearance(
 	input: ApplyAppearanceInput,
 	options: {
 		target?: HTMLElement;
-		dynamicColorAdapter?: DynamicColorAdapter;
+		dynamicColorAdapter?: WallpaperColorAdapter;
 		signal?: AbortSignal;
 	} = {}
 ): Promise<{ coursePalette: readonly CoursePaletteEntry[] }> {
 	const target =
 		options.target ?? (typeof document !== 'undefined' ? document.documentElement : undefined);
-	const { paletteMode, isDark, dynamicColorUri, themePaletteEntries } = input;
+	const { wallpaperColorEnabled, activeThemeId, isDark, wallpaperUri, themePaletteEntries } = input;
+	const basePalette = themePaletteEntries?.length ? themePaletteEntries : COURSE_PALETTE_ENTRIES;
 	const { dynamicColorAdapter, signal } = options;
 
 	if (target) {
@@ -60,18 +63,22 @@ export async function applyAppearance(
 
 	abortIfNeeded(signal);
 
-	if (paletteMode !== PALETTE_MODE_VIBRANT && dynamicColorUri && dynamicColorAdapter) {
+	if (
+		canUseWallpaperColors(activeThemeId, wallpaperColorEnabled) &&
+		wallpaperUri &&
+		dynamicColorAdapter
+	) {
 		try {
 			const { seed, coursePalette: wallpaperPalette } =
-				await dynamicColorAdapter.extractWallpaperSeed(dynamicColorUri);
+				await dynamicColorAdapter.extractWallpaperSeed(wallpaperUri);
 			abortIfNeeded(signal);
 			dynamicColorAdapter.paintWallpaperTheme(seed, isDark, target ?? document.documentElement);
 			abortIfNeeded(signal);
-			return { coursePalette: resolveCoursePalette(paletteMode, wallpaperPalette) };
+			return { coursePalette: wallpaperPalette.length ? wallpaperPalette : basePalette };
 		} catch (error) {
 			if (signal?.aborted) throw error;
 			dynamicColorAdapter.clearWallpaperTheme(target);
-			return { coursePalette: resolveCoursePalette(PALETTE_MODE_VIBRANT, null) };
+			return { coursePalette: basePalette };
 		}
 	}
 
@@ -81,5 +88,5 @@ export async function applyAppearance(
 	}
 
 	dynamicColorAdapter?.clearWallpaperTheme(target);
-	return { coursePalette: resolveCoursePalette(paletteMode, null) };
+	return { coursePalette: basePalette };
 }

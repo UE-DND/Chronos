@@ -220,7 +220,6 @@ export async function resetAppToInitialState(): Promise<void> {
 	await profileManager.applyProfile(profile, resolveBuiltinPlugin);
 	resolvedProfilePlugins = await resolveProfileBuiltinPlugins(profile);
 	engine.setTheme(profile.defaultTheme ?? DEFAULT_VISUAL_THEME_ID);
-	engine.events.emit('dynamicColor:hydrate', undefined);
 }
 
 /** Disposes the shared host engine and teardown state. */
