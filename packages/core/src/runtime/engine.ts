@@ -354,7 +354,6 @@ export class ChronosEngine implements EngineContextHost, Disposable {
 	}
 
 	private resolveActiveIconThemeId(): string {
-		if (this._userPreferences.wallpaperColorEnabled) return HOST_DEFAULT_ICON_THEME_ID;
 		const recommended = this.themes.getTheme(this._activeThemeId)?.recommendedIconTheme;
 		if (recommended && this.iconThemes.getIconTheme(recommended)) {
 			return recommended;

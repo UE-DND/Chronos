@@ -842,7 +842,7 @@ describe('profile-owned default themes', () => {
 		await expect(engine.unloadPlugin('base')).rejects.toThrow();
 		engine.dispose();
 	});
-	it('retains the selected theme while wallpaper colors use host icons', async () => {
+	it('retains the selected theme and its icons while using wallpaper colors', async () => {
 		const { env } = createMockEnv();
 		const engine = new ChronosEngine({ env });
 		engine.themes.registerTheme({
@@ -855,7 +855,7 @@ describe('profile-owned default themes', () => {
 		engine.setTheme('custom');
 		await engine.updatePreferences({ visualThemeId: 'custom', wallpaperColorEnabled: true });
 		expect(engine.state.activeThemeId).toBe('custom');
-		expect(engine.state.activeIconThemeId).toBe('host-default');
+		expect(engine.state.activeIconThemeId).toBe('custom-icons');
 		await engine.updatePreferences({ wallpaperColorEnabled: false });
 		expect(engine.state.activeIconThemeId).toBe('custom-icons');
 		engine.dispose();
