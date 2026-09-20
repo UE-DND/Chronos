@@ -100,6 +100,15 @@ function registerCoreShellSlots(ctx: ChronosContext, t: PluginTranslate): void {
 	});
 
 	ctx.registerSlot('mine.item', {
+		id: 'wallpaper',
+		sectionId: 'appearance-feedback',
+		title: () => t('wallpaper.item'),
+		href: '/wallpaper',
+		icon: 'wallpaper',
+		order: 30
+	});
+
+	ctx.registerSlot('mine.item', {
 		id: 'feedback',
 		sectionId: 'appearance-feedback',
 		title: () => t('item.feedback'),

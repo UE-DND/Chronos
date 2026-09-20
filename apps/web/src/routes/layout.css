@@ -434,7 +434,8 @@
 		}
 
 		.form-bottom-actions,
-		.plugin-bottom-actions {
+		.plugin-bottom-actions,
+		.wallpaper-bottom-actions {
 			display: none;
 		}
 

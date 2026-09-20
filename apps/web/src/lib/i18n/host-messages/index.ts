@@ -8,6 +8,7 @@ export const HOST_UI_PLUGIN_ID = 'host-ui';
 export type HostMessageKey = keyof typeof zhCn;
 
 export const CORE_SHELL_MESSAGE_KEYS = [
+	'wallpaper.item',
 	'tab.timetable',
 	'tab.mine',
 	'section.timetable-management',

@@ -1,4 +1,31 @@
 export const en = {
+	'wallpaper.preview.title': 'Wallpaper preview & crop',
+	'wallpaper.preview.description': 'Preview your timetable, choose, crop or delete a custom image',
+	'wallpaper.settings.saveFailed': 'Could not save settings. Please try again.',
+	'wallpaper.screen.title': 'Set timetable wallpaper',
+	'wallpaper.screen.field.wallpaper.title': 'Choose wallpaper image',
+	'wallpaper.screen.field.wallpaper.description':
+		'PNG, JPG, or WebP images with automatic theme color extraction',
+	'wallpaper.screen.preview.empty': 'Choose a wallpaper to preview how it looks here',
+	'wallpaper.screen.error.tooLarge': 'This image is too large to import',
+	'wallpaper.screen.error.importFailed': 'Failed to import wallpaper. Please try again',
+	'wallpaper.screen.action.clear': 'Remove wallpaper',
+	'wallpaper.screen.action.repick': 'Choose again',
+	'wallpaper.screen.action.pick': 'Choose wallpaper',
+	'wallpaper.screen.action.cancel': 'Cancel',
+	'wallpaper.screen.action.confirmCrop': 'Apply crop',
+	'wallpaper.screen.crop.hint': 'Drag to reposition, pinch or scroll to zoom',
+	'wallpaper.screen.crop.viewportAria': 'Crop canvas gestures',
+	'wallpaper.source.custom': 'Custom',
+	'wallpaper.source.theme': 'Follow theme',
+	'wallpaper.source.none': 'None',
+	'wallpaper.source.label': 'Wallpaper source',
+	'wallpaper.colors.title': 'Colors from wallpaper',
+	'wallpaper.colors.description': 'Use the current wallpaper to color the default theme',
+	'wallpaper.colors.unavailable':
+		'Unavailable with plugin themes; restored when using the default theme',
+	'wallpaper.item': 'Wallpaper & themes',
+
 	// shell (core navigation)
 	'tab.timetable': 'Timetable',
 	'tab.mine': 'Mine',

@@ -4,6 +4,11 @@ import type { IAnalyticsService } from '@chronos/core';
 
 /** Host-owned analytics events (apps/web UI, PWA, settings). Plugin events use `trackPluginAnalytics`. */
 export type HostAnalyticsEvent =
+	| 'wallpaper_pick'
+	| 'wallpaper_crop_cancel'
+	| 'wallpaper_crop_confirm'
+	| 'wallpaper_clear'
+	| 'wallpaper_colors_change'
 	| 'onboarding_step_next'
 	| 'onboarding_step_back'
 	| 'onboarding_skip'

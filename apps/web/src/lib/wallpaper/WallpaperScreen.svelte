@@ -1,36 +1,27 @@
 <script lang="ts">
-	import { trackPluginAnalytics } from '@chronos/core';
+	import { trackEvent } from '$lib/client/analytics';
 	import type { ChronosUiController } from '@chronos/ui-kit';
 	import {
 		TimetableLivePreview,
-		pluginText,
+		getEdgeBarActions,
 		type EdgeBarAction,
 		type EdgeBarActionsController
 	} from '@chronos/ui-kit';
-	import { WALLPAPER_ANALYTICS } from './analytics';
 	import WallpaperCropEditor from './WallpaperCropEditor.svelte';
-	import { getWallpaperRuntime } from './runtime.svelte';
-	import { WALLPAPER_MESSAGES } from './messages';
-	import { WALLPAPER_PLUGIN_ID } from './storage';
+	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import type { HostMessageKey } from '$lib/i18n/host-messages';
 
-	interface Props {
-		controller: ChronosUiController;
-		pluginId: string;
-		edgeActions?: EdgeBarActionsController;
-	}
-
-	let { controller, pluginId, edgeActions }: Props = $props();
-
-	const runtime = $derived(getWallpaperRuntime(pluginId));
-	const wallpaperUri = $derived(runtime.uri);
-	const hasWallpaper = $derived(runtime.hasWallpaper);
+	import type { AppShellController } from '$lib/app/app-shell.svelte';
+	let { shell }: { shell: AppShellController } = $props();
+	const controller = $derived(shell.controller);
+	const edgeActions = getEdgeBarActions();
+	const wallpaperUri = $derived(shell.state.wallpaperUri);
+	const hasWallpaper = $derived(Boolean(wallpaperUri));
+	const hasCustom = $derived(shell.wallpaper.state.hasCustom);
 	const timetable = $derived(controller.currentTimetable);
-
-	function pt(key: keyof (typeof WALLPAPER_MESSAGES)['zh-cn']) {
-		return pluginText(controller, WALLPAPER_PLUGIN_ID, WALLPAPER_MESSAGES, key);
+	function pt(key: string) {
+		return hostT(`wallpaper.${key}` as HostMessageKey);
 	}
-
-	const pluginContext = $derived(controller.getPluginContext(pluginId));
 
 	const previewEmpty = $derived(pt('screen.preview.empty'));
 	const clearLabel = $derived(pt('screen.action.clear'));
@@ -39,7 +30,7 @@
 	let fileInput: HTMLInputElement | undefined = $state();
 	let cropSource = $state<File | null>(null);
 	const actions = $derived<EdgeBarAction[]>([
-		...(hasWallpaper
+		...(hasCustom
 			? [
 					{
 						id: 'clear',
@@ -59,7 +50,7 @@
 	]);
 	$effect(() => {
 		if (cropSource) return;
-		return edgeActions?.register(pluginId, actions);
+		return edgeActions?.register('host-wallpaper', actions);
 	});
 
 	function onPickWallpaper() {
@@ -71,32 +62,37 @@
 		const file = input.files?.[0];
 		input.value = '';
 		if (!file) return;
-		trackPluginAnalytics(pluginContext, WALLPAPER_PLUGIN_ID, WALLPAPER_ANALYTICS.pick);
+		trackEvent('wallpaper_pick');
 		cropSource = file;
 	}
 
 	function onCropCancel() {
-		trackPluginAnalytics(pluginContext, WALLPAPER_PLUGIN_ID, WALLPAPER_ANALYTICS.cropCancel);
+		trackEvent('wallpaper_crop_cancel');
 		cropSource = null;
 	}
 
 	async function onCropConfirm(blob: Blob) {
 		try {
-			await runtime.setWallpaper(blob);
-			trackPluginAnalytics(pluginContext, WALLPAPER_PLUGIN_ID, WALLPAPER_ANALYTICS.cropConfirm);
+			await shell.wallpaper.save(blob);
+			await shell.updatePreferences({ wallpaperSource: 'custom' });
+			trackEvent('wallpaper_crop_confirm');
 			cropSource = null;
 		} catch (error) {
 			const msg =
 				error instanceof DOMException && error.name === 'QuotaExceededError'
 					? pt('screen.error.tooLarge')
 					: pt('screen.error.importFailed');
-			controller.getPluginContext(pluginId).actions.notify(msg, 'error');
+			controller.notify(msg, 'error');
 		}
 	}
 
 	async function clearWallpaper() {
-		await runtime.setWallpaper(null);
-		trackPluginAnalytics(pluginContext, WALLPAPER_PLUGIN_ID, WALLPAPER_ANALYTICS.clear);
+		try {
+			await shell.wallpaper.clear();
+			trackEvent('wallpaper_clear');
+		} catch {
+			controller.notify(pt('screen.error.importFailed'), 'error');
+		}
 	}
 </script>
 
@@ -112,7 +108,6 @@
 	{#if cropSource}
 		<WallpaperCropEditor
 			{controller}
-			{pluginId}
 			{edgeActions}
 			source={cropSource}
 			onConfirm={onCropConfirm}
@@ -123,11 +118,14 @@
 			<TimetableLivePreview
 				{controller}
 				hasDynamicBackground={true}
-				dynamicColorUri={wallpaperUri}
+				{wallpaperUri}
+				coursePalette={shell.appearance.coursePalette}
 				fit="cover"
 				interactive={false}
 			/>
 		</div>
+	{:else if wallpaperUri}
+		<img src={wallpaperUri} alt="" class="min-h-0 flex-1 object-contain" />
 	{:else}
 		<div class="flex min-h-0 flex-1 items-center justify-center bg-canvas p-4">
 			<p class="text-body-medium text-center text-on-surface-variant">{previewEmpty}</p>
@@ -135,9 +133,9 @@
 	{/if}
 
 	{#if !cropSource}
-		<div class="bottom-bar plugin-bottom-actions">
+		<div class="bottom-bar wallpaper-bottom-actions">
 			<div class="mx-auto flex h-full w-full max-w-lg items-center gap-3">
-				{#if hasWallpaper}
+				{#if hasCustom}
 					<button type="button" class="ui-btn ui-btn-outlined flex-1" onclick={clearWallpaper}>
 						{clearLabel}
 					</button>

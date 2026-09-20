@@ -7,7 +7,6 @@
 	} from '@chronos/core';
 	import {
 		TimetablePreviewGrid,
-		pluginText,
 		type EdgeBarAction,
 		type EdgeBarActionsController
 	} from '@chronos/ui-kit';
@@ -21,22 +20,21 @@
 		zoomAtPoint,
 		type CropTransform
 	} from './crop-image';
-	import { WALLPAPER_MESSAGES } from './messages';
-	import { WALLPAPER_PLUGIN_ID } from './storage';
+	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import type { HostMessageKey } from '$lib/i18n/host-messages';
 
 	interface Props {
 		controller: ChronosUiController;
-		pluginId: string;
 		edgeActions?: EdgeBarActionsController;
 		source: Blob | File;
 		onConfirm: (blob: Blob) => void | Promise<void>;
 		onCancel: () => void;
 	}
 
-	let { controller, pluginId, edgeActions, source, onConfirm, onCancel }: Props = $props();
+	let { controller, edgeActions, source, onConfirm, onCancel }: Props = $props();
 
-	function pt(key: keyof (typeof WALLPAPER_MESSAGES)['zh-cn']) {
-		return pluginText(controller, WALLPAPER_PLUGIN_ID, WALLPAPER_MESSAGES, key);
+	function pt(key: string) {
+		return hostT(`wallpaper.${key}` as HostMessageKey);
 	}
 
 	const hint = $derived(pt('screen.crop.hint'));
@@ -103,7 +101,7 @@
 			onClick: confirmCrop
 		}
 	]);
-	$effect(() => edgeActions?.register(pluginId, actions));
+	$effect(() => edgeActions?.register('host-wallpaper', actions));
 
 	const minScale = $derived(
 		naturalWidth > 0 && naturalHeight > 0 && frameWidth > 0 && frameHeight > 0
@@ -375,7 +373,7 @@
 		</div>
 	</div>
 
-	<div class="bottom-bar plugin-bottom-actions">
+	<div class="bottom-bar wallpaper-bottom-actions">
 		<div class="mx-auto flex h-full w-full max-w-lg items-center gap-3">
 			<button
 				type="button"

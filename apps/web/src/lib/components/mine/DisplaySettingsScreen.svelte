@@ -1,18 +1,9 @@
 <script lang="ts">
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import {
-		DEFAULT_VISUAL_THEME_ID,
-		resolveLocalizedText,
-		type CapsuleCornerStyle,
-		type ThemeMode,
-		type TimetableLayoutMode
-	} from '@chronos/core';
+	import { type CapsuleCornerStyle, type ThemeMode, type TimetableLayoutMode } from '@chronos/core';
 	import type { AppShellController } from '$lib/app/app-shell.svelte';
 	import { trackEvent } from '$lib/client/analytics';
-	import { getAppEngine } from '$lib/services/app-engine';
-	import { normalizeAppLocale } from '$lib/i18n/locale-sync';
 
-	import { BUILTIN_COLOR_SCHEME_VIBRANT, resolveColorSchemeId } from '$lib/appearance/color-scheme';
 	import Radio from '$lib/components/ui/Radio.svelte';
 	import Switch from '$lib/components/ui/Switch.svelte';
 	import MineSection from '$lib/components/mine/MineSection.svelte';
@@ -23,63 +14,17 @@
 	const themeMode = $derived(shell.controller.userPreferences?.themeMode ?? 'auto');
 	const layoutMode = $derived(shell.state.effectiveTimetableLayoutMode);
 	const compactLandscape = $derived(shell.state.compactLandscape);
-	const paletteMode = $derived(shell.controller.userPreferences?.paletteMode ?? 'vibrant');
 	const capsuleCornerStyle = $derived(
 		shell.controller.userPreferences?.capsuleCornerStyle ?? 'sharp'
 	);
 	const currentPeriodHighlightEnabled = $derived(
 		shell.controller.userPreferences?.currentPeriodHighlightEnabled ?? false
 	);
-	const hasDynamicColorBackground = $derived(shell.state.hasDynamicColorBackground);
-	const visualThemeId = $derived(shell.controller.activeThemeId);
-	const activeColorSchemeId = $derived(resolveColorSchemeId(paletteMode, visualThemeId));
-	const activeLocale = $derived(normalizeAppLocale(shell.controller.currentLocale));
 	const periodHighlightDesc = $derived(
 		layoutMode === 'compact'
 			? hostT('display.periodHighlight.desc.compact')
 			: hostT('display.periodHighlight.desc')
 	);
-
-	const colorSchemeOptions = $derived.by(() => {
-		void shell.controller.slotVersion;
-		void activeLocale;
-
-		const builtin = [
-			{
-				id: BUILTIN_COLOR_SCHEME_VIBRANT,
-				label: hostT('display.builtin.default'),
-				description: hostT('display.colorScheme.builtinDesc'),
-				disabled: false
-			}
-		];
-
-		const pluginThemes = getAppEngine()
-			.themes.getThemes()
-			.filter((theme) => theme.id !== DEFAULT_VISUAL_THEME_ID)
-			.map((theme) => {
-				const isDynamicTheme = Boolean(theme.supportsDynamicColor);
-				const isDisabled = isDynamicTheme
-					? !hasDynamicColorBackground
-					: typeof theme.disabled === 'function'
-						? theme.disabled()
-						: Boolean(theme.disabled);
-				const defaultDesc = isDynamicTheme
-					? hasDynamicColorBackground
-						? hostT('display.colorScheme.dynamicReady')
-						: hostT('display.colorScheme.dynamicBlocked')
-					: undefined;
-				const desc = resolveLocalizedText(theme.description, defaultDesc, activeLocale);
-
-				return {
-					id: theme.id,
-					label: resolveLocalizedText(theme.name, theme.id, activeLocale),
-					description: desc,
-					disabled: isDisabled
-				};
-			});
-
-		return [...builtin, ...pluginThemes];
-	});
 
 	const themeOptions = $derived.by(() => {
 		void shell.controller.currentLocale;
@@ -122,14 +67,6 @@
 		] as const;
 	});
 
-	async function selectColorScheme(schemeId: string) {
-		const option = colorSchemeOptions.find((entry) => entry.id === schemeId);
-		if (!option || option.disabled) return;
-		haptic.light();
-		trackEvent('settings_color_scheme_change', { schemeId });
-		await shell.setColorScheme(schemeId);
-	}
-
 	async function selectThemeMode(mode: ThemeMode) {
 		haptic.light();
 		trackEvent('settings_theme_change', { mode });
@@ -165,27 +102,6 @@
 						name="theme-mode"
 						checked={selected}
 						onchange={() => selectThemeMode(option.mode)}
-					/>
-				{/snippet}
-			</MineRow>
-		{/each}
-	</MineSection>
-
-	<MineSection title={hostT('display.section.colorScheme')}>
-		{#each colorSchemeOptions as option (option.id)}
-			{@const selected = activeColorSchemeId === option.id}
-			<MineRow
-				label={true}
-				title={option.label}
-				supporting={option.description}
-				onclick={() => !option.disabled && selectColorScheme(option.id)}
-			>
-				{#snippet trailing()}
-					<Radio
-						name="color-scheme"
-						checked={selected}
-						disabled={option.disabled}
-						onchange={() => selectColorScheme(option.id)}
 					/>
 				{/snippet}
 			</MineRow>

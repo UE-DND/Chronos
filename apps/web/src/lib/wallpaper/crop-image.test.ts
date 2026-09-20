@@ -7,7 +7,7 @@ import {
 	resolveExportMimeType,
 	sourceCropRect,
 	zoomAtPoint
-} from '../src/crop-image';
+} from './crop-image';
 
 describe('crop-image', () => {
 	it('computeCoverScale covers landscape, portrait, and square images', () => {
