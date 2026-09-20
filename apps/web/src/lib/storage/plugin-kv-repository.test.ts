@@ -93,10 +93,10 @@ describe('PluginKvRepository', () => {
 		const repo = new PluginKvRepository(db);
 
 		await repo.set('plugin-a', 'asset', new Uint8Array([1]));
-		await repo.set('plugin-a', 'asset', { version: 2 });
+		await repo.set('plugin-a', 'asset', { version: 1 });
 
 		expect(pluginBinaryMap.has('plugin-a:asset')).toBe(false);
 		expect(pluginDataMap.has('plugin-a:asset')).toBe(true);
-		expect(await repo.get<{ version: number }>('plugin-a', 'asset')).toEqual({ version: 2 });
+		expect(await repo.get<{ version: number }>('plugin-a', 'asset')).toEqual({ version: 1 });
 	});
 });

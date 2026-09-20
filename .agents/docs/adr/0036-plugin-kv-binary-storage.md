@@ -49,7 +49,9 @@ flowchart TD
 
 插件仅通过端口访问，**禁止**直连 Dexie 或 IndexedDB。
 
-### 2. Web 宿主：Dexie schema v2 与通用门面
+### 2. Web 宿主：Dexie schema v1 与通用门面
+
+未发布阶段统一在 `version(1)` 声明所有当前表，不保留历史升级链。
 
 - 新增 **`pluginBinary`** 表（`ArrayBuffer` + `mimeType`），与 `pluginData` 并列，**非**壁纸或任何插件专表；
 - `PluginKvRepository` 统一路由 JSON / 二进制；`DexieStorageProvider` 内部字段命名为 `pluginKv`；

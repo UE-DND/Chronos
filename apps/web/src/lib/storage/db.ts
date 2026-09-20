@@ -50,12 +50,10 @@ export class ChronosDB extends Dexie {
 		this.version(1).stores({
 			timetables: 'id, updatedAt',
 			courses: 'id, timetableId, [timetableId+dayOfWeek]',
-			pluginData: 'id, pluginId, key, updatedAt'
+			pluginData: 'id, pluginId, key, updatedAt',
+			pluginBinary: 'id, pluginId, key, updatedAt',
+			images: 'id'
 		});
-		this.version(2).stores({
-			pluginBinary: 'id, pluginId, key, updatedAt'
-		});
-		this.version(3).stores({ images: 'id' });
 	}
 }
 
