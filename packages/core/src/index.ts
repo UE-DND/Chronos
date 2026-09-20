@@ -45,8 +45,7 @@ export * from './types/mountable';
 export type {
 	ThemeContribution,
 	ThemeWorkbenchColors,
-	CourseBadgeSlotContribution,
-	DynamicColorAdapter
+	CourseBadgeSlotContribution
 } from './types/contributions';
 export type { PlatformType, ChronosEnv } from './types/env';
 export * from './types/context';

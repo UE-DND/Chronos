@@ -1,23 +1,20 @@
 import { DEFAULT_VISUAL_THEME_ID } from '../theme/theme-defaults';
 
 export type ThemeMode = 'light' | 'dark' | 'auto';
-export type PaletteMode = string;
 export type AppLocale = 'zh-cn' | 'en';
+export type WallpaperSource = 'custom' | 'theme' | 'none';
 
-/** 默认课程配色模式 */
-export const PALETTE_MODE_VIBRANT = 'vibrant';
-/** 动态取色模式（壁纸） */
-export const PALETTE_MODE_WALLPAPER = 'wallpaper';
 export type TimetableLayoutMode = 'fixed' | 'compact';
 export type CapsuleCornerStyle = 'rounded' | 'sharp' | 'pill';
 
-export const CURRENT_PREFERENCES_SCHEMA_VERSION = 2;
+export const CURRENT_PREFERENCES_SCHEMA_VERSION = 3;
 
 export const PREFERENCE_STORAGE_KEYS = {
 	currentTimetableId: 'chronos_preferences:current_timetable_id',
 	themeMode: 'chronos_preferences:theme_mode',
 	timetableLayoutMode: 'chronos_preferences:timetable_layout_mode',
-	paletteMode: 'chronos_preferences:palette_mode',
+	wallpaperSource: 'chronos_preferences:wallpaper_source',
+	wallpaperColorEnabled: 'chronos_preferences:wallpaper_color_enabled',
 	capsuleCornerStyle: 'chronos_preferences:capsule_corner_style',
 	hapticFeedbackEnabled: 'chronos_preferences:haptic_feedback_enabled',
 	reduceMotionEnabled: 'chronos_preferences:reduce_motion_enabled',
@@ -29,7 +26,8 @@ export const PREFERENCE_STORAGE_KEYS = {
 export interface UserPreferences {
 	schemaVersion: number;
 	themeMode: ThemeMode;
-	paletteMode: PaletteMode;
+	wallpaperSource: WallpaperSource;
+	wallpaperColorEnabled: boolean;
 	timetableLayoutMode: TimetableLayoutMode;
 	capsuleCornerStyle: CapsuleCornerStyle;
 	hapticFeedbackEnabled: boolean;
@@ -45,7 +43,8 @@ export interface UserPreferences {
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 	schemaVersion: CURRENT_PREFERENCES_SCHEMA_VERSION,
 	themeMode: 'auto',
-	paletteMode: 'vibrant',
+	wallpaperSource: 'theme',
+	wallpaperColorEnabled: false,
 	timetableLayoutMode: 'compact',
 	capsuleCornerStyle: 'sharp',
 	hapticFeedbackEnabled: true,

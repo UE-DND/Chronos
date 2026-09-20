@@ -2,7 +2,7 @@
 import type {
 	AppLocale,
 	CapsuleCornerStyle,
-	PaletteMode,
+	WallpaperSource,
 	ThemeMode,
 	TimetableLayoutMode,
 	UserPreferences
@@ -11,8 +11,6 @@ import {
 	CURRENT_PREFERENCES_SCHEMA_VERSION,
 	DEFAULT_USER_PREFERENCES,
 	DEFAULT_VISUAL_THEME_ID,
-	PALETTE_MODE_VIBRANT,
-	PALETTE_MODE_WALLPAPER,
 	PREFERENCE_STORAGE_KEYS
 } from '@chronos/core';
 
@@ -31,10 +29,8 @@ function normalizeLayoutMode(raw: string | null): TimetableLayoutMode {
 	return DEFAULT_USER_PREFERENCES.timetableLayoutMode;
 }
 
-function normalizePaletteMode(raw: string | null): PaletteMode {
-	const value = raw?.trim().toLowerCase();
-	if (value === PALETTE_MODE_WALLPAPER) return PALETTE_MODE_WALLPAPER;
-	return PALETTE_MODE_VIBRANT;
+function normalizeWallpaperSource(raw: string | null): WallpaperSource {
+	return raw === 'custom' || raw === 'none' ? raw : 'theme';
 }
 
 function normalizeCornerStyle(raw: string | null): CapsuleCornerStyle {
@@ -76,7 +72,11 @@ export class PreferencesStore {
 		const timetableLayoutMode = normalizeLayoutMode(
 			this.localStore.getItem(SETTINGS_KEYS.timetableLayoutMode)
 		);
-		const paletteMode = normalizePaletteMode(this.localStore.getItem(SETTINGS_KEYS.paletteMode));
+		const wallpaperSource = normalizeWallpaperSource(
+			this.localStore.getItem(SETTINGS_KEYS.wallpaperSource)
+		);
+		const wallpaperColorEnabled =
+			this.localStore.getItem(SETTINGS_KEYS.wallpaperColorEnabled) === 'true';
 		const capsuleCornerStyle = normalizeCornerStyle(
 			this.localStore.getItem(SETTINGS_KEYS.capsuleCornerStyle)
 		);
@@ -94,7 +94,8 @@ export class PreferencesStore {
 		return {
 			schemaVersion: CURRENT_PREFERENCES_SCHEMA_VERSION,
 			themeMode,
-			paletteMode,
+			wallpaperSource,
+			wallpaperColorEnabled,
 			timetableLayoutMode,
 			capsuleCornerStyle,
 			hapticFeedbackEnabled,
@@ -114,8 +115,14 @@ export class PreferencesStore {
 		if (patch.timetableLayoutMode !== undefined) {
 			this.localStore.setItem(SETTINGS_KEYS.timetableLayoutMode, patch.timetableLayoutMode);
 		}
-		if (patch.paletteMode !== undefined) {
-			this.localStore.setItem(SETTINGS_KEYS.paletteMode, patch.paletteMode);
+		if (patch.wallpaperSource !== undefined) {
+			this.localStore.setItem(SETTINGS_KEYS.wallpaperSource, patch.wallpaperSource);
+		}
+		if (patch.wallpaperColorEnabled !== undefined) {
+			this.localStore.setItem(
+				SETTINGS_KEYS.wallpaperColorEnabled,
+				String(patch.wallpaperColorEnabled)
+			);
 		}
 		if (patch.capsuleCornerStyle !== undefined) {
 			this.localStore.setItem(SETTINGS_KEYS.capsuleCornerStyle, patch.capsuleCornerStyle);

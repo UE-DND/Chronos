@@ -8,20 +8,11 @@ export interface ThemeWorkbenchColors {
 	dark: Record<string, string>;
 }
 
-export interface DynamicColorAdapter {
-	extractWallpaperSeed(
-		uri: string
-	): Promise<{ seed: number; coursePalette: readonly CoursePaletteEntry[] }>;
-	paintWallpaperTheme(seed: number, isDark: boolean, target: HTMLElement): void;
-	clearWallpaperTheme(target?: HTMLElement): void;
-}
-
 export interface ThemeContribution {
 	readonly id: string;
 	readonly name: LocalizedText;
 	readonly description?: LocalizedText;
 	readonly disabled?: boolean | (() => boolean);
-	readonly supportsDynamicColor?: boolean;
 	/** Optional decoded image asset; the host owns its display and object URL. */
 	readonly wallpaper?: Blob;
 	readonly className?: string;
@@ -30,5 +21,4 @@ export interface ThemeContribution {
 	readonly paletteEntries?:
 		| readonly CoursePaletteEntry[]
 		| ((mode: 'light' | 'dark') => readonly CoursePaletteEntry[]);
-	readonly dynamicColorAdapter?: DynamicColorAdapter;
 }

@@ -17,7 +17,8 @@ function createMockEnv(): ChronosEnv {
 	let prefs: UserPreferences = {
 		schemaVersion: 1,
 		themeMode: 'auto',
-		paletteMode: 'vibrant',
+		wallpaperSource: 'theme',
+		wallpaperColorEnabled: false,
 		timetableLayoutMode: 'fixed',
 		capsuleCornerStyle: 'rounded',
 		hapticFeedbackEnabled: true,

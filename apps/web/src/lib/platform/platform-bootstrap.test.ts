@@ -65,7 +65,10 @@ describe('createPlatformBootstrap', () => {
 	const shell = {
 		init: vi.fn(),
 		appearance,
-		controller: { activeThemeId: 'm3-default', userPreferences: { paletteMode: 'vibrant' } },
+		controller: {
+			activeThemeId: 'm3-default',
+			userPreferences: { wallpaperSource: 'theme', wallpaperColorEnabled: false }
+		},
 		state: { isDark: false, initialized: false }
 	};
 	const timetableScreen = {

@@ -1,5 +1,4 @@
 import type { UserPreferences } from '../../domain/preferences';
-import { PALETTE_MODE_VIBRANT } from '../../domain/preferences';
 import { DEFAULT_VISUAL_THEME_ID } from '../../theme/theme-defaults';
 import type { ThemeRegistry } from '../theme-registry';
 
@@ -19,27 +18,16 @@ export function planRevertToDefaultThemes(
 	input: RevertDefaultThemesInput
 ): RevertDefaultThemesPlan | null {
 	const patch: Partial<UserPreferences> = {};
-	let reverted = false;
 	let nextThemeId: string | undefined;
 
 	if (
-		input.activeThemeId !== DEFAULT_VISUAL_THEME_ID &&
-		!input.themes.getTheme(input.activeThemeId)
+		(input.activeThemeId !== DEFAULT_VISUAL_THEME_ID &&
+			!input.themes.getTheme(input.activeThemeId)) ||
+		(input.preferences.visualThemeId &&
+			input.preferences.visualThemeId !== DEFAULT_VISUAL_THEME_ID &&
+			!input.themes.getTheme(input.preferences.visualThemeId))
 	) {
 		nextThemeId = DEFAULT_VISUAL_THEME_ID;
-		patch.paletteMode = PALETTE_MODE_VIBRANT;
-		patch.visualThemeId = DEFAULT_VISUAL_THEME_ID;
-		reverted = true;
-	}
-
-	if (
-		input.preferences.paletteMode !== PALETTE_MODE_VIBRANT &&
-		!input.themes.getTheme(input.preferences.paletteMode)
-	) {
-		if (!reverted) {
-			nextThemeId = DEFAULT_VISUAL_THEME_ID;
-		}
-		patch.paletteMode = PALETTE_MODE_VIBRANT;
 		patch.visualThemeId = DEFAULT_VISUAL_THEME_ID;
 	}
 

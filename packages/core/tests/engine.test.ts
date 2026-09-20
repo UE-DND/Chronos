@@ -356,7 +356,7 @@ describe('ChronosEngine in @chronos/core', () => {
 						sectionId: 'app-support',
 						title: 'Temporary'
 					});
-					ctx.on('dynamicColor:hydrate', onHydrate);
+					ctx.on('slots:updated', onHydrate);
 					ctx.addDisposable({ dispose: resourceDispose });
 					if (failureMode === 'async') return Promise.reject(failure);
 					throw failure;
@@ -369,7 +369,7 @@ describe('ChronosEngine in @chronos/core', () => {
 				expect(engine.slots.get('mine.item')).toEqual([]);
 				expect(engine.slots.resolveOwner('mine.item', 'temporary')).toBeUndefined();
 				expect(engine.i18nCatalog.t(plugin.id, 'title', 'en')).toBeUndefined();
-				engine.events.emit('dynamicColor:hydrate', undefined);
+				engine.events.emit('slots:updated', undefined);
 				expect(onHydrate).not.toHaveBeenCalled();
 				expect(resourceDispose).toHaveBeenCalledTimes(1);
 				expect(pluginDispose).toHaveBeenCalledTimes(1);

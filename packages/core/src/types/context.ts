@@ -151,8 +151,5 @@ export interface ChronosEvents {
 	'badges:updated': { badges: Record<string, CourseBadge[]> };
 	'plugin:loaded': { pluginId: string };
 	'plugin:unloaded': { pluginId: string };
-	'dynamicColor:set': { blob: Blob | null };
-	'dynamicColor:changed': { uri: string | null };
-	'dynamicColor:hydrate': void;
 	'coursePalette:changed': void;
 }

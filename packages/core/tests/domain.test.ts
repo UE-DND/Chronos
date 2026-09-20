@@ -91,7 +91,8 @@ describe('Domain Models in @chronos/core', () => {
 	it('provides valid default UserPreferences', () => {
 		expect(DEFAULT_USER_PREFERENCES.schemaVersion).toBe(CURRENT_PREFERENCES_SCHEMA_VERSION);
 		expect(DEFAULT_USER_PREFERENCES.themeMode).toBe('auto');
-		expect(DEFAULT_USER_PREFERENCES.paletteMode).toBe('vibrant');
+		expect(DEFAULT_USER_PREFERENCES.wallpaperSource).toBe('theme');
+		expect(DEFAULT_USER_PREFERENCES.wallpaperColorEnabled).toBe(false);
 		expect(DEFAULT_USER_PREFERENCES.timetableLayoutMode).toBe('compact');
 		expect(DEFAULT_USER_PREFERENCES.capsuleCornerStyle).toBe('sharp');
 		expect(DEFAULT_USER_PREFERENCES.hapticFeedbackEnabled).toBe(true);

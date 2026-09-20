@@ -57,17 +57,6 @@ export function resolveCoursePaint(
 	return displayPalette[slot % displayPalette.length]!;
 }
 
-export function resolveCoursePalette(
-	mode: string,
-	dynamicPalette: readonly CoursePaletteEntry[] | null
-): readonly CoursePaletteEntry[] {
-	const normalized = (mode || '').toLowerCase();
-	if (normalized !== 'vibrant' && dynamicPalette && dynamicPalette.length > 0) {
-		return dynamicPalette;
-	}
-	return COURSE_PALETTE_ENTRIES;
-}
-
 interface CourseSlotPreference {
 	name: string;
 	slot: number;
