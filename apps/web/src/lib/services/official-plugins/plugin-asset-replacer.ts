@@ -6,10 +6,12 @@ export interface PluginAssetReplacerDeps {
 	installedStore: OfficialPluginInstalledStore;
 	runtimeActivator: OfficialPluginRuntimeActivator;
 	isDisposed: () => boolean;
+	validate?: () => void;
 }
 
 export interface ReplacePluginAssetsOptions {
 	preserveInstalledAt?: boolean;
+	forceEnabled?: boolean;
 	revertThemesOnDeactivate?: boolean;
 	signal?: AbortSignal;
 }
@@ -29,7 +31,7 @@ export async function replacePluginAssets(
 
 	const record: InstalledOfficialPluginRecord = {
 		...candidate,
-		enabled: existing?.enabled ?? candidate.enabled,
+		enabled: options?.forceEnabled || (existing?.enabled ?? candidate.enabled),
 		installedAt:
 			options?.preserveInstalledAt && existing
 				? existing.installedAt
@@ -76,12 +78,14 @@ export async function replacePluginAssets(
 		options?.signal?.throwIfAborted?.();
 
 		if (record.enabled) {
-			await deps.runtimeActivator.activate(record);
 			runtimeTouched = true;
+			await deps.runtimeActivator.activate(record);
 		}
 
 		options?.signal?.throwIfAborted?.();
 
+		if (deps.isDisposed()) throw new DOMException('Aborted', 'AbortError');
+		deps.validate?.();
 		await deps.installedStore.upsert(record);
 		runtimeTouched = false;
 		return record;

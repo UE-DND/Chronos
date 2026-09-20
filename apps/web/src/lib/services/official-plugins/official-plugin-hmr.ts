@@ -4,7 +4,7 @@ import type { PluginManifest } from '@chronos/core';
 
 export interface PluginHmrData {
 	id: string;
-	type?: 'theme' | 'tool';
+	type?: 'theme' | 'tool' | 'source' | 'codec';
 	rev?: string;
 	costMs: string;
 	manifest?: Record<string, unknown>;

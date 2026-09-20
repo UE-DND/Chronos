@@ -94,6 +94,7 @@ describe('OfficialPluginRuntimeActivator', () => {
 			},
 			colorsJson: THEME_COLORS_JSON,
 			enabled: true,
+			origin: { kind: 'user' as const },
 			installedAt: 1
 		});
 
@@ -117,6 +118,7 @@ describe('OfficialPluginRuntimeActivator', () => {
 				},
 				code: SAMPLE_BUNDLE,
 				enabled: true,
+				origin: { kind: 'user' as const },
 				installedAt: 1
 			})
 		).rejects.toThrow(/id mismatch/);
@@ -173,6 +175,7 @@ describe('OfficialPluginRuntimeActivator', () => {
 				code: SAMPLE_BUNDLE,
 				cssCode: '.x{color:red}',
 				enabled: true,
+				origin: { kind: 'user' as const },
 				installedAt: 1
 			})
 		).rejects.toThrow(/id mismatch/);
@@ -240,6 +243,7 @@ describe('OfficialPluginRuntimeActivator', () => {
 			code: SAMPLE_BUNDLE,
 			cssCode: '.x{color:red}',
 			enabled: true,
+			origin: { kind: 'user' as const },
 			installedAt: 1
 		});
 
@@ -263,6 +267,7 @@ describe('OfficialPluginRuntimeActivator', () => {
 			},
 			code: SAMPLE_BUNDLE,
 			enabled: true,
+			origin: { kind: 'user' as const },
 			installedAt: 1
 		});
 		expect(engine.isPluginLoaded('test-plugin')).toBe(true);
@@ -289,6 +294,7 @@ describe('OfficialPluginRuntimeActivator', () => {
 			},
 			code: SAMPLE_BUNDLE,
 			enabled: true,
+			origin: { kind: 'user' as const },
 			installedAt: 1
 		});
 
@@ -320,6 +326,7 @@ describe('OfficialPluginRuntimeActivator', () => {
 				colorsJson: THEME_COLORS_JSON,
 				iconThemeJson: '{"id":"icon-test","icons":{}}',
 				enabled: true,
+				origin: { kind: 'user' as const },
 				installedAt: 1
 			})
 		).rejects.toThrow(/icon theme failed/);
@@ -346,9 +353,11 @@ describe('OfficialPluginRuntimeActivator', () => {
 			},
 			code: SAMPLE_BUNDLE,
 			enabled: true,
+			origin: { kind: 'user' as const },
 			installedAt: 1
 		});
 
+		await engine.updatePreferences({ visualThemeId: 'missing-theme' });
 		await activator.deactivate('test-plugin', { revertThemes: true });
 		expect(revertSpy).toHaveBeenCalled();
 	});

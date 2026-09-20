@@ -100,6 +100,7 @@ export class OfficialPluginRuntimeActivator {
 		}
 		const handle = await this.engine.loadPlugin({
 			...plugin,
+			defaultConfig: { ...plugin.defaultConfig, ...record.initialConfig },
 			configSchema: manifest.configSchema ?? plugin.configSchema,
 			allowedDomains: manifest.allowedDomains ?? plugin.allowedDomains
 		});
@@ -117,7 +118,9 @@ export class OfficialPluginRuntimeActivator {
 		}
 		this.cssInjector.remove(pluginId);
 		if (options?.revertThemes && this.isInstalled(pluginId)) {
-			await this.engine.revertToDefaultThemes();
+			const preferred = this.engine.state.userPreferences.visualThemeId;
+			if (preferred && !this.engine.themes.isSelectable(preferred))
+				await this.engine.revertToDefaultThemes();
 		}
 	}
 

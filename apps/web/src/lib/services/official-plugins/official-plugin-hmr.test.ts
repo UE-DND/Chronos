@@ -32,6 +32,7 @@ describe('official-plugin-hmr', () => {
 		colorsJson: null,
 		iconThemeJson: null,
 		enabled: true,
+		origin: { kind: 'user' as const },
 		installedAt: 1000
 	};
 
@@ -50,6 +51,7 @@ describe('official-plugin-hmr', () => {
 				...existing,
 				code: data.code,
 				cssCode: data.cssCode,
+				origin: { kind: 'user' as const },
 				installedAt: Date.now()
 			};
 			installedMap.set(data.id, updated);
@@ -146,6 +148,7 @@ describe('official-plugin-hmr', () => {
 			colorsJson: '{"id":"theme-test"}',
 			iconThemeJson: null,
 			enabled: true,
+			origin: { kind: 'user' as const },
 			installedAt: 1000
 		};
 		installedMap.set('theme-test', themeRecord);

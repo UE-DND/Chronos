@@ -83,6 +83,7 @@ describe('theme wallpaper assets', () => {
 			colorsJson: colors,
 			wallpaperAssetId: 'cached-image',
 			enabled: true,
+			origin: { kind: 'user' as const },
 			installedAt: 1
 		});
 		expect(registerTheme).toHaveBeenCalledWith(
