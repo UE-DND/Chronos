@@ -80,7 +80,6 @@ export * from './plugin/register-import-tab';
 
 // Profile
 export * from './profile/profile';
-export * from './profile/profile-manager';
 
 // Hosts
 export * from './hosts/native-protocol';

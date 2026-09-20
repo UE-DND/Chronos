@@ -1,10 +1,8 @@
+import type { UserPreferences } from '../domain/preferences';
+
 export interface PluginProfileConfig {
 	id: string;
 	enabled?: boolean;
-	/** Slot IDs to skip when activating this plugin (e.g. `cqut-online`). */
-	disabledSlots?: string[];
-	/** When true, codegen emits a plugin-server proxy route for this builtin. */
-	server?: boolean;
 	config?: Record<string, unknown>;
 }
 
@@ -12,18 +10,18 @@ export interface ChronosProfile {
 	profileId: string;
 	name: string;
 	description?: string;
-	plugins: PluginProfileConfig[];
-	defaultTheme?: string;
+	preinstall: PluginProfileConfig[];
+	defaultTheme: { pluginId: string; themeId: string };
 	/** Initial import.source.tab slot id when opening the import screen. */
 	defaultImportSlot?: string;
-	preferences?: Record<string, unknown>;
+	preferences?: Partial<Omit<UserPreferences, 'visualThemeId'>>;
 }
 
 /**
  * Merges configuration for a plugin across 4 distinct layers:
  * 1. Default Schema (plugin.defaultConfig)
  * 2. Manifest Bundle Config
- * 3. Profile Config (profile.plugins[i].config)
+ * 3. Profile Config (profile.preinstall[i].config)
  * 4. User Persistent Patch (storage __config__)
  */
 export function resolveLayeredPluginConfig<T extends Record<string, unknown>>(
@@ -38,4 +36,20 @@ export function resolveLayeredPluginConfig<T extends Record<string, unknown>>(
 		...profileConfig,
 		...userPersistentPatch
 	} as T;
+}
+
+export function validateProfile(profile: ChronosProfile): void {
+	if (new Set(profile.preinstall.map((p) => p.id)).size !== profile.preinstall.length)
+		throw new Error('Duplicate preinstall plugin ID');
+	if (profile.preinstall.some((entry) => entry.enabled === false))
+		throw new Error('Preinstalled plugins must be enabled');
+	const selection = profile.defaultTheme;
+	if (!selection?.pluginId?.trim() || !selection.themeId?.trim())
+		throw new Error(`Profile ${profile.profileId} requires a default theme`);
+	if (!profile.preinstall.some((p) => p.id === selection.pluginId && p.enabled !== false))
+		throw new Error(
+			`Default theme provider ${selection.pluginId} must be enabled in profile ${profile.profileId}`
+		);
+	if (profile.preferences && 'visualThemeId' in profile.preferences)
+		throw new Error('Profile preferences must not set visualThemeId');
 }

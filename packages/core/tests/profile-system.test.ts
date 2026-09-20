@@ -1,8 +1,9 @@
-import { describe, it, expect, vi } from 'vite-plus/test';
-import { ChronosEngine } from '../src/runtime/engine';
-import { ProfileManager } from '../src/profile/profile-manager';
-import { resolveLayeredPluginConfig, type ChronosProfile } from '../src/profile/profile';
-import type { ChronosPlugin } from '../src/types/context';
+import { describe, it, expect } from 'vite-plus/test';
+import {
+	resolveLayeredPluginConfig,
+	validateProfile,
+	type ChronosProfile
+} from '../src/profile/profile';
 
 describe('Profile System and Layered Config', () => {
 	it('correctly resolves layered plugin configs across 4 priority levels', () => {
@@ -28,195 +29,36 @@ describe('Profile System and Layered Config', () => {
 			timeout: 5000 // Overridden by Manifest
 		});
 	});
+});
 
-	it('assembles and configures plugins according to profile declaration', async () => {
-		const engine = new ChronosEngine({
-			env: {
-				platform: 'web',
-				http: {
-					request: vi.fn()
-				},
-				storage: {
-					getTimetable: vi.fn().mockResolvedValue(null),
-					listTimetables: vi.fn().mockResolvedValue([]),
-					saveTimetable: vi.fn().mockResolvedValue(undefined),
-					deleteTimetable: vi.fn().mockResolvedValue(undefined),
-					getActiveTimetableId: vi.fn().mockResolvedValue(null),
-					setActiveTimetableId: vi.fn().mockResolvedValue(undefined),
-					queryCourses: vi.fn().mockResolvedValue([]),
-					getPreferences: vi.fn().mockResolvedValue({
-						schemaVersion: 1,
-						themeMode: 'auto',
-						wallpaperSource: 'theme',
-						wallpaperColorEnabled: false,
-						timetableLayoutMode: 'fixed',
-						capsuleCornerStyle: 'rounded',
-						hapticFeedbackEnabled: true,
-						reduceMotionEnabled: false,
-						currentPeriodHighlightEnabled: true
-					}),
-					savePreferences: vi.fn().mockResolvedValue(undefined),
-					getPluginData: vi.fn().mockResolvedValue(null),
-					setPluginData: vi.fn().mockResolvedValue(undefined),
-					deletePluginData: vi.fn().mockResolvedValue(undefined)
-				},
-				vault: {
-					isSupported: async () => false,
-					storeSecret: vi.fn(),
-					getSecret: vi.fn(),
-					removeSecret: vi.fn()
-				},
-				runtime: {
-					sha256: async () => ''
-				}
-			}
-		});
-
-		const manager = new ProfileManager(engine);
-
-		let appliedConfig: Record<string, unknown> | null = null;
-		const pluginA: ChronosPlugin = {
-			id: 'plugin-a',
-			name: 'Plugin A',
-			version: '1.0.0',
-			defaultConfig: { mode: 'fast' },
-			apply(ctx) {
-				appliedConfig = ctx.config;
-			}
-		};
-
-		const pluginB: ChronosPlugin = {
-			id: 'plugin-b',
-			name: 'Plugin B',
-			version: '1.0.0',
-			apply: vi.fn()
-		};
-
-		const profile: ChronosProfile = {
-			profileId: 'test-profile',
-			name: 'Test Profile',
-			defaultTheme: 'catppuccin-latte',
-			plugins: [
-				{
-					id: 'plugin-a',
-					enabled: true,
-					config: { mode: 'thorough', customFlag: true }
-				},
-				{
-					id: 'plugin-b',
-					enabled: false // Disabled in profile
-				}
-			],
-			preferences: {
-				themeMode: 'dark',
-				hapticFeedbackEnabled: false
-			}
-		};
-
-		const resolvePlugin = async (id: string) =>
-			[pluginA, pluginB].find((plugin) => plugin.id === id);
-
-		const handle = await manager.applyProfile(profile, resolvePlugin);
-
-		expect(manager.getActiveProfile()?.profileId).toBe('test-profile');
-		expect(engine.state.activeThemeId).toBe('catppuccin-latte');
-		expect(engine.state.userPreferences.themeMode).toBe('dark');
-		expect(engine.state.userPreferences.hapticFeedbackEnabled).toBe(false);
-
-		expect(engine.isPluginLoaded('plugin-a')).toBe(true);
-		expect(engine.isPluginLoaded('plugin-b')).toBe(false);
-		expect(manager.listLoadedPlugins().map((plugin) => plugin.id)).toEqual(['plugin-a']);
-		expect(appliedConfig).toEqual({
-			mode: 'thorough',
-			customFlag: true
-		});
-
-		handle.dispose();
-		expect(engine.isPluginLoaded('plugin-a')).toBe(false);
-		expect(manager.listLoadedPlugins()).toEqual([]);
-
-		engine.dispose();
+describe('profile validation', () => {
+	const profile: ChronosProfile = {
+		profileId: 'test',
+		name: 'Test',
+		defaultTheme: { pluginId: 'base', themeId: 'theme' },
+		preinstall: [{ id: 'base' }]
+	};
+	it('rejects a disabled ordinary preinstall', () => {
+		expect(() =>
+			validateProfile({
+				...profile,
+				preinstall: [...profile.preinstall, { id: 'tool', enabled: false }]
+			})
+		).toThrow('must be enabled');
 	});
-
-	it('loadPlugins incrementally then applyProfile replaces the loaded set', async () => {
-		const engine = new ChronosEngine({
-			env: {
-				platform: 'web',
-				http: { request: vi.fn() },
-				storage: {
-					getTimetable: vi.fn().mockResolvedValue(null),
-					listTimetables: vi.fn().mockResolvedValue([]),
-					saveTimetable: vi.fn().mockResolvedValue(undefined),
-					deleteTimetable: vi.fn().mockResolvedValue(undefined),
-					getActiveTimetableId: vi.fn().mockResolvedValue(null),
-					setActiveTimetableId: vi.fn().mockResolvedValue(undefined),
-					queryCourses: vi.fn().mockResolvedValue([]),
-					getPreferences: vi.fn().mockResolvedValue({
-						schemaVersion: 1,
-						themeMode: 'auto',
-						wallpaperSource: 'theme',
-						wallpaperColorEnabled: false,
-						timetableLayoutMode: 'fixed',
-						capsuleCornerStyle: 'rounded',
-						hapticFeedbackEnabled: true,
-						reduceMotionEnabled: false,
-						currentPeriodHighlightEnabled: true
-					}),
-					savePreferences: vi.fn().mockResolvedValue(undefined),
-					getPluginData: vi.fn().mockResolvedValue(null),
-					setPluginData: vi.fn().mockResolvedValue(undefined),
-					deletePluginData: vi.fn().mockResolvedValue(undefined)
-				},
-				runtime: { sha256: async () => '' }
-			}
-		});
-
-		const manager = new ProfileManager(engine);
-		const pluginA: ChronosPlugin = {
-			id: 'plugin-a',
-			name: 'Plugin A',
-			version: '1.0.0',
-			apply: vi.fn()
-		};
-		const pluginB: ChronosPlugin = {
-			id: 'plugin-b',
-			name: 'Plugin B',
-			version: '1.0.0',
-			apply: vi.fn()
-		};
-		const resolvePlugin = async (id: string) =>
-			[pluginA, pluginB].find((plugin) => plugin.id === id);
-
-		const profile: ChronosProfile = {
-			profileId: 'phased',
-			name: 'Phased',
-			plugins: [
-				{ id: 'plugin-a', enabled: true },
-				{ id: 'plugin-b', enabled: true }
-			]
-		};
-
-		await manager.loadPlugins(profile, resolvePlugin, (id) => id === 'plugin-a');
-		expect(engine.isPluginLoaded('plugin-a')).toBe(true);
-		expect(engine.isPluginLoaded('plugin-b')).toBe(false);
-		expect(manager.listLoadedPlugins().map((plugin) => plugin.id)).toEqual(['plugin-a']);
-
-		await manager.loadPlugins(profile, resolvePlugin, (id) => id !== 'plugin-a');
-		expect(engine.isPluginLoaded('plugin-a')).toBe(true);
-		expect(engine.isPluginLoaded('plugin-b')).toBe(true);
-		expect(manager.listLoadedPlugins().map((plugin) => plugin.id)).toEqual([
-			'plugin-a',
-			'plugin-b'
-		]);
-
-		await manager.applyProfile(profile, resolvePlugin);
-		expect(engine.isPluginLoaded('plugin-a')).toBe(true);
-		expect(engine.isPluginLoaded('plugin-b')).toBe(true);
-		expect(manager.listLoadedPlugins().map((plugin) => plugin.id)).toEqual([
-			'plugin-a',
-			'plugin-b'
-		]);
-
-		engine.dispose();
+	it('rejects missing, disabled and overridden defaults', () => {
+		expect(() =>
+			validateProfile({ ...profile, defaultTheme: undefined } as unknown as ChronosProfile)
+		).toThrow();
+		expect(() => validateProfile({ ...profile, preinstall: [] })).toThrow();
+		expect(() =>
+			validateProfile({ ...profile, preinstall: [{ id: 'base', enabled: false }] })
+		).toThrow();
+		expect(() =>
+			validateProfile({
+				...profile,
+				preferences: { visualThemeId: 'other' }
+			} as unknown as ChronosProfile)
+		).toThrow();
 	});
 });
