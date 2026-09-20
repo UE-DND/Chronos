@@ -1,68 +1,20 @@
-import type { CoursePaletteEntry } from '@chronos/core';
-import {
-	colorsFromImageBytes,
-	coursePaletteFromSources,
-	schemeAccentCssVars
-} from '@chronos/ui-kit/theme/m3-theme';
-
-export interface WallpaperColorAdapter {
-	extractWallpaperSeed(
-		uri: string
-	): Promise<{ seed: number; coursePalette: readonly CoursePaletteEntry[] }>;
-	paintWallpaperTheme(seed: number, isDark: boolean, target: HTMLElement): void;
-	clearWallpaperTheme(target?: HTMLElement): void;
-}
-
 const MAX_EDGE = 128;
-
-export { colorsFromImageBytes } from '@chronos/ui-kit/theme/m3-theme';
-/** Host-owned extraction cache and dynamic CSS overlay. */
-export function createWallpaperThemeAdapter(): WallpaperColorAdapter {
-	let appliedKeys: string[] = [];
+/** Host-owned image decoding only. Color policy belongs to the active theme. */
+export function createWallpaperPixelReader() {
 	let cachedUri: string | null = null;
-	let cachedSeed: number | null = null;
-	let cachedRanked: number[] | null = null;
-
-	function resolveTarget(target?: HTMLElement): HTMLElement | undefined {
-		return target ?? (typeof document !== 'undefined' ? document.documentElement : undefined);
-	}
-
-	function clear(target?: HTMLElement): void {
-		const el = resolveTarget(target);
-		if (!el) return;
-		for (const key of appliedKeys) {
-			el.style.removeProperty(key);
-		}
-		appliedKeys = [];
-	}
-
-	async function extractSeed(
-		uri: string
-	): Promise<{ seed: number; coursePalette: readonly CoursePaletteEntry[] }> {
-		if (uri !== cachedUri || cachedSeed == null || cachedRanked == null) {
-			const { seed, ranked } = colorsFromImageBytes(await downsampleImageBytes(uri));
+	let cachedPixels: Uint8ClampedArray | null = null;
+	let generation = 0;
+	return async (uri: string, signal: AbortSignal): Promise<Uint8ClampedArray> => {
+		signal.throwIfAborted();
+		if (uri === cachedUri && cachedPixels) return cachedPixels.slice();
+		const request = ++generation;
+		const pixels = await downsampleImageBytes(uri);
+		signal.throwIfAborted();
+		if (request === generation) {
 			cachedUri = uri;
-			cachedSeed = seed;
-			cachedRanked = ranked;
+			cachedPixels = pixels;
 		}
-		return { seed: cachedSeed, coursePalette: coursePaletteFromSources(cachedRanked) };
-	}
-
-	function paint(seed: number, isDark: boolean, target?: HTMLElement): void {
-		const el = resolveTarget(target);
-		if (!el) return;
-		const vars = schemeAccentCssVars(seed, isDark);
-		clear(el);
-		appliedKeys = Object.keys(vars);
-		for (const [key, value] of Object.entries(vars)) {
-			el.style.setProperty(key, value);
-		}
-	}
-
-	return {
-		extractWallpaperSeed: extractSeed,
-		paintWallpaperTheme: paint,
-		clearWallpaperTheme: clear
+		return pixels.slice();
 	};
 }
 

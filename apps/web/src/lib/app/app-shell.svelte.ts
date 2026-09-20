@@ -53,14 +53,20 @@ export function createAppShell() {
 	function canUseWallpaperColors(
 		themeId: string | null,
 		source: UserPreferences['wallpaperSource'] | undefined
-	) {
-		return Boolean(themeId && themeId === engine.defaultThemeId && source === 'custom');
+	): boolean | undefined {
+		if (!themeId || !engine.defaultThemeId) return undefined;
+		if (themeId !== engine.defaultThemeId || source !== 'custom') return false;
+		const theme = engine.themes.getTheme(themeId);
+		return theme ? Boolean(theme.resolveWallpaperColors) : undefined;
 	}
+
 	const wallpaperColorsAvailable = $derived.by(() => {
 		void controller.slotVersion;
-		return canUseWallpaperColors(
-			controller.activeThemeId,
-			controller.userPreferences?.wallpaperSource
+		return (
+			canUseWallpaperColors(
+				controller.activeThemeId,
+				controller.userPreferences?.wallpaperSource
+			) === true
 		);
 	});
 
@@ -109,7 +115,13 @@ export function createAppShell() {
 				const available = wallpaperColorsAvailable;
 				const enabled = controller.userPreferences?.wallpaperColorEnabled;
 				// Wait for profile assembly before correcting restored preferences.
-				if (controller.activeThemeId && engine.defaultThemeId && enabled && !available) {
+				if (
+					controller.activeThemeId &&
+					engine.themes.getTheme(controller.activeThemeId) &&
+					engine.defaultThemeId &&
+					enabled &&
+					!available
+				) {
 					untrack(
 						() =>
 							void updatePreferences({ wallpaperColorEnabled: false }).catch(() => {
@@ -138,7 +150,8 @@ export function createAppShell() {
 					wallpaperColorEnabled,
 					wallpaperUri,
 					activeThemeId,
-					themePaletteEntries
+					themePaletteEntries,
+					theme
 				};
 				untrack(() => void appearance.apply(input, ac.signal));
 				return () => ac.abort();
@@ -168,7 +181,7 @@ export function createAppShell() {
 		const enabled =
 			patch.wallpaperColorEnabled ?? controller.userPreferences?.wallpaperColorEnabled;
 		await controller.updatePreferences(
-			enabled && !canUseWallpaperColors(themeId, source)
+			enabled && canUseWallpaperColors(themeId, source) === false
 				? { ...patch, wallpaperColorEnabled: false }
 				: patch
 		);

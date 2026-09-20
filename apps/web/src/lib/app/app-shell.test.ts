@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createAppShell } from './app-shell.svelte';
 
 const mocks = vi.hoisted(() => ({
+	themeAvailable: true,
+	supportsWallpaper: true,
 	preferences: {
 		timetableLayoutMode: 'compact' as 'compact' | 'fixed',
 		wallpaperSource: 'custom' as 'custom' | 'none' | 'theme',
@@ -43,7 +45,17 @@ vi.mock('$lib/services/app-engine', () => ({
 		defaultThemeId: 'm3-default',
 		events: { emit: vi.fn() },
 		on: () => ({ dispose: vi.fn() }),
-		themes: { getTheme: () => null, isSelectable: (id: string) => id === 'custom' },
+		themes: {
+			getTheme: () =>
+				mocks.themeAvailable
+					? {
+							resolveWallpaperColors: mocks.supportsWallpaper
+								? () => ({ workbenchColors: {} })
+								: undefined
+						}
+					: null,
+			isSelectable: (id: string) => id === 'custom'
+		},
 		resolveThemeId: () => 'm3-default'
 	}),
 	getSharedCoursePaletteRef: () => ({}),
@@ -149,4 +161,25 @@ describe('theme selection and wallpaper color override', () => {
 		expect(mocks.updatePreferences).toHaveBeenLastCalledWith({ wallpaperColorEnabled: false });
 		expect(mocks.setTheme).toHaveBeenCalledTimes(1);
 	});
+});
+
+it('does not overwrite a restored preference during temporary theme absence', async () => {
+	mocks.themeAvailable = false;
+	try {
+		const shell = createAppShell();
+		await shell.updatePreferences({ reduceMotionEnabled: true });
+		expect(mocks.updatePreferences).toHaveBeenLastCalledWith({ reduceMotionEnabled: true });
+	} finally {
+		mocks.themeAvailable = true;
+	}
+});
+it('requires an explicit wallpaper color capability even for the default theme', async () => {
+	mocks.supportsWallpaper = false;
+	try {
+		const shell = createAppShell();
+		await shell.updatePreferences({ wallpaperColorEnabled: true });
+		expect(mocks.updatePreferences).toHaveBeenLastCalledWith({ wallpaperColorEnabled: false });
+	} finally {
+		mocks.supportsWallpaper = true;
+	}
 });

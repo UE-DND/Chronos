@@ -187,11 +187,9 @@ describe('applyActiveTheme', () => {
 		expect(target.classList.contains('theme-custom')).toBe(true);
 		expect(styleMap.get('--color-primary')).toBe('#123456');
 		expect(styleMap.get('--shell-bottom-tab-active-bg')).toBe('transparent');
-		applyActiveTheme(engine, 'custom-theme', true, { target, wallpaperColorEnabled: true });
-		expect(target.classList.contains('theme-custom')).toBe(false);
-		expect(styleMap.get('--color-primary')).toBe(
-			m3DefaultTheme.workbenchColors.dark['color.primary']
-		);
+		applyActiveTheme(engine, 'custom-theme', true, { target });
+		expect(target.classList.contains('theme-custom')).toBe(true);
+		expect(styleMap.get('--color-primary')).toBe('#abcdef');
 		applyActiveTheme(engine, 'custom-theme', false, { target });
 		expect(target.classList.contains('theme-custom')).toBe(true);
 		expect(styleMap.get('--color-primary')).toBe('#123456');
