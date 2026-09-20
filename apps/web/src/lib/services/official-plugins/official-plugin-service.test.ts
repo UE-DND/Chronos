@@ -885,6 +885,20 @@ describe('profile preinstallation lifecycle', () => {
 		await service.prepareProfile(profile);
 		return { engine, env, httpRequest, profile, service, theme, tool, colors };
 	}
+	it('keeps the default theme selected throughout asset replacement', async () => {
+		const { engine, service, theme } = await setupProfile();
+		const changes: (string | null)[] = [];
+		const subscription = engine.events.on('theme:changed', ({ themeId }) => {
+			changes.push(themeId);
+		});
+		await service.install(theme, undefined, { system: true, silent: true });
+		expect(changes.length).toBeGreaterThan(0);
+		expect(changes).not.toContain(null);
+		subscription.dispose();
+		service.dispose();
+		engine.dispose();
+	});
+
 	it('boots a non-M3 default first and shares records with market management', async () => {
 		const { engine, service } = await setupProfile();
 		expect(engine.state.activeThemeId).toBe('custom-default');

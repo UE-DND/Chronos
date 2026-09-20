@@ -86,7 +86,7 @@ describe('applyActiveTheme', () => {
 			}
 		});
 		engine.themes.registerTheme(m3DefaultTheme);
-		engine.themes.registerTheme({
+		const themeHandle = engine.themes.registerTheme({
 			...m3DefaultTheme,
 			id: YUMEMITA_THEME_ID,
 			className: 'theme-yumemita'
@@ -98,6 +98,14 @@ describe('applyActiveTheme', () => {
 		});
 
 		expect(target.classList.contains('theme-yumemita')).toBe(true);
+		const originalStyles = new Map(target.getStyle());
+		themeHandle.dispose();
+		applyActiveTheme(engine, YUMEMITA_THEME_ID, false, { target });
+		expect(target.classList.contains('theme-yumemita')).toBe(true);
+		expect(target.getStyle()).toEqual(originalStyles);
+		applyActiveTheme(engine, null, false, { target });
+		expect(target.classList.contains('theme-yumemita')).toBe(false);
+		expect(target.getStyle().size).toBe(0);
 		engine.dispose();
 	});
 

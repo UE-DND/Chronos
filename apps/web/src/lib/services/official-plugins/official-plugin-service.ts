@@ -344,7 +344,9 @@ export class OfficialPluginService implements Disposable {
 			this.profile?.defaultTheme.pluginId === candidate.manifest.id
 				? this.profile.defaultTheme
 				: undefined;
-		if (required) this.engine.clearDefaultTheme();
+		// JSON-only themes do not unload an engine plugin or need to release its removal guard.
+		if (required && this.engine.isPluginLoaded(candidate.manifest.id))
+			this.engine.clearDefaultTheme();
 		try {
 			result = await replacePluginAssets(
 				{

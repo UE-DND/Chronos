@@ -39,7 +39,10 @@ export function applyActiveTheme(
 		options?.target ?? (typeof document !== 'undefined' ? document.documentElement : undefined);
 	if (!el) return;
 
-	const effectiveThemeId = activeThemeId;
+	const theme = engine.themes.getTheme(activeThemeId);
+	// Keep the last rendered colors while an active theme is being replaced.
+	// An explicit null selection still clears the theme.
+	if (activeThemeId && !theme && !options?.wallpaperColorEnabled) return;
 
 	clearCustomThemeStyles(el);
 
@@ -51,7 +54,6 @@ export function applyActiveTheme(
 		return;
 	}
 
-	const theme = engine.themes.getTheme(effectiveThemeId);
 	if (!theme) {
 		return;
 	}
