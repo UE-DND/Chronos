@@ -1,6 +1,7 @@
 # ADR 0042: 统一插件市场与 Profile 预安装
 
 > 2026-09-20 修订：主题配色算法归属、M3 ESM 分发、首屏资源与壁纸取色以 [ADR 0043](./0043-theme-owned-color-runtime-and-plugin-host-contracts.md) 为准。
+> 服务端插件元数据与部署装配以 [ADR 0044](./0044-server-plugin-definition-and-deployment-assembly.md) 为准。
 
 - 状态：Accepted
 - 日期：2026-09-20
@@ -18,7 +19,7 @@ Profile 必填且唯一的 `defaultTheme: { pluginId, themeId }` 必须由已启
 
 ## 部署与离线
 
-`deployment-definitions.ts` 独立声明服务端模块、代理 action 和域名。发行任务通过 `CHRONOS_DEPLOYMENT` 选择；`CHRONOS_PROFILE` 仅选择客户端预安装。客户端管理插件不改变服务器部署。数据源通过 `IHttpService.supportsPluginServer(pluginId, action)` 探测具体能力；CQUT 无代理时保留 HTML 导入，市场显示在线同步不可用。
+`deployment-definitions.ts` 独立选择服务端插件 ID，服务端入口、代理 action 和域名由插件包声明（见 ADR 0044）。发行任务通过 `CHRONOS_DEPLOYMENT` 选择；`CHRONOS_PROFILE` 仅选择客户端预安装。客户端管理插件不改变服务器部署。数据源通过 `IHttpService.supportsPluginServer(pluginId, action)` 探测具体能力；CQUT 无代理时保留 HTML 导入，市场显示在线同步不可用。
 
 预安装资源随宿主发行，从同源目录或缓存读取。PWA 在最终市场构建产物上计算 SHA-256 修订，预缓存当前 Profile 的全部预安装资源；资产 URL 包含与下载器一致的完整性查询参数，支持断网首次补装。其他市场插件按需下载。预缓存通过 PWA 的追加清单接口接入，保留 SvelteKit 的默认路径转换；SvelteKit 后生成的 `_app/env.js` 与导航文档共用 `pages-cache`，在宿主更新时一起失效。Pages 的请求与预缓存都包含应用 base 路径。
 

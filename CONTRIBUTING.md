@@ -279,7 +279,7 @@ export default defineChronosPlugin({
 
 ### Profile 预安装与部署
 
-客户端预安装在 `apps/web/src/lib/profile-codegen/profile-definitions.ts` 声明。服务端模块、代理路由和域名在 `deployment-definitions.ts` 独立声明；发行任务通过 `CHRONOS_PROFILE` 与 `CHRONOS_DEPLOYMENT` 分别选择。插件通过 `IHttpService.supportsPluginServer(pluginId, action)` 判断具体服务端能力，安装插件不会部署服务器。
+客户端预安装在 `apps/web/src/lib/profile-codegen/profile-definitions.ts` 声明。`deployment-definitions.ts` 仅选择服务端插件 ID；插件包通过 `./server` 和无副作用的 `./server/definition` 导出处理函数与 `serverDefinition`（ID、代理 action、域名），构建器据此生成静态导入、路由及客户端能力列表。服务端插件还须是宿主构建依赖。发行任务通过 `CHRONOS_PROFILE` 与 `CHRONOS_DEPLOYMENT` 分别选择。插件通过 `IHttpService.supportsPluginServer(pluginId, action)` 判断具体服务端能力，安装插件不会部署服务器。域名声明供构建校验和审查，当前不构成服务端出站网络限制（见 [ADR 0044](.agents/docs/adr/0044-server-plugin-definition-and-deployment-assembly.md)）。
 
 所有预安装资源来自 `scripts/official-plugins.config.ts` 的市场构建产物。构建根据当前 Profile 生成带内容修订的 PWA 预缓存；未预安装的插件按需下载。无须维护静态插件导入表。新增预安装插件时必须同时提供市场构建入口。
 
