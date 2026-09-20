@@ -43,12 +43,9 @@ export interface CqutOnlinePayloadData {
 
 /** Server `/preview` payload fields the CQUT plugin understands. */
 export interface CqutScheduleRawInput {
-	studentName?: string;
-	termName?: string;
-	termStartDate?: string;
 	campusId?: string;
 	campusPeriodTimes?: Record<string, PeriodTime[]>;
-	payload?: CqutOnlinePayloadData;
+	payload: CqutOnlinePayloadData;
 }
 
 function inferCqutTermStartDate(payload: {
@@ -94,61 +91,56 @@ function inferCqutTermStartDate(payload: {
 	return `${y}-${m}-${d}`;
 }
 
-/** Normalize CQUT online or legacy preview JSON into a Chronos timetable. */
+/** Normalize CQUT online preview JSON into a Chronos timetable. */
 export function parseCqutScheduleData(
 	rawData: CqutScheduleRawInput,
 	studentId = '',
 	fallbackCampusId: CqutCampusId = DEFAULT_CQUT_CAMPUS_ID,
 	t: (key: string) => string = (key) => key
 ): Timetable {
-	let courses: Course[] = [];
-	let termStartDate = rawData.termStartDate ?? '';
-	let timetableName = rawData.studentName
-		? formatStudentTimetableName(rawData.studentName, t)
-		: rawData.termName || t('timetable.defaultName');
-
 	const payload = rawData.payload;
-	if (payload?.eventList && Array.isArray(payload.eventList)) {
-		timetableName = studentId
-			? formatStudentTimetableName(studentId, t)
-			: payload.yearTerm || t('timetable.defaultName');
-		termStartDate = inferCqutTermStartDate(payload);
-
-		courses = payload.eventList
-			.map((event, idx) => {
-				const dayOfWeek = Number(event.weekDay);
-				const startPeriod = Number(event.sessionStart);
-				if (!dayOfWeek || Number.isNaN(startPeriod) || !event.eventName?.trim()) {
-					return null;
-				}
-
-				const duration = Number(event.sessionLast) || 1;
-				const sessionMax = event.sessionList?.length
-					? Math.max(...event.sessionList.map(Number).filter((n) => !Number.isNaN(n)))
-					: Number.NEGATIVE_INFINITY;
-				const endPeriod = Number.isFinite(sessionMax) ? sessionMax : startPeriod + duration - 1;
-
-				const weeks = [
-					...new Set((event.weekList || []).map((w) => Number(w)).filter((w) => !Number.isNaN(w)))
-				].sort((a, b) => a - b);
-
-				const eventName = event.eventName.trim();
-				const normalizedName = normalizedCourseName(eventName);
-
-				return createCourse({
-					id: event.eventID?.trim() || `cqut-${dayOfWeek}-${startPeriod}-${endPeriod}-${idx}`,
-					name: normalizedName,
-					teacher: event.memberName?.trim() ?? '',
-					location: event.address?.trim() ?? '',
-					dayOfWeek,
-					startPeriod,
-					endPeriod: Math.max(startPeriod, endPeriod),
-					weeks,
-					remark: event.remark?.trim() ?? ''
-				});
-			})
-			.filter((c): c is Course => c !== null);
+	if (!payload || !Array.isArray(payload.eventList)) {
+		throw new Error('Invalid CQUT online schedule payload');
 	}
+	const timetableName = studentId
+		? formatStudentTimetableName(studentId, t)
+		: payload.yearTerm || t('timetable.defaultName');
+	const termStartDate = inferCqutTermStartDate(payload);
+
+	const courses = payload.eventList
+		.map((event, idx) => {
+			const dayOfWeek = Number(event.weekDay);
+			const startPeriod = Number(event.sessionStart);
+			if (!dayOfWeek || Number.isNaN(startPeriod) || !event.eventName?.trim()) {
+				return null;
+			}
+
+			const duration = Number(event.sessionLast) || 1;
+			const sessionMax = event.sessionList?.length
+				? Math.max(...event.sessionList.map(Number).filter((n) => !Number.isNaN(n)))
+				: Number.NEGATIVE_INFINITY;
+			const endPeriod = Number.isFinite(sessionMax) ? sessionMax : startPeriod + duration - 1;
+
+			const weeks = [
+				...new Set((event.weekList || []).map((w) => Number(w)).filter((w) => !Number.isNaN(w)))
+			].sort((a, b) => a - b);
+
+			const eventName = event.eventName.trim();
+			const normalizedName = normalizedCourseName(eventName);
+
+			return createCourse({
+				id: event.eventID?.trim() || `cqut-${dayOfWeek}-${startPeriod}-${endPeriod}-${idx}`,
+				name: normalizedName,
+				teacher: event.memberName?.trim() ?? '',
+				location: event.address?.trim() ?? '',
+				dayOfWeek,
+				startPeriod,
+				endPeriod: Math.max(startPeriod, endPeriod),
+				weeks,
+				remark: event.remark?.trim() ?? ''
+			});
+		})
+		.filter((c): c is Course => c !== null);
 
 	const resolvedCampusId = (rawData.campusId as CqutCampusId) || fallbackCampusId;
 	const campusPeriodTimes = rawData.campusPeriodTimes || CQUT_DEFAULT_CAMPUS_PERIOD_TIMES;
