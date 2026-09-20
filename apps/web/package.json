@@ -4,11 +4,11 @@
 	"version": "0.7.0",
 	"type": "module",
 	"scripts": {
-		"dev": "vp dev .",
-		"build": "vp build .",
-		"build:pages": "CHRONOS_DEPLOY_TARGET=pages CHRONOS_PROFILE=chronos-default vp build . && cp build/404.html build/index.html",
+		"dev": "node --experimental-strip-types scripts/run-with-licenses.ts dev",
+		"build": "node --experimental-strip-types scripts/run-with-licenses.ts build",
+		"build:pages": "CHRONOS_DEPLOY_TARGET=pages CHRONOS_PROFILE=chronos-default node --experimental-strip-types scripts/run-with-licenses.ts build && cp build/404.html build/index.html",
 		"preview": "vp preview .",
-		"analyze": "node --experimental-strip-types scripts/emit-profile-artifacts.ts && ANALYZE=true vp build .",
+		"analyze": "ANALYZE=true node --experimental-strip-types scripts/run-with-licenses.ts build",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "vp test -- --run"

@@ -97,26 +97,26 @@ export default defineConfig({
 			},
 			'build:cqut': {
 				command:
-					'CHRONOS_DEPLOYMENT=chronos-cqut CHRONOS_PROFILE=chronos-cqut node --experimental-strip-types apps/web/scripts/emit-profile-artifacts.ts && CHRONOS_DEPLOYMENT=chronos-cqut CHRONOS_PROFILE=chronos-cqut vp -C apps/web build',
+					'CHRONOS_DEPLOYMENT=chronos-cqut CHRONOS_PROFILE=chronos-cqut node --experimental-strip-types apps/web/scripts/run-with-licenses.ts build',
 				env: ['CHRONOS_PROFILE', 'CHRONOS_DEPLOYMENT']
 			},
 			'build:cqut-offline': {
 				command:
-					'CHRONOS_DEPLOYMENT=chronos-cqut-offline CHRONOS_PROFILE=chronos-cqut-offline node --experimental-strip-types apps/web/scripts/emit-profile-artifacts.ts && CHRONOS_DEPLOYMENT=chronos-cqut-offline CHRONOS_PROFILE=chronos-cqut-offline vp -C apps/web build',
+					'CHRONOS_DEPLOYMENT=chronos-cqut-offline CHRONOS_PROFILE=chronos-cqut-offline node --experimental-strip-types apps/web/scripts/run-with-licenses.ts build',
 				env: ['CHRONOS_PROFILE', 'CHRONOS_DEPLOYMENT']
 			},
 			'build:default': {
 				command:
-					'CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/emit-profile-artifacts.ts && CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default vp -C apps/web build',
+					'CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-with-licenses.ts build',
 				env: ['CHRONOS_PROFILE', 'CHRONOS_DEPLOYMENT']
 			},
 			'build:pages': {
 				command:
-					'CHRONOS_DEPLOY_TARGET=pages CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/emit-profile-artifacts.ts && CHRONOS_DEPLOY_TARGET=pages CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default vp -C apps/web build && cp apps/web/build/404.html apps/web/build/index.html',
+					'CHRONOS_DEPLOY_TARGET=pages CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-with-licenses.ts build && cp apps/web/build/404.html apps/web/build/index.html',
 				env: ['CHRONOS_DEPLOY_TARGET', 'CHRONOS_PROFILE', 'CHRONOS_DEPLOYMENT']
 			},
 			'bundle:analyze':
-				'CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/emit-profile-artifacts.ts && ANALYZE=true CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default vp -C apps/web build',
+				'ANALYZE=true CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-with-licenses.ts build',
 			check:
 				'node --experimental-strip-types apps/web/scripts/emit-profile-artifacts.ts && vp check',
 			'check:watch': {

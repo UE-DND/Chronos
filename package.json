@@ -5,8 +5,8 @@
 	"type": "module",
 	"packageManager": "pnpm@12.4.2",
 	"scripts": {
-		"dev": "vp -C apps/web dev",
-		"build": "vp -C apps/web build",
+		"dev": "node --experimental-strip-types apps/web/scripts/run-with-licenses.ts dev",
+		"build": "node --experimental-strip-types apps/web/scripts/run-with-licenses.ts build",
 		"prepare": "vp config && node --experimental-strip-types apps/web/scripts/emit-profile-artifacts.ts && ln -sfn apps/web/.svelte-kit .svelte-kit"
 	},
 	"devDependencies": {
