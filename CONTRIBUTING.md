@@ -123,13 +123,13 @@ scripts                   官方插件构建与校验、主题令牌生成、别
 
 ### 分层拓扑
 
-| 包                                    | 角色                                                                                            | 可依赖                                   |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `apps/web`                            | Web 宿主：SvelteKit 外壳、页面路由、Dexie/HTTP 适配器、transfer-state 导入流                    | core、ui-kit、plugins（经 Profile 装配） |
-| `packages/core` (`@chronos/core`)     | 微内核：引擎、服务容器、插槽树、领域模型、Schema 校验                                           | 无运行时依赖                             |
-| `packages/ui-kit` (`@chronos/ui-kit`) | 与内核配套的 Svelte 组件库：响应式控制器、SchemaForm、插槽出口                                  | core                                     |
-| `packages/plugins/*`                  | 内置/官方插件（source-cqut、codec-share、codec-qrcode、tool-calendar-holidays、theme-yumemita） | core、ui-kit；彼此不依赖                 |
-| `packages/codec-kit`                  | 共享字节编解码原语（deflate/base64/CRC/varint/bitmask），普通 npm 依赖，非插件                  | —                                        |
+| 包                                    | 角色                                                                                                     | 可依赖                                   |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `apps/web`                            | Web 宿主：SvelteKit 外壳、页面路由、Dexie/HTTP 适配器、transfer-state 导入流                             | core、ui-kit、plugins（经 Profile 装配） |
+| `packages/core` (`@chronos/core`)     | 微内核：引擎、服务容器、插槽树、领域模型、Schema 校验                                                    | 无运行时依赖                             |
+| `packages/ui-kit` (`@chronos/ui-kit`) | 与内核配套的 Svelte 组件库：响应式控制器、SchemaForm、插槽出口                                           | core                                     |
+| `packages/plugins/*`                  | 市场业务插件（source-cqut、codec-share、codec-qrcode、tool-calendar-holidays、theme-yumemita、theme-m3） | core、ui-kit；彼此不依赖                 |
+| `packages/codec-kit`                  | 共享字节编解码原语（deflate/base64/CRC/varint/bitmask），普通 npm 依赖，非插件                           | —                                        |
 
 依赖规则遵循单一方向原则：**宿主负责装配插件，插件不感知宿主实现**。插件之间禁止直接互相引用，共享的基础能力与编解码原语统一通过 `packages/codec-kit` 等通用库提供。
 
@@ -151,12 +151,11 @@ scripts                   官方插件构建与校验、主题令牌生成、别
 
 每个插件在激活时均会获得一个 `ScopedContext` 实例（实现 `ChronosContext` 接口），提供插件专属的隔离配置、以 pluginId 为命名空间的私有存储、i18n 翻译运行时、只读状态快照以及引擎动作分发器。插件对系统能力的所有访问均收敛在此上下文中。
 
-### 插件的两条激活轨
+### 统一插件安装
 
-1. **Profile 内置轨**：`ProfileManager` 在应用启动时根据 Profile 配置清单，以进程内导入方式调用内置插件的 `apply` 方法。Profile 决定了默认装配的插件集以及经过「内核默认 → Profile 预设 → 用户偏好 → 运行时配置」四层合并后的最终生效配置。
-2. **官方在线轨**：`OfficialPluginService` 为官方插件的管理门面，由 Catalog 客户端、资产管线（负责下载 Manifest 与 Bundle 并执行 SHA-256 双哈希校验）、已安装记录存储以及运行时激活器共同协作，最终同样通过 `engine.loadPlugin` 完成加载。纯 JSON 资源的主题插件（不含 JS 代码）则通过轻量级无头 `ScopedContext` 直接注册资产。
+全部业务插件通过 `OfficialPluginService` 安装、校验和激活。Profile 的 `preinstall` 指定必须安装并启用的插件列表及首次安装配置；预安装从发行包的同源市场目录读取，与用户手动安装使用同一资源和记录。当前预安装项禁止用户禁用或卸载；启动补回缺失项、重新启用禁用项并清除对应卸载记录，不覆盖已有配置。保护与列表右侧的“预安装”标签均以当前 Profile 为准，移出列表后保留安装并恢复普通管理权限。宿主直接注册核心导航，不存在独立内置插件轨。
 
-两条加载路径共享相同的引擎生命周期管理与插槽所有者（Owner）追踪机制；插件之间不存在隐式依赖拓扑，可选能力统一通过 `ctx.service(...)` 显式探测与消费。
+Profile 必填 `defaultTheme: { pluginId, themeId }`，其提供者必须预安装并启用，用户不能禁用或卸载。首屏先激活并验证默认主题，后台恢复其余插件；优先使用缓存，更新失败保留旧资源。主题 JSON 与 ESM 插件都使用统一 Owner 追踪。详见 [ADR 0042](.agents/docs/adr/0042-unified-plugin-preinstallation.md)。
 
 ### 导入管道
 
@@ -278,15 +277,17 @@ export default defineChronosPlugin({
 - 如需打开宿主内置页面（如课程编辑器），请通过 `ctx.tryService(IHostNavigation)?.openCourseEditor(courseId)` 调用，**严禁**在插件内部硬编码宿主路由路径（如 `/timetable/...`，见 [ADR 0031](.agents/docs/adr/0031-round7-clock-profile-codegen-navigation-i18n.md)）。
 - 如需渲染与课表页一致的课程颜色，请通过 `ctx.tryService(ICoursePresentationService)` 获取当前调色板并按课表 ID 解析颜色（`resolveCoursePaintsForTimetable` / `resolveCoursePaint`）。**严禁**对可见课程子集自行调用 `assignCourseDisplayColors`。官方 ESM 插件无法读取宿主 Svelte context，`TIMETABLE_PRESENTATION_CONTEXT` 仅供进程内宿主 UI 使用。
 
-### Profile 内置插件打包
+### Profile 预安装与部署
 
-`apps/web` 中的内置插件列表由 `chronos-profile-plugin` 依据 `CHRONOS_PROFILE` 环境变量自动生成 `available-plugins.generated.ts`；在 `chronos-default` 配置下构建时不会静态引入 `@chronos/plugin-source-cqut`。调整 Profile 包含的插件时，只需修改 `apps/web/src/lib/profiles/profile-definitions.ts`，并执行 `node --experimental-strip-types apps/web/scripts/emit-profile-artifacts.ts`（执行 `vp run check` 时也会自动同步）。
+客户端预安装在 `apps/web/src/lib/profile-codegen/profile-definitions.ts` 声明。服务端模块、代理路由和域名在 `deployment-definitions.ts` 独立声明；发行任务通过 `CHRONOS_PROFILE` 与 `CHRONOS_DEPLOYMENT` 分别选择。插件通过 `IHttpService.supportsPluginServer(pluginId, action)` 判断具体服务端能力，安装插件不会部署服务器。
+
+所有预安装资源来自 `scripts/official-plugins.config.ts` 的市场构建产物。构建根据当前 Profile 生成带内容修订的 PWA 预缓存；未预安装的插件按需下载。无须维护静态插件导入表。新增预安装插件时必须同时提供市场构建入口。
 
 ### 官方插件 Tailwind
 
 官方 UI 插件在 `bundle/entry.ts` 中引入 `bundle/styles.css`，该文件 `@import '@chronos/ui-kit/theme/plugin-tailwind.css'` 并 `@source` 插件自身 `src/`。构建时 Tailwind v4 只编译 utilities（无 Preflight），原子类写入自包含 `bundle.css`，宿主在插件 activate 时注入 `<style data-plugin-id>`，deactivate 时卸载。
 
-宿主 `layout.css` **不再** `@source` 官方在线 UI 插件（today / calendar-holidays / codec-qrcode）。Profile 内置插件（`source-cqut`、`codec-share`）仍随宿主编译，可保留 `@source`。
+宿主 `layout.css` 不扫描业务插件源码。包括 `source-cqut` 和 `codec-share` 在内的全部 UI 插件自行构建 CSS。
 
 第三方插件应使用同一 CSS 入口契约。以下类仍由宿主全局提供，插件 CSS 不必重复产出：`text-*` 字阶（`typography.css`）、`ui-*` 模式、`.bottom-bar`。颜色原子类必须走 `plugin-tailwind.css` 的 `@theme inline` 桥，以便跟随宿主 CSS 变量与动态主题。
 
@@ -603,7 +604,7 @@ Chronos 的主题体系由「配色主题 + 派生图标主题」组成。类型
 
 ### 图标主题：派生而非持久化
 
-用户无需单独选择图标主题。系统始终根据当前激活配色主题中声明的 `recommendedIconTheme` 决定生效的图标主题（默认回退至 `host-default`），且该派生设置不会作为独立偏好持久化。切换配色主题时，图标主题将自动随之切换——这符合 [ADR 0026](.agents/docs/adr/0026-icon-theme-follows-color-scheme.md) 对 [ADR 0019](.agents/docs/adr/0019-workbench-color-and-icon-theme-platform.md) 双模型拆分的修正。
+用户无需单独选择图标主题。系统始终根据当前激活配色主题中声明的 `recommendedIconTheme` 决定生效的图标主题（默认回退至 `host-default`；宿主壁纸取色模式始终使用 `host-default`），且该派生设置不会作为独立偏好持久化。切换配色主题时，图标主题将自动随之切换——这符合 [ADR 0026](.agents/docs/adr/0026-icon-theme-follows-color-scheme.md) 对 [ADR 0019](.agents/docs/adr/0019-workbench-color-and-icon-theme-platform.md) 双模型拆分的修正。
 
 `IconThemeContribution` 图标主题的交付方式保持一致：通过 JSON 资源声明图标映射集合，宿主底栏等组件统一消费 `ShellIconRef`（可为注册表键名或结构化图标描述符）。
 
@@ -627,7 +628,9 @@ Chronos 的主题体系由「配色主题 + 派生图标主题」组成。类型
 
 - `visualThemeId`：选择的配色主题 ID，同时决定推荐图标。
 - `wallpaperSource`：壁纸来源，与配色主题独立。
-- `wallpaperColorEnabled`：宿主取色选项，默认关闭；与默认配色、插件主题在配色方案中互斥选择，选择取色时使用默认内置主题。
+- `wallpaperColorEnabled`：宿主取色选项，默认关闭；位于“已安装主题”下方独立栏的覆盖开关，开启时保留所选主题作为壁纸来源，界面使用宿主 M3 基础外观与动态配色。
 - 不再存在 `paletteMode`、插件动态取色适配器及 `dynamicColor:*` 广播。按本次变更约定不提供旧数据迁移，用户自行清空旧数据。
+
+默认主题由 profile 必填的 `defaultTheme: { pluginId, themeId }` 声明，提供者必须装配并启用，首屏前完成加载与校验。当前各 profile 预安装市场中的 `theme-m3` 纯 JSON 插件；已安装时不显示重复安装入口。运行 `vp run theme:generate` 同步市场配色 JSON 与宿主基础颜色。宿主不隐式注册主题。无用户选择或所选主题已移除时回退到 profile 默认主题。取色开启时保留主题壁纸，仅默认主题搭配自定义壁纸来源时可启用取色；条件失效自动关闭并恢复主题配色。详见 [ADR 0041](.agents/docs/adr/0041-profile-owned-default-theme.md)。
 
 详见 [ADR 0040](.agents/docs/adr/0040-host-wallpaper-and-theme-assets.md)。
