@@ -1,3 +1,4 @@
+import { preinstallPrecachePlugin } from './src/lib/profile-codegen/preinstall-precache';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
@@ -19,7 +20,7 @@ import { writeGeneratedThemeCss } from './src/lib/theme/theme';
 import { writeGeneratedVersionJson } from './src/lib/content/releases/version-generator';
 import { chronosLicensePlugin } from './src/lib/legal/chronos-license-plugin';
 import { chronosProfilePlugin } from './src/lib/profile-codegen/chronos-profile-plugin';
-import { resolveProfileId } from './src/lib/profile-codegen/profile-definitions';
+import { resolveProfile, resolveProfileId } from './src/lib/profile-codegen/profile-definitions';
 import {
 	createOfficialPluginsPlugin,
 	defaultBuildOfficialPlugins
@@ -121,6 +122,7 @@ export default defineConfig(({ command, mode }) => {
 			chronosLicensePlugin(webRoot),
 			materialSymbolsWeightPlugin(),
 			chronosProfilePlugin(webRoot),
+			preinstallPrecachePlugin(webRoot, resolveProfile(resolveProfileId()), basePath),
 			chronosThemeTokensPlugin(),
 			createOfficialPluginsPlugin({
 				catalogPath: officialPluginsCatalogPath,
@@ -213,6 +215,16 @@ export default defineConfig(({ command, mode }) => {
 					globIgnores: ['**/official-plugins/**'],
 					navigateFallback: null,
 					runtimeCaching: [
+						{
+							// SvelteKit emits this bootstrap module after SW generation. Keep it
+							// with the navigation document; the update flow clears pages-cache.
+							urlPattern: /\/_app\/env\.js$/,
+							handler: 'CacheFirst',
+							options: {
+								cacheName: 'pages-cache',
+								expiration: { maxEntries: 32, maxAgeSeconds: 2_592_000 }
+							}
+						},
 						{
 							// ADR 0035: document must match the controlling SW.
 							urlPattern: ({ request }: { request: Request }) => request.mode === 'navigate',
