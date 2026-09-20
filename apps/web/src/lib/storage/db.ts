@@ -43,6 +43,7 @@ export class ChronosDB extends Dexie {
 	courses!: Table<CourseRow, string>;
 	pluginData!: Table<PluginDataRow, string>;
 	pluginBinary!: Table<PluginBinaryRow, string>;
+	images!: Table<{ id: string; blob: Blob }, string>;
 
 	constructor(name = 'chronos') {
 		super(name);
@@ -54,6 +55,7 @@ export class ChronosDB extends Dexie {
 		this.version(2).stores({
 			pluginBinary: 'id, pluginId, key, updatedAt'
 		});
+		this.version(3).stores({ images: 'id' });
 	}
 }
 

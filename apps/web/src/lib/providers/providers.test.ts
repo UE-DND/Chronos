@@ -51,6 +51,7 @@ function createMockDb(): ChronosDB {
 	const pluginBinaryMap = new Map<string, PluginBinaryRow>();
 
 	return {
+		images: { clear: vi.fn().mockResolvedValue(undefined), toArray: vi.fn().mockResolvedValue([]) },
 		timetables: {
 			clear: vi.fn(async () => {
 				timetablesMap.clear();
@@ -464,6 +465,7 @@ describe('Web Providers', () => {
 	});
 
 	it('clearAllData purges app-owned caches and keeps third-party ones', async () => {
+		const clearImages = vi.spyOn(db.images, 'clear');
 		const remaining = new Set(['pages-cache', 'official-plugins', 'other-cache']);
 		const deleted: string[] = [];
 		const fakeCaches = {
@@ -482,6 +484,7 @@ describe('Web Providers', () => {
 
 		await storage.clearAllData();
 
+		expect(clearImages).toHaveBeenCalledOnce();
 		expect(deleted.sort()).toEqual(['official-plugins', 'pages-cache']);
 		expect([...remaining]).toEqual(['other-cache']);
 	});

@@ -1,3 +1,4 @@
+import { ImageRepository } from '$lib/storage/image-repository';
 import type {
 	Disposable,
 	IStorageService,
@@ -24,6 +25,7 @@ export class DexieStorageProvider implements IStorageService {
 	private readonly preferences: PreferencesStore;
 	private readonly timetables: TimetableRepository;
 	private readonly pluginKv: PluginKvRepository;
+	private readonly images: ImageRepository;
 
 	constructor(
 		database: ChronosDB = db,
@@ -33,6 +35,7 @@ export class DexieStorageProvider implements IStorageService {
 		this.preferences = new PreferencesStore(localStore);
 		this.timetables = new TimetableRepository(database);
 		this.pluginKv = new PluginKvRepository(database);
+		this.images = new ImageRepository(database);
 
 		if (typeof window !== 'undefined') {
 			this.storageListener = (e: StorageEvent) => {
@@ -154,6 +157,7 @@ export class DexieStorageProvider implements IStorageService {
 		try {
 			await this.timetables.clearTimetables();
 			await this.pluginKv.clearAll();
+			await this.images.clear();
 			if (typeof localStorage !== 'undefined') {
 				clearKeysWithPrefix(localStorage, 'chronos');
 			}
@@ -170,11 +174,12 @@ export class DexieStorageProvider implements IStorageService {
 	}
 
 	async estimateStorageBytes(): Promise<number> {
-		const [timetableBytes, pluginBytes] = await Promise.all([
+		const [timetableBytes, pluginBytes, imageBytes] = await Promise.all([
 			this.timetables.estimateBytes(),
-			this.pluginKv.estimateBytes()
+			this.pluginKv.estimateBytes(),
+			this.images.estimateBytes()
 		]);
-		return timetableBytes + pluginBytes;
+		return timetableBytes + pluginBytes + imageBytes;
 	}
 
 	dispose(): void {
