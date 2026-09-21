@@ -1,19 +1,16 @@
-import { pathToFileURL } from 'node:url';
-import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import type { OfficialPluginDef } from '../official-plugins.config.ts';
-import {
-	compileOfficialPluginEntry,
-	OFFICIAL_PLUGIN_BUNDLE_CSS,
-	OFFICIAL_PLUGIN_BUNDLE_JS
-} from './compile-entry.ts';
+import type { BundledLicenseInfo } from '../../apps/web/src/lib/legal/third-party-license-generator.ts';
+import { compileOfficialPluginEntry } from './compile-entry.ts';
 import { publishDevPluginBuild } from './dev-publish.ts';
+import { buildManifestForPlugin, writePluginManifest } from './build-manifest.ts';
 import { createOfficialPluginBuildPaths, type OfficialPluginBuildPaths } from './paths.ts';
 import { resolveOfficialServerPlugin } from './server-definition.ts';
+import { preparePluginResources } from './prepare-resources.ts';
+import { digest, snapshotInputs, writeChanged, type BuildInputs } from './cache.ts';
 
 export type OfficialPluginBuildMode = 'production' | 'dev';
-
 export interface BuildOfficialPluginOptions {
 	root: string;
 	releaseVersion: string;
@@ -21,8 +18,10 @@ export interface BuildOfficialPluginOptions {
 	mode: OfficialPluginBuildMode;
 	rev?: string;
 	paths?: OfficialPluginBuildPaths;
+	publish?: boolean;
+	signal?: AbortSignal;
+	environment?: Record<string, string>;
 }
-
 export interface OfficialPluginBuildResult {
 	wallpaperBytes?: Uint8Array;
 	id: string;
@@ -33,124 +32,119 @@ export interface OfficialPluginBuildResult {
 	cssCode: string | null;
 	colorsJson: string | null;
 	iconThemeJson: string | null;
+	licenses?: BundledLicenseInfo[];
+	inputs?: BuildInputs;
+	cacheStatus?: { resources: boolean; compile: boolean };
 }
-
-function createDevRevision(): string {
-	return Date.now().toString(36);
+export function publishProductionPlugin(
+	result: OfficialPluginBuildResult,
+	paths: OfficialPluginBuildPaths
+): void {
+	const dir = paths.pluginBundleDir(result.id);
+	mkdirSync(dir, { recursive: true });
+	const files = {
+		'bundle.js': result.code,
+		'bundle.css': result.cssCode,
+		'colors.json': result.colorsJson,
+		'icons.json': result.iconThemeJson,
+		'wallpaper.image': result.wallpaperBytes
+	};
+	for (const [name, value] of Object.entries(files)) {
+		const path = resolve(dir, name);
+		if (value != null) writeChanged(path, value);
+		else rmSync(path, { force: true });
+	}
+	writePluginManifest(paths.manifestDir, result.id, result.manifest!);
 }
-
 export async function buildOfficialPluginAssets(
 	plugin: OfficialPluginDef,
 	options: BuildOfficialPluginOptions
 ): Promise<OfficialPluginBuildResult> {
 	const { root, releaseVersion, createAliasRecord, mode } = options;
-	if (plugin.prepareResources) {
-		const preparer = await import(pathToFileURL(plugin.prepareResources).href);
-		await preparer.prepareResources();
-	}
+	const prepared = await preparePluginResources(plugin, root);
 	const paths = options.paths ?? createOfficialPluginBuildPaths(root);
-	const outDir = mode === 'dev' ? paths.devTempDir(plugin.id) : paths.pluginBundleDir(plugin.id);
-
-	if (mode === 'dev') {
-		rmSync(outDir, { recursive: true, force: true });
-	}
-	mkdirSync(outDir, { recursive: true });
-
-	let wallpaperBytes: Uint8Array | undefined;
-	let code: string | null = null;
-	let cssCode: string | null = null;
-	let colorsJson: string | null = null;
-	let iconThemeJson: string | null = null;
-
-	if (plugin.colorsJson && existsSync(plugin.colorsJson)) {
-		colorsJson = readFileSync(plugin.colorsJson, 'utf8');
-		const colors = JSON.parse(colorsJson);
+	const assets: OfficialPluginBuildResult = {
+		id: plugin.id,
+		type: plugin.type,
+		code: null,
+		cssCode: null,
+		colorsJson: null,
+		iconThemeJson: null,
+		licenses: [],
+		cacheStatus: { resources: prepared.cacheHit, compile: true }
+	};
+	const resourceFiles: string[] = [];
+	if (prepared.colorsJson) {
+		resourceFiles.push(prepared.colorsJson);
+		assets.colorsJson = readFileSync(prepared.colorsJson, 'utf8');
+		const colors = JSON.parse(assets.colorsJson);
 		if (colors.wallpaper) {
 			const sourceUrl = colors.wallpaper.url;
 			if (typeof sourceUrl !== 'string' || !sourceUrl || /^[a-z]+:/i.test(sourceUrl))
 				throw new Error('Theme wallpaper must be a local image path');
-			wallpaperBytes = readFileSync(resolve(dirname(plugin.colorsJson), sourceUrl));
-			colors.wallpaper = {
-				url: './wallpaper.image',
-				sha256: createHash('sha256').update(wallpaperBytes).digest('hex')
-			};
-			colorsJson = JSON.stringify(colors);
-			if (mode === 'production') writeFileSync(resolve(outDir, 'wallpaper.image'), wallpaperBytes);
-		}
-		if (mode === 'production') {
-			writeFileSync(resolve(outDir, 'colors.json'), colorsJson, 'utf8');
+			const imagePath = resolve(dirname(prepared.colorsJson), sourceUrl);
+			resourceFiles.push(imagePath);
+			assets.wallpaperBytes = readFileSync(imagePath);
+			colors.wallpaper = { url: './wallpaper.image', sha256: digest(assets.wallpaperBytes) };
+			assets.colorsJson = JSON.stringify(colors);
 		}
 	}
-
-	if (plugin.iconsJson && existsSync(plugin.iconsJson)) {
-		iconThemeJson = readFileSync(plugin.iconsJson, 'utf8');
-		if (mode === 'production') {
-			writeFileSync(resolve(outDir, 'icons.json'), iconThemeJson, 'utf8');
-		}
+	if (prepared.iconsJson) {
+		resourceFiles.push(prepared.iconsJson);
+		assets.iconThemeJson = readFileSync(prepared.iconsJson, 'utf8');
 	}
-
-	if (plugin.entry && existsSync(plugin.entry)) {
-		const compileOutDir = mode === 'dev' ? outDir : resolve(paths.compileDistDir, plugin.id);
-		const compiled = await compileOfficialPluginEntry(
-			plugin,
-			root,
-			createAliasRecord,
-			compileOutDir,
-			releaseVersion
-		);
-		code = compiled.code;
-		cssCode = compiled.cssCode;
-
-		if (mode === 'production') {
-			if (!code) {
-				throw new Error(`${plugin.id}: official plugin entry produced no bundle.js`);
-			}
-			writeFileSync(resolve(outDir, OFFICIAL_PLUGIN_BUNDLE_JS), code, 'utf8');
-			const staticCssPath = resolve(outDir, OFFICIAL_PLUGIN_BUNDLE_CSS);
-			if (cssCode) {
-				writeFileSync(staticCssPath, cssCode, 'utf8');
-			} else if (existsSync(staticCssPath)) {
-				rmSync(staticCssPath, { force: true });
-			}
-		}
-	}
-
-	if (mode === 'dev') {
-		const rev = options.rev ?? createDevRevision();
+	let compileInputs: BuildInputs = { files: {}, directories: {}, scans: {} };
+	if (plugin.entry) {
+		if (!existsSync(plugin.entry)) throw new Error(`${plugin.id}: missing entry ${plugin.entry}`);
+		mkdirSync(paths.compileDistDir, { recursive: true });
+		const temporary = mkdtempSync(resolve(paths.compileDistDir, `.${plugin.id}-`));
 		try {
-			const serverPlugin = await resolveOfficialServerPlugin(plugin, root);
-			const published = publishDevPluginBuild({
+			const compiled = await compileOfficialPluginEntry(
 				plugin,
-				serverPlugin,
-				rev,
-				files: { code, cssCode, colorsJson, iconThemeJson, wallpaperBytes },
+				root,
+				createAliasRecord,
+				temporary,
 				releaseVersion,
-				paths
-			});
-			return {
-				id: plugin.id,
-				type: plugin.type,
-				rev: published.rev,
-				manifest: published.manifest,
-				code,
-				cssCode,
-				colorsJson,
-				iconThemeJson,
-				wallpaperBytes
-			};
-		} catch (error) {
-			rmSync(outDir, { recursive: true, force: true });
-			throw error;
+				{ mode, resourceAliases: prepared.aliases, environment: options.environment }
+			);
+			if (!compiled.code) throw new Error(`${plugin.id}: no bundle.js`);
+			assets.code = compiled.code;
+			assets.cssCode = compiled.cssCode;
+			assets.licenses = compiled.licenses;
+			assets.cacheStatus!.compile = compiled.cacheHit;
+			compileInputs = compiled.inputs;
+		} finally {
+			rmSync(temporary, { recursive: true, force: true });
 		}
 	}
-
-	return {
-		id: plugin.id,
-		type: plugin.type,
-		code,
-		cssCode,
-		colorsJson,
-		iconThemeJson,
-		wallpaperBytes
+	const packageDir = resolve(root, 'packages/plugins', plugin.sourceDir);
+	resourceFiles.push(resolve(packageDir, 'package.json'));
+	if (existsSync(resolve(packageDir, 'server/definition.ts')))
+		resourceFiles.push(resolve(packageDir, 'server/definition.ts'));
+	const resourceInputs = snapshotInputs(resourceFiles, [], []);
+	assets.inputs = {
+		files: { ...prepared.inputs.files, ...compileInputs.files, ...resourceInputs.files },
+		directories: { ...prepared.inputs.directories, ...compileInputs.directories },
+		scans: { ...prepared.inputs.scans, ...compileInputs.scans }
 	};
+	const serverPlugin = await resolveOfficialServerPlugin(plugin, root);
+	assets.manifest = buildManifestForPlugin(plugin, assets, releaseVersion, serverPlugin);
+	options.signal?.throwIfAborted();
+	if (mode === 'dev') {
+		const rev = options.rev ?? digest(JSON.stringify(assets.manifest)).slice(0, 24);
+		const published = publishDevPluginBuild({
+			plugin,
+			serverPlugin,
+			rev,
+			files: assets,
+			releaseVersion,
+			paths
+		});
+		assets.rev = published.rev;
+		assets.manifest = published.manifest;
+	} else if (options.publish !== false) publishProductionPlugin(assets, paths);
+	console.log(
+		`[chronos-plugin] ${plugin.id} resources=${prepared.cacheHit ? 'hit' : 'built'} compile=${assets.cacheStatus!.compile ? 'hit' : 'built'}`
+	);
+	return assets;
 }

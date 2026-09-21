@@ -4,6 +4,7 @@ import type { OfficialPluginDef } from '../official-plugins.config.ts';
 import type { ResolvedServerPlugin } from './server-definition.ts';
 import { OFFICIAL_PLUGIN_BUNDLE_CSS, OFFICIAL_PLUGIN_BUNDLE_JS } from './compile-entry.ts';
 import { buildDevManifestForPlugin, writeDevPluginManifest } from './build-manifest.ts';
+import { digest } from './cache.ts';
 import { createOfficialPluginBuildPaths, type OfficialPluginBuildPaths } from './paths.ts';
 
 export interface DevPluginBuildFiles {
@@ -68,9 +69,28 @@ export function publishDevPluginBuild(
 
 	mkdirSync(pluginDir, { recursive: true });
 	if (existsSync(revDir)) {
-		rmSync(revDir, { recursive: true, force: true });
-	}
-	renameSync(tempDir, revDir);
+		const names = [
+			'bundle.js',
+			'bundle.css',
+			'colors.json',
+			'icons.json',
+			'wallpaper.image',
+			'manifest.json'
+		];
+		const same = names.every((name) => {
+			const fresh = resolve(tempDir, name),
+				existing = resolve(revDir, name);
+			return (
+				existsSync(fresh) === existsSync(existing) &&
+				(!existsSync(fresh) || digest(readFileSync(fresh)) === digest(readFileSync(existing)))
+			);
+		});
+		if (same) rmSync(tempDir, { recursive: true, force: true });
+		else {
+			rmSync(revDir, { recursive: true, force: true });
+			renameSync(tempDir, revDir);
+		}
+	} else renameSync(tempDir, revDir);
 	writeDevPluginManifest(paths.devManifestPath(plugin.id), manifest);
 
 	return { rev, manifest };

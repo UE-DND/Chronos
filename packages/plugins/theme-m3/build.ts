@@ -1,12 +1,12 @@
 /// <reference types="node" />
 
-import { writeFileSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { createWorkbenchColorsFromTokens } from '@chronos/core/theme/workbench-colors';
 import { buildM3Tokens } from './src/m3-theme.ts';
-export function prepareResources() {
+export function prepareResources(outDir: string) {
 	const colors = createWorkbenchColorsFromTokens(buildM3Tokens('light'), buildM3Tokens('dark'));
-	const path = fileURLToPath(new URL('./theme-m3.colors.json', import.meta.url));
+	const path = resolve(outDir, 'colors.json');
 	const output =
 		JSON.stringify(
 			{
@@ -17,11 +17,6 @@ export function prepareResources() {
 			null,
 			'\t'
 		) + '\n';
-	let old = '';
-	try {
-		old = readFileSync(path, 'utf8');
-	} catch {
-		/* first build */
-	}
-	if (old !== output) writeFileSync(path, output);
+	writeFileSync(path, output);
+	return { colorsJson: 'colors.json' };
 }

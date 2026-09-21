@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { writeFileSync } from 'node:fs';
+import { writeChanged } from './cache.ts';
 import { resolve } from 'node:path';
 import type { OfficialPluginDef } from '../official-plugins.config.ts';
 import type { ResolvedServerPlugin } from './server-definition.ts';
@@ -47,10 +47,9 @@ export function writePluginManifest(
 	pluginId: string,
 	manifest: Record<string, unknown>
 ): void {
-	writeFileSync(
+	writeChanged(
 		resolve(manifestDir, `${pluginId}.manifest.json`),
-		`${JSON.stringify(manifest, null, '\t')}\n`,
-		'utf8'
+		`${JSON.stringify(manifest, null, '\t')}\n`
 	);
 }
 
@@ -126,5 +125,5 @@ export function writeDevPluginManifest(
 	manifestPath: string,
 	manifest: Record<string, unknown>
 ): void {
-	writeFileSync(manifestPath, `${JSON.stringify(manifest, null, '\t')}\n`, 'utf8');
+	writeChanged(manifestPath, `${JSON.stringify(manifest, null, '\t')}\n`);
 }
