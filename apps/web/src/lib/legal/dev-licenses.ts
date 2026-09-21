@@ -2,6 +2,7 @@ import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { OFFICIAL_PLUGINS } from '../../../../../scripts/official-plugins.config.ts';
 import {
+	digest,
 	readBuildCache,
 	writeBuildCache
 } from '../../../../../scripts/official-plugin-build/cache.ts';
@@ -9,7 +10,14 @@ import type { BundledLicenseInfo } from './third-party-license-generator.ts';
 
 export function declaredDevelopmentLicenses(root: string): BundledLicenseInfo[] {
 	const cachePath = resolve(root, 'dist/plugin-cache/dev-licenses.json');
-	const cached = readBuildCache<BundledLicenseInfo[]>(cachePath, 'declared-runtime-dependencies');
+	const collectorFiles = [
+		resolve(root, 'apps/web/src/lib/legal/dev-licenses.ts'),
+		resolve(root, 'scripts/official-plugin-build/cache.ts')
+	];
+	const key = digest(
+		JSON.stringify([process.version, ...collectorFiles.map((file) => readFileSync(file, 'utf8'))])
+	);
+	const cached = readBuildCache<BundledLicenseInfo[]>(cachePath, key);
 	if (cached) return cached.value;
 	const files = [
 		resolve(root, 'pnpm-lock.yaml'),
@@ -62,6 +70,6 @@ export function declaredDevelopmentLicenses(root: string): BundledLicenseInfo[] 
 	}
 	visit(resolve(root, 'apps/web'));
 	for (const plugin of OFFICIAL_PLUGINS) visit(resolve(root, 'packages/plugins', plugin.sourceDir));
-	writeBuildCache(cachePath, 'declared-runtime-dependencies', files, [], [], licenses);
+	writeBuildCache(cachePath, key, files, [], [], licenses);
 	return licenses;
 }
