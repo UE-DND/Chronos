@@ -1,3 +1,4 @@
+import { writeChanged } from '../../../../../scripts/official-plugin-build/cache.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Plugin, ViteDevServer } from 'vite';
@@ -97,7 +98,7 @@ function removeCatchAllRoute(webRoot: string): void {
 function writeCatchAllRoute(webRoot: string): void {
 	const routeFile = path.join(webRoot, CATCH_ALL_ROUTE_FILE);
 	fs.mkdirSync(path.dirname(routeFile), { recursive: true });
-	fs.writeFileSync(routeFile, CATCH_ALL_ROUTE_SOURCE, 'utf8');
+	writeChanged(routeFile, CATCH_ALL_ROUTE_SOURCE);
 }
 
 export function writeServerArtifacts(
@@ -109,8 +110,8 @@ export function writeServerArtifacts(
 
 	fs.mkdirSync(path.dirname(registryPath), { recursive: true });
 	fs.mkdirSync(path.dirname(loaderPath), { recursive: true });
-	fs.writeFileSync(registryPath, generateRegistrySource(activeServerPlugins), 'utf8');
-	fs.writeFileSync(loaderPath, generateLoaderSource(activeServerPlugins), 'utf8');
+	writeChanged(registryPath, generateRegistrySource(activeServerPlugins));
+	writeChanged(loaderPath, generateLoaderSource(activeServerPlugins));
 
 	if (activeServerPlugins.length > 0) {
 		writeCatchAllRoute(webRoot);
