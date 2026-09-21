@@ -94,11 +94,13 @@ vp install
 | `vp run bundle:analyze`                                                       | 构建并分析前端包体积构成                   |
 | `vp run icons:png`                                                            | 从 SVG 源资产重新生成各尺寸 PWA 图标       |
 
-`vp run dev` 和宿主构建命令统一通过 `run-host.ts` 准备 profile、插件与默认主题。开发只生成开发插件，不执行宿主生产构建；生产仅执行一次完整宿主构建。请使用 `vp run` 入口，直接调用 `vp dev/build` 时缺少构建上下文会报错。配置读取、类型同步与 preview 不构建插件。
+`vp run dev` 和宿主构建命令统一通过 `run-host.ts` 准备 profile、插件与默认主题。开发只生成开发插件，不执行宿主生产构建；生产仅执行一次完整宿主构建。请使用 `vp run` 入口，直接调用 `vp dev/build` 时缺少构建上下文会报错。配置读取、类型同步与 preview 不构建插件。子进程失败或收到 SIGINT/SIGTERM 时停止后续阶段，入口以非零状态退出。
 
 插件缓存位于 `dist/plugin-cache`，开发/生产分别记录实际输入、扫描目录、产物摘要和许可证片段。资源准备、代码编译和市场发布独立复用，最多并发两个插件；日志中的 `resources=hit/built` 与 `compile=hit/built` 显示阶段命中。缓存损坏或输入变化自动重建，诊断冷启动时可以手动删除该目录。不要用 `static/official-plugins` 是否存在来判断缓存有效性。
 
-生产许可证在客户端 `generateBundle` 合并宿主与全部发行插件的实际依赖，输出到发布目录的 `licenses/third-party.json` 并纳入 PWA 预缓存，不再向源码 static 目录生成清单。开发相同 URL 由中间件提供：根据已安装的运行时依赖声明生成允许多包含的清单，合并插件依赖；普通源码修改不重新遍历依赖树。同包不同许可证值分别保留，缺失值显示 `UNKNOWN`。
+生产市场先校验并发布带内容 revision 的不可变资源，最后原子替换 `catalog.json`；预安装和 PWA 预缓存均按 catalog 解析资源路径。发布期间不移动在线目录；旧 revision 保留供进行中的下载使用，许可证汇总包含保留快照的依赖。需要回收本地历史资源时，先停止相关构建/预览和下载，再手动删除 `apps/web/static/official-plugins/bundles`、`manifests` 与 `catalog.json` 并重新构建。
+
+生产许可证在客户端 `generateBundle` 合并宿主与全部发行插件的实际依赖，输出到发布目录的 `licenses/third-party.json` 并纳入 PWA 预缓存，不再向源码 static 目录生成清单。开发相同 URL 由中间件提供：根据已安装的运行时依赖声明生成允许多包含的清单，合并插件依赖；普通源码修改不重新遍历依赖树；收集器或缓存实现变化会使开发许可证缓存失效。同包不同许可证值分别保留，缺失值显示 `UNKNOWN`。
 
 ### 仓库布局
 
