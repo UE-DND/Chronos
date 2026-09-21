@@ -1,6 +1,6 @@
 import type { Plugin } from 'vite';
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ChronosProfile } from '../../../../../packages/core/src/profile/profile';
 /** Read the final market output, so revisions always match the distributed bytes. */
@@ -49,13 +49,25 @@ export function preinstallPrecachePlugin(
 			serverBuild = Boolean(config.build.ssr);
 			api = config.plugins.find((plugin) => plugin.name === 'vite-plugin-pwa')?.api;
 		},
-		generateBundle() {
-			if (!serverBuild) return;
-			if (!api) throw new Error('PWA manifest extension API is unavailable');
-			api.extendManifestEntries((entries) => [
-				...entries,
-				...preinstallPrecache(webRoot, profile, base)
-			]);
+		writeBundle: {
+			order: 'post',
+			sequential: true,
+			handler() {
+				if (!serverBuild) return;
+				if (!api) throw new Error('PWA manifest extension API is unavailable');
+				api.extendManifestEntries((entries) => {
+					const licensePath = join(webRoot, '.svelte-kit/output/client/licenses/third-party.json');
+					if (!existsSync(licensePath)) throw new Error('Missing generated production licenses');
+					const licenseRevision = createHash('sha256')
+						.update(readFileSync(licensePath))
+						.digest('hex');
+					return [
+						{ url: `${base}/licenses/third-party.json`, revision: licenseRevision },
+						...entries,
+						...preinstallPrecache(webRoot, profile, base)
+					];
+				});
+			}
 		}
 	};
 }

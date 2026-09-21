@@ -97,26 +97,29 @@ export default defineConfig({
 			},
 			'build:cqut': {
 				command:
-					'CHRONOS_DEPLOYMENT=chronos-cqut CHRONOS_PROFILE=chronos-cqut node --experimental-strip-types apps/web/scripts/run-with-licenses.ts build',
-				env: ['CHRONOS_PROFILE', 'CHRONOS_DEPLOYMENT']
+					'CHRONOS_DEPLOYMENT=chronos-cqut CHRONOS_PROFILE=chronos-cqut node --experimental-strip-types apps/web/scripts/run-host.ts build',
+				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 			},
 			'build:cqut-offline': {
 				command:
-					'CHRONOS_DEPLOYMENT=chronos-cqut-offline CHRONOS_PROFILE=chronos-cqut-offline node --experimental-strip-types apps/web/scripts/run-with-licenses.ts build',
-				env: ['CHRONOS_PROFILE', 'CHRONOS_DEPLOYMENT']
+					'CHRONOS_DEPLOYMENT=chronos-cqut-offline CHRONOS_PROFILE=chronos-cqut-offline node --experimental-strip-types apps/web/scripts/run-host.ts build',
+				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 			},
 			'build:default': {
 				command:
-					'CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-with-licenses.ts build',
-				env: ['CHRONOS_PROFILE', 'CHRONOS_DEPLOYMENT']
+					'CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-host.ts build',
+				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 			},
 			'build:pages': {
 				command:
-					'CHRONOS_DEPLOY_TARGET=pages CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-with-licenses.ts build && cp apps/web/build/404.html apps/web/build/index.html',
-				env: ['CHRONOS_DEPLOY_TARGET', 'CHRONOS_PROFILE', 'CHRONOS_DEPLOYMENT']
+					'CHRONOS_DEPLOY_TARGET=pages CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-host.ts build && cp apps/web/build/404.html apps/web/build/index.html',
+				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 			},
-			'bundle:analyze':
-				'ANALYZE=true CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-with-licenses.ts build',
+			'bundle:analyze': {
+				command:
+					'ANALYZE=true CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-host.ts build',
+				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
+			},
 			check:
 				'node --experimental-strip-types apps/web/scripts/emit-profile-artifacts.ts && vp check',
 			'check:watch': {
@@ -130,13 +133,19 @@ export default defineConfig({
 				command: 'vp test -- --run',
 				cwd: 'apps/web'
 			},
-			'theme:generate': 'node --experimental-strip-types scripts/generate-theme-tokens.ts',
+			'theme:generate': {
+				command: 'node --experimental-strip-types scripts/generate-theme-tokens.ts',
+				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV']
+			},
 			'icons:png': 'node --experimental-strip-types scripts/generate-icons.ts',
 			'bench:share-link': {
 				command: 'tsx scripts/share-link-compression-benchmark.ts',
 				cache: false
 			},
-			'build:official-plugins': 'node --experimental-strip-types scripts/build-official-plugins.ts',
+			'build:official-plugins': {
+				command: 'node --experimental-strip-types scripts/build-official-plugins.ts',
+				env: ['PUBLIC_*', 'VITE_*', 'NODE_ENV', 'SOURCE_DATE_EPOCH']
+			},
 			'fetch:holiday-cn-fallback':
 				'node --experimental-strip-types scripts/fetch-holiday-cn-fallback.ts',
 			'verify:official-plugins':

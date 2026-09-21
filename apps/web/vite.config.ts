@@ -1,5 +1,4 @@
 import { preinstallPrecachePlugin } from './src/lib/profile-codegen/preinstall-precache';
-import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import tailwindcss from '@tailwindcss/vite';
@@ -16,12 +15,14 @@ import {
 	createChronosAliasRecord
 } from '../../scripts/resolve-chronos-aliases.ts';
 import { OFFICIAL_PLUGINS } from '../../scripts/official-plugins.config.ts';
-import { writeDefaultThemeCss } from '../../scripts/generate-default-theme.ts';
+import {
+	readHostBuildContext,
+	hostBuildContextPlugin
+} from '../../scripts/official-plugin-build/host-context.ts';
 import { writeGeneratedVersionJson } from './src/lib/content/releases/version-generator';
 import { chronosLicensePlugin } from './src/lib/legal/chronos-license-plugin';
 import { chronosProfilePlugin } from './src/lib/profile-codegen/chronos-profile-plugin';
 import { resolveProfile, resolveProfileId } from './src/lib/profile-codegen/profile-definitions';
-import { defaultBuildOfficialPlugins } from '../../scripts/official-plugin-build/build-for-host.ts';
 import { chronosPluginHmrPlugin } from './src/lib/dev/chronos-plugin-hmr-vite.ts';
 
 const webRoot = fileURLToPath(new URL('.', import.meta.url));
@@ -39,8 +40,6 @@ function chronosVersionPlugin() {
 	};
 }
 
-const buildOfficialPluginsScript = resolve(monorepoRoot, 'scripts/build-official-plugins.ts');
-
 const isPagesBuild = process.env.CHRONOS_DEPLOY_TARGET === 'pages';
 const shouldAnalyze = process.env.ANALYZE === 'true';
 const pagesBase = '/Chronos';
@@ -56,18 +55,7 @@ function resolveManualChunk(id: string): string | undefined {
 
 export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd(), 'PUBLIC_');
-	let bootColors: ReturnType<typeof writeDefaultThemeCss> | undefined;
-	if (!process.env.VITEST) {
-		defaultBuildOfficialPlugins(
-			monorepoRoot,
-			buildOfficialPluginsScript,
-			'prepare plugin resources before host compilation'
-		);
-		bootColors = writeDefaultThemeCss(
-			monorepoRoot,
-			resolveProfile(resolveProfileId()).defaultTheme
-		);
-	}
+	const bootColors = readHostBuildContext();
 
 	return {
 		resolve: {
@@ -123,6 +111,7 @@ export default defineConfig(({ mode }) => {
 			]
 		},
 		plugins: lazyPlugins(() => [
+			hostBuildContextPlugin(monorepoRoot),
 			chronosBundleAnalyzer(shouldAnalyze),
 			chronosLicensePlugin(webRoot),
 			materialSymbolsWeightPlugin(),

@@ -1,28 +1,13 @@
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { licensePlugin } from 'rolldown-license-plugin';
+import { readFileSync } from 'node:fs';
 import type { Plugin } from 'vite';
-import { writeGeneratedThirdPartyLicenses } from './third-party-license-generator';
+import { collectBundledLicenses } from './bundled-licenses.ts';
+import {
+	formatThirdPartyLicenses,
+	type BundledLicenseInfo
+} from './third-party-license-generator.ts';
+import { readHostBuildContext } from '../../../../../scripts/official-plugin-build/host-context.ts';
 
-export function chronosLicensePlugin(webRoot: string): Plugin {
-	const outputPath = resolve(webRoot, 'static/licenses/third-party.json');
-	const isPrepass = process.env.CHRONOS_LICENSE_PREPASS === '1';
-	// Vite+ bundles Rolldown types separately from this plugin's peer dependency.
-	const buildPlugin: Plugin = isPrepass
-		? (licensePlugin({
-				done(deps) {
-					writeGeneratedThirdPartyLicenses(outputPath, deps);
-				}
-			}) as unknown as Plugin)
-		: {
-				name: 'chronos-third-party-licenses-required',
-				buildStart() {
-					if (process.env.CHRONOS_LICENSE_READY !== '1' || !existsSync(outputPath)) {
-						throw new Error('Generate licenses with vp run build before building the web app');
-					}
-				}
-			};
-
+export function chronosLicensePlugin(_webRoot: string): Plugin {
 	return {
 		name: 'chronos-third-party-licenses',
 		apply: 'build',
@@ -31,7 +16,17 @@ export function chronosLicensePlugin(webRoot: string): Plugin {
 			return {
 				build: {
 					rolldownOptions: {
-						plugins: [buildPlugin]
+						plugins: collectBundledLicenses((deps, context) => {
+							const host = readHostBuildContext();
+							if (!host || host.command !== 'build')
+								throw new Error('Missing production plugin license fragments');
+							const plugins = JSON.parse(
+								readFileSync(host.licensesPath, 'utf8')
+							) as BundledLicenseInfo[];
+							const source =
+								JSON.stringify(formatThirdPartyLicenses([...deps, ...plugins]), null, '\t') + '\n';
+							context.emitFile({ type: 'asset', fileName: 'licenses/third-party.json', source });
+						})
 					}
 				}
 			};
