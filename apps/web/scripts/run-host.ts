@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { spawn } from 'node:child_process';
+import { runCommand, CommandError } from './run-command.ts';
 import { rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
@@ -38,51 +38,41 @@ const environment = Object.fromEntries(
 			entry[1] !== undefined
 	)
 );
-async function run(binary: string, argv: string[]): Promise<void> {
-	const child = spawn(binary, argv, { cwd: webRoot, env: process.env, stdio: 'inherit' });
-	const stop = () => child.kill('SIGTERM');
-	process.once('SIGTERM', stop);
-	process.once('SIGINT', stop);
-	try {
-		await new Promise<void>((done, reject) => {
-			child.on('error', reject);
-			child.on('close', (status, signal) =>
-				status === 0 || signal === 'SIGTERM'
-					? done()
-					: reject(new Error(`${binary} failed (${status ?? signal})`))
-			);
-		});
-	} finally {
-		process.off('SIGTERM', stop);
-		process.off('SIGINT', stop);
-	}
-}
-await run(process.execPath, [
-	'--experimental-strip-types',
-	resolve(webRoot, 'scripts/emit-profile-artifacts.ts')
-]);
-const results =
-	command === 'dev'
-		? await buildAllOfficialPluginsDev({ root, environment })
-		: await buildAllOfficialPlugins({ root, environment });
-writeHostBuildContext(
-	root,
-	{
+async function prepareAndRunHost(command: 'build' | 'dev') {
+	await runCommand(
+		process.execPath,
+		['--experimental-strip-types', resolve(webRoot, 'scripts/emit-profile-artifacts.ts')],
+		webRoot
+	);
+	const results =
+		command === 'dev'
+			? await buildAllOfficialPluginsDev({ root, environment })
+			: await buildAllOfficialPlugins({ root, environment });
+	writeHostBuildContext(
+		root,
+		{
+			command,
+			mode,
+			profileId,
+			deployment,
+			base: process.env.CHRONOS_DEPLOY_TARGET === 'pages' ? '/Chronos' : '',
+			environment
+		},
+		results
+	);
+	process.env.CHRONOS_BUILD_CONTEXT = resolve(
+		root,
+		'dist/host-context',
 		command,
-		mode,
 		profileId,
-		deployment,
-		base: process.env.CHRONOS_DEPLOY_TARGET === 'pages' ? '/Chronos' : '',
-		environment
-	},
-	results
-);
-process.env.CHRONOS_BUILD_CONTEXT = resolve(
-	root,
-	'dist/host-context',
-	command,
-	profileId,
-	'context.json'
-);
-rmSync(resolve(webRoot, 'static/licenses/third-party.json'), { force: true });
-await run('vp', [command, '.', ...args]);
+		'context.json'
+	);
+	rmSync(resolve(webRoot, 'static/licenses/third-party.json'), { force: true });
+	await runCommand('vp', [command, resolve(webRoot), ...args], webRoot);
+}
+try {
+	await prepareAndRunHost(command);
+} catch (error) {
+	process.exitCode = error instanceof CommandError ? error.exitCode : 1;
+	console.error(error instanceof Error ? error.message : error);
+}
