@@ -4,9 +4,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const staticDir = resolve(root, 'apps/web/static/official-plugins');
 /** Manifest/asset URLs are served from apps/web/static. */
-const webPublicDir = resolve(root, 'apps/web/static');
+const defaultWebPublicDir = resolve(root, 'apps/web/static');
 
 const ASSET_FIELDS: ReadonlyArray<readonly [urlField: string, hashField: string]> = [
 	['bundleUrl', 'sha256'],
@@ -91,8 +90,8 @@ function verifySelfContainedPluginCss(
  * in its manifest. Stale artifacts (rebuilt bundle without recomputed manifest,
  * or vice versa) fail loudly here instead of at user install time.
  */
-export function verifyOfficialPlugins(): void {
-	const catalogPath = resolve(staticDir, 'catalog.json');
+export function verifyOfficialPlugins(webPublicDir = defaultWebPublicDir): void {
+	const catalogPath = resolve(webPublicDir, 'official-plugins/catalog.json');
 	const catalog = JSON.parse(readFileSync(catalogPath, 'utf8')) as { manifests: string[] };
 	let failures = 0;
 
@@ -160,7 +159,7 @@ export function verifyOfficialPlugins(): void {
 
 	if (failures > 0) {
 		console.error(`verify-official-plugins: ${failures} failure(s)`);
-		process.exitCode = 1;
+		throw new Error(`Official plugin verification failed (${failures})`);
 	} else {
 		console.log('verify-official-plugins: all assets match declared hashes');
 	}
