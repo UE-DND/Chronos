@@ -31,6 +31,16 @@ describe('third-party-license-generator', () => {
 		]);
 	});
 
+	it('retains different licenses for the same package without inventing SPDX semantics', () => {
+		expect(
+			formatThirdPartyLicenses([
+				{ name: 'shared', version: '1', license: 'MIT' },
+				{ name: 'shared', version: '2', license: 'Apache-2.0' },
+				{ name: 'shared', version: '3', license: 'MIT' }
+			])
+		).toEqual([{ name: 'shared', license: 'Apache-2.0；MIT' }]);
+	});
+
 	it('preserves compound SPDX license strings', () => {
 		const deps: BundledLicenseInfo[] = [
 			{ name: 'posthog-js', version: '1.0.0', license: '(Apache-2.0 AND MIT)' }
