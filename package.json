@@ -1,7 +1,7 @@
 {
 	"name": "chronos-monorepo",
 	"private": true,
-	"version": "0.7.0",
+	"version": "0.7.1",
 	"type": "module",
 	"packageManager": "pnpm@12.4.2",
 	"scripts": {
@@ -14,10 +14,10 @@
 		"@sveltejs/kit": "^2.70.3",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
 		"@tailwindcss/vite": "^4.3.3",
-		"@types/node": "^24.13.5",
-		"svelte": "^5.57.0",
+		"@types/node": "^24.13.6",
+		"svelte": "^5.57.1",
 		"tailwindcss": "^4.3.3",
-		"tsx": "^4.23.13",
+		"tsx": "^4.23.14",
 		"typescript": "^7.0.2",
 		"vite": "catalog:",
 		"vite-plus": "catalog:",
