@@ -51,6 +51,17 @@ describe('fetchLatestProjectRelease', () => {
 });
 
 describe('createUpdateState', () => {
+	it('starts in checking state so the first paint is not up to date', () => {
+		const updateState = createUpdateState({
+			currentVersion: '0.2.0',
+			checkSwUpdate: async () => false
+		});
+
+		expect(updateState.state.checking).toBe(true);
+		expect(updateState.state.hasUpdate).toBe(false);
+		expect(updateState.state.lastChecked).toBeNull();
+	});
+
 	it('detects when a newer version is available from remote', async () => {
 		mockTrackEvent.mockClear();
 		const updateState = createUpdateState({

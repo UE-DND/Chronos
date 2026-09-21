@@ -65,7 +65,7 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 	};
 
 	let cachedCheckSnapshot = $state<CachedCheckSnapshot | null>(null);
-	let checking = $state(false);
+	let checking = $state(true);
 	let updating = $state(false);
 	let installPhase = $state<InstallPhase | null>(null);
 	let installPercent = $state(0);

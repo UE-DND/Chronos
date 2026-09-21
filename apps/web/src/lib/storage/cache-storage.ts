@@ -5,10 +5,13 @@
  * source shared by "clear all data" and the storage-usage estimate.
  */
 
+/** Runtime cache for navigation documents; cleared when a new SW activates. */
+export const PAGES_CACHE_NAME = 'pages-cache';
+
 /** Caches created by this app (SW precache + workbox runtime caches). */
 const APP_CACHE_PATTERNS: RegExp[] = [
 	/^workbox-precache/,
-	/^(pages-cache|official-plugins|pwa-manifest|static-legal-licenses)$/
+	new RegExp(`^(${PAGES_CACHE_NAME}|official-plugins|pwa-manifest|static-legal-licenses)$`)
 ];
 
 export function isAppCache(cacheName: string): boolean {

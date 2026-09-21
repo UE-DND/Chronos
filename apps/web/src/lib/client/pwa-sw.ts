@@ -1,4 +1,5 @@
 import { registerSW } from 'virtual:pwa-register';
+import { PAGES_CACHE_NAME } from '$lib/storage/cache-storage';
 
 let registered = false;
 let needRefresh = false;
@@ -9,6 +10,8 @@ const updateAvailableListeners = new Set<() => void>();
 const CONTROLLER_CHANGE_TIMEOUT_MS = 3000;
 const SW_PROBE_TIMEOUT_MS = 15_000;
 const SW_DOWNLOAD_TIMEOUT_MS = 120_000;
+const SW_WAIT_POLL_MS = 250;
+const SW_UPDATEFOUND_GRACE_MS = 2_000;
 
 export type SwUpdatePhase = 'downloading' | 'installing' | 'restarting';
 
@@ -17,9 +20,18 @@ export interface SwUpdateProgress {
 	percent: number;
 }
 
-export type SwUpdateErrorCode = 'download_timeout' | 'download_failed' | 'no_registration';
+export type SwUpdateErrorCode =
+	| 'download_timeout'
+	| 'download_failed'
+	| 'no_registration'
+	| 'activate_timeout';
 
-export type WaitForWaitingWorkerResult = 'ready' | 'update_failed' | 'timeout' | 'redundant';
+export type WaitForWaitingWorkerResult =
+	| 'ready'
+	| 'update_failed'
+	| 'timeout'
+	| 'redundant'
+	| 'idle';
 
 export class SwUpdateError extends Error {
 	readonly code: SwUpdateErrorCode;
@@ -95,21 +107,33 @@ function waitForInstallingWorker(
 		}
 
 		let settled = false;
+		let timeoutId: ReturnType<typeof setTimeout> | undefined;
+		let pollId: ReturnType<typeof setInterval> | undefined;
+
+		const cleanup = () => {
+			worker.removeEventListener('statechange', onStateChange);
+			if (pollId) clearInterval(pollId);
+			if (timeoutId) clearTimeout(timeoutId);
+		};
+
 		const finish = (value: boolean) => {
 			if (settled) return;
 			settled = true;
-			clearTimeout(timeoutId);
+			cleanup();
 			resolve(value);
+		};
+
+		const tryFinishReady = (): boolean => {
+			if (!registration.waiting) return false;
+			finish(markUpdatePending());
+			return true;
 		};
 
 		const onStateChange = () => {
 			if (worker.state === 'installed') {
-				if (registration.waiting) {
-					finish(markUpdatePending());
-					return;
-				}
+				if (tryFinishReady()) return;
 				queueMicrotask(() => {
-					if (registration.waiting) finish(markUpdatePending());
+					tryFinishReady();
 				});
 			}
 			if (worker.state === 'redundant') {
@@ -119,8 +143,15 @@ function waitForInstallingWorker(
 
 		worker.addEventListener('statechange', onStateChange);
 		onStateChange();
+		if (settled) return;
 
-		const timeoutId = setTimeout(() => finish(false), timeoutMs);
+		pollId = setInterval(() => {
+			tryFinishReady();
+		}, SW_WAIT_POLL_MS);
+
+		timeoutId = setTimeout(() => {
+			finish(registration.waiting ? markUpdatePending() : false);
+		}, timeoutMs);
 	});
 }
 
@@ -153,8 +184,9 @@ export async function waitForWaitingWorker(
 
 	return new Promise((resolve) => {
 		let settled = false;
+		let sawInstalling = Boolean(registration.installing);
 		let stateChangeListener: (() => void) | undefined;
-		let timeoutId: ReturnType<typeof setTimeout>;
+		let timeoutId: ReturnType<typeof setTimeout> | undefined;
 		let pollId: ReturnType<typeof setInterval> | undefined;
 		let attachedWorker: ServiceWorker | undefined;
 
@@ -164,14 +196,22 @@ export async function waitForWaitingWorker(
 			}
 			registration.removeEventListener('updatefound', onUpdateFound);
 			if (pollId) clearInterval(pollId);
+			if (timeoutId) clearTimeout(timeoutId);
 		};
 
 		const finish = (result: WaitForWaitingWorkerResult) => {
 			if (settled) return;
 			settled = true;
-			clearTimeout(timeoutId);
 			cleanup();
 			resolve(result);
+		};
+
+		const armTimeout = () => {
+			if (timeoutId) clearTimeout(timeoutId);
+			const ms = sawInstalling ? timeoutMs : Math.min(timeoutMs, SW_UPDATEFOUND_GRACE_MS);
+			timeoutId = setTimeout(() => {
+				finish(sawInstalling || registration.installing ? 'timeout' : 'idle');
+			}, ms);
 		};
 
 		const tryFinishReady = (): boolean => {
@@ -186,6 +226,7 @@ export async function waitForWaitingWorker(
 			if (stateChangeListener && attachedWorker) {
 				attachedWorker.removeEventListener('statechange', stateChangeListener);
 			}
+			sawInstalling = true;
 			attachedWorker = worker;
 			reportProgress(onProgress, { phase: 'downloading', percent: 25 });
 
@@ -203,6 +244,7 @@ export async function waitForWaitingWorker(
 
 			worker.addEventListener('statechange', stateChangeListener);
 			stateChangeListener();
+			if (!settled) armTimeout();
 		};
 
 		const onUpdateFound = () => {
@@ -221,9 +263,9 @@ export async function waitForWaitingWorker(
 
 		pollId = setInterval(() => {
 			tryFinishReady();
-		}, 250);
+		}, SW_WAIT_POLL_MS);
 
-		timeoutId = setTimeout(() => finish('timeout'), timeoutMs);
+		armTimeout();
 	});
 }
 
@@ -266,6 +308,15 @@ export async function probeSwUpdate(): Promise<boolean> {
 	}
 }
 
+async function deletePagesRuntimeCache(): Promise<void> {
+	if (typeof window === 'undefined' || !('caches' in window)) return;
+	try {
+		await caches.delete(PAGES_CACHE_NAME);
+	} catch {
+		// ignore cache deletion errors
+	}
+}
+
 function reloadPage(): void {
 	needRefresh = false;
 	window.location.reload();
@@ -273,7 +324,7 @@ function reloadPage(): void {
 
 export async function waitForSwActivationAndReload(
 	getRegistration: () => Promise<ServiceWorkerRegistration | undefined>,
-	reload: () => void = reloadPage,
+	reload: () => void | Promise<void> = reloadPage,
 	timeoutMs = CONTROLLER_CHANGE_TIMEOUT_MS,
 	swUpdater: ((reloadPage?: boolean) => Promise<void>) | undefined = updateServiceWorker
 ): Promise<void> {
@@ -286,23 +337,35 @@ export async function waitForSwActivationAndReload(
 		} catch {
 			// ignore updater errors; reload below still applies cache-bust update
 		}
-		reload();
+		await reload();
 		return;
 	}
 
-	await new Promise<void>((resolve) => {
+	await new Promise<void>((resolve, reject) => {
 		let settled = false;
-		const finish = () => {
+		let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+		const onControllerChange = () => {
 			if (settled) return;
 			settled = true;
+			if (timeoutId) clearTimeout(timeoutId);
+			navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
 			resolve();
-			reload();
 		};
 
-		navigator.serviceWorker.addEventListener('controllerchange', finish, { once: true });
+		const onTimeout = () => {
+			if (settled) return;
+			settled = true;
+			navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+			reject(new SwUpdateError('activate_timeout'));
+		};
+
+		navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
 		waiting.postMessage({ type: 'SKIP_WAITING' });
-		setTimeout(finish, timeoutMs);
+		timeoutId = setTimeout(onTimeout, timeoutMs);
 	});
+
+	await reload();
 }
 
 export async function applyUpdateAndReload(options?: ApplyUpdateOptions): Promise<void> {
@@ -321,6 +384,13 @@ export async function applyUpdateAndReload(options?: ApplyUpdateOptions): Promis
 
 	if (!registration.waiting) {
 		const result = await waitForWaitingWorker(registration, { onProgress });
+		if (result === 'idle') {
+			reportProgress(onProgress, { phase: 'restarting', percent: 92 });
+			await deletePagesRuntimeCache();
+			reportProgress(onProgress, { phase: 'restarting', percent: 100 });
+			reloadPage();
+			return;
+		}
 		if (result !== 'ready') {
 			throw mapWaitingWorkerResultToError(result);
 		}
@@ -333,22 +403,12 @@ export async function applyUpdateAndReload(options?: ApplyUpdateOptions): Promis
 		throw new SwUpdateError('download_failed');
 	}
 
-	// Only drop the pages runtime cache when a waiting worker will actually
-	// take over; a semver-only update has nothing to activate and a bare
-	// reload would needlessly force every page back to network.
-	if ('caches' in window) {
-		try {
-			await caches.delete('pages-cache');
-		} catch {
-			// ignore cache deletion errors
-		}
-	}
-
 	reportProgress(onProgress, { phase: 'restarting', percent: 92 });
 
 	await waitForSwActivationAndReload(
 		() => Promise.resolve(registration),
-		() => {
+		async () => {
+			await deletePagesRuntimeCache();
 			reportProgress(onProgress, { phase: 'restarting', percent: 100 });
 			reloadPage();
 		}

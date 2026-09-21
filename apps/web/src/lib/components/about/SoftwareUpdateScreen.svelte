@@ -143,6 +143,11 @@
 						percent={updateState.state.installPercent}
 					/>
 				{:else}
+					{#if updateState.state.errorMessage}
+						<p class="text-body-medium mb-2 text-danger">
+							{formatErrorMessage(updateState.state.errorMessage)}
+						</p>
+					{/if}
 					<Button
 						variant="filled"
 						class="w-full"

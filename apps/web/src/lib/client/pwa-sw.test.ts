@@ -4,7 +4,6 @@ let probeSwUpdate: (typeof import('./pwa-sw'))['probeSwUpdate'];
 let applyUpdateAndReload: (typeof import('./pwa-sw'))['applyUpdateAndReload'];
 let waitForSwActivationAndReload: (typeof import('./pwa-sw'))['waitForSwActivationAndReload'];
 let waitForWaitingWorker: (typeof import('./pwa-sw'))['waitForWaitingWorker'];
-let SwUpdateError: (typeof import('./pwa-sw'))['SwUpdateError'];
 
 beforeEach(async () => {
 	vi.resetModules();
@@ -13,7 +12,6 @@ beforeEach(async () => {
 	applyUpdateAndReload = mod.applyUpdateAndReload;
 	waitForSwActivationAndReload = mod.waitForSwActivationAndReload;
 	waitForWaitingWorker = mod.waitForWaitingWorker;
-	SwUpdateError = mod.SwUpdateError;
 });
 
 function createRegistrationStub(overrides: Record<string, unknown> = {}) {
@@ -78,7 +76,8 @@ describe('probeSwUpdate', () => {
 				state: 'installing',
 				addEventListener: vi.fn((event, listener) => {
 					if (event === 'statechange') stateChangeListener = listener;
-				})
+				}),
+				removeEventListener: vi.fn()
 			}
 		});
 
@@ -93,6 +92,36 @@ describe('probeSwUpdate', () => {
 		await vi.advanceTimersByTimeAsync(15_000);
 		stateChangeListener?.();
 		await expect(pending).resolves.toBe(false);
+	});
+
+	it('marks update pending when waiting is assigned after installed without another statechange', async () => {
+		vi.useFakeTimers();
+		let stateChangeListener: (() => void) | undefined;
+		const worker = {
+			state: 'installing',
+			addEventListener: vi.fn((event: string, listener: () => void) => {
+				if (event === 'statechange') stateChangeListener = listener;
+			}),
+			removeEventListener: vi.fn()
+		};
+		const registration = createRegistrationStub({ installing: worker });
+
+		vi.stubGlobal('window', {});
+		vi.stubGlobal('navigator', {
+			serviceWorker: {
+				getRegistration: vi.fn().mockResolvedValue(registration)
+			}
+		});
+
+		const pending = probeSwUpdate();
+		await Promise.resolve();
+
+		worker.state = 'installed';
+		stateChangeListener?.();
+		Object.defineProperty(registration, 'waiting', { value: worker, configurable: true });
+		await vi.advanceTimersByTimeAsync(250);
+
+		await expect(pending).resolves.toBe(true);
 	});
 });
 
@@ -152,9 +181,24 @@ describe('waitForWaitingWorker', () => {
 		await expect(waitForWaitingWorker(registration as never)).resolves.toBe('update_failed');
 	});
 
-	it('returns timeout when no waiting worker appears', async () => {
+	it('returns idle when update finds no new worker', async () => {
 		vi.useFakeTimers();
 		const registration = createRegistrationStub();
+
+		const pending = waitForWaitingWorker(registration as never, { timeoutMs: 1000 });
+		await vi.advanceTimersByTimeAsync(1000);
+
+		await expect(pending).resolves.toBe('idle');
+	});
+
+	it('returns timeout when installing worker never becomes waiting', async () => {
+		vi.useFakeTimers();
+		const worker = {
+			state: 'installing',
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn()
+		};
+		const registration = createRegistrationStub({ installing: worker });
 
 		const pending = waitForWaitingWorker(registration as never, { timeoutMs: 1000 });
 		await vi.advanceTimersByTimeAsync(1000);
@@ -284,7 +328,8 @@ describe('waitForSwActivationAndReload', () => {
 			serviceWorker: {
 				addEventListener: vi.fn((event, listener) => {
 					if (event === 'controllerchange') controllerListener = listener;
-				})
+				}),
+				removeEventListener: vi.fn()
 			}
 		});
 
@@ -307,14 +352,15 @@ describe('waitForSwActivationAndReload', () => {
 		vi.useRealTimers();
 	});
 
-	it('falls back to reload when controllerchange never fires', async () => {
+	it('does not reload when controllerchange never fires', async () => {
 		vi.useFakeTimers();
 		const postMessage = vi.fn();
 		const swUpdater = vi.fn();
 
 		vi.stubGlobal('navigator', {
 			serviceWorker: {
-				addEventListener: vi.fn()
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn()
 			}
 		});
 
@@ -324,11 +370,11 @@ describe('waitForSwActivationAndReload', () => {
 			3000,
 			swUpdater
 		);
+		const assertion = expect(pending).rejects.toMatchObject({ code: 'activate_timeout' });
 
 		await vi.advanceTimersByTimeAsync(3000);
-		await pending;
-
-		expect(reload).toHaveBeenCalledOnce();
+		await assertion;
+		expect(reload).not.toHaveBeenCalled();
 		expect(swUpdater).not.toHaveBeenCalled();
 		vi.useRealTimers();
 	});
@@ -354,10 +400,15 @@ describe('applyUpdateAndReload', () => {
 		await expect(applyUpdateAndReload()).rejects.toMatchObject({ code: 'download_failed' });
 	});
 
-	it('throws download_timeout when no waiting worker becomes available', async () => {
+	it('drops pages-cache and reloads when no worker update is found', async () => {
 		vi.useFakeTimers();
+		const reload = vi.fn();
+		const cachesDelete = vi.fn().mockResolvedValue(true);
+		const cachesStub = { delete: cachesDelete };
 		const registration = createRegistrationStub();
-		vi.stubGlobal('window', {});
+
+		vi.stubGlobal('window', { location: { reload }, caches: cachesStub });
+		vi.stubGlobal('caches', cachesStub);
 		vi.stubGlobal('navigator', {
 			serviceWorker: {
 				getRegistration: vi.fn().mockResolvedValue(registration)
@@ -365,9 +416,11 @@ describe('applyUpdateAndReload', () => {
 		});
 
 		const pending = applyUpdateAndReload();
-		const assertion = expect(pending).rejects.toBeInstanceOf(SwUpdateError);
-		await vi.advanceTimersByTimeAsync(120_000);
-		await assertion;
+		await vi.advanceTimersByTimeAsync(2_000);
+		await pending;
+
+		expect(cachesDelete).toHaveBeenCalledWith('pages-cache');
+		expect(reload).toHaveBeenCalledOnce();
 	});
 
 	it('drops pages-cache and reports progress when activating a waiting worker', async () => {
@@ -386,15 +439,16 @@ describe('applyUpdateAndReload', () => {
 				getRegistration: vi.fn().mockResolvedValue(registration),
 				addEventListener: vi.fn((event, listener) => {
 					if (event === 'controllerchange') controllerListener = listener;
-				})
+				}),
+				removeEventListener: vi.fn()
 			}
 		});
 
 		const pending = applyUpdateAndReload({ onProgress });
-		await vi.waitFor(() => expect(cachesDelete).toHaveBeenCalled());
+		await vi.waitFor(() => expect(postMessage).toHaveBeenCalled());
 
 		expect(onProgress).toHaveBeenCalledWith({ phase: 'installing', percent: 80 });
-		expect(cachesDelete).toHaveBeenCalledWith('pages-cache');
+		expect(cachesDelete).not.toHaveBeenCalled();
 		expect(postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
 
 		controllerListener?.();
@@ -402,7 +456,35 @@ describe('applyUpdateAndReload', () => {
 
 		expect(onProgress).toHaveBeenCalledWith({ phase: 'restarting', percent: 92 });
 		expect(onProgress).toHaveBeenCalledWith({ phase: 'restarting', percent: 100 });
+		expect(cachesDelete).toHaveBeenCalledWith('pages-cache');
 		expect(reload).toHaveBeenCalledOnce();
+	});
+
+	it('does not drop pages-cache or reload when skip waiting never activates', async () => {
+		vi.useFakeTimers();
+		const reload = vi.fn();
+		const cachesDelete = vi.fn().mockResolvedValue(true);
+		const postMessage = vi.fn();
+		const cachesStub = { delete: cachesDelete };
+		const registration = createRegistrationStub({ waiting: { postMessage } });
+
+		vi.stubGlobal('window', { location: { reload }, caches: cachesStub });
+		vi.stubGlobal('caches', cachesStub);
+		vi.stubGlobal('navigator', {
+			serviceWorker: {
+				getRegistration: vi.fn().mockResolvedValue(registration),
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn()
+			}
+		});
+
+		const pending = applyUpdateAndReload();
+		const assertion = expect(pending).rejects.toMatchObject({ code: 'activate_timeout' });
+		await vi.advanceTimersByTimeAsync(3000);
+
+		await assertion;
+		expect(cachesDelete).not.toHaveBeenCalled();
+		expect(reload).not.toHaveBeenCalled();
 	});
 
 	it('waits for download before activating when waiting worker is not ready yet', async () => {
@@ -430,7 +512,8 @@ describe('applyUpdateAndReload', () => {
 				getRegistration: vi.fn().mockResolvedValue(registration),
 				addEventListener: vi.fn((event, listener) => {
 					if (event === 'controllerchange') controllerListener = listener;
-				})
+				}),
+				removeEventListener: vi.fn()
 			}
 		});
 
@@ -440,10 +523,10 @@ describe('applyUpdateAndReload', () => {
 		Object.defineProperty(registration, 'waiting', { value: { postMessage }, configurable: true });
 		worker.state = 'installed';
 		stateChangeListener?.();
-		await vi.waitFor(() => expect(cachesDelete).toHaveBeenCalled());
+		await vi.waitFor(() => expect(postMessage).toHaveBeenCalled());
+		expect(cachesDelete).not.toHaveBeenCalled();
 
 		controllerListener?.();
-		await vi.advanceTimersByTimeAsync(3000);
 		await pending;
 
 		expect(onProgress).toHaveBeenCalledWith({ phase: 'downloading', percent: 5 });

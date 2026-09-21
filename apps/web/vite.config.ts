@@ -24,6 +24,7 @@ import { chronosLicensePlugin } from './src/lib/legal/chronos-license-plugin';
 import { chronosProfilePlugin } from './src/lib/profile-codegen/chronos-profile-plugin';
 import { resolveProfile, resolveProfileId } from './src/lib/profile-codegen/profile-definitions';
 import { chronosPluginHmrPlugin } from './src/lib/dev/chronos-plugin-hmr-vite.ts';
+import { PAGES_CACHE_NAME } from './src/lib/storage/cache-storage';
 
 const webRoot = fileURLToPath(new URL('.', import.meta.url));
 const monorepoRoot = fileURLToPath(new URL('../..', import.meta.url));
@@ -201,17 +202,20 @@ export default defineConfig(({ mode }) => {
 				},
 				workbox: {
 					clientsClaim: true,
+					// Drop stale navigation HTML whenever this SW becomes active
+					// (skipWaiting or last client closed), not only on the in-app install path.
+					importScripts: ['sw-pages-cache-cleanup.js'],
 					globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}'],
 					globIgnores: ['**/official-plugins/**'],
 					navigateFallback: null,
 					runtimeCaching: [
 						{
 							// SvelteKit emits this bootstrap module after SW generation. Keep it
-							// with the navigation document; the update flow clears pages-cache.
+							// with the navigation document; SW activate and install clear pages-cache.
 							urlPattern: /\/_app\/env\.js$/,
 							handler: 'CacheFirst',
 							options: {
-								cacheName: 'pages-cache',
+								cacheName: PAGES_CACHE_NAME,
 								expiration: { maxEntries: 32, maxAgeSeconds: 2_592_000 }
 							}
 						},
@@ -220,7 +224,7 @@ export default defineConfig(({ mode }) => {
 							urlPattern: ({ request }: { request: Request }) => request.mode === 'navigate',
 							handler: 'CacheFirst',
 							options: {
-								cacheName: 'pages-cache',
+								cacheName: PAGES_CACHE_NAME,
 								expiration: { maxEntries: 32, maxAgeSeconds: 2_592_000 }
 							}
 						},
