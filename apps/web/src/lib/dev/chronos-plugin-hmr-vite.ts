@@ -1,8 +1,15 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import type { Logger, Plugin, ViteDevServer } from 'vite';
 import type { OfficialPluginDef } from '../../../../../scripts/official-plugins.config.ts';
-import { buildAllOfficialPluginsDev } from '../../../../../scripts/official-plugin-build/build-all-dev.ts';
+import { PluginBuildCoordinator } from '../../../../../scripts/official-plugin-build/coordinator.ts';
+import { createOfficialPluginBuildPaths } from '../../../../../scripts/official-plugin-build/paths.ts';
+import {
+	readHostBuildContext,
+	writeHostBuildContext
+} from '../../../../../scripts/official-plugin-build/host-context.ts';
+import { declaredDevelopmentLicenses } from '../legal/dev-licenses.ts';
+import { formatThirdPartyLicenses } from '../legal/third-party-license-generator.ts';
 import {
 	buildOfficialPluginAssets,
 	type OfficialPluginBuildResult
@@ -61,6 +68,17 @@ export async function buildSingleOfficialPlugin(
 	});
 }
 
+function publicPayload(payload: PluginHmrPayload) {
+	const {
+		inputs: _inputs,
+		licenses: _licenses,
+		cacheStatus: _cacheStatus,
+		wallpaperBytes: _wallpaper,
+		...data
+	} = payload;
+	return data;
+}
+
 function sendPluginHmrUpdate(
 	server: ViteDevServer,
 	payload: PluginHmrPayload,
@@ -70,7 +88,7 @@ function sendPluginHmrUpdate(
 		type: 'custom',
 		event: 'chronos:plugin-hmr',
 		data: {
-			...payload,
+			...publicPayload(payload),
 			costMs
 		}
 	});
@@ -78,14 +96,46 @@ function sendPluginHmrUpdate(
 
 export function chronosPluginHmrPlugin(options: ChronosPluginHmrOptions): Plugin {
 	const { monorepoRoot, plugins, createAliasRecord, hostVersion } = options;
-	const pluginBySourceDir = new Map(plugins.map((plugin) => [plugin.sourceDir, plugin]));
+
 	const resolvedHostVersion = resolveHostVersion(monorepoRoot, hostVersion);
 
 	return {
 		name: 'chronos-plugin-hmr',
 		apply: 'serve',
 		async configureServer(server) {
+			if (process.env.VITEST) return;
 			const logger = server.config.logger;
+			const context = readHostBuildContext();
+			const coordinator = new PluginBuildCoordinator({
+				root: monorepoRoot,
+				plugins,
+				mode: 'dev',
+				releaseVersion: resolvedHostVersion,
+				createAliasRecord,
+				environment: context?.environment
+			});
+			const latest = new Map<string, PluginHmrPayload>();
+			let disposed = false;
+			const refreshHost = () => {
+				if (context) writeHostBuildContext(monorepoRoot, context, [...latest.values()]);
+			};
+			server.middlewares.use((req, res, next) => {
+				if (req.url?.split('?')[0] !== '/licenses/third-party.json') {
+					next();
+					return;
+				}
+				try {
+					const deps = [
+						...declaredDevelopmentLicenses(monorepoRoot),
+						...[...latest.values()].flatMap((result) => result.licenses ?? [])
+					];
+					res.setHeader('Content-Type', 'application/json; charset=utf-8');
+					res.setHeader('Cache-Control', 'no-store');
+					res.end(JSON.stringify(formatThirdPartyLicenses(deps)));
+				} catch (error) {
+					next(error);
+				}
+			});
 			const pluginsDir = resolve(monorepoRoot, 'packages/plugins');
 			server.watcher.add(pluginsDir);
 			server.middlewares.use(createDevOfficialPluginBundleMiddleware(monorepoRoot));
@@ -100,7 +150,7 @@ export function chronosPluginHmrPlugin(options: ChronosPluginHmrOptions): Plugin
 					.map((plugin) => loadDevPluginBuildPayload(plugin, monorepoRoot))
 					.filter((payload): payload is PluginHmrPayload => payload != null)
 					.map((payload) => ({
-						...payload,
+						...publicPayload(payload),
 						costMs: '0'
 					}));
 
@@ -111,16 +161,18 @@ export function chronosPluginHmrPlugin(options: ChronosPluginHmrOptions): Plugin
 			});
 
 			const warmStart = performance.now();
-			logPluginHmrInfo(logger, 'warming official plugin dev builds...');
-			await buildAllOfficialPluginsDev({
-				root: monorepoRoot,
-				releaseVersion: resolvedHostVersion,
-				createAliasRecord,
-				plugins,
-				onBuilt: (payload) => {
-					sendPluginHmrUpdate(server, payload, '0');
-				}
-			});
+			const initial = await coordinator.prepare();
+			for (const payload of initial) latest.set(payload.id, payload);
+			refreshHost();
+			const paths = createOfficialPluginBuildPaths(monorepoRoot);
+			for (const payload of initial) {
+				const dir = paths.devOutDir(payload.id);
+				if (existsSync(dir))
+					for (const entry of readdirSync(dir, { withFileTypes: true })) {
+						if (entry.isDirectory() && entry.name !== payload.rev)
+							rmSync(resolve(dir, entry.name), { recursive: true, force: true });
+					}
+			}
 			logPluginHmrInfo(
 				logger,
 				`official plugin dev builds ready in ${(performance.now() - warmStart).toFixed(1)}ms`
@@ -132,6 +184,7 @@ export function chronosPluginHmrPlugin(options: ChronosPluginHmrOptions): Plugin
 			const triggerFiles = new Map<string, string>();
 
 			const executeBuild = async (pluginDef: OfficialPluginDef) => {
+				if (disposed) return;
 				if (inFlightBuilds.has(pluginDef.id)) {
 					queuedRebuilds.add(pluginDef.id);
 					return;
@@ -144,13 +197,13 @@ export function chronosPluginHmrPlugin(options: ChronosPluginHmrOptions): Plugin
 						const startTime = performance.now();
 						const triggerFile = triggerFiles.get(pluginDef.id);
 						try {
-							const payload = await buildSingleOfficialPlugin(
-								pluginDef,
-								monorepoRoot,
-								createAliasRecord,
-								resolvedHostVersion,
-								logger
-							);
+							const [payload] = await coordinator.prepare([pluginDef.id]);
+							if (disposed) return;
+							const previous = latest.get(payload.id);
+							latest.set(payload.id, payload);
+							refreshHost();
+							if (previous?.rev === payload.rev) continue;
+
 							const costMs = (performance.now() - startTime).toFixed(1);
 							sendPluginHmrUpdate(server, payload, costMs);
 							const hmrMessage = triggerFile
@@ -158,6 +211,7 @@ export function chronosPluginHmrPlugin(options: ChronosPluginHmrOptions): Plugin
 								: `hmr update ${pluginDef.id}@${payload.rev ?? '?'} in ${costMs}ms`;
 							logPluginHmrInfo(logger, hmrMessage);
 						} catch (err: unknown) {
+							if (disposed) return;
 							const error = err instanceof Error ? err : new Error(String(err));
 							const triggerSuffix = triggerFile
 								? ` (${formatPluginHmrPath(server.config.root, triggerFile)})`
@@ -184,36 +238,37 @@ export function chronosPluginHmrPlugin(options: ChronosPluginHmrOptions): Plugin
 			};
 
 			const handleFileEvent = (filePath: string) => {
-				const normalized = filePath.replace(/\\/g, '/');
-				if (!normalized.includes('/packages/plugins/')) return;
-				if (
-					normalized.includes('/node_modules/') ||
-					normalized.includes('/tests/') ||
-					normalized.includes('.test.') ||
-					normalized.includes('.spec.')
-				) {
-					return;
+				if (disposed) return;
+				for (const id of coordinator.affected(filePath)) {
+					const pluginDef = plugins.find((plugin) => plugin.id === id)!;
+					triggerFiles.set(id, filePath);
+					const timer = pendingTimers.get(id);
+					if (timer) clearTimeout(timer);
+					pendingTimers.set(
+						id,
+						setTimeout(() => {
+							pendingTimers.delete(id);
+							void executeBuild(pluginDef);
+						}, 100)
+					);
 				}
-
-				const rel = relative(pluginsDir, filePath).replace(/\\/g, '/');
-				const sourceDir = rel.split('/')[0];
-				if (!sourceDir) return;
-
-				const pluginDef = pluginBySourceDir.get(sourceDir);
-				if (!pluginDef) return;
-
-				triggerFiles.set(pluginDef.id, filePath);
-
-				const existingTimer = pendingTimers.get(pluginDef.id);
-				if (existingTimer) clearTimeout(existingTimer);
-
-				const timer = setTimeout(() => {
-					pendingTimers.delete(pluginDef.id);
-					void executeBuild(pluginDef);
-				}, 100);
-
-				pendingTimers.set(pluginDef.id, timer);
 			};
+			server.watcher.add([
+				resolve(monorepoRoot, 'packages'),
+				resolve(monorepoRoot, 'pnpm-lock.yaml')
+			]);
+			const dispose = () => {
+				disposed = true;
+				coordinator.dispose();
+				for (const timer of pendingTimers.values()) clearTimeout(timer);
+				pendingTimers.clear();
+				queuedRebuilds.clear();
+				server.watcher.off('change', handleFileEvent);
+				server.watcher.off('add', handleFileEvent);
+				server.watcher.off('unlink', handleFileEvent);
+			};
+			server.watcher.once('close', dispose);
+			server.httpServer?.once('close', dispose);
 
 			server.watcher.on('change', handleFileEvent);
 			server.watcher.on('add', handleFileEvent);
