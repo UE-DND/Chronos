@@ -867,9 +867,21 @@ describe('profile preinstallation lifecycle', () => {
 		};
 		httpRequest.mockImplementation(async (url: string) => {
 			const path = new URL(url, 'http://localhost').pathname;
-			if (path.endsWith('custom-theme.manifest.json'))
+			if (path === '/official-plugins/catalog.json')
+				return httpResponse({
+					json: async <T>() =>
+						({
+							version: 1,
+							updatedAt: 0,
+							manifests: [
+								'/official-plugins/manifests/revision/custom-theme.manifest.json',
+								'/official-plugins/manifests/revision/test-plugin.manifest.json'
+							]
+						}) as T
+				});
+			if (path === '/official-plugins/manifests/revision/custom-theme.manifest.json')
 				return httpResponse({ json: async <T>() => theme as T });
-			if (path.endsWith('test-plugin.manifest.json'))
+			if (path === '/official-plugins/manifests/revision/test-plugin.manifest.json')
 				return httpResponse({ json: async <T>() => tool as T });
 			if (path === '/custom.json') return httpResponse({ text: async () => colors });
 			if (path === '/test.js') return httpResponse({ text: async () => SAMPLE_BUNDLE });

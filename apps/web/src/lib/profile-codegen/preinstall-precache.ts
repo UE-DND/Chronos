@@ -1,7 +1,7 @@
 import type { Plugin } from 'vite';
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, existsSync } from 'node:fs';
+import { join, posix } from 'node:path';
 import type { ChronosProfile } from '../../../../../packages/core/src/profile/profile';
 /** Read the final market output, so revisions always match the distributed bytes. */
 export function preinstallPrecache(webRoot: string, profile: ChronosProfile, base = '') {
@@ -13,16 +13,26 @@ export function preinstallPrecache(webRoot: string, profile: ChronosProfile, bas
 		const query = relative.includes('/bundles/') ? `?v=${revision.slice(0, 16)}` : '';
 		entries.push({ url: `${base}/${relative}${query}`, revision });
 	};
+	const catalogPath = 'official-plugins/catalog.json';
+	const catalog = JSON.parse(readFileSync(join(webRoot, 'static', catalogPath), 'utf8')) as {
+		manifests: string[];
+	};
+	add(catalogPath);
 	for (const plugin of profile.preinstall) {
-		add(`official-plugins/manifests/${plugin.id}.manifest.json`);
-		const walk = (relative: string) => {
-			for (const entry of readdirSync(join(webRoot, 'static', relative), { withFileTypes: true })) {
-				const path = `${relative}/${entry.name}`;
-				if (entry.isDirectory()) walk(path);
-				else add(path);
+		const url = catalog.manifests.find((url) => url.endsWith(`/${plugin.id}.manifest.json`));
+		if (!url) throw new Error(`Preinstall missing from official catalog: ${plugin.id}`);
+		add(url.slice(1));
+		const manifest = JSON.parse(readFileSync(join(webRoot, 'static', url), 'utf8'));
+		for (const field of ['bundleUrl', 'cssUrl', 'colorsUrl', 'iconThemeUrl']) {
+			const assetUrl = manifest[field] as string | undefined;
+			if (!assetUrl) continue;
+			add(assetUrl.slice(1));
+			if (field === 'colorsUrl') {
+				const colors = JSON.parse(readFileSync(join(webRoot, 'static', assetUrl), 'utf8'));
+				if (colors.wallpaper)
+					add(posix.join(posix.dirname(assetUrl), colors.wallpaper.url).slice(1));
 			}
-		};
-		walk(`official-plugins/bundles/${plugin.id}`);
+		}
 	}
 	return entries;
 }

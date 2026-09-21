@@ -7,10 +7,23 @@ import { preinstallPrecache } from './preinstall-precache';
 it('precaches only profile assets, using deployed paths and downloader integrity queries', () => {
 	const root = mkdtempSync(join(tmpdir(), 'chronos-precache-'));
 	try {
-		mkdirSync(join(root, 'static/official-plugins/manifests'), { recursive: true });
-		mkdirSync(join(root, 'static/official-plugins/bundles/theme'), { recursive: true });
-		writeFileSync(join(root, 'static/official-plugins/manifests/theme.manifest.json'), '{}');
-		writeFileSync(join(root, 'static/official-plugins/bundles/theme/colors.json'), 'colors');
+		mkdirSync(join(root, 'static/official-plugins/manifests/revision'), { recursive: true });
+		mkdirSync(join(root, 'static/official-plugins/bundles/theme/revision'), { recursive: true });
+		writeFileSync(
+			join(root, 'static/official-plugins/catalog.json'),
+			JSON.stringify({
+				version: 1,
+				manifests: ['/official-plugins/manifests/revision/theme.manifest.json']
+			})
+		);
+		writeFileSync(
+			join(root, 'static/official-plugins/manifests/revision/theme.manifest.json'),
+			JSON.stringify({ colorsUrl: '/official-plugins/bundles/theme/revision/colors.json' })
+		);
+		writeFileSync(
+			join(root, 'static/official-plugins/bundles/theme/revision/colors.json'),
+			'{"id":"color"}'
+		);
 		const entries = preinstallPrecache(
 			root,
 			{
@@ -21,12 +34,13 @@ it('precaches only profile assets, using deployed paths and downloader integrity
 			},
 			'/Chronos'
 		);
-		const hash = createHash('sha256').update('colors').digest('hex');
+		const hash = createHash('sha256').update('{"id":"color"}').digest('hex');
 		expect(entries.map((entry) => entry.url)).toEqual([
-			'/Chronos/official-plugins/manifests/theme.manifest.json',
-			`/Chronos/official-plugins/bundles/theme/colors.json?v=${hash.slice(0, 16)}`
+			'/Chronos/official-plugins/catalog.json',
+			'/Chronos/official-plugins/manifests/revision/theme.manifest.json',
+			`/Chronos/official-plugins/bundles/theme/revision/colors.json?v=${hash.slice(0, 16)}`
 		]);
-		expect(entries[1]?.revision).toBe(hash);
+		expect(entries[2]?.revision).toBe(hash);
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}

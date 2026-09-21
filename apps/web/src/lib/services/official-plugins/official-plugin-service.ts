@@ -21,7 +21,10 @@ import {
 	type PluginInstallTask,
 	type PluginInstallProgress
 } from './install-queue';
-import { syncInstalledPluginsWithHost } from './sync-installed-plugins';
+import {
+	DEFAULT_OFFICIAL_CATALOG_URL,
+	syncInstalledPluginsWithHost
+} from './sync-installed-plugins';
 
 export type { InstalledOfficialPluginRecord } from './official-plugin-types';
 export type {
@@ -103,7 +106,9 @@ export class OfficialPluginService implements Disposable {
 	private async installPreinstall(id: string): Promise<void> {
 		const entry = this.profile?.preinstall.find((p) => p.id === id);
 		if (!entry || !this.profile) throw new Error(`Unknown preinstall: ${id}`);
-		const url = `/official-plugins/manifests/${id}.manifest.json`;
+		const catalog = await this.fetchCatalog(DEFAULT_OFFICIAL_CATALOG_URL);
+		const url = catalog.manifests.find((url) => url.endsWith(`/${id}.manifest.json`));
+		if (!url) throw new Error(`Preinstall missing from official catalog: ${id}`);
 		const manifest = await this.fetchManifest(url);
 		if (manifest.id !== id) throw new Error(`Preinstall manifest ID mismatch: ${id}`);
 		await this.install(manifest, url, {

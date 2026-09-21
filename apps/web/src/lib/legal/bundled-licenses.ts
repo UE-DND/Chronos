@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { licensePlugin, findPkgRoot } from 'rolldown-license-plugin';
 import type { Plugin } from 'vite';
 import type { BundledLicenseInfo } from './third-party-license-generator.ts';
@@ -36,4 +37,15 @@ export function collectBundledLicenses(
 			}
 		}) as unknown as Plugin
 	];
+}
+
+/** Earlier immutable revisions remain distributed for in-flight downloads. */
+export function readPublishedPluginLicenses(webRoot: string): BundledLicenseInfo[] {
+	const dir = resolve(webRoot, 'static/official-plugins/manifests');
+	if (!existsSync(dir)) return [];
+	return readdirSync(dir, { recursive: true, encoding: 'utf8' })
+		.filter((file) => file.endsWith('.licenses.json'))
+		.flatMap(
+			(file) => JSON.parse(readFileSync(resolve(dir, file), 'utf8')) as BundledLicenseInfo[]
+		);
 }

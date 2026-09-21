@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs';
 import type { Plugin } from 'vite';
-import { collectBundledLicenses } from './bundled-licenses.ts';
+import { collectBundledLicenses, readPublishedPluginLicenses } from './bundled-licenses.ts';
 import {
 	formatThirdPartyLicenses,
 	type BundledLicenseInfo
 } from './third-party-license-generator.ts';
 import { readHostBuildContext } from '../../../../../scripts/official-plugin-build/host-context.ts';
 
-export function chronosLicensePlugin(_webRoot: string): Plugin {
+export function chronosLicensePlugin(webRoot: string): Plugin {
 	return {
 		name: 'chronos-third-party-licenses',
 		apply: 'build',
@@ -24,7 +24,15 @@ export function chronosLicensePlugin(_webRoot: string): Plugin {
 								readFileSync(host.licensesPath, 'utf8')
 							) as BundledLicenseInfo[];
 							const source =
-								JSON.stringify(formatThirdPartyLicenses([...deps, ...plugins]), null, '\t') + '\n';
+								JSON.stringify(
+									formatThirdPartyLicenses([
+										...deps,
+										...plugins,
+										...readPublishedPluginLicenses(webRoot)
+									]),
+									null,
+									'\t'
+								) + '\n';
 							context.emitFile({ type: 'asset', fileName: 'licenses/third-party.json', source });
 						})
 					}
