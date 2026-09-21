@@ -94,7 +94,11 @@ vp install
 | `vp run bundle:analyze`                                                       | 构建并分析前端包体积构成                   |
 | `vp run icons:png`                                                            | 从 SVG 源资产重新生成各尺寸 PWA 图标       |
 
-`vp run dev` 与宿主构建命令（`vp run build`、`vp run build:<profile>`、`vp run build:pages`）会先分析客户端打包依赖并生成 `static/licenses/third-party.json`，然后启动开发服务器或正式构建。请使用 `vp run` 入口，避免跳过许可证预生成。
+`vp run dev` 和宿主构建命令统一通过 `run-host.ts` 准备 profile、插件与默认主题。开发只生成开发插件，不执行宿主生产构建；生产仅执行一次完整宿主构建。请使用 `vp run` 入口，直接调用 `vp dev/build` 时缺少构建上下文会报错。配置读取、类型同步与 preview 不构建插件。
+
+插件缓存位于 `dist/plugin-cache`，开发/生产分别记录实际输入、扫描目录、产物摘要和许可证片段。资源准备、代码编译和市场发布独立复用，最多并发两个插件；日志中的 `resources=hit/built` 与 `compile=hit/built` 显示阶段命中。缓存损坏或输入变化自动重建，诊断冷启动时可以手动删除该目录。不要用 `static/official-plugins` 是否存在来判断缓存有效性。
+
+生产许可证在客户端 `generateBundle` 合并宿主与全部发行插件的实际依赖，输出到发布目录的 `licenses/third-party.json` 并纳入 PWA 预缓存，不再向源码 static 目录生成清单。开发相同 URL 由中间件提供：根据已安装的运行时依赖声明生成允许多包含的清单，合并插件依赖；普通源码修改不重新遍历依赖树。同包不同许可证值分别保留，缺失值显示 `UNKNOWN`。
 
 ### 仓库布局
 
@@ -293,7 +297,9 @@ export default defineChronosPlugin({
 
 第三方插件应使用同一 CSS 入口契约。以下类仍由宿主全局提供，插件 CSS 不必重复产出：`text-*` 字阶（`typography.css`）、`ui-*` 模式、`.bottom-bar`。颜色原子类必须走 `plugin-tailwind.css` 的 `@theme inline` 桥，以便跟随宿主 CSS 变量与动态主题。
 
-开发态 HMR 将产物写入 `dist/dev-plugins/{pluginId}/{rev}/` 并生成带修订号的 manifest（不写 `static/official-plugins`）。Vite dev server 通过 middleware 按 `/official-plugins/bundles/{pluginId}/{rev}/…` 提供资源，缺失修订返回 404，无修订的生产 URL 仍走 static；完整安装链路验证请执行 `node --experimental-strip-types scripts/build-official-plugins.ts` 或 `vp run build`。
+开发态 HMR 将产物写入 `dist/dev-plugins/{pluginId}/{rev}/`，revision 来自内容摘要。开发中间件提供 catalog、manifest 和带 revision 的资源，因此干净环境也能完成完整安装链路，不依赖生产 static 产物。缺失修订返回 404。
+
+HMR 根据编译记录追踪插件源码、共享包、CSS 扫描目录和资源；测试与文档不触发编译。独立图片或 JSON 更新复用未受影响的代码，同一插件串行并合并连续保存，失败保留旧产物。相同内容不发送重复更新；旧 revision 在会话内保留，重启时清理不再引用的版本。
 
 `MountableSlotOutlet` 会把宿主 Svelte context 传给 `CHRONOS_MOUNTABLE.mount()`，但仅对**进程内**、与宿主共享 Svelte 运行时的组件有效（如 Profile 内置 `source-cqut` / `codec-share`）。官方自包含 ESM 插件自带独立 Svelte 运行时，其组件内 `getContext()` 无法读取宿主 context；应通过 props / engine API 获取数据。
 
@@ -632,7 +638,7 @@ Chronos 的主题体系由「配色主题 + 派生图标主题」组成。类型
 - `wallpaperColorEnabled`：宿主取色选项，默认关闭；位于“已安装主题”下方独立栏的覆盖开关，开启时保留所选主题作为壁纸来源，界面使用所选主题的基础外观及其动态配色能力。
 - 不再存在 `paletteMode`、插件动态取色适配器及 `dynamicColor:*` 广播。按本次变更约定不提供旧数据迁移，用户自行清空旧数据。
 
-默认主题由 profile 必填的 `defaultTheme: { pluginId, themeId }` 声明，提供者必须装配并启用，首屏前完成加载与校验。当前各 profile 预安装市场中的 `theme-m3` 静态颜色 JSON + ESM 插件；已安装时不显示重复安装入口。运行 `vp run theme:generate` 调用统一插件构建，并从默认主题静态资源生成首屏颜色。宿主不隐式注册主题。无用户选择或所选主题已移除时回退到 profile 默认主题。取色开启时保留主题壁纸，仅支持 `resolveWallpaperColors` 的默认主题搭配自定义壁纸来源时可启用取色；条件失效自动关闭并恢复主题配色。详见 [ADR 0041](.agents/docs/adr/0041-profile-owned-default-theme.md)。
+默认主题由 profile 必填的 `defaultTheme: { pluginId, themeId }` 声明，提供者必须装配并启用，首屏前完成加载与校验。当前各 profile 预安装市场中的 `theme-m3` 静态颜色 JSON + ESM 插件；已安装时不显示重复安装入口。运行 `vp run theme:generate` 只准备当前默认主题，显式更新主题源码快照与首屏颜色；正常 dev/build 使用忽略提交的生成目录。宿主不隐式注册主题。无用户选择或所选主题已移除时回退到 profile 默认主题。取色开启时保留主题壁纸，仅支持 `resolveWallpaperColors` 的默认主题搭配自定义壁纸来源时可启用取色；条件失效自动关闭并恢复主题配色。详见 [ADR 0041](.agents/docs/adr/0041-profile-owned-default-theme.md)。
 
 详见 [ADR 0040](.agents/docs/adr/0040-host-wallpaper-and-theme-assets.md)。
 
@@ -642,4 +648,4 @@ Chronos 的主题体系由「配色主题 + 派生图标主题」组成。类型
 
 `ChronosMountable.mount` 必须返回对象 `{ update?(props): void; unmount(): void }`。函数返回形式不再支持。出口验证 handle 并按实例清理；mount 抛错前由插件自行回滚副作用。
 
-主题插件可在发行配置声明 `prepareResources`，模块导出 `prepareResources()`。颜色算法和资源生成属于插件，通用构建器仅编排。默认主题必须提供完整静态颜色 JSON；带 ESM 时只由 ESM 注册颜色主题，并验证静态资源一致性。详见 [ADR 0043](.agents/docs/adr/0043-theme-owned-color-runtime-and-plugin-host-contracts.md)。
+主题插件可在发行配置声明 `prepareResources`，模块导出 `prepareResources(outDir)` 并返回 `{ colorsJson?, iconsJson? }` 相对输出路径。准备入口的依赖由构建器记录，入口打包后在新 Node 进程执行，输出不得回写源码；编译器将原资源导入映射到生成文件。颜色算法和资源生成属于插件，通用构建器仅编排。默认主题必须提供完整静态颜色 JSON；带 ESM 时只由 ESM 注册颜色主题，并验证静态资源一致性。详见 [ADR 0043](.agents/docs/adr/0043-theme-owned-color-runtime-and-plugin-host-contracts.md)。
