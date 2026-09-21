@@ -1,102 +1,43 @@
 # Chronos Design Tokens
 
-## Architecture
+## Layers and ownership
 
-1. **Static layer (build time)** — `packages/ui-kit/src/theme/m3-theme.ts` generates Material colors; `CHRONOS_HOST_COLORS` overrides host semantics; `theme/generated-colors.css` is the CSS output.
-2. **Tailwind bridge** — `@theme` / `@theme inline` in `generated-colors.css`, `typography.css`, and `packages/ui-kit/src/theme/radius.css`. Official plugins reuse the generated `@theme inline` via `theme-inline.generated.css`.
-3. **Runtime layer** — plugin themes via `WORKBENCH_COLOR_REGISTRY` + `applyActiveTheme` (closed keys only).
-4. **Consumption** — `text-*` typography, `ui-*` component patterns, Tailwind utilities (`bg-surface`, `rounded-dialog`).
+Theme plugins own color values and algorithms. The host generates first-paint CSS from the Profile default theme, then applies the active theme at runtime. Workbench keys and Tailwind mappings are shared contracts, independent of M3. See [ADR 0043](../.agents/docs/adr/0043-theme-owned-color-runtime-and-plugin-host-contracts.md).
 
-## Where to change what
+| Change                                   | Source                                                                   |
+| ---------------------------------------- | ------------------------------------------------------------------------ |
+| M3 colors, seed and algorithm            | [theme-m3/src/m3-theme.ts](../packages/plugins/theme-m3/src/m3-theme.ts) |
+| Static theme colors                      | The theme plugin's colors JSON                                           |
+| Allowed color keys and CSS mappings      | [workbench-colors.ts](../packages/core/src/theme/workbench-colors.ts)    |
+| Typography (`text-*`)                    | [typography.css](../apps/web/src/lib/theme/typography.css)               |
+| Radius                                   | [radius.css](../packages/ui-kit/src/theme/radius.css)                    |
+| Elevation                                | [elevation-tokens.css](../apps/web/src/lib/theme/elevation-tokens.css)   |
+| Component patterns (`ui-*`)              | [ui-patterns.css](../apps/web/src/lib/theme/ui-patterns.css)             |
+| Shell dimensions, safe areas and z-index | [layout-tokens.css](../apps/web/src/lib/theme/layout-tokens.css)         |
 
-| Change                                     | Location                                                           |
-| ------------------------------------------ | ------------------------------------------------------------------ |
-| Host canvas/surface/outline/success colors | `CHRONOS_HOST_COLORS` in `packages/ui-kit/src/theme/m3-theme.ts`   |
-| Material brand seed / algorithm            | `BRAND_SOURCE_ARGB`, `m3-theme.ts`                                 |
-| Typography scale                           | `apps/web/src/lib/theme/typography.css`                            |
-| Radius                                     | `packages/ui-kit/src/theme/radius.css`                             |
-| Elevation / shadow scale                   | `apps/web/src/lib/theme/elevation-tokens.css`                      |
-| Form fields, section surfaces              | `apps/web/src/lib/theme/ui-patterns.css`                           |
-| Shell bar height / safe area               | `apps/web/src/lib/theme/layout-tokens.css`                         |
-| Plugin theme colors                        | Official `colors.json` or plugin `workbenchColors` (registry keys) |
+Normal dev/build generates resources in ignored directories. Use `vp run theme:generate` when intentionally updating default-theme source snapshots and first-paint colors; do not edit generated CSS directly.
 
-Regenerate CSS after token changes:
+## Plugin styles
 
-```bash
-node --experimental-strip-types scripts/generate-theme-tokens.ts
-```
+UI plugins import `@chronos/ui-kit/theme/plugin-tailwind.css` and declare their own Tailwind `@source`. This provides utilities without Preflight and bridges semantic colors to host CSS variables. The host supplies shared `text-*` and `ui-*` patterns; it does not scan business plugin source.
 
-## Workbench color keys
+## Surfaces and elevation
 
-See `WORKBENCH_COLOR_KEYS` in `packages/core/src/theme/workbench-colors.ts`. Host semantics: `color.canvas`, `color.ink`, `color.border-subtle`, `color.success`, `color.warning`, `color.danger`, `color.outline-variant`, `color.surface-container-high`.
+| Surface  | Pattern                     | Use                                                               |
+| -------- | --------------------------- | ----------------------------------------------------------------- |
+| Outlined | Border only                 | Inputs, outlined cards, segmented tracks                          |
+| Raised   | `ui-section-surface`        | Grouped lists and cards; includes its designed border/shadow pair |
+| Floating | `shadow-floating`           | Snackbar and tooltips                                             |
+| Overlay  | `shadow-overlay`, no border | Dialog, BottomSheet and DatePicker                                |
+| Inset    | `shadow-inner`              | Drag placeholders                                                 |
+| Control  | `shadow-control`            | Switch and slider thumbs                                          |
 
-## Class name migration
+Avoid adding generic shadows to bordered surfaces or nesting raised surfaces. Inputs and buttons have no elevation shadow, including on hover.
 
-| Legacy               | Current                |
-| -------------------- | ---------------------- |
-| `m3-headline-medium` | `text-headline-medium` |
-| `m3-body-large`      | `text-body-large`      |
-| `m3-form-field`      | `ui-form-field`        |
-| `m3-section-surface` | `ui-section-surface`   |
-| `m3-top-app-bar`     | `ui-shell-top-bar`     |
+`ui-section-surface--comfortable` supplies form padding; use `ui-section-stack` inside for vertical spacing. Reuse `ui-btn*` for actions and `ui-form-field*` for inputs. Prefer ui-kit `SegmentedControl` for keyboard and tablist behavior.
 
-Legacy `m3-*` aliases have been completely removed.
+## Radius and stacking
 
-## Elevation
+Use standard `border-radius` with semantic utilities such as `rounded-dialog` and `rounded-t-sheet`. Values live in `radius.css`, rather than a second table here.
 
-Each surface uses **one** depth cue. Do not combine `border` with generic Tailwind shadows (`shadow-xs`, `shadow-md`, etc.) on the same element.
-
-| Level      | Semantic         | Implementation                                             | Use                                                        |
-| ---------- | ---------------- | ---------------------------------------------------------- | ---------------------------------------------------------- |
-| `outlined` | Flat stroke      | `border` only                                              | Inputs, outlined `Card`, segmented track, selected options |
-| `raised`   | Grouped content  | `ui-section-surface` (`border-subtle` + `--shadow-raised`) | List groups, content cards                                 |
-| `floating` | Transient toast  | `shadow-floating` only                                     | Snackbar, tooltips                                         |
-| `overlay`  | Modal layer      | `shadow-overlay` only (no border)                          | Dialog, BottomSheet, DatePicker                            |
-| `inset`    | Recessed         | `shadow-inner`                                             | Drag placeholders                                          |
-| `control`  | Thumb affordance | `shadow-control`                                           | Switch / Slider thumbs                                     |
-
-Patterns in `ui-patterns.css`:
-
-- `ui-section-surface` — default compact padding (`0.375rem`) for list groups (Mine, Plugins).
-- `ui-section-surface--comfortable` — `1rem` padding for forms and plugin content panels.
-- `ui-section-stack` — inner `flex` column with `gap: 1rem` for comfortable panels (title + form + CTA). Do not put `gap-*` on `ui-section-surface` itself; use this wrapper instead.
-- `ui-segmented-track` / `ui-segmented-thumb` — segmented control; track is outlined, thumb has no shadow. Prefer `@chronos/ui-kit` `SegmentedControl` (tablist semantics + keyboard nav).
-- `ui-btn` / `ui-btn-filled` / `ui-btn-outlined` / `ui-btn-text` / `ui-btn-block` — shared CTA patterns for plugins and host. Host `Button.svelte` composes these classes; plugins use the CSS classes directly.
-- `ui-form-field` / `ui-field-label` / `ui-form-field-input` — the only input style for host and `SchemaForm` fields (underline in grouped surfaces).
-
-Rules:
-
-- Inputs and buttons: no elevation shadow (including `hover:shadow-*`).
-- Do not nest two raised surfaces with outer shadows.
-- Plugins rely on host-provided `ui-*` classes; do not hand-roll `border + shadow-xs` cards.
-
-## Radius tokens
-
-Chronos uses standard CSS `border-radius` only (no `corner-shape` / squircle). Tailwind `rounded-*` scales and semantic tokens are defined in `radius.css` `@theme`. Plugins should use host semantic classes such as `rounded-dialog` and `rounded-t-sheet` when needed.
-
-| CSS variable               | Value      | Use                       |
-| -------------------------- | ---------- | ------------------------- |
-| `--radius-lg`              | `0.5rem`   | Tailwind `rounded-lg`     |
-| `--radius-xl`              | `0.75rem`  | Tailwind `rounded-xl`     |
-| `--radius-2xl`             | `1rem`     | Tailwind `rounded-2xl`    |
-| `--radius-3xl`             | `1.5rem`   | Tailwind `rounded-3xl`    |
-| `--radius-dialog`          | `28px`     | Dialog surfaces           |
-| `--radius-sheet-top`       | `28px`     | Bottom sheet top corners  |
-| `--radius-section-surface` | `1.25rem`  | Grouped list cards        |
-| `--radius-section-item`    | `0.75rem`  | List item press overlay   |
-| `--radius-leading-icon`    | `0.875rem` | Leading icon chips        |
-| `--radius-capsule`         | `0.75rem`  | Timetable course capsules |
-
-## Z-index stack
-
-Defined in `layout-tokens.css` (`:root`):
-
-| Token                | Value | Use                                     |
-| -------------------- | ----- | --------------------------------------- |
-| `--z-shell`          | 15    | Shell chrome (tab bar)                  |
-| `--z-secondary-page` | 60    | Secondary page shell                    |
-| `--z-overlay`        | 70    | Dialog, BottomSheet, DatePicker overlay |
-| `--z-toast`          | 80    | Snackbar                                |
-| `--z-onboarding`     | 85    | Onboarding full-screen flow             |
-
-Use `z-[var(--z-overlay)]` etc. in components; do not add ad hoc `z-[NN]` values.
+Use the z-index tokens in `layout-tokens.css`: shell, secondary page, overlay, toast and onboarding. For example, `z-[var(--z-overlay)]`; avoid arbitrary numeric z-index values.

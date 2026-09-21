@@ -1,28 +1,16 @@
-## 版本信息
+## 变更
 
-| 项       | 内容         |
-| -------- | ------------ |
-| 版本号   | `v`          |
-| 发布日期 | `YYYY-MM-DD` |
-| 上一版本 | `v`          |
+<!-- 说明解决的问题、变更后的行为；涉及破坏性契约时注明。 -->
 
-## 更新摘要
+## 验证
 
-<!-- 简要说明本版本面向用户的主要变更，可与 Release 文档保持一致 -->
+<!-- 记录适用检查结果或跳过原因。项目入口：vp run check、vp run test。 -->
 
--
-
-## 合并前检查清单
-
-- [ ] 已更新 `package.json` 中的 `version`
-- [ ] 已新增或更新 `src/lib/content/releases/entries/vX.Y.Z.md`
-- [ ] Release 文档中的 `name`、`publishedAt` 与正文内容已核对
-- [ ] 已运行 `vp check` 与 `vp test`，结果通过
-- [ ] 合并后计划打 tag：`vX.Y.Z`（用于触发 GitHub Pages 部署）
+## 发布信息（仅版本发布填写）
 
 <!--
-合并方式
-本 PR 必须使用 Squash merge，请勿使用 Merge commit 或 Rebase merge，目标分支为 master
-Squash 后的提交标题请使用：X.Y.Z
-Squash 提交说明可粘贴「更新摘要」中的要点，或保留 PR 正文摘要。
+版本号、发布日期、上一版本。
+核对 apps/web/package.json 与 apps/web/src/lib/content/releases/entries/vX.Y.Z.md。
+发布 vX.Y.Z tag 会触发 GitHub Pages 部署。
+发布 PR 目标分支为 master，使用 Squash merge，提交标题为 X.Y.Z，说明使用更新摘要。
 -->

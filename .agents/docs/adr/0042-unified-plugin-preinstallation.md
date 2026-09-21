@@ -1,30 +1,25 @@
 # ADR 0042: 统一插件市场与 Profile 预安装
 
-> 2026-09-20 修订：主题配色算法归属、M3 ESM 分发、首屏资源与壁纸取色以 [ADR 0043](./0043-theme-owned-color-runtime-and-plugin-host-contracts.md) 为准。
-> 服务端插件元数据与部署装配以 [ADR 0044](./0044-server-plugin-definition-and-deployment-assembly.md) 为准。
-
-- 状态：Accepted
+- 状态：Accepted（主题与服务端声明见 ADR 0043 / 0044）
 - 日期：2026-09-20
-- 修订：ADR 0025、0031、0041
 
-## 决策
+## 决策与原因
 
-全部业务插件通过官方目录发布。Profile 的 `preinstall` 声明发行必需安装和启用的插件及首次安装配置，拒绝 `enabled: false`；不再静态导入业务插件。`core-shell` 是宿主导航注册函数，不进入插件目录。预安装与手动安装使用同一 Manifest、资源校验、安装记录和运行时激活路径；M3 使用闭合 Workbench 颜色契约的 JSON，宿主完整基础令牌独立生成。
+全部业务插件通过市场资源安装。Profile 的 `preinstall` 声明必需插件和首次配置，拒绝 `enabled: false`；预安装与手动安装共用 Manifest、校验、记录和激活路径。`core-shell` 是宿主导航注册函数，不进入市场。静态 `ProfileManager` 装配已移除。
 
-安装状态保存 `records`、主动卸载的 `removed` ID 集合及初始偏好已应用标记 `seeded`。记录包含 `origin` 和首次安装配置。当前 Profile 预安装项启动时补装并保证启用，忽略并清除对应卸载记录，保留用户配置；Profile 删除预安装项不删除已有安装，同时解除保护。历史安装来源只用于记录，不决定预安装身份。手动安装成功清除对应卸载记录。恢复初始状态清除以上状态后按当前 Profile 装配。
+## 安装不变量
 
-Profile 必填且唯一的 `defaultTheme: { pluginId, themeId }` 必须由已启用的预安装项提供。运行时先激活缓存或安装提供者，验证主题 ID、可选择状态和注册归属，再完成首屏；其他预安装和用户安装在后台恢复。缺少可用默认主题显式失败。恢复前不覆盖用户选择，临时失败保留选择；已确认移除或禁用才保存默认回退。
-
-当前 Profile 的全部预安装插件不可经用户入口禁用或卸载，界面与服务层共用身份判断。系统更新在候选资源下载和校验后替换运行时，并在提交记录前验证默认主题；失败恢复旧运行时和记录。缓存版本落后也先激活缓存，再尝试更新。资源更新成功后才删除旧壁纸；销毁和重置取消进行中的下载。
+- 状态包含安装 `records`、主动卸载集合 `removed`、初始偏好标记 `seeded`。当前预安装项启动时补装并启用，清除对应卸载标记，保留用户配置；Profile 移除某项只解除保护，不删除现有安装。身份由当前 Profile 决定，不由历史 origin 决定。
+- 当前全部预安装项均不可被用户禁用或卸载，UI 与服务层共用判断。手动安装清除卸载标记；恢复初始状态清除安装状态后重新装配。
+- 首屏先从缓存或目录激活默认主题，并验证 ID、可选状态和所有者；其余插件后台恢复。缺少可用默认主题显式失败，临时缺席不覆盖可恢复的选择。
+- 更新先下载校验候选资源，再替换运行时，验证默认主题后提交记录；失败恢复旧运行时和记录，成功才删旧图片。`withPluginReplacement` 临时开放默认提供者的运行时卸载，结束后恢复保护。销毁和重置取消下载。
 
 ## 部署与离线
 
-`deployment-definitions.ts` 独立选择服务端插件 ID，服务端入口、代理 action 和域名由插件包声明（见 ADR 0044）。发行任务通过 `CHRONOS_DEPLOYMENT` 选择；`CHRONOS_PROFILE` 仅选择客户端预安装。客户端管理插件不改变服务器部署。数据源通过 `IHttpService.supportsPluginServer(pluginId, action)` 探测具体能力；CQUT 无代理时保留 HTML 导入，市场显示在线同步不可用。
+`CHRONOS_PROFILE` 选择客户端预安装，`CHRONOS_DEPLOYMENT` 独立选择服务端插件。客户端安装不会部署服务端；插件用 `supportsPluginServer(pluginId, action)` 探测能力。声明归属见 [ADR 0044](0044-server-plugin-definition-and-deployment-assembly.md)。
 
-预安装资源随宿主发行，从同源目录或缓存读取。PWA 在最终市场构建产物上计算 SHA-256 修订，预缓存当前 Profile 的全部预安装资源；资产 URL 包含与下载器一致的完整性查询参数，支持断网首次补装。其他市场插件按需下载。预缓存通过 PWA 的追加清单接口接入，保留 SvelteKit 的默认路径转换；SvelteKit 后生成的 `_app/env.js` 与导航文档共用 `pages-cache`，在宿主更新时一起失效。Pages 的请求与预缓存都包含应用 base 路径。
+PWA 预缓存当前 Profile 全部预安装资源，修订来自最终产物摘要；URL 使用与下载器一致的完整性参数及部署 base。追加清单保留 SvelteKit 默认路径转换。后生成的 `_app/env.js` 与导航文档共用 `pages-cache`，随宿主更新失效。其他市场插件按需下载。
 
-## 用户界面与契约
+## 取舍
 
-插件中心只有“已安装 / 插件市场”。已安装列表仅在最右侧标注当前预安装项，不显示手动安装、使用中或默认主题必需标签；市场根据统一记录决定是否显示安装入口。预安装失败可重试；没有导入入口时引导安装数据源或编解码插件。分享插件保持 `codec-share` ID，市场名称为“分享口令 / Share token”，归入实用工具，编解码能力与数据格式不变。主题和壁纸取色沿用 ADR 0041 的独立语义。
-
-这是未发布阶段的内部破坏性变更：移除 ProfileManager 静态装配、`plugins` / `server` / `disabledSlots` 配置及内置管理区；安装状态采用唯一当前结构。版本保持 1，不保留兼容分支，不自动清理开发数据。
+发行必需插件也走安装链路，需处理离线首次补装与失败重试；换来单一记录和生命周期。市场按统一记录显示安装状态。默认主题分发和首屏资源见 [ADR 0043](0043-theme-owned-color-runtime-and-plugin-host-contracts.md)。

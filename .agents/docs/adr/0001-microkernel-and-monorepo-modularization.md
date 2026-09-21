@@ -1,58 +1,14 @@
 # ADR 0001: 微内核与 Monorepo 模块化分层架构
 
-- **状态**: Accepted
-- **日期**: 2026-08-19
-- **关联提交**: `693797e`, `40eada3`, `97592eb`, `5c2fa30`, `bc3dc5c`, `918c252`, `c5e45ca`, `345e1b9`, `0dad3ef`, `6b28539`, `fd30d9d`, `900fbfc`, `b493c43`, `1fe7ebc`, `200cf04`, `852ddca`, `1471fa2`, `29ba0ba`, `1c7096c`
-- **范围**: 全仓架构拓扑 (`packages/core`, `packages/ui-kit`, `packages/plugins/*`, `apps/web`)
+- 状态：Accepted
+- 日期：2026-08-19
 
----
+## 决策
 
-## 背景与问题
+采用 Vite+ Workspace：`core` 持有领域模型、排课算法、引擎与平台端口；`ui-kit` 提供 Svelte 组件和响应式桥接；业务插件持有高校、编解码和工具能力；`apps/web` 负责平台适配与装配。
 
-Chronos 原先为单一的 SvelteKit Web 应用，所有领域模型、排课算法、特定高校解析器、本地存储以及 UI 视图紧密耦合在 `src/lib` 目录中。随着项目演进，出现以下痛点：
+依赖方向为宿主 → core / ui-kit / 插件，ui-kit → core，插件 → core / ui-kit / 通用库。插件不引用宿主私有实现或其他业务插件。core 不依赖 DOM、SvelteKit 或特定高校。
 
-1. **跨端与多宿主扩展受阻**：核心业务规则（排课算法、时间推算、领域实体）与 Web DOM 及 SvelteKit 强绑定，无法复用于 Native 客户端或无头（Headless）测试环境；
-2. **高校特性侵入通用核心**：特定高校（如重庆理工大学 CQUT）的认证与解析逻辑直接散落在通用排课流程中；
-3. **缺少清晰的模块边界与分层约束**：缺乏依赖隔离规则，容易形成各模块间错综复杂的网状浅层依赖。
+## 取舍
 
----
-
-## 架构决策
-
-将项目重构为基于 pnpm / Vite+ Workspaces 的多包 Monorepo 架构，并确立**微内核 (Microkernel)** 核心引擎与外围模块的分层依赖规则：
-
-```mermaid
-flowchart TD
-    App[apps/web
-宿主应用程序] --> UIKit[@chronos/ui-kit
-通用组件与响应式外壳]
-    App --> Plugins[@chronos/plugins/*
-业务与高校特性插件]
-    Plugins --> Core[@chronos/core
-微内核引擎与纯领域模型]
-    UIKit --> Core
-```
-
-### 1. 核心分包拓扑
-
-- **`packages/core`（微内核引擎）**：
-  - 拥有核心领域实体（`Timetable`, `Course`, `AcademicConfig`, `UserPreferences`）；
-  - 拥有纯排课与时钟算法（`computeTimetableWeekLayout`, `placeCapsules`, `PeriodClockService`）；
-  - 拥有运行时控制调度中心（`ChronosEngine`, `ChronosEnv` 端口, `HierarchicalSlotRegistry`, `EventPipeline`）；
-  - **零 DOM 依赖、零特定高校依赖、纯 TypeScript 运行环境**。
-- **`packages/ui-kit`（UI 契约与外壳套件）**：
-  - 提供响应式控制器桥接（`ReactiveChronosController`）；
-  - 提供声明式表单引擎（`SchemaForm`）与动态插槽出口（`SlotOutlet`, `PluginScreenContainer`）；
-  - 提供 Material 3 动态色彩与设计系统基元。
-- **`packages/plugins/*`（细粒度能力插件）**：
-  - 将所有外部集成、高校适配、主题及特定工具拆解为独立插件包（如 `source-cqut`, `codec-share`, `theme-yumemita`, `wallpaper`）。
-- **`apps/web`（Web 宿主应用）**：
-  - 作为纯净的装配外壳，负责向 `ChronosEngine` 提供 Web 平台能力适配器（Dexie 存储、WebAuthn、Fetch、PWA 注册等），并挂载 SvelteKit 页面路由。
-
----
-
-## 影响与收益
-
-- **高内聚低耦合**：通用排课算法、特定高校解析与平台持久化各归其位，模块职责清晰明确；
-- **易于自动化测试**：核心包 `@chronos/core` 仅需纯 Node/Bun 环境即可在毫秒级内完成全部单元测试，无需启动浏览器环境；
-- **优秀的可扩展性**：新增高校数据源或平台端（如 iOS/Android 原生客户端）只需实现对应的插件或宿主适配器，无需修改核心排课逻辑。
+分层使领域逻辑能在无浏览器环境测试并复用于其他宿主，代价是平台能力必须经端口传入。共享字节原语归 [codec-kit](0020-codec-kit-shared-codec-primitives.md)，配色算法归[主题插件](0043-theme-owned-color-runtime-and-plugin-host-contracts.md)，不放入 core。

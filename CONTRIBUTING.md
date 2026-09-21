@@ -1,653 +1,205 @@
-# 部署指南
-
-Chronos 支持通过环境变量构建并导出不同的产品形态：使用 `CHRONOS_PROFILE` 指定产品变体（预设的插件组合与配置），使用 `CHRONOS_DEPLOY_TARGET` 指定部署目标平台（适配器与产物形态）。两者可独立配置：若未显式指定 `CHRONOS_PROFILE`，在 `CHRONOS_DEPLOY_TARGET=pages` 时默认使用 `chronos-default`，其余情况默认使用 `chronos-cqut`（构建期代码生成与运行期装配流程统一由 `resolveProfileId` 解析）。
-
-| 环境变量                | 控制内容                                 |
-| ----------------------- | ---------------------------------------- |
-| `CHRONOS_PROFILE`       | **产品变体**：默认装配的插件集与预设配置 |
-| `CHRONOS_DEPLOY_TARGET` | **部署目标**：SvelteKit 适配器与产物形态 |
-
-### 内置 Profile（CHRONOS_PROFILE）
-
-Chronos 内置以下三种 Profile（产品配置文件），可按需选择或自行扩展新的 Profile：
-
-| Profile                | 定位               | 知行理工导入 | 教务 HTML 导入 | 分享口令导入 |  服务端插件   |
-| ---------------------- | ------------------ | :----------: | :------------: | :----------: | :-----------: |
-| `chronos-default`      | Chronos 标准开源版 |      ✗       |       ✗        |      ✓       |      无       |
-| `chronos-cqut-offline` | 重庆理工大学离线版 |      ✗       |       ✓        |      ✓       |      无       |
-| `chronos-cqut`         | 重庆理工大学在线版 |      ✓       |       ✓        |      ✓       | `source-cqut` |
-
-本地按 Profile 构建：
-
-```sh
-vp run build:cqut            # chronos-cqut
-vp run build:cqut-offline    # chronos-cqut-offline
-vp run build:default         # chronos-default
-```
-
-> [!IMPORTANT]
-> Chronos 深度适配 Vercel，强烈推荐使用 Vercel 进行部署。
-
-### 部署目标（CHRONOS_DEPLOY_TARGET）
-
-| Target  | 部署平台     | 适配器           | 产物                       | 服务端能力       |
-| ------- | ------------ | ---------------- | -------------------------- | ---------------- |
-| 不设置  | Vercel       | `adapter-vercel` | Serverless 函数 + 静态资源 | 支持插件代理 API |
-| `pages` | GitHub Pages | `adapter-static` | 纯静态文件                 | 无               |
-
-### 所有环境变量
-
-默认配置下，Chronos 不需要配置任何环境变量即可正常部署，以下变量仅在本地开发或特定构建场景下使用：
-
-| 变量                    | 作用域 | 说明                                                                                                             |
-| ----------------------- | ------ | ---------------------------------------------------------------------------------------------------------------- |
-| `CHRONOS_PROFILE`       | 构建时 | 产品 Profile，详见上表；Vercel 默认 `chronos-cqut`，GitHub Pages 默认 `chronos-default`                          |
-| `CHRONOS_DEPLOY_TARGET` | 构建时 | 设为 `pages` 时构建 GitHub Pages 静态版，默认不设置则构建 Vercel 版                                              |
-| `ORIGIN`                | 运行时 | SvelteKit 标准变量，用于 CSRF 校验等场景。本地开发一般无需配置；若部署后出现 origin 相关报错，可设为站点完整 URL |
-| `PUBLIC_POSTHOG_KEY`    | 构建时 | PostHog 项目密钥；留空则构建期剔除埋点（GitHub Pages、自行部署默认不启用）                                       |
-| `PUBLIC_POSTHOG_HOST`   | 运行时 | PostHog API 地址                                                                                                 |
-
 # 参与贡献
 
-欢迎参与 Chronos 开发！项目架构决策记录请参阅 [`.agents/docs/adr/`](.agents/docs/adr/README.md)。
+这份文档介绍 Chronos 的开发、部署和插件接入方式。你可以按需要阅读[开发工作流](#开发工作流)、[部署指南](#部署指南)、[架构地图](#架构地图)或[插件作者指南](#插件作者指南)。本文档更新可能不及时，具体以源码和架构决策记录为准。
 
-## 目录
+## 工作流
 
-- [开发工作流](#开发工作流)
-- [架构地图](#架构地图)
-- [插件作者指南](#插件作者指南)
-- [新增官方插件](#新增官方插件)
-- [新增插槽类型](#新增插槽类型)
-- [参考：端口契约](#参考端口契约)
-- [参考：槽位目录](#参考槽位目录)
-- [参考：主题契约](#参考主题契约)
-
-## 开发工作流
-
-### 未发布阶段的数据契约
-
-产品尚未发布：Chronos 自有数据库、数据结构与线格式版本固定为 `1`。直接维护唯一当前结构，不新增升级链、旧格式分支、兼容别名或旧数据补迁移。开发数据失效时手动清空并重新导入，不在启动时自动删除。此约定不改变产品发布号、随宿主发布的插件版本、第三方依赖或外部标准版本。
-
-当前数据库通过一次 `version(1).stores(...)` 声明全部表；偏好与课表 schema、官方插件目录格式均为 `1`。分享链接仅使用 `1.` + Deflate raw + CRC，移除 Brotli 与双版本解码。此前数据库和分享链接不作迁移；已有开发数据库需清空，课表需重新导入或分享。
-
-### 环境准备
-
-- Node.js（建议 LTS 最新版）与全局 [Vite+ CLI](https://viteplus.dev)（`vp`）。本仓库**统一使用 `vp`**，请勿直接调用 pnpm / npm / yarn。
-- 克隆仓库后先安装依赖：
-
-```sh
-vp install
-```
+本项目使用 [Vite+](https://viteplus.dev) 统一管理开发工具链，请勿使用其它工具进行管理。
 
 ### 常用命令
 
-| 命令                                                                          | 作用                                       |
-| ----------------------------------------------------------------------------- | ------------------------------------------ |
-| `vp run dev`                                                                  | 启动 Web 宿主开发服务器                    |
-| `vp run build` / `vp run build:cqut` / `build:cqut-offline` / `build:default` | 按 Profile 构建目标产品                    |
-| `vp run build:pages`                                                          | 构建 GitHub Pages 静态版                   |
-| `vp run check`                                                                | 格式化检查 + Lint + 类型检查（提交前必跑） |
-| `vp run test`                                                                 | 运行全部单元测试                           |
-| `vp run build:official-plugins`                                               | 构建官方插件 Bundle 与 Catalog 目录        |
-| `vp run verify:official-plugins`                                              | 官方插件产物自校验检查                     |
-| `vp run theme:generate`                                                       | 重新生成主题令牌                           |
-| `vp run bundle:analyze`                                                       | 构建并分析前端包体积构成                   |
-| `vp run icons:png`                                                            | 从 SVG 源资产重新生成各尺寸 PWA 图标       |
+| 命令                                                                       | 用途                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| `vp run dev`                                                               | 启动 Web 开发服务器，同时提供本地插件市场    |
+| `vp run check`                                                             | 检查代码格式、Lint 和类型                    |
+| `vp run test`                                                              | 运行全部单元测试                             |
+| `vp run build`                                                             | 按当前环境配置构建应用和插件                 |
+| `vp run build:cqut` / `vp run build:cqut-offline` / `vp run build:default` | 按预设配置构建，同时选择客户端和服务端的插件 |
+| `vp run build:pages`                                                       | 构建用于 GitHub Pages 的静态站点             |
+| `vp run build:official-plugins`                                            | 单独构建官方插件                             |
+| `vp run verify:official-plugins`                                           | 校验已经生成的插件文件                       |
+| `vp run theme:generate`                                                    | 手动更新默认主题的资源快照和首屏颜色         |
+| `vp run bundle:analyze`                                                    | 构建应用并分析包体积                         |
+| `vp run icons:png`                                                         | 根据 SVG 生成 PWA 图标                       |
 
-`vp run dev` 和宿主构建命令统一通过 `run-host.ts` 准备 profile、插件与默认主题。开发只生成开发插件，不执行宿主生产构建；生产仅执行一次完整宿主构建。请使用 `vp run` 入口，直接调用 `vp dev/build` 时缺少构建上下文会报错。配置读取、类型同步与 preview 不构建插件。子进程失败或收到 SIGINT/SIGTERM 时停止后续阶段，入口以非零状态退出。
+开发和构建时，使用 `vp run dev`、`vp run build`。请勿直接运行 `vp dev`、`vp build`。任务定义见 [vite.config.ts](vite.config.ts) 和 [package.json](package.json)。
 
-插件缓存位于 `dist/plugin-cache`，开发/生产分别记录实际输入、扫描目录、产物摘要和许可证片段。资源准备、代码编译和市场发布独立复用，最多并发两个插件；日志中的 `resources=hit/built` 与 `compile=hit/built` 显示阶段命中。缓存损坏或输入变化自动重建，诊断冷启动时可以手动删除该目录。不要用 `static/official-plugins` 是否存在来判断缓存有效性。
+### 检查与提交
 
-生产市场先校验并发布带内容 revision 的不可变资源，最后原子替换 `catalog.json`；预安装和 PWA 预缓存均按 catalog 解析资源路径。发布期间不移动在线目录；旧 revision 保留供进行中的下载使用，许可证汇总包含保留快照的依赖。需要回收本地历史资源时，先停止相关构建/预览和下载，再手动删除 `apps/web/static/official-plugins/bundles`、`manifests` 与 `catalog.json` 并重新构建。
+开发过程中先运行与改动相关的测试。完成修改后，运行 `vp run check` 和一次完整的 `vp run test`。如果修改了官方插件，还需要运行插件构建或应用构建。只修改文档时可以跳过测试，并在结果中说明。
 
-生产许可证在客户端 `generateBundle` 合并宿主与全部发行插件的实际依赖，输出到发布目录的 `licenses/third-party.json` 并纳入 PWA 预缓存，不再向源码 static 目录生成清单。开发相同 URL 由中间件提供：根据已安装的运行时依赖声明生成允许多包含的清单，合并插件依赖；普通源码修改不重新遍历依赖树；收集器或缓存实现变化会使开发许可证缓存失效。同包不同许可证值分别保留，缺失值显示 `UNKNOWN`。
+遇到环境问题时，先运行 `vp env doctor`。CI 会检查多个发行配置的构建结果，具体任务见 [quality.yml](.github/workflows/quality.yml)。
 
-### 仓库布局
+提交信息使用 `<emoji> <简洁中文>`，例如 `✨ 新增课表导出功能`。未发布阶段的数据版本和兼容规则见 [AGENTS.md](AGENTS.md#未发布阶段的数据契约)。
 
-```
-apps/web                  SvelteKit 宿主（页面路由、适配器、transfer-state 导入流、i18n）
-packages/core             @chronos/core 微内核（引擎、服务容器、插槽树、领域模型、Schema 校验）
-packages/ui-kit           @chronos/ui-kit 共享组件库与响应式控制器
-packages/plugins/*        内置与官方插件（数据源、编解码、工具、主题等）
-packages/codec-kit        共享字节编解码原语（非插件公共库）
-scripts                   官方插件构建与校验、主题令牌生成、别名解析脚本
-.agents/docs/adr          架构决策记录（ADR）
-```
+### 构建问题排查
 
-### 提交约定
+构建缓存保存在 `dist/plugin-cache`。资源准备、代码编译和市场发布分别使用缓存；日志中的 `resources=hit/built`、`compile=hit/built` 表示该阶段是使用缓存还是重新生成。输入发生变化或缓存损坏时会自动重建。如果需要排查不使用缓存时的构建结果，可以手动删除这个目录。
 
-遵循 Gitmoji 格式：`<emoji> <简洁中文描述>`，例如 `✨ 新增课表导出功能`。不使用 `feat:` / `fix:` 前缀。
+开发环境的插件市场由中间件提供，资源写入 `dist/dev-plugins`，不依赖生产目录 `static/official-plugins`。热更新（HMR）会跟踪插件源码、共享包、CSS 扫描目录和资源文件。内容没有变化时不会重新激活插件；构建失败时继续使用上一次成功生成的文件。
 
-### 质量门禁
+生产环境为每份资源分配不可变的修订标识（revision）。新资源通过校验并发布后，才替换市场目录文件（catalog）。如果需要清理本地旧产物，请先停止构建、预览和下载，再清理 `apps/web/static/official-plugins` 并重新构建。
 
-1. 提交前确保 `vp run check` 与 `vp run test` 全部通过；
-2. 修改内核契约时，同步更新[参考：端口契约](#参考端口契约)与对应 ADR 的修订记录；
-3. 涉及官方插件源码变更时，本地 `vp run build:official-plugins` 或 `vp run build` 须通过（构建脚本内置产物哈希自校验）；
-4. 避免引入双轨实现：当同一功能存在新旧两种实现方式时，应先收敛或废弃旧实现，再进行扩展，保持单一事实来源。
+生产构建会合并应用实际打包的依赖和所有发行插件的依赖，将许可证清单写入发布目录的 `licenses/third-party.json`。开发环境通过中间件提供同一地址，清单可能包含更多依赖。该文件自动生成，无需手动修改。
+
+## 部署指南
+
+Chronos 分别配置客户端安装哪些插件、服务端启用哪些插件，以及部署到哪个平台：
+
+| 变量                    | 作用                                                   | 默认值                                                          |
+| ----------------------- | ------------------------------------------------------ | --------------------------------------------------------------- |
+| `CHRONOS_PROFILE`       | 选择客户端发行配置，包括预安装插件、默认主题和初始偏好 | Pages 使用 `chronos-default`，其他情况使用 `chronos-cqut`       |
+| `CHRONOS_DEPLOYMENT`    | 选择服务端启用的插件                                   | Pages 使用不含服务端插件的 `pages`，其他情况使用 `chronos-cqut` |
+| `CHRONOS_DEPLOY_TARGET` | 选择部署平台和 SvelteKit 适配器                        | 未设置时使用 Vercel；设为 `pages` 时生成纯静态站点              |
+
+**只修改 `CHRONOS_PROFILE`，不会改变服务端启用的插件。** 常用的 `build:*` 任务已经配好了客户端和服务端配置；自定义组合时，需要分别设置。配置定义见 [profile-definitions.ts](apps/web/src/lib/profile-codegen/profile-definitions.ts) 和 [deployment-definitions.ts](apps/web/src/lib/profile-codegen/deployment-definitions.ts)。
+
+| 构建任务                        | 客户端预安装插件                             | 服务端插件    |
+| ------------------------------- | -------------------------------------------- | ------------- |
+| `build:default` / `build:pages` | `theme-m3`、`codec-share`                    | 无            |
+| `build:cqut-offline`            | 上述插件和 `source-cqut`，默认使用 HTML 导入 | 无            |
+| `build:cqut`                    | 上述插件和 `source-cqut`，默认使用在线导入   | `source-cqut` |
+
+Vercel 构建会生成 Serverless 函数和静态资源。Pages 的输出目录是 `apps/web/build`，可以通过推送 `v*` 标签或手动运行工作流来部署，见 [pages.yml](.github/workflows/pages.yml)。
+
+统计服务使用 `PUBLIC_POSTHOG_KEY` 和 `PUBLIC_POSTHOG_HOST`。Key 留空时，生产构建不会包含埋点功能。新增服务端插件的方式见 [ADR 0044](.agents/docs/adr/0044-server-plugin-definition-and-deployment-assembly.md)。
 
 ## 架构地图
 
-在修改 `packages/` 下的代码之前，请先阅读本节。本节从整体视角梳理系统的模块构成、职责边界与协作机制；类型定义与字段细节见[参考：端口契约](#参考端口契约)，架构演进与决策背景请参阅 [ADR 索引](.agents/docs/adr/README.md)。
+文档中的“宿主”指运行和管理插件的主应用。当前 Web 宿主位于 `apps/web`，其他模块按下表分工。
 
-### 分层拓扑
+| 模块                 | 主要职责                                                 | 依赖规则                                                         |
+| -------------------- | -------------------------------------------------------- | ---------------------------------------------------------------- |
+| `packages/core`      | 领域模型、排课算法、核心引擎，以及平台接口和插件扩展接口 | 不依赖 DOM、SvelteKit 或特定高校的代码                           |
+| `packages/ui-kit`    | Svelte 组件、响应式控制器、表单 Schema 和插件组件容器    | 依赖 core                                                        |
+| `packages/plugins/*` | 数据源、编解码、工具和主题                               | 可以依赖 core、ui-kit 和通用库，不引用宿主内部模块或其他业务插件 |
+| `packages/codec-kit` | 字节编解码的基础函数                                     | 作为普通共享库使用，不作为插件加载                               |
+| `apps/web`           | 页面路由、平台适配、插件安装、课表导入和主题显示         | 负责组合并使用上述模块                                           |
+| `scripts`            | 插件构建、资源生成流程和产物校验                         | 具体算法和资源生成逻辑由对应插件实现                             |
 
-| 包                                    | 角色                                                                                                     | 可依赖                                   |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `apps/web`                            | Web 宿主：SvelteKit 外壳、页面路由、Dexie/HTTP 适配器、transfer-state 导入流                             | core、ui-kit、plugins（经 Profile 装配） |
-| `packages/core` (`@chronos/core`)     | 微内核：引擎、服务容器、插槽树、领域模型、Schema 校验                                                    | 无运行时依赖                             |
-| `packages/ui-kit` (`@chronos/ui-kit`) | 与内核配套的 Svelte 组件库：响应式控制器、SchemaForm、插槽出口                                           | core                                     |
-| `packages/plugins/*`                  | 市场业务插件（source-cqut、codec-share、codec-qrcode、tool-calendar-holidays、theme-yumemita、theme-m3） | core、ui-kit；彼此不依赖                 |
-| `packages/codec-kit`                  | 共享字节编解码原语（deflate/base64/CRC/varint/bitmask），普通 npm 依赖，非插件                           | —                                        |
+引擎管理课表等业务状态，`ReactiveChronosController` 将这些状态提供给界面，并在数据变化时通知界面更新。宿主控制器负责管理页面交互状态。
 
-依赖规则遵循单一方向原则：**宿主负责装配插件，插件不感知宿主实现**。插件之间禁止直接互相引用，共享的基础能力与编解码原语统一通过 `packages/codec-kit` 等通用库提供。
+宿主通过 `ChronosEnv` 向引擎提供存储、网络等平台能力。插件通过 `ScopedContext` 使用这些能力；插件停用或卸载时，上下文会清理它注册的资源。
 
-### 核心概念
+## 插件作者指南
 
-#### ChronosEngine
+### 定义与生命周期
 
-`@chronos/core` 的核心中枢对象，负责管理领域状态、分发业务动作（如 `createTimetable` / `importTimetable` / `saveCourse` 等）、维护 `EventPipeline` 事件总线与插槽注册表。所有状态变更均通过引擎动作触发，视图层通过 `ReactiveChronosController` 订阅状态快照。
+使用 [`defineChronosPlugin`](packages/core/src/plugin/define-chronos-plugin.ts) 定义插件信息、翻译词条和 `apply(ctx, t)` 初始化逻辑。可以参考[今日插件](packages/plugins/today/src/index.ts)或[分享插件](packages/plugins/codec-share/src/index.ts)。官方构建会自动填入与宿主一致的版本号。
 
-#### 端口与 ChronosEnv
+插件通过 `ctx` 获取服务、读写自己的配置和键值数据（KV）、读取应用状态、调用业务操作，以及注册插槽和事件。具体接口见 [context.ts](packages/core/src/types/context.ts)。通过 `registerSlot`、`on` 注册的内容会随上下文自动清理；其他资源需要用 `addDisposable` 登记，或在 `dispose` 中释放。
 
-标准端口（`IHttpService`、`IStorageService`、`IVaultService`（可选）、`IRuntimeService`、`IAnalyticsService`（可选））由宿主在 `ChronosEnv` 中提供。运行期代码通过 `engine.storage` / `engine.http` 或 `ctx.service(...)` 消费平台能力，禁止直接调用平台专属全局 API。详细契约见[参考：端口契约](#参考端口契约)。
+这些规则约定了模块之间的访问方式。ESM 插件与宿主运行在同一进程中，没有安全沙箱；哈希校验只能确认资源内容是否完整，仍需确认插件来源可信。
 
-#### 分层插槽树
+### 文案与自定义界面
 
-`HierarchicalSlotRegistry` 以分层路径（如 `import.source.tab`、`shell.bottom-bar.tab`）组织扩展点。插件在 `apply(ctx)` 阶段通过 `ctx.registerSlot(slotName, contribution)` 声明扩展贡献，插件卸载时会自动撤销其注册的所有插槽。同一插槽支持多个贡献者共存，默认按 `order` 升序排列；若贡献者包含相同 id，后注册者将覆盖前者并在开发环境下输出警告。标准插槽列表见[参考：槽位目录](#参考槽位目录)。
+插件在自己的消息目录（Message Catalog）中维护翻译词条。插槽文案需要随语言切换时，使用 `() => t(key)`；自定义界面使用 `pluginText`。宿主界面则使用 `hostT`，详见 [ADR 0024](.agents/docs/adr/0024-plugin-message-catalog-i18n.md)。
 
-#### ScopedContext
+自定义界面通过 [`ChronosMountable`](packages/core/src/types/mountable.ts) 挂载。`mount` 必须返回一个对象，其中包含 `unmount` 方法，也可以提供 `update` 方法。如果挂载失败，插件需要在抛出错误前清理已经创建的资源；挂载成功后，由宿主组件容器负责卸载。简单的输入表单可以直接使用 SchemaForm。
 
-每个插件在激活时均会获得一个 `ScopedContext` 实例（实现 `ChronosContext` 接口），提供插件专属的隔离配置、以 pluginId 为命名空间的私有存储、i18n 翻译运行时、只读状态快照以及引擎动作分发器。插件对系统能力的所有访问均收敛在此上下文中。
+官方 ESM 插件自带 Svelte 运行时，不能通过 `getContext()` 读取宿主的上下文。需要的数据应通过 props、controller 或平台接口获取。插件可以用 `fromStore(controller.snapshot)` 订阅应用状态。
 
-### 统一插件安装
+课程颜色通过 `ICoursePresentationService` 获取。颜色分配以整张课表为依据，不要只对当前可见的课程重新分配，否则同一门课在不同页面可能显示不同颜色。
 
-全部业务插件通过 `OfficialPluginService` 安装、校验和激活。Profile 的 `preinstall` 指定必须安装并启用的插件列表及首次安装配置；预安装从发行包的同源市场目录读取，与用户手动安装使用同一资源和记录。当前预安装项禁止用户禁用或卸载；启动补回缺失项、重新启用禁用项并清除对应卸载记录，不覆盖已有配置。保护与列表右侧的“预安装”标签均以当前 Profile 为准，移出列表后保留安装并恢复普通管理权限。宿主直接注册核心导航，不存在独立内置插件轨。
+### 样式与资源
 
-Profile 必填 `defaultTheme: { pluginId, themeId }`，其提供者必须预安装并启用，用户不能禁用或卸载。首屏先激活并验证默认主题，后台恢复其余插件；优先使用缓存，更新失败保留旧资源。主题 JSON 与 ESM 插件都使用统一 Owner 追踪。默认提供者更新时，宿主通过 `engine.withPluginReplacement(pluginId, operation)` 在替换及回滚期间临时允许运行时卸载，不清空默认主题配置或当前主题 ID；事务结束自动恢复卸载保护。主题实例暂时缺席或动态取色尚未完成时保留上一帧颜色及课程调色板，新结果校验通过后同步接管，取色失败才恢复该主题静态外观。详见 [ADR 0042](.agents/docs/adr/0042-unified-plugin-preinstallation.md)。
+UI 插件在 `bundle/entry.ts` 中引入 `bundle/styles.css`。样式文件需要导入 `@chronos/ui-kit/theme/plugin-tailwind.css`，并用 `@source` 指定插件自己的源码目录。插件只生成 Tailwind 工具类，不包含 Preflight 样式重置；宿主不会扫描业务插件的源码。
 
-### 导入管道
+`text-*`、`ui-*` 等公共样式由宿主提供。颜色和圆角使用公共设计变量（Token），具体说明见[设计 Token](docs/design-tokens.md)。
 
-```
-import.source.tab 插槽（每个数据源提供一个扩展贡献）
-        │ executeImport(inputs)
-        ▼
-宿主 transfer-state（唯一流程属主）
-   预览持久化 → 确认页（confirmSchema / confirmComponent）
-   → finalizePreview 合并确认输入 → engine.importTimetable
-```
+需要在构建时生成资源的插件，可以在发行配置中声明 `prepareResources` 模块。该模块导出 `prepareResources(outDir)`，返回 `{ colorsJson?, iconsJson? }`，各字段填写生成文件的相对路径。常规构建将文件写入生成目录，不修改源码。详见 [ADR 0043](.agents/docs/adr/0043-theme-owned-color-runtime-and-plugin-host-contracts.md)。
 
-- 数据源插件仅需实现 `executeImport` 及可选的确认阶段交互钩子，无需关心 UI 路由与页面跳转。
-- `/s` 分享链接等落地页由 `deepLink.fromLocation` 元数据统一匹配分发，宿主无需硬编码特定的链接格式规则。
-- 导入失败时统一抛出结构化的 `ImportSlotError`（包含 kind 类型：`no-data` / `invalid-data` / `network` / `unsupported` / `unknown`），便于宿主呈现统一的友好提示。
+### 导入与导出
 
-### 事件与动态配色
+导入插件通过 `import.source.tab` 注册导入入口，`executeImport` 返回 core 定义的 `Timetable`。宿主的 `transfer-state` 负责预览、处理确认页输入、检查覆盖操作，最后调用 `engine.importTimetable` 保存课表。插件可以提供确认页的 Schema 或组件，并通过 `finalizePreview` 将确认结果合并到待导入课表中。
 
-引擎内部事件通过统一的 `EventPipeline` 分发。壁纸配色通过当前主题的 `resolveWallpaperColors` 能力调用，不使用 `dynamicColor:*` 广播。历史串行守卫和瀑布变换不再保留。
+导入失败时，插件抛出 `ImportSlotError`。`importKind` 用于选择导入来源的分组文案，`deepLink.fromLocation` 用于识别链接中的导入参数。分享内容由 `codec-share` 编解码，完整导入链接的入口地址由 `IHostLinks` 提供；没有入口地址时，只导出分享口令。
 
-### 主题系统与设计 Token
+导出插件通过 `export.action` 返回内容，并用 `disposition` 指定复制、下载等处理方式。宿主负责操作剪贴板或下载文件；编解码插件负责格式限制、长度估算和警告文案。
 
-主题通过 `theme.definition` 插槽提供扩展贡献，包含封闭的 Workbench 界面颜色键集合、设计令牌与课程调色方案。图标主题不再提供独立选择项，而是根据当前激活配色方案中的 `recommendedIconTheme` 自动派生（[ADR 0026](.agents/docs/adr/0026-icon-theme-follows-color-scheme.md)）。
+### 网络与宿主能力
 
-设计 Token 统一定义于 `apps/web/src/lib/theme/` 目录下（[ADR 0034](.agents/docs/adr/0034-design-token-layering.md)），自底向上划分为生成色彩、排版标尺（`text-*`）、圆角规范、布局间距与组件层级（`ui-*`）五个层次。界面颜色由所选主题提供，首屏从 Profile 默认插件的静态资源生成；M3 算法和资源生成只属于 `theme-m3`。详细规则见[参考：主题契约](#参考主题契约)。
+插件通过平台接口访问网络和存储等能力。使用可选能力前，先用 `ctx.tryService` 或相应的检测方法确认是否可用。
 
-### 外壳常驻保活与视图过渡
+`IHttpService.proxy` 通过 `/api/plugins/{pluginId}/{action}` 调用服务端。调用前，使用 `supportsPluginServer` 检查服务端是否支持该操作。`bypassCors` 只在支持此功能的原生宿主中生效。
 
-Chronos 采用「一级外壳常驻保活 + 二级页面按需加载」的路由与视图架构（[ADR 0033](.agents/docs/adr/0033-persistent-shell-freeze-and-secondary-view-transition.md)）：
+服务端插件通过 `./server` 导出请求处理函数，通过 `./server/definition` 导出插件 ID、代理操作（action）和域名等定义。导入定义模块时不应执行额外操作。宿主需要将插件包加入构建依赖，并在部署配置中选择要启用的插件 ID。客户端安装插件不会改变服务端部署；域名声明用于校验和审查，本身不会限制服务端向外发送请求。
 
-- **常驻外壳 (`ShellRouteHost`)**：根 Layout 中常驻保活一级外壳（包含底部导航栏与 `ShellTabPanels`），底栏 Tab 切换由 `AppShellController.activeTabId` 内部响应式状态驱动，实现无白屏的瞬时切换（[ADR 0029](.agents/docs/adr/0029-shell-internal-tab-navigation.md)）；
-- **离屏冻结 (`secondary-transition-gate`)**：当用户进入二级独立页面时，外壳内容区（`.shell-content`）通过 `content-visibility: hidden` 离屏冻结；壁纸合成层留在 `.shell-root` 内、冻结范围外，避免解码帧丢失（[ADR 0033](.agents/docs/adr/0033-persistent-shell-freeze-and-secondary-view-transition.md) / [ADR 0039](.agents/docs/adr/0039-shell-wallpaper-compositor.md)）；
-- **视图过渡隔离 (View Transition)**：`view-transition-name: page-root` 仅挂载在二级页面的根容器（`SecondaryPageShell`）上。禁止将主外壳与二级页面置于同一个带有过渡名称的父容器中，以确保动画流畅稳定。
-
-### 深读路径
-
-按时间线完整记录设计取舍的是 [ADR 索引](.agents/docs/adr/README.md)。建议阅读顺序：
-
-1. [ADR 0001](.agents/docs/adr/0001-microkernel-and-monorepo-modularization.md) 微内核与 Monorepo 模块化分层架构
-2. [ADR 0003](.agents/docs/adr/0003-hierarchical-slot-registry-and-extensibility.md) 分层插槽树与声明式扩展机制
-3. [ADR 0011](.agents/docs/adr/0011-single-track-official-plugin-install.md) 官方插件在线分发与统一加载机制
-4. [ADR 0029](.agents/docs/adr/0029-shell-internal-tab-navigation.md) 壳内 Tab 内部状态导航与底栏路由解耦
-5. [ADR 0030](.agents/docs/adr/0030-official-plugin-version-co-shipping-and-host-sync.md) 官方插件随宿主发版与启动时静默同步
-6. [ADR 0032](.agents/docs/adr/0032-round8-dual-track-collapse.md) Round 8 架构收敛（消除双轨装配、单源 Profile 与统一异常规范）
-7. [ADR 0033](.agents/docs/adr/0033-persistent-shell-freeze-and-secondary-view-transition.md) 外壳常驻保活与二级页面视图过渡隔离
-8. [ADR 0034](.agents/docs/adr/0034-design-token-layering.md) 设计 Token 分层与命名规范
-
-### 插件作者指南
-
-Chronos 的每一项业务功能均通过插件贡献：数据源、导出编解码、主题外观、独立屏幕及视图徽章。本指南介绍如何编写插件，以及插件能力的访问边界与最佳实践。
-
-### 最小插件
-
-```ts
-import { defineChronosPlugin } from '@chronos/core';
-
-export default defineChronosPlugin({
-	id: 'my-plugin',
-	messages: {
-		'zh-cn': { name: '我的插件', greeting: '你好，{name}' },
-		en: { name: 'My Plugin', greeting: 'Hello, {name}' }
-	},
-	nameKey: 'name',
-	category: 'tool',
-	apply(ctx, t) {
-		ctx.registerSlot('export.action', {
-			id: 'copy-markdown',
-			title: () => t('export.md'),
-			disposition: 'clipboard',
-			async export(timetable) {
-				return { mimeType: 'text/markdown', content: renderMarkdown(timetable) };
-			}
-		});
-	}
-});
-```
-
-`defineChronosPlugin` 是定义插件的唯一标准工厂函数（[ADR 0027](.agents/docs/adr/0027-round6-architecture-subtraction.md)）：它会自动注册 `messages` 多语言消息目录、按需解析本地化的 `name` / `description`，并将翻译函数 `t` 作为第二个参数传递给 `apply` 方法。`version` 字段未指定时默认为 `'1.0.0'`。
-
-### 插件可访问的能力：`ctx`
-
-| 成员                          | 说明                                                                       |
-| ----------------------------- | -------------------------------------------------------------------------- |
-| `ctx.service(id)`             | 按服务标识获取端口实例；若服务未注册则抛出异常。使用可选端口前应先探测     |
-| `ctx.config` / `updateConfig` | 插件私有配置，由 `configSchema` 声明式描述并由宿主持久化存储               |
-| `ctx.storage`                 | 按 pluginId 自动隔离的键值（KV）存储                                       |
-| `ctx.i18n`                    | 多语言翻译函数 `t(key, params)` 与动态消息注册 `registerMessages(catalog)` |
-| `ctx.state`                   | 全局只读快照：包含当前课表、活动周次、节次排布、激活主题等                 |
-| `ctx.actions`                 | 业务动作分发器：支持切换/导入课表、增删改查课程、更新偏好设置等            |
-| `ctx.registerSlot`            | 向分层插槽树声明扩展贡献，插件卸载时由系统自动清理                         |
-| `ctx.on` / `ctx.emit`         | 引擎全局事件总线的监听与广播                                               |
-| `ctx.addDisposable`           | 登记自定义的清理回调或资源句柄（卸载时自动调用）                           |
-
-**访问限制**：插件无法直接访问宿主内部路由、其他插件的私有存储或 DOM 以外的宿主私有对象。跨插件通信应严格通过插槽贡献或引擎事件完成。
-
-### 消息目录与多语言
-
-`messages` 的结构为 `Record<locale, Record<key, string>>`，至少需要提供 `zh-cn`。插槽中的 `title` / `supportingText` 等字段类型为 `LocalizedText`（即 `string | (() => string)`）；若需要跟随应用语言实时切换，请传入函数形式并在函数内调用 `t()`。宿主在语言切换时会通过 `engine.setLocale` 广播 `i18n:localeChanged` 事件，所有插槽 UI 将自动重新解析渲染（详见 [ADR 0024](.agents/docs/adr/0024-plugin-message-catalog-i18n.md)）。
-
-### 富 UI：单一 mountable 协议
-
-任何需要渲染自定义 UI 的插槽字段均声明为 `component?: ChronosMountable`：
-
-- 进程内内置的 Svelte 组件使用 `@chronos/ui-kit` 提供的 `mountableSvelteComponent()` 包装；
-- 在线分发的 ESM 插件 Bundle 内置 Mountable 包装逻辑；
-- 宿主统一通过 `MountableSlotOutlet` 渲染插槽组件（在未提供组件时自动回退为 `SchemaForm` 表单），无需对不同来源的组件做特殊分支处理。
-
-请勿设计第二套组件挂载协议；`schema` 字段作为声明式配置回退，而非平行的渲染轨道。
-
-### 配置 Schema
-
-`configSchema` 使用内核提供的声明式模式定义（`ConfigSchema`），支持文本、数字、布尔开关、日期选择、文件上传（含二进制读取）等丰富类型。宿主将使用 `SchemaForm` 自动渲染配置表单，并与 `defaultConfig` 合并持久化。可参考 `packages/plugins/theme-yumemita` 的具体实现。
-
-### 网络请求
-
-- 浏览器端发起网络请求受同源策略（CORS）限制；`IHttpRequestOptions.bypassCors` 仅在支持的原生宿主环境中生效。
-- 需要服务端代理转发的场景，可编写插件服务端 Handler，路由挂载于 `/api/plugins/{pluginId}/{action}`；前端通过 `IHttpService.proxy(pluginId, action, payload)` 发起调用。网络数据包统一采用 core 单源定义的 `PluginServerResponse<T>` 规范信封（见 [ADR 0025](.agents/docs/adr/0025-official-plugin-modules-and-proxy-contract.md)）。
-- 插件可通过 `allowedDomains` 声明允许访问的域名白名单。
-- 如需打开宿主内置页面（如课程编辑器），请通过 `ctx.tryService(IHostNavigation)?.openCourseEditor(courseId)` 调用，**严禁**在插件内部硬编码宿主路由路径（如 `/timetable/...`，见 [ADR 0031](.agents/docs/adr/0031-round7-clock-profile-codegen-navigation-i18n.md)）。
-- 如需渲染与课表页一致的课程颜色，请通过 `ctx.tryService(ICoursePresentationService)` 获取当前调色板并按课表 ID 解析颜色（`resolveCoursePaintsForTimetable` / `resolveCoursePaint`）。**严禁**对可见课程子集自行调用 `assignCourseDisplayColors`。官方 ESM 插件无法读取宿主 Svelte context，`TIMETABLE_PRESENTATION_CONTEXT` 仅供进程内宿主 UI 使用。
-
-### Profile 预安装与部署
-
-客户端预安装在 `apps/web/src/lib/profile-codegen/profile-definitions.ts` 声明。`deployment-definitions.ts` 仅选择服务端插件 ID；插件包通过 `./server` 和无副作用的 `./server/definition` 导出处理函数与 `serverDefinition`（ID、代理 action、域名），构建器据此生成静态导入、路由及客户端能力列表。服务端插件还须是宿主构建依赖。发行任务通过 `CHRONOS_PROFILE` 与 `CHRONOS_DEPLOYMENT` 分别选择。插件通过 `IHttpService.supportsPluginServer(pluginId, action)` 判断具体服务端能力，安装插件不会部署服务器。域名声明供构建校验和审查，当前不构成服务端出站网络限制（见 [ADR 0044](.agents/docs/adr/0044-server-plugin-definition-and-deployment-assembly.md)）。
-
-所有预安装资源来自 `scripts/official-plugins.config.ts` 的市场构建产物。构建根据当前 Profile 生成带内容修订的 PWA 预缓存；未预安装的插件按需下载。无须维护静态插件导入表。新增预安装插件时必须同时提供市场构建入口。
-
-### 官方插件 Tailwind
-
-官方 UI 插件在 `bundle/entry.ts` 中引入 `bundle/styles.css`，该文件 `@import '@chronos/ui-kit/theme/plugin-tailwind.css'` 并 `@source` 插件自身 `src/`。构建时 Tailwind v4 只编译 utilities（无 Preflight），原子类写入自包含 `bundle.css`，宿主在插件 activate 时注入 `<style data-plugin-id>`，deactivate 时卸载。
-
-宿主 `layout.css` 不扫描业务插件源码。包括 `source-cqut` 和 `codec-share` 在内的全部 UI 插件自行构建 CSS。
-
-第三方插件应使用同一 CSS 入口契约。以下类仍由宿主全局提供，插件 CSS 不必重复产出：`text-*` 字阶（`typography.css`）、`ui-*` 模式、`.bottom-bar`。颜色原子类必须走 `plugin-tailwind.css` 的 `@theme inline` 桥，以便跟随宿主 CSS 变量与动态主题。
-
-开发态 HMR 将产物写入 `dist/dev-plugins/{pluginId}/{rev}/`，revision 来自内容摘要。开发中间件提供 catalog、manifest 和带 revision 的资源，因此干净环境也能完成完整安装链路，不依赖生产 static 产物。缺失修订返回 404。
-
-HMR 根据编译记录追踪插件源码、共享包、CSS 扫描目录和资源；测试与文档不触发编译。独立图片或 JSON 更新复用未受影响的代码，同一插件串行并合并连续保存，失败保留旧产物。相同内容不发送重复更新；旧 revision 在会话内保留，重启时清理不再引用的版本。
-
-`MountableSlotOutlet` 会把宿主 Svelte context 传给 `CHRONOS_MOUNTABLE.mount()`，但仅对**进程内**、与宿主共享 Svelte 运行时的组件有效（如 Profile 内置 `source-cqut` / `codec-share`）。官方自包含 ESM 插件自带独立 Svelte 运行时，其组件内 `getContext()` 无法读取宿主 context；应通过 props / engine API 获取数据。
-
-插件富 UI 通过 `ChronosUiController`（`controller.snapshot` 可读 store）订阅宿主状态，在插件自身 Svelte 运行时用 `fromStore(controller.snapshot)` 读取快照；动作仍调用 controller 方法。`TIMETABLE_PRESENTATION_CONTEXT` 与 `PREVIEW_PAINT_READY_CONTEXT` 提供 `Readable` 订阅源，同样用 `fromStore()` 消费，但**仅限进程内**宿主/内置插件；官方 ESM 插件应使用 `ICoursePresentationService` 获取课程颜色。`MountableSlotOutlet` 在 props 变化时调用 `update()`，仅在组件或挂载目标变化时重新挂载。
-
-### 分发形态
-
-| 形态              | 适用场景                                  | 交付要求                                                                                                                                                                                        |
-| ----------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Profile 内置      | 随应用发行的核心能力（如 source-cqut）    | 声明在 Profile 清单中，随宿主在进程内启动加载                                                                                                                                                   |
-| 官方在线 ESM 插件 | 包含业务逻辑与富 UI 的扩展（如 today）    | 构建为自包含 ESM Bundle，Manifest 附带 SHA-256 哈希，版本与 `apps/web` 单源协同发版并在启动时静默同步（[ADR 0030](.agents/docs/adr/0030-official-plugin-version-co-shipping-and-host-sync.md)） |
-| JSON-only 主题    | 纯静态配色与图标资源（如 theme-yumemita） | `ThemeManifest` 显式声明 `colorsUrl` / `iconThemeUrl` / `themeId`，不含任何 JavaScript 脚本                                                                                                     |
-
-发布流程见[新增官方插件](#新增官方插件)。
-
-### 生命周期与清理
-
-在 `apply` 中通过 `registerSlot` 或 `on` 注册的资源，会在插件被禁用或卸载时由 `ScopedContext` 自动注销清理；对于自建的定时器、事件监听器等外部资源，请通过 `ctx.addDisposable` 登记或在 `dispose` 钩子函数中显式清理。主题类插件卸载时，宿主会自动调用 `revertToDefaultThemes()` 恢复默认主题，插件只需确保自身加载的样式与内存资源被正确释放。
+打开宿主页面时使用 `IHostNavigation`，获取公开链接入口时使用 `IHostLinks`，不要自行拼接宿主内部路径。
 
 ## 新增官方插件
 
-以下是从零开始开发并上架至官方插件市场（Catalog）的完整步骤。示例以 JSON-only 主题插件为主路径，ESM 逻辑插件的差异在第 5 步说明。
+1. 在 `packages/plugins/` 下创建插件包。包含业务逻辑或自定义界面的插件使用 ESM；只有静态资源的主题可以只提供 JSON。目录结构可以参考现有同类插件。
+2. 在 [official-plugins.config.ts](scripts/official-plugins.config.ts) 中注册构建入口和市场展示信息。市场文案独立于插件内部词条，因此在安装前也能显示。
+3. 如果某个发行版本需要预安装该插件，将插件 ID 加入对应 Profile。服务端插件还需要加入部署配置和宿主构建依赖。用户不能禁用或卸载当前 Profile 要求预安装的插件。
+4. 运行插件构建或对应的应用构建，检查安装、激活和失败回滚是否正常。可选插件还需检查卸载；有界面的插件需检查语言切换，以及关闭界面后的资源清理。
 
-### 1. 创建插件包
+Bundle、Manifest 和 Catalog 都由构建生成，无需提交到版本库。开发环境通过中间件提供插件市场，生产文件输出到 `apps/web/static/official-plugins/`。
 
-在 `packages/plugins/` 下新建目录（命名规范：`theme-<name>` / `codec-<name>` / `source-<name>` / `tool-<name>`），`package.json` 可参照 `packages/plugins/theme-yumemita`。插件依赖仅允许包含 `@chronos/core`、`@chronos/ui-kit` 与纯工具库，**禁止依赖其他业务插件**。
+默认主题如何在首屏前加载、缺少的预安装插件如何补装，以及用户配置和离线资源如何处理，见 [ADR 0042](.agents/docs/adr/0042-unified-plugin-preinstallation.md)。
 
-### 2. 实现插件逻辑
+## 新增插槽类型
 
-- **主题插件（纯资源）**：准备两份 JSON 文件——配色方案（对应 `ThemeContribution` 的 Workbench 界面颜色键与设计令牌）与图标主题映射，无需编写 JavaScript 代码。
-- **逻辑/富 UI 插件**：使用 `defineChronosPlugin` 编写入口并在 `apply` 中注册插槽，参考[插件作者指南](#插件作者指南)。涉及自定义组件时必须遵循单一 `ChronosMountable` 挂载协议。
+插槽是插件向宿主提供功能的扩展接口。插件注册到插槽的内容称为“贡献”，例如一个导入入口或一个课程操作按钮。
 
-### 3. 注册构建配置
+如果现有插槽无法满足需求，在 [slots.ts](packages/core/src/types/slots.ts) 中定义新的贡献类型，并将键名加入 `StandardSlotMap`；宿主也需要增加对应的处理或渲染逻辑。自定义插槽可以通过 TypeScript 模块扩展（module augmentation）添加到 `CustomSlotMap`。
 
-编辑 `scripts/official-plugins.config.ts`：将新插件加入构建映射列表（源码目录 → Bundle 输出路径 + Manifest 元数据）。版本号以配置文件作为单一来源，无需在插件源码中重复声明。
+设计时需要说明：多个插件同时注册内容时如何处理、没有内容时如何显示，以及插件卸载后如何清理。排序使用注册表的结果，文案解析使用 `resolveLocalizedText`，主操作选择使用 `pickPrimary`，组件挂载使用现有的 Mountable 容器。
 
-市场中的名称与简介由此处的多语言 Manifest 元数据提供，安装插件前即可展示；插件运行时的文案由各插件的 Message Catalog 管理。两者可针对展示场景使用不同措辞，修改简介时应检查两处，不要在构建配置中单独导入某个插件的消息目录。
-
-### 4. 构建与校验
-
-官方插件产物**不纳入版本库**，由宿主构建或开发服务器自动生成：
-
-- `vp run build` / `vp run build:*`：构建宿主前自动产出 Bundle / Manifest / `catalog.json`（含哈希自校验）
-- `vp run dev`：首次启动时若缺少 `catalog.json` 会自动构建
-- `vp run build:official-plugins`：仅改插件源码时的快速迭代命令
-- `vp run verify:official-plugins`：对已有产物执行独立校验（可选）
-
-构建产物输出至 `apps/web/static/official-plugins/`（本地工作区，已 gitignore），随 `static/` 进入部署包。
-
-### 5. ESM 插件附加要求
-
-若插件包含 JavaScript 逻辑或 Svelte 组件：
-
-1. Bundle 必须自包含（Svelte 运行时编译打包进产物中），通过 Blob ESM 方式加载；
-2. 富 UI 插件需提供 `bundle/styles.css`（`@import '@chronos/ui-kit/theme/plugin-tailwind.css'` + `@source '../src'`），并在 `entry.ts` 中引入；Manifest 需完整声明 `cssUrl`、`cssSha256`、`sha256`，`version` 字段取自 `apps/web/package.json`；
-3. 富 UI 必须提供 Mountable 包装器，不暴露裸 Svelte 组件；
-4. 本地验证可在「我的 → 插件管理」中通过模拟 Catalog 在线安装流程进行全链路测试，确保运行表现与内置插件完全一致（见 [ADR 0011](.agents/docs/adr/0011-single-track-official-plugin-install.md)）。
-
-### 6. 收尾工作
-
-- 若引入了新的领域术语或插槽冲突策略，请同步更新相关设计文档。
-- 若新增了跨插件或跨模块的可复用契约（如新的插槽字段），请先阅读[新增插槽类型](#新增插槽类型)。
-- 提交信息严格遵循仓库 Gitmoji 规范。
-
-### 验证清单
-
-- [ ] `vp run build:official-plugins` 或 `vp run build` 通过（含内置哈希校验）
-- [ ] 安装 → 启用 → 禁用 → 卸载 全生命周期流程正常，卸载后主题正确回退为默认项
-- [ ] 切换应用语言后插件文案正常跟随切换（具备多语言支持时）
-- [ ] 宿主代码无插件特判：在宿主源码中 `grep` 不应出现该插件的 ID（Catalog 配置文件除外）
-
-### 新增插槽类型
-
-当现有标准插槽无法满足新的扩展场景时，按照本节步骤扩展微内核契约。设计原则：**插槽是声明式的扩展贡献点，而非回调钩子**——在扩展前请确认无法通过「现有插槽 + 扩展字段」的组合方案解决。
-
-### 1. 定义贡献契约
-
-在 `packages/core/src/types/slots.ts` 中新增插槽贡献接口并在 `StandardSlotMap` 中声明键名：
-
-```ts
-export interface MyThingSlotContribution {
-	id: string;
-	title: LocalizedText; // 用户文案统一使用 LocalizedText
-	order?: number; // 多个贡献者共存时的排序权重
-	// …业务领域字段；自定义组件统一采用 component?: ChronosMountable
-}
-
-export interface StandardSlotMap {
-	// …现有标准插槽
-	'my-domain.thing': MyThingSlotContribution;
-}
-```
-
-命名规则：采用 `<域>.<对象>.<角色>` 的分层路径命名（如 `timetable.cell.badge`）。文本类型使用 `LocalizedText`，排序契约使用可选的 `order` 字段，富 UI 统一使用 `component?` 并支持可选的声明式回退配置。
-
-### 2. 实现宿主消费点
-
-消费端应遵循统一的渲染与解析规范：
-
-- **排序规则**：按 `order` 升序排列，缺省排在前面；选取主操作时使用 `pickPrimary()`（显式声明 `isPrimary` 的优先，否则取首项）。
-- **本地化文本**：统一调用内核的 `resolveLocalizedText()` 单一实现解析文本与徽章内容。
-- **富 UI 渲染**：统一由 `MountableSlotOutlet` 组件承接渲染；未提供组件时自动回退至 `SchemaForm` 表单。
-- **底栏面板适配**：仅依据 `BottomTabSlotContribution.hostPanel`（`'timetable' | 'mine'`）识别内置面板，不应以 Tab ID 字符串字面量作硬编码分支；未声明 `hostPanel` 的外部插件 Tab 则通过 `resolveSlotOwner` 配合 `PluginScreenContainer` 容器挂载渲染。
-
-严禁在各消费点自行编写 `typeof x === 'function' ? x() : x` 等重复逻辑——相关解析与选择逻辑均已收敛至内核单源工具库（[ADR 0021](.agents/docs/adr/0021-slot-consumption-seam.md)、[ADR 0032](.agents/docs/adr/0032-round8-dual-track-collapse.md)）。
-
-### 3. 补充冲突策略
-
-在插槽文档中明确该插槽在多贡献者并存时的处理策略（如共存排序、数据聚合或单一主控等）。缺少明确冲突策略的插槽设计不允许合并。
-
-### 4. 测试与门禁
-
-- 插槽注册表测试：验证注册、撤销、Owner 追踪及同 ID 覆盖警告机制；
-- 消费端渲染测试：验证无贡献者时的快速早退逻辑与多贡献者排序表现；
-- 执行 `vp run check` 与 `vp run test` 确保各项检查全部通过。
-
-### 5. 文档同步
-
-- 在[参考：槽位目录](#参考槽位目录)中追加新增插槽的规范说明；
-- 若属于架构级演进决策，需新增对应 ADR 并更新索引文档。
+验证注册、覆盖、撤销和界面处理是否符合预期。只有涉及新的架构选择时，才需要增加 ADR。
 
 ## 参考：端口契约
 
-宿主平台底层能力通过 `ChronosEnv` 以五个标准端口的形式提供。运行时代码（包括引擎与插件）一律通过 `engine.*` 访问器或 `ctx.service(...)` 消费能力，禁止直接调用平台全局 API。类型定义见 `packages/core/src/types/services.ts`。
+端口是宿主提供给引擎和插件的平台接口。完整的方法定义见 [services.ts](packages/core/src/types/services.ts)，宿主如何传入这些能力见 [env.ts](packages/core/src/types/env.ts)。
 
-| 端口                | 必需 | 职责                                                                    |
-| ------------------- | ---- | ----------------------------------------------------------------------- |
-| `IHttpService`      | 是   | 网络请求与代理转发能力；提供 `proxy` 方法支持插件服务端通信             |
-| `IStorageService`   | 是   | 课表数据、用户偏好、壁纸资产以及插件私有 KV 数据的持久化存储            |
-| `IVaultService`     | 否   | 硬件级加密凭据保险箱（如 iOS Keychain、Android Keystore）；非通用键值库 |
-| `IRuntimeService`   | 是   | 运行环境平台标识（platform）与基础 SHA-256 哈希计算能力                 |
-| `IAnalyticsService` | 否   | 匿名产品指标统计；未注册时静默忽略                                      |
+| 端口                                         | 职责                                                                         |
+| -------------------------------------------- | ---------------------------------------------------------------------------- |
+| `IStorageService`                            | 读写课表、偏好和插件 KV，查询多个课表中的课程；今日插件已使用 `queryCourses` |
+| `IHttpService`                               | 发起请求、调用服务端代理、检查服务端能力                                     |
+| `IRuntimeService`                            | 提供平台标识和 SHA-256 计算                                                  |
+| `IVaultService`                              | 可选的凭据加密存储，Web 端未实现                                             |
+| `IAnalyticsService` / `IErrorCaptureService` | 可选的产品统计和错误捕获                                                     |
+| `IHostNavigation` / `IHostLinks`             | 可选的宿主页面导航和公开链接查询                                             |
+| `ICoursePresentationService`                 | 可选的课程调色板查询，以及按课表获取课程颜色                                 |
 
-### IHttpService
+插件 KV 支持 JSON 和二进制数据。二进制可以写入 `Blob` 或 `Uint8Array`，读取时统一返回 `Blob`。同一个键只能保存一种数据：写入 JSON 会替换原有二进制数据，反之亦然。详见 [ADR 0036](.agents/docs/adr/0036-plugin-kv-binary-storage.md)。
 
-```ts
-request(url, options?: HttpRequestOptions): Promise<HttpResponse>
-proxy?(pluginId, action, payload, options?): Promise<HttpResponse>
-```
-
-- `HttpRequestOptions` 支持 `method` / `headers` / `body`（string 或 Uint8Array）/ `timeoutMs` 与 `bypassCors`（由原生宿主环境兑现）。
-- `proxy` 将请求数据以 POST 方式转发至 `/api/plugins/{pluginId}/{action}`；响应数据包严格遵循 core 单源定义的 `PluginServerResponse<T>` 规范（通过 `pluginServerSuccess`、`pluginServerError` 与 `parsePluginServerResponse` 处理）。方法签名保持非泛型设计，契约作用于 HTTP Body 传输层（[ADR 0025](.agents/docs/adr/0025-official-plugin-modules-and-proxy-contract.md)）。
-
-### IStorageService
-
-包含课表增删改查、当前活动课表指针维护、偏好设置读写以及按 `pluginId` 自动划分命名空间的插件键值存储（`getPluginData` / `setPluginData` 等）；可选支持 `clearAllData`（清除全部数据）、`estimateStorageBytes`（存储占用估算）与 `onChanged`（变更监听）。
-
-**插件 KV 值类型**（详见 [ADR 0036](.agents/docs/adr/0036-plugin-kv-binary-storage.md)）：
-
-- **JSON**：可序列化对象，存入 Dexie `pluginData` 表，读出为解析后的 JSON；
-- **二进制**：写入 `Blob`（MIME 取自 `blob.type`）或 `Uint8Array`（存为 `application/octet-stream`），存入 Dexie `pluginBinary` 表，读出**始终**为 `Blob`；
-- 同一 `pluginId:key` 仅存 JSON 或二进制之一，写入一侧时删除另一侧。
-
-**预留能力说明**：`queryCourses(filter)` 支持跨课表课程联合查询。该接口属于架构预留能力，请勿擅自清理，亦无需在出现明确业务需求前继续扩充。
-
-### IVaultService
-
-硬件级安全凭据存取接口：提供 `isSupported`、`storeSecret`、`getSecret`、`removeSecret` 等方法，支持结合生物识别认证保护。使用约束：
-
-- 仅用于存储高敏感度的小体积凭据（如教务系统登录凭证），不可作为通用键值数据库使用；
-- Web 端实现已废弃（见 [ADR 0017](.agents/docs/adr/0017-webauthn-credential-retirement.md)），当前端口保留供未来的原生宿主使用；引擎仅在宿主环境提供 `env.vault` 时才注册该服务。
-
-### IRuntimeService
-
-提供 `platform: 'web' | 'ios' | 'android' | 'node'` 平台标识与 `sha256(data)` 哈希计算能力。早期版本中的计时器与 UTF-8 编解码辅助方法已全部精简，由标准全局 API 或通用编解码库替代。
-
-### IAnalyticsService
-
-包含单一 `track(event, properties?)` 方法。通过宿主 `ChronosEnv.analytics` 提供；未配置统计 Key 的构建版本不会启用埋点服务，运行时代码应容忍该服务未注入的情况。
-
-- **宿主 UI**：`trackEvent(name: HostAnalyticsEvent)`（`apps/web/src/lib/client/analytics.ts`）
-- **插件 UI**：`trackPluginAnalytics(ctx, pluginId, action)`（`@chronos/core`）→ PostHog 事件名 `plugin.{pluginId}.{action}`；action 在插件包内以 `as const` 定义。禁止插件 import `$lib/client/analytics`。
-
-详见 [ADR 0037](.agents/docs/adr/0037-plugin-analytics-namespacing.md)。
-
-### 宿主装配规则
-
-`ChronosEnv` 作为宿主启动阶段的环境适配器（针对 Web 与未来原生平台）。所有宿主在创建 `ChronosEngine` 时必须传入完整的 `env` 实例；`ScopedContext.service()` 从 `env` 解析标准端口，保证来源单一明确。
+用户自定义图片和主题图片由宿主单独保存在 `images` 中。
 
 ## 参考：槽位目录
 
-全部标准插槽的契约参考。类型定义位于 `packages/core/src/types/slots.ts`；扩展新插槽的步骤请参阅[新增插槽类型](#新增插槽类型)。
+完整定义见 [slots.ts](packages/core/src/types/slots.ts)。注册的内容按 `order` 从小到大排序，未设置时按 `50` 处理。同一插槽内，如果 ID 相同，后注册的内容会覆盖先注册的内容。`LocalizedText` 支持字符串、按语言组织的文本对象，以及返回文本的回调函数。
 
-### 总览
+| 槽位                         | 用途与处理规则                                                                      |
+| ---------------------------- | ----------------------------------------------------------------------------------- |
+| `import.source.tab`          | 注册多个导入来源，使用 Schema 或自定义界面，共用宿主导入流程                        |
+| `export.action`              | 注册多个导出操作，由 `pickPrimary` 选择主操作                                       |
+| `mine.section` / `mine.item` | 注册“我的”页面中的分组和条目；未指定分组时，宿主使用 `app-support`                  |
+| `shell.route.screen`         | 注册 `/plugins/[pluginId]/[id]` 独立页面，也可通过 `landscapeRail` 提供横屏侧栏内容 |
+| `shell.bottom-bar.tab`       | 注册应用底部标签页；`hostPanel` 标记宿主页面，`defaultLaunch` 声明默认启动页候选    |
+| `timetable.cell.badge`       | 汇总各插件提供的课程徽章，没有贡献时直接返回                                        |
+| `course.detail.action`       | 注册课程详情页的操作                                                                |
+| `theme.definition`           | 注册配色主题，供用户选择                                                            |
+| `theme.icon.definition`      | 注册图标主题，由当前配色主题决定使用哪一套                                          |
 
-| 槽位路径                     | 用途                                                                          | 多贡献者策略                                                   |
-| ---------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `import.source.tab`          | 导入数据源标签页（支持在线抓取、本地文件、链接分享等）                        | 允许多个共存，按 `order` 升序排列                              |
-| `export.action`              | 课表导出操作（支持剪贴板复制、文件下载、自定义处理等）                        | 允许多个共存，通过 `isPrimary` 标识主操作                      |
-| `mine.section` / `mine.item` | 「我的」页面中的功能分组与条目                                                | 允许多个共存，按 `order` 升序排列                              |
-| `shell.route.screen`         | 插件独立全屏页面（路由映射至 `/plugins/[pluginId]/[id]`）                     | 每个 ID 对应独立屏幕                                           |
-| `shell.bottom-bar.tab`       | 底部导航栏标签项（宿主面板指定 `hostPanel`，外壳内部通过 `activeTabId` 切换） | 允许多个共存，按 `order` 升序排列                              |
-| `timetable.cell.badge`       | 课程格子徽章标识                                                              | 聚合所有贡献者（预留能力，无贡献者时快速返回）                 |
-| `course.detail.action`       | 课程详情面板操作按钮                                                          | 允许多个共存，按 `order` 升序排列                              |
-| `theme.definition`           | 配色主题定义                                                                  | 允许注册多个主题，由用户选择当前激活项                         |
-| `theme.icon.definition`      | 图标主题定义                                                                  | 根据当前激活主题的 `recommendedIconTheme` 派生，无独立用户偏好 |
-
-### 通用约定
-
-- **LocalizedText**：所有面向用户的文案类型均为 `LocalizedText`（即 `string | (() => string)`）；消费端统一使用内核单源的 `resolveLocalizedText()` 函数进行解析。
-- **排序规则**：可选的 `order` 字段按数值升序排列；选择主要操作项时使用 `pickPrimary()` 工具（显式声明 `isPrimary` 的项优先，否则默认取首项）。
-- **富 UI 渲染**：自定义组件字段一律遵循 `component?: ChronosMountable` 单一挂载协议，宿主统一使用 `MountableSlotOutlet` 组件承接渲染。
-- **同 ID 覆盖**：同一插槽内若注册了相同 `id` 的贡献项，后注册者将覆盖先前注册的项，并在开发环境下输出警告日志。
-
-### import.source.tab
-
-```ts
-interface ImportTabSlotContribution<FormState> {
-	id: string;
-	title: LocalizedText;
-	order?: number;
-	icon?: ShellIconRef;
-	supportingText?: LocalizedText;
-	importKind?: 'online' | 'file' | 'link' | 'custom'; // 宿主导入分组文案
-	badge?: LocalizedText;
-	inputSchema?: ConfigSchema<FormState>; // 声明式输入表单
-	defaultInput?: FormState;
-	component?: ChronosMountable; // 可选的富输入 UI
-	confirmComponent?: ChronosMountable; // 确认阶段富 UI
-	confirmSchema?: ConfigSchema<FormState>; // 确认阶段声明式回退
-	confirmDefaultInput?: FormState;
-	validateConfirmInputs?(inputs): string | null; // 返回 null 表示验证通过
-	finalizePreview?(preview, confirmInputs, ctx?): Timetable | Promise<Timetable>;
-	deepLink?: { fromLocation(location): Record<string, unknown> | null }; // 供 /s 分享页通用识别
-	executeImport(inputs, ctx?): Promise<Timetable>;
-}
-```
-
-流程属主为宿主 `transfer-state`：依次经过「数据预览 → 用户确认 → `finalizePreview` 数据合并 → `engine.importTimetable` 写入引擎」四个阶段。若导入失败，统一抛出结构化的 `ImportSlotError`（包含 kind 类型：`no-data` / `invalid-data` / `network` / `unsupported` / `unknown`）。
-
-### export.action
-
-```ts
-interface ExportActionSlotContribution {
-	id: string;
-	title: LocalizedText;
-	order?: number;
-	icon?: ShellIconRef;
-	description?: LocalizedText;
-	disposition?: 'clipboard' | 'download' | 'custom';
-	isPrimary?: boolean;
-	export(timetable, ctx?): Promise<ExportResult>;
-	estimateLength?(timetable, ctx?): Promise<number>; // 大课表导出时的预估长度与阈值判断
-	checkWarning?(timetable, ctx?): Promise<string | null>;
-}
-```
-
-`ExportResult.content` 支持 `string` 或 `Uint8Array`；剪贴板写入与文件下载等具体落盘行为由宿主平台层提供支持。
-
-### shell.route.screen
-
-```ts
-interface PluginScreenSlotContribution {
-	id: string; // 路由映射至 /plugins/[pluginId]/[id]
-	title: LocalizedText;
-	component?: ChronosMountable; // 缺省时自动回退为 schema 声明式渲染
-	landscapeRail?: ChronosMountable; // 可选：紧凑横屏的右侧栏内容
-	schema?: ConfigSchema;
-}
-```
-
-`landscapeRail` 沿用 `CHRONOS_MOUNTABLE` 协议，在对应插件标签或独立页面激活时挂载；宿主传入 `controller`、`pluginId`、`viewId`、`active`。内容区域位于约 4.5rem 宽的侧栏内，宿主保留导航或返回按钮的位置。竖屏不挂载该内容，切换页面或卸载插件时会清理挂载实例。
-
-### shell.bottom-bar.tab
-
-```ts
-interface BottomTabSlotContribution {
-	id: string;
-	label: LocalizedText;
-	order?: number;
-	icon?: ShellIconRef;
-	iconFill?: ShellIconRef;
-	hostPanel?: 'timetable' | 'mine'; // 宿主内置面板；插件 Tab 省略该字段
-	defaultLaunch?: boolean;
-}
-```
-
-宿主通过 `hostPanel` 识别并渲染课表与「我的」内置页面。应用冷启动时优先通过 `resolveHostPanelTab(tabs, 'timetable')` 寻找默认 Tab，未找到时取注册表第一项。插件扩展的自定义 Tab 无需声明 `hostPanel`，消费端将通过 `resolveSlotOwner` 结合 `PluginScreenContainer` 容器挂载渲染。
-
-### mine.item
-
-`sectionId` 用于关联至指定的 `mine.section` 分组；未指定时默认归入 `DEFAULT_MINE_SECTION_ID`（即 `'app-support'`）。`href` 可指向宿主内置路由或插件动态路由；`keywords` 用于支持页面内搜索；`iconTone` 支持 `primary | secondary | tertiary | neutral` 四种视觉色调。
-
-### theme.definition
-
-详见 [ThemeContribution](#参考主题契约)：包含封闭的 Workbench 颜色键集、设计令牌、课程卡调色方案、可选的壁纸图片以及推荐配对的图标主题。
-
-### 自定义槽位
-
-除 `StandardSlotMap` 中定义的标准插槽外，系统允许扩展自定义插槽标识。第三方插件可通过 `declare module '@chronos/core'` 扩展 `CustomSlotMap` 类型定义；若需将插槽提升为通用标准能力，请遵循[新增插槽类型](#新增插槽类型)规范进行设计并更新本文档。
+应用启动时，优先选择排序后第一个声明了 `defaultLaunch` 的标签页。如果没有，则选择课表页；仍未找到时，选择第一项。标签页切换只改变应用内部状态，不增加路由历史记录。
 
 ## 参考：主题契约
 
-Chronos 的主题体系由「配色主题 + 派生图标主题」组成。类型定义位于 `packages/core/src/types/contributions.ts` 与 `packages/core/src/theme/`。
+[`ThemeContribution`](packages/core/src/types/contributions.ts) 需要提供完整的浅色和深色 Workbench 界面颜色，也可以提供课程调色板、推荐图标主题、壁纸 Blob 和取色函数。允许使用的颜色键见 [workbench-colors.ts](packages/core/src/theme/workbench-colors.ts)，样式用法见[设计 Token](docs/design-tokens.md)。
 
-### ThemeContribution（配色主题）
+纯 JSON 主题由宿主读取并注册资源。需要配色算法的主题可以使用 ESM。如果同时提供 ESM 和颜色 JSON，只由 ESM 注册配色主题，宿主会检查它是否属于正确的插件、主题 ID 是否正确，以及运行时颜色是否与静态颜色一致。
 
-`theme.definition` 插槽的扩展贡献，决定整套应用的视觉外观：
+Profile 指定默认主题，构建时根据该主题的静态资源生成首屏颜色。M3 算法由 `theme-m3` 实现。
 
-| 字段                                                | 说明                                                                                                               |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `id` / `name` / `description`                       | 主题标识与多语言本地化文案                                                                                         |
-| `workbenchColors`                                   | **封闭键集**的界面基础色彩，包含 `light` 与 `dark` 两种模式；键名统一采用连字符命名规范（如 `--color-on-surface`） |
-| `resolveWallpaperColors?({ pixels, mode, signal })` | 接收 RGBA 像素，返回 `{ workbenchColors, coursePalette? }` 或 Promise；不得操作宿主 DOM                            |
-| `paletteEntries?`                                   | 静态或按模式配置的课程调色盘条目                                                                                   |
-| `recommendedIconTheme?`                             | 推荐配对的图标主题 ID                                                                                              |
-| `wallpaper?`                                        | 可选的图片 Blob；宿主管理展示和 Object URL，不修改用户自定义图片                                                   |
-| `className?` / `disabled?`                          | 自定义挂载样式类名与条件禁用标识                                                                                   |
+### 壁纸与取色
 
-### 图标主题：派生而非持久化
+壁纸来源和配色方案可以分别选择。`wallpaperSource` 支持 `custom`（自定义图片）、`theme`（主题图片）和 `none`（无壁纸）；切换来源不会删除用户图片。
 
-用户无需单独选择图标主题。系统始终根据当前激活配色主题中声明的 `recommendedIconTheme` 决定生效的图标主题（默认回退至 `host-default`），且该派生设置不会作为独立偏好持久化。切换配色主题时，图标主题将自动随之切换——这符合 [ADR 0026](.agents/docs/adr/0026-icon-theme-follows-color-scheme.md) 对 [ADR 0019](.agents/docs/adr/0019-workbench-color-and-icon-theme-platform.md) 双模型拆分的修正。
+JSON 主题中的壁纸 URL 以颜色 JSON 的地址为基准解析。图片下载并通过校验后，保存到宿主图片库。
 
-`IconThemeContribution` 图标主题的交付方式保持一致：通过 JSON 资源声明图标映射集合，宿主底栏等组件统一消费 `ShellIconRef`（可为注册表键名或结构化图标描述符）。
+只有当前使用 Profile 默认主题、该主题支持取色，并且壁纸来源为 `custom` 时，才能启用壁纸取色。没有图片或取色失败时，保留用户的取色选项，并使用主题的基础外观；条件不再满足时才关闭取色。主题暂时未加载时，不清除用户选择。详见 [ADR 0040](.agents/docs/adr/0040-host-wallpaper-and-theme-assets.md) 和 [ADR 0043](.agents/docs/adr/0043-theme-owned-color-runtime-and-plugin-host-contracts.md)。
 
-### 插件市场资源大小
+### 下载大小
 
-插件清单可声明 `downloadSizeBytes`，用于市场展示安装资源总大小。它是所有安装资源（ESM、CSS、主题 JSON、图标 JSON 和壁纸）的原始字节数之和；文本使用 UTF-8 字节数，不包含清单自身、HTTP 压缩或运行时额外请求。官方生产和开发构建自动生成此字段；第三方插件可按同一口径填写非负安全整数，未声明时不显示大小。该字段仅用于展示，资源完整性仍由 SHA-256 校验。
-
-### JSON-only 主题分发
-
-纯资源的无代码主题以 `ThemeManifest` 形式在线分发：Manifest 文件中显式声明 `themeId`、`colorsUrl` 与 `iconThemeUrl`，在安装后由 `OfficialPluginService` 使用轻量级无头 `ScopedContext` 直接注册资产——整个流程不包含任何 JavaScript 脚本打包与执行。
-
-包含自定义逻辑的主题采用 ESM 插件形态开发与分发，也可直接声明 `ThemeContribution.wallpaper` 图片 Blob。宿主负责图片解码，配色算法由主题通过 `resolveWallpaperColors` 提供。
-
-### 宿主壁纸与取色
-
-自定义壁纸在宿主 `/wallpaper/preview` 编辑，不再需要安装插件。主题可携带一张图片，JSON 主题声明 `wallpaper: { url, sha256 }`（相对 colors JSON 解析）；ESM 主题通过 `ThemeContribution.wallpaper?: Blob` 提供。官方构建从本地相对路径读取图片并自动生成发布路径和哈希。安装时校验、解码并保存图片，断网可用；禁用保留资源，卸载删除主题图片。
-
-壁纸来源 `wallpaperSource` 为 `custom | theme | none`，默认 `theme`。来源无图片时不显示壁纸。用户图片独立保存，切换模式或主题不删除图片。宿主 `images` 表负责自定义与主题图片，插件 KV 继续用于插件自己的私有数据。
-
-### 用户偏好相关项
-
-- `visualThemeId`：选择的配色主题 ID，同时决定推荐图标。
-- `wallpaperSource`：壁纸来源，与配色主题独立。
-- `wallpaperColorEnabled`：宿主取色选项，默认关闭；位于“已安装主题”下方独立栏的覆盖开关，开启时保留所选主题作为壁纸来源，界面使用所选主题的基础外观及其动态配色能力。
-- 不再存在 `paletteMode`、插件动态取色适配器及 `dynamicColor:*` 广播。按本次变更约定不提供旧数据迁移，用户自行清空旧数据。
-
-默认主题由 profile 必填的 `defaultTheme: { pluginId, themeId }` 声明，提供者必须装配并启用，首屏前完成加载与校验。当前各 profile 预安装市场中的 `theme-m3` 静态颜色 JSON + ESM 插件；已安装时不显示重复安装入口。运行 `vp run theme:generate` 只准备当前默认主题，显式更新主题源码快照与首屏颜色；正常 dev/build 使用忽略提交的生成目录。宿主不隐式注册主题。无用户选择或所选主题已移除时回退到 profile 默认主题。取色开启时保留主题壁纸，仅支持 `resolveWallpaperColors` 的默认主题搭配自定义壁纸来源时可启用取色；条件失效自动关闭并恢复主题配色。详见 [ADR 0041](.agents/docs/adr/0041-profile-owned-default-theme.md)。
-
-详见 [ADR 0040](.agents/docs/adr/0040-host-wallpaper-and-theme-assets.md)。
-
-### 宿主链接与挂载契约
-
-`ChronosEnv.hostLinks?: IHostLinks` 提供 `getImportUrl(): string | null`，插件通过 `ctx.tryService(IHostLinks)` 使用。Web 返回包含部署 base 的完整入口；缺省或 null 时分享插件导出裸口令。`encodeShareLink(timetable, importUrl)` 的 URL 参数必填，插件不探测浏览器位置。
-
-`ChronosMountable.mount` 必须返回对象 `{ update?(props): void; unmount(): void }`。函数返回形式不再支持。出口验证 handle 并按实例清理；mount 抛错前由插件自行回滚副作用。
-
-主题插件可在发行配置声明 `prepareResources`，模块导出 `prepareResources(outDir)` 并返回 `{ colorsJson?, iconsJson? }` 相对输出路径。准备入口的依赖由构建器记录，入口打包后在新 Node 进程执行，输出不得回写源码；编译器将原资源导入映射到生成文件。颜色算法和资源生成属于插件，通用构建器仅编排。默认主题必须提供完整静态颜色 JSON；带 ESM 时只由 ESM 注册颜色主题，并验证静态资源一致性。详见 [ADR 0043](.agents/docs/adr/0043-theme-owned-color-runtime-and-plugin-host-contracts.md)。
+Manifest 中的 `downloadSizeBytes` 只用于显示下载大小，取值为安装所需资源的原始字节数之和。文本按 UTF-8 计算，不包含 Manifest 本身、HTTP 传输压缩的影响或运行时额外请求。未声明这个字段时，不显示大小；资源完整性仍通过 SHA-256 校验。
