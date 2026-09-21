@@ -130,6 +130,8 @@ export default defineConfig({
 			lint: 'vp fmt --check . && vp lint .',
 			format: 'vp fmt .',
 			test: {
+				// App-engine integration tests load the published plugin catalog and bundles.
+				dependsOn: ['build:official-plugins'],
 				command: 'vp test -- --run',
 				cwd: 'apps/web'
 			},
