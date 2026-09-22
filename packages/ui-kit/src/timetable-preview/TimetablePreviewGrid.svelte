@@ -20,8 +20,10 @@
 		timetableDayColumnDateShellClass,
 		timetableHolidayColumnOverlayClass,
 		timetablePeriodIndexClass,
+		timetableSideTimeClass,
 		timetableSidebarTintClass,
-		timetableSolidBgClass
+		timetableSolidBgClass,
+		timetableTopTextClass
 	} from './timetable-grid-chrome';
 	import type { CapsuleCornerStyle, TimetableLayoutMode } from '@chronos/core';
 	import type { Course, CourseBadge } from '@chronos/core';
@@ -167,7 +169,7 @@
 	>
 		<div class="flex shrink-0 items-center py-2 {timetableSidebarTintClass(hasDynamicBackground)}">
 			<div
-				class="text-body-small flex w-[var(--sidebar-width)] flex-col items-center text-center text-on-surface-variant"
+				class="text-body-small flex w-[var(--sidebar-width)] flex-col items-center text-center {timetableTopTextClass()}"
 			>
 				<span>{gridModel.monthLabel}</span>
 				<span>月</span>
@@ -175,7 +177,7 @@
 			<div class="flex min-w-0 flex-1">
 				{#each gridModel.visibleDays as day (day.dayOfWeek)}
 					<div class="flex min-w-0 flex-1 flex-col items-center">
-						<span class="text-body-small max-w-full truncate text-on-surface-variant">
+						<span class="text-body-small max-w-full truncate {timetableTopTextClass()}">
 							{timetableDayColumnHeaderLabel(day, hostTranslate)}
 						</span>
 						<div class="{timetableDayColumnDateShellClass()} {timetableDayColumnDateClass(day)}">
@@ -213,7 +215,7 @@
 								class="text-caption mt-1 font-mono leading-tight {period.index ===
 								currentPeriodIndex
 									? ''
-									: 'text-on-surface-variant'}"
+									: timetableSideTimeClass()}"
 							>
 								{period.startTime}<br />{period.endTime}
 							</span>

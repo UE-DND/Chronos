@@ -17,7 +17,7 @@ export function timetableDayColumnDateClass(day: { isToday?: boolean; holiday?: 
 		return 'bg-[var(--timetable-holiday-date-bg)] text-[var(--timetable-holiday-date-fg)]';
 	if (day.isToday)
 		return 'bg-[var(--timetable-today-date-bg)] text-[var(--timetable-today-date-fg)]';
-	return 'text-on-surface';
+	return 'timetable-chrome-top-date';
 }
 
 export function timetableDayColumnDateShellClass(): string {
@@ -25,7 +25,15 @@ export function timetableDayColumnDateShellClass(): string {
 }
 
 export function timetablePeriodIndexClass(): string {
-	return 'text-body-medium font-extrabold';
+	return 'text-body-medium font-extrabold timetable-chrome-side-index';
+}
+
+export function timetableTopTextClass(): string {
+	return 'timetable-chrome-top-text';
+}
+
+export function timetableSideTimeClass(): string {
+	return 'timetable-chrome-side-time';
 }
 
 export function timetableHolidayColumnOverlayClass(hasDynamicBackground: boolean): string {

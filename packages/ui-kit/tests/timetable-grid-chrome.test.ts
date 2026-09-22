@@ -3,7 +3,7 @@ import { timetableDayColumnDateClass } from '../src/timetable-preview/timetable-
 
 describe('timetable-grid-chrome', () => {
 	it('returns day column date classes with holiday taking priority over today', () => {
-		expect(timetableDayColumnDateClass({})).toBe('text-on-surface');
+		expect(timetableDayColumnDateClass({})).toBe('timetable-chrome-top-date');
 		expect(timetableDayColumnDateClass({ isToday: true })).toBe(
 			'bg-[var(--timetable-today-date-bg)] text-[var(--timetable-today-date-fg)]'
 		);

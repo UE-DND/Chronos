@@ -7,6 +7,12 @@
 	--timetable-holiday-date-fg: var(--color-on-error-container);
 	--timetable-today-date-bg: var(--color-brand);
 	--timetable-today-date-fg: var(--color-on-primary);
+	--timetable-chrome-top-fg: var(--color-on-surface);
+	--timetable-chrome-top-fg-sub: var(--color-on-surface-variant);
+	--timetable-chrome-top-shadow: none;
+	--timetable-chrome-side-fg: var(--color-on-surface);
+	--timetable-chrome-side-fg-sub: var(--color-on-surface-variant);
+	--timetable-chrome-side-shadow: none;
 }
 
 .dark {
@@ -15,6 +21,12 @@
 	--dynamic-tint-holiday-overlay: rgb(24 24 27 / 0.1);
 	--timetable-holiday-date-bg: var(--color-error);
 	--timetable-holiday-date-fg: var(--color-on-error);
+	--timetable-chrome-top-fg: var(--color-on-surface);
+	--timetable-chrome-top-fg-sub: var(--color-on-surface-variant);
+	--timetable-chrome-top-shadow: none;
+	--timetable-chrome-side-fg: var(--color-on-surface);
+	--timetable-chrome-side-fg-sub: var(--color-on-surface-variant);
+	--timetable-chrome-side-shadow: none;
 }
 
 :root[data-wallpaper-mask='false'],
@@ -24,6 +36,38 @@
 	--dynamic-tint-sidebar: transparent;
 	--dynamic-tint-grid: transparent;
 	--dynamic-tint-holiday-overlay: transparent;
+}
+
+:root[data-wallpaper-mask='false'][data-has-wallpaper='true'],
+[data-wallpaper-mask='false'][data-has-wallpaper='true'],
+.dark[data-wallpaper-mask='false'][data-has-wallpaper='true'],
+.dark [data-wallpaper-mask='false'][data-has-wallpaper='true'] {
+	--timetable-chrome-top-fg: var(--adaptive-top-fg, var(--color-on-surface));
+	--timetable-chrome-top-fg-sub: var(--adaptive-top-fg-sub, var(--color-on-surface-variant));
+	--timetable-chrome-top-shadow: var(--adaptive-top-shadow, none);
+	--timetable-chrome-side-fg: var(--adaptive-side-fg, var(--color-on-surface));
+	--timetable-chrome-side-fg-sub: var(--adaptive-side-fg-sub, var(--color-on-surface-variant));
+	--timetable-chrome-side-shadow: var(--adaptive-side-shadow, none);
+}
+
+.timetable-chrome-top-text {
+	color: var(--timetable-chrome-top-fg-sub);
+	text-shadow: var(--timetable-chrome-top-shadow);
+}
+
+.timetable-chrome-top-date {
+	color: var(--timetable-chrome-top-fg);
+	text-shadow: var(--timetable-chrome-top-shadow);
+}
+
+.timetable-chrome-side-index {
+	color: var(--timetable-chrome-side-fg);
+	text-shadow: var(--timetable-chrome-side-shadow);
+}
+
+.timetable-chrome-side-time {
+	color: var(--timetable-chrome-side-fg-sub);
+	text-shadow: var(--timetable-chrome-side-shadow);
 }
 
 .timetable-dynamic-tint-body {
