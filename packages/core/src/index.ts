@@ -32,6 +32,7 @@ export * from './algorithms/palette';
 export * from './algorithms/timetable-layout';
 export * from './algorithms/period-clock';
 export * from './algorithms/period-time-edit';
+export * from './algorithms/wallpaper-adaptive';
 
 // Shell
 
