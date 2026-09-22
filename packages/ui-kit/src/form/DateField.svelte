@@ -14,6 +14,7 @@
 		DEFAULT_DATE_FIELD_LABELS,
 		formatDateDisplay,
 		isoToCalendarDate,
+		resolvePickerDraftIso,
 		resolvePickerMonthIso,
 		type DateFieldLabels
 	} from './date-field-utils';
@@ -27,6 +28,8 @@
 		class: className = '',
 		onValueChange,
 		disabled = false,
+		min,
+		max,
 		calendarLabel = label,
 		labels = DEFAULT_DATE_FIELD_LABELS,
 		required = false,
@@ -41,6 +44,8 @@
 		class?: string;
 		onValueChange?: (value: string) => void;
 		disabled?: boolean;
+		min?: string;
+		max?: string;
 		calendarLabel?: string;
 		labels?: DateFieldLabels;
 		required?: boolean;
@@ -79,13 +84,17 @@
 		buildDateFieldTriggerLabel(label, open ? draftIso : safeValue, labels)
 	);
 	const draftPickerValue = $derived(isoToCalendarDate(draftIso));
+	const minValue = $derived(min ? isoToCalendarDate(min) : undefined);
+	const maxValue = $derived(max ? isoToCalendarDate(max) : undefined);
+	const todayValue = today(getLocalTimeZone());
+	const todayIso = todayValue.toString();
+	const todayUnavailable = $derived(Boolean((min && todayIso < min) || (max && todayIso > max)));
 
 	function handleOpenChange(nextOpen: boolean) {
 		if (nextOpen) {
-			draftIso = safeValue;
-			placeholder = isoToCalendarDate(
-				resolvePickerMonthIso(safeValue, today(getLocalTimeZone()).toString())
-			);
+			const currentTodayIso = today(getLocalTimeZone()).toString();
+			draftIso = resolvePickerDraftIso(safeValue, currentTodayIso, min, max);
+			placeholder = isoToCalendarDate(resolvePickerMonthIso(draftIso, currentTodayIso));
 		}
 	}
 
@@ -108,10 +117,12 @@
 	}
 
 	function selectToday() {
+		const currentToday = today(getLocalTimeZone());
+		const currentTodayIso = currentToday.toString();
+		if ((min && currentTodayIso < min) || (max && currentTodayIso > max)) return;
 		haptic.light();
-		const next = today(getLocalTimeZone());
-		draftIso = calendarDateToIso(next);
-		placeholder = next;
+		draftIso = calendarDateToIso(currentToday);
+		placeholder = currentToday;
 	}
 
 	function clearDate() {
@@ -151,6 +162,8 @@
 		weekdayFormat="narrow"
 		weekStartsOn={1}
 		fixedWeeks
+		{minValue}
+		{maxValue}
 		{disabled}
 		{calendarLabel}
 	>
@@ -244,7 +257,7 @@
 														<DatePicker.GridRow>
 															{#snippet child({ props: rowProps })}
 																<div {...rowProps} role="row" class="mb-1 grid grid-cols-7">
-																	{#each weekdays as day}
+																	{#each weekdays as day, index (`${index}-${day}`)}
 																		<DatePicker.HeadCell>
 																			{#snippet child({ props: cellProps })}
 																				<div
@@ -301,14 +314,17 @@
 							<div
 								class="mt-3 flex items-center justify-between gap-2 border-t border-outline-variant/40 pt-3"
 							>
-								<div class="flex items-center gap-1">
+								<div>
 									<button
 										type="button"
-										class="text-label-large h-9 rounded-full px-3 text-brand hover:bg-brand/10 active:bg-brand/20"
+										class="text-label-large h-9 rounded-full px-3 text-brand hover:bg-brand/10 active:bg-brand/20 disabled:opacity-40"
+										disabled={todayUnavailable}
 										onclick={selectToday}
 									>
 										{labels.today}
 									</button>
+								</div>
+								<div class="flex items-center gap-1">
 									<button
 										type="button"
 										class="text-label-large h-9 rounded-full px-3 text-on-surface-variant hover:bg-on-surface/5 disabled:opacity-40"
@@ -317,15 +333,15 @@
 									>
 										{labels.clear}
 									</button>
+									<button
+										type="button"
+										class="text-label-large h-9 rounded-full bg-brand px-4 text-on-primary active:opacity-90 disabled:opacity-40"
+										disabled={required && !draftIso}
+										onclick={confirmSelection}
+									>
+										{labels.confirm}
+									</button>
 								</div>
-								<button
-									type="button"
-									class="text-label-large h-9 rounded-full bg-brand px-4 text-on-primary active:opacity-90 disabled:opacity-40"
-									disabled={required && !draftIso}
-									onclick={confirmSelection}
-								>
-									{labels.confirm}
-								</button>
 							</div>
 						{/snippet}
 					</DatePicker.Calendar>

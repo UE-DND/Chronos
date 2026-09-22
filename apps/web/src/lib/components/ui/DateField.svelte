@@ -15,6 +15,8 @@
 		class: className = '',
 		onValueChange,
 		disabled = false,
+		min,
+		max,
 		calendarLabel = label,
 		labels,
 		locale
@@ -25,6 +27,8 @@
 		class?: string;
 		onValueChange?: (value: string) => void;
 		disabled?: boolean;
+		min?: string;
+		max?: string;
 		calendarLabel?: string;
 		labels?: DateFieldLabels;
 		locale?: string;
@@ -43,6 +47,8 @@
 	class={className}
 	{onValueChange}
 	{disabled}
+	{min}
+	{max}
 	{calendarLabel}
 	labels={resolvedLabels}
 	locale={resolvedLocale}

@@ -56,6 +56,19 @@ export function resolvePickerMonthIso(draftIso: unknown, todayIso: string): stri
 	return isValidIsoDateString(draftIso) ? (draftIso as string).trim() : todayIso;
 }
 
+/** Picker draft: keep a valid value, otherwise select today when it is available. */
+export function resolvePickerDraftIso(
+	value: unknown,
+	todayIso: string,
+	min?: string,
+	max?: string
+): string {
+	if (isValidIsoDateString(value)) return (value as string).trim();
+	if (!isValidIsoDateString(todayIso)) return '';
+	if ((min && todayIso < min) || (max && todayIso > max)) return '';
+	return todayIso;
+}
+
 export function buildDateFieldTriggerLabel(
 	label: string,
 	iso: unknown,

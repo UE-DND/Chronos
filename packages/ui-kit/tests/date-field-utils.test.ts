@@ -7,6 +7,7 @@ import {
 	formatDateDisplay,
 	isValidIsoDateString,
 	isoToCalendarDate,
+	resolvePickerDraftIso,
 	resolvePickerMonthIso
 } from '../src/form/date-field-utils';
 
@@ -54,5 +55,12 @@ describe('ui-kit date-field-utils', () => {
 		expect(resolvePickerMonthIso('2020-01-15', '2026-09-05')).toBe('2020-01-15');
 		expect(resolvePickerMonthIso('', '2026-09-05')).toBe('2026-09-05');
 		expect(resolvePickerMonthIso('foo', '2026-09-05')).toBe('2026-09-05');
+	});
+
+	it('defaults an empty picker draft to today when today is available', () => {
+		expect(resolvePickerDraftIso('', '2026-09-05')).toBe('2026-09-05');
+		expect(resolvePickerDraftIso('2026-09-01', '2026-09-05')).toBe('2026-09-01');
+		expect(resolvePickerDraftIso('', '2026-09-05', '2026-09-06')).toBe('');
+		expect(resolvePickerDraftIso('', '2026-09-05', undefined, '2026-09-04')).toBe('');
 	});
 });
