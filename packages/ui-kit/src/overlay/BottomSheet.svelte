@@ -321,7 +321,7 @@
 						showHandle
 							? [
 									'app-scroll-y min-h-0 flex-1 overflow-y-auto',
-									!footer && 'pb-[var(--tabbar-block-safe,0px)]'
+									!footer && 'pb-[calc(1rem+var(--tabbar-block-safe,0px))]'
 								]
 							: 'shrink-0 px-6 pb-5'
 					]}
@@ -347,7 +347,7 @@
 					class={[
 						'flex shrink-0 items-center gap-2',
 						showHandle
-							? 'mt-2 justify-end ps-4 pe-[calc(1rem+var(--tabbar-inline-safe,0px))] pb-[var(--tabbar-block-safe,0px)]'
+							? 'mt-2 justify-end ps-4 pe-[calc(1rem+var(--tabbar-inline-safe,0px))] pb-[calc(var(--tabbar-block-safe,0px)+0.75rem)]'
 							: 'w-full justify-stretch gap-3 border-t border-outline-variant/40 ps-6 pe-[calc(1.5rem+var(--tabbar-inline-safe,0px))] pt-4 pb-[calc(var(--tabbar-block-safe,0px)+0.75rem)] [&>button]:flex-1'
 					]}
 				>
