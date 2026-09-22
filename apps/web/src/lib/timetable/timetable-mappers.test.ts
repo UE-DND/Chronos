@@ -57,7 +57,8 @@ describe('timetable-mappers', () => {
 		const draft = courseToDraft(course);
 		expect(draft.name).toBe('高等数学');
 		expect(draft.teacher).toBe('张老师');
-		expect(draft.weeks).toEqual([1, 2, 3]);
+		expect(draft.recurrenceMode).toBe('weeks');
+		expect(draft.selectedWeeks).toEqual([1, 2, 3]);
 
 		const periods = [
 			{ index: 1, startTime: '08:00', endTime: '08:45' },

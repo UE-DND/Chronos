@@ -1,5 +1,6 @@
 import { AcademicCalendarService, todayIsoDate, type Course, type Timetable } from '@chronos/core';
 import type { CourseDraft, PeriodTimeDraft, TimetableSettingsDraft } from '$lib/models/drafts';
+import { courseScheduleFromCourse } from './course-schedule';
 
 const academicCalendarService = new AcademicCalendarService();
 
@@ -9,10 +10,7 @@ export function courseToDraft(course: Course): CourseDraft {
 		name: course.name,
 		teacher: course.teacher,
 		location: course.location,
-		dayOfWeek: course.dayOfWeek,
-		startPeriod: course.startPeriod,
-		endPeriod: course.endPeriod,
-		weeks: [...course.weeks],
+		...courseScheduleFromCourse(course),
 		remark: course.remark ?? ''
 	};
 }

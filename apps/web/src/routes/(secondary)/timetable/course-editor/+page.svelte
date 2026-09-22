@@ -12,6 +12,7 @@
 	const shell = getContext<AppShellController>('appShell');
 	const controller = getAppController();
 	const courseId = $derived(page.url.searchParams.get('courseId'));
+	const pageTitle = $derived(hostT(courseId ? 'route.courseEdit' : 'route.courseAdd'));
 
 	const editor = createCourseEditor(
 		shell,
@@ -25,6 +26,6 @@
 	});
 </script>
 
-<SecondaryPageShell title={hostT('route.courseEdit')} backFallback={{ kind: 'shell' }} flush>
+<SecondaryPageShell title={pageTitle} backFallback={{ kind: 'shell' }} flush>
 	<CourseEditorScreen {editor} />
 </SecondaryPageShell>

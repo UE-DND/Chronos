@@ -55,7 +55,7 @@
 			type="button"
 			role="tab"
 			aria-selected={value === segment.value}
-			tabindex={value === segment.value ? 0 : -1}
+			tabindex={value === segment.value || (selectedIndex < 0 && index === 0) ? 0 : -1}
 			class="text-label-large rounded-pill relative z-10 flex-1 cursor-pointer py-2 text-center transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 {value ===
 			segment.value
 				? 'text-on-secondary-container'

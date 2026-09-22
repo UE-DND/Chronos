@@ -13,9 +13,10 @@ export interface CourseDraft {
 	name: string;
 	teacher: string;
 	location: string;
-	dayOfWeek: number;
-	startPeriod: number;
-	endPeriod: number;
-	weeks: number[];
+	recurrenceMode: 'all' | 'weeks';
+	dayOfWeek: number | null;
+	startPeriod: number | null;
+	endPeriod: number | null;
+	selectedWeeks: number[];
 	remark: string;
 }
