@@ -26,6 +26,9 @@ describe('@chronos/plugin-theme-arknights', () => {
 		expect(themeContribution.workbenchColors.light['shell.bottomTab.activeBackground']).toBe(
 			'transparent'
 		);
+		expect(themeContribution.workbenchColors.light['timetable.period.activeBackground']).toBe(
+			'#3F72AF'
+		);
 		expect(themeContribution.workbenchColors.dark['timetable.period.activeBackgroundImage']).toBe(
 			'none'
 		);

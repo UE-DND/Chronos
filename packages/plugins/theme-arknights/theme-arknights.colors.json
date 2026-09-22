@@ -149,7 +149,7 @@
 				"leadingIcon.colorTertiary": "#8A6C13",
 				"leadingIcon.backgroundNeutral": "#E4E8ED",
 				"leadingIcon.colorNeutral": "#4A505A",
-				"timetable.period.activeBackground": "#DCE8F4",
+				"timetable.period.activeBackground": "#3F72AF",
 				"timetable.period.activeBackgroundImage": "none"
 			}
 		},
