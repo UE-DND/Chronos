@@ -131,6 +131,7 @@
 		<MineRow
 			label
 			title={hostT('wallpaper.mask.title')}
+			supporting={hostT('wallpaper.mask.description')}
 			aria-disabled={wallpaperMaskDisabled}
 			style={wallpaperMaskDisabled ? 'opacity: 0.5; cursor: not-allowed;' : undefined}
 		>

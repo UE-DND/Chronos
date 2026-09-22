@@ -28,8 +28,7 @@ export const en = {
 	'wallpaper.colors.title': 'Colors from wallpaper',
 	'wallpaper.colors.description': 'Use colors from the current wallpaper',
 	'wallpaper.mask.title': 'Wallpaper mask',
-	'wallpaper.mask.description':
-		'Show an overlay between the timetable and wallpaper to improve readability',
+	'wallpaper.mask.description': 'Enable to optimize text readability',
 	'wallpaper.theme.default': 'Profile default',
 	'wallpaper.source.themeEmpty': 'This theme has no wallpaper',
 	'wallpaper.item': 'Themes & wallpaper',

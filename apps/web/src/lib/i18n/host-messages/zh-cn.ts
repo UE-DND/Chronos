@@ -27,7 +27,7 @@ export const zhCn = {
 	'wallpaper.colors.title': '从壁纸取色',
 	'wallpaper.colors.description': '使用当前壁纸生成配色',
 	'wallpaper.mask.title': '壁纸遮罩',
-	'wallpaper.mask.description': '开启后在课表与壁纸间显示遮罩以增强文字可读性',
+	'wallpaper.mask.description': '开启以优化文字可读性',
 	'wallpaper.theme.default': '默认',
 	'wallpaper.source.themeEmpty': '当前主题未提供壁纸',
 	'wallpaper.item': '主题与壁纸',
