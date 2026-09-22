@@ -1,23 +1,31 @@
 <script lang="ts">
 	import {
 		attachWallpaperImageDecode,
+		shouldOverscanWallpaperImage,
 		type TimetableWallpaperFit
 	} from './timetable-wallpaper-layer';
 
 	let {
 		uri,
 		fit = 'cover',
+		overscan = false,
 		class: className = ''
 	}: {
 		uri: string;
 		fit?: TimetableWallpaperFit;
+		/** Extend a blurred cover image beyond its viewport to avoid translucent filter edges. */
+		overscan?: boolean;
 		class?: string;
 	} = $props();
 </script>
 
 <img
 	alt=""
-	class={['wallpaper-image', fit === 'cover' && 'wallpaper-image--cover', className]}
+	class={[
+		'wallpaper-image',
+		shouldOverscanWallpaperImage(fit, overscan) && 'wallpaper-image--overscan',
+		className
+	]}
 	decoding="async"
 	src={uri}
 	style:object-fit={fit}
@@ -35,7 +43,7 @@
 		object-position: center;
 	}
 
-	.wallpaper-image--cover {
+	.wallpaper-image--overscan {
 		inset: -24px;
 		width: calc(100% + 48px);
 		height: calc(100% + 48px);

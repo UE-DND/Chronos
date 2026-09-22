@@ -4,6 +4,13 @@ import type { Attachment } from 'svelte/attachments';
 
 export type TimetableWallpaperFit = 'cover' | 'fill';
 
+export function shouldOverscanWallpaperImage(
+	fit: TimetableWallpaperFit,
+	overscan: boolean
+): boolean {
+	return fit === 'cover' && overscan;
+}
+
 const WALLPAPER_BACKDROP_MOTION =
 	'transition-[filter] will-change-[filter] motion-reduce:transition-none';
 

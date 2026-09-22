@@ -22,6 +22,7 @@
 		<TimetableWallpaperImage
 			uri={wallpaperUri}
 			{fit}
+			overscan={blurred}
 			class={timetableWallpaperBackdropClass(blurred)}
 		/>
 	{/if}

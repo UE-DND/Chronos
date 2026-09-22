@@ -1,11 +1,18 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 import {
 	attachWallpaperImageDecode,
+	shouldOverscanWallpaperImage,
 	timetableWallpaperBackdropClass,
 	timetableWallpaperPreblurredClass
 } from '../src/timetable-preview/timetable-wallpaper-layer';
 
 describe('timetable-wallpaper-layer', () => {
+	it('only overscans blurred cover images', () => {
+		expect(shouldOverscanWallpaperImage('cover', false)).toBe(false);
+		expect(shouldOverscanWallpaperImage('cover', true)).toBe(true);
+		expect(shouldOverscanWallpaperImage('fill', true)).toBe(false);
+	});
+
 	it('returns clear backdrop classes when not blurred', () => {
 		const classes = timetableWallpaperBackdropClass(false);
 		expect(classes).toContain('blur-none');

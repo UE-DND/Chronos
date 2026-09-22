@@ -22,6 +22,7 @@
 	<TimetableWallpaperImage {uri} />
 	<TimetableWallpaperImage
 		{uri}
+		overscan={true}
 		class="timetable-wallpaper-preblurred {timetableWallpaperPreblurredClass(blurred)}"
 	/>
 </div>
