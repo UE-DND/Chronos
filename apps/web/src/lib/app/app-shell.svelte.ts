@@ -9,11 +9,12 @@ import {
 	notifyCoursePaletteChanged,
 	resetAppToInitialState
 } from '$lib/services/app-engine';
-import type {
-	CapsuleCornerStyle,
-	ThemeMode,
-	TimetableLayoutMode,
-	UserPreferences
+import {
+	DEFAULT_USER_PREFERENCES,
+	type CapsuleCornerStyle,
+	type ThemeMode,
+	type TimetableLayoutMode,
+	type UserPreferences
 } from '@chronos/core';
 import { applyReduceMotionClass } from '@chronos/ui-kit';
 import { untrack } from 'svelte';
@@ -50,6 +51,10 @@ export function createAppShell() {
 		)
 	);
 	const hasWallpaper = $derived(Boolean(wallpaperUri));
+	const wallpaperMaskEnabled = $derived(
+		controller.userPreferences?.wallpaperMaskEnabled ??
+			DEFAULT_USER_PREFERENCES.wallpaperMaskEnabled
+	);
 	function canUseWallpaperColors(
 		themeId: string | null,
 		source: UserPreferences['wallpaperSource'] | undefined
@@ -108,7 +113,8 @@ export function createAppShell() {
 			$effect(() => {
 				void controller.slotVersion;
 				const theme = engine.themes.getTheme(controller.activeThemeId);
-				const source = controller.userPreferences?.wallpaperSource ?? 'theme';
+				const source =
+					controller.userPreferences?.wallpaperSource ?? DEFAULT_USER_PREFERENCES.wallpaperSource;
 				untrack(() => wallpaper.select(source, theme?.wallpaper));
 			});
 			$effect(() => {
@@ -161,6 +167,13 @@ export function createAppShell() {
 				const reduceMotionEnabled = controller.userPreferences?.reduceMotionEnabled ?? false;
 				applyReduceMotionClass(reduceMotionEnabled);
 			});
+
+			$effect(() => {
+				const mask = wallpaperMaskEnabled;
+				if (typeof document !== 'undefined') {
+					document.documentElement.dataset.wallpaperMask = mask ? 'true' : 'false';
+				}
+			});
 		});
 	}
 
@@ -173,6 +186,9 @@ export function createAppShell() {
 		appearance.destroy();
 		disposeAppearanceEffects?.();
 		disposeAppearanceEffects = null;
+		if (typeof document !== 'undefined') {
+			delete document.documentElement.dataset.wallpaperMask;
+		}
 	}
 
 	async function updatePreferences(patch: Partial<UserPreferences>) {
@@ -194,6 +210,10 @@ export function createAppShell() {
 		const wallpaperSource =
 			themeId !== engine.defaultThemeId && theme?.wallpaper ? 'theme' : 'none';
 		await updatePreferences({ visualThemeId: themeId, wallpaperSource });
+	}
+
+	async function setWallpaperMaskEnabled(enabled: boolean) {
+		await updatePreferences({ wallpaperMaskEnabled: enabled });
 	}
 
 	async function setThemeMode(mode: ThemeMode) {
@@ -246,6 +266,7 @@ export function createAppShell() {
 				effectiveTimetableLayoutMode,
 				hasWallpaper,
 				wallpaperColorsAvailable,
+				wallpaperMaskEnabled,
 				wallpaperUri
 			};
 		},
@@ -261,6 +282,7 @@ export function createAppShell() {
 		updatePreferences,
 		setThemeMode,
 		setVisualTheme,
+		setWallpaperMaskEnabled,
 		setTimetableLayoutMode,
 		setCapsuleCornerStyle,
 		setHapticFeedbackEnabled,

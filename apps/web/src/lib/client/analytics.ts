@@ -9,6 +9,7 @@ export type HostAnalyticsEvent =
 	| 'wallpaper_crop_confirm'
 	| 'wallpaper_clear'
 	| 'wallpaper_colors_change'
+	| 'wallpaper_mask_change'
 	| 'onboarding_step_next'
 	| 'onboarding_step_back'
 	| 'onboarding_skip'

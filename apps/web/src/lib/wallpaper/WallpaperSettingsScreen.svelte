@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import { resolveLocalizedText, type WallpaperSource } from '@chronos/core';
+	import {
+		DEFAULT_USER_PREFERENCES,
+		resolveLocalizedText,
+		type WallpaperSource
+	} from '@chronos/core';
 	import type { AppShellController } from '$lib/app/app-shell.svelte';
 	import { getAppEngine } from '$lib/services/app-engine';
 	import { normalizeAppLocale } from '$lib/i18n/locale-sync';
@@ -16,13 +20,20 @@
 		shell.state.wallpaperColorsAvailable &&
 			(shell.controller.userPreferences?.wallpaperColorEnabled ?? false)
 	);
+	const wallpaperMaskSelected = $derived(
+		shell.controller.userPreferences?.wallpaperMaskEnabled ??
+			DEFAULT_USER_PREFERENCES.wallpaperMaskEnabled
+	);
 	const selectedTheme = $derived.by(() => {
 		void shell.controller.slotVersion;
 		return getAppEngine().themes.getTheme(visualThemeId);
 	});
 	const activeLocale = $derived(normalizeAppLocale(shell.controller.currentLocale));
-	const source = $derived(shell.controller.userPreferences?.wallpaperSource ?? 'theme');
+	const source = $derived(
+		shell.controller.userPreferences?.wallpaperSource ?? DEFAULT_USER_PREFERENCES.wallpaperSource
+	);
 	const wallpaperColorsDisabled = $derived(!shell.state.wallpaperColorsAvailable);
+	const wallpaperMaskDisabled = $derived(!shell.state.hasWallpaper);
 	const sources = ['none', 'custom', 'theme'] as const;
 	async function selectSource(wallpaperSource: WallpaperSource) {
 		if (wallpaperSource === 'theme' && !selectedTheme?.wallpaper) return;
@@ -74,6 +85,16 @@
 			shell.controller.notify(hostT('wallpaper.settings.saveFailed'), 'error');
 		}
 	}
+
+	async function toggleWallpaperMask(enabled: boolean) {
+		if (wallpaperMaskDisabled) return;
+		trackEvent('wallpaper_mask_change', { enabled });
+		try {
+			await shell.setWallpaperMaskEnabled(enabled);
+		} catch {
+			shell.controller.notify(hostT('wallpaper.settings.saveFailed'), 'error');
+		}
+	}
 </script>
 
 <div class="flex flex-col gap-5">
@@ -104,6 +125,20 @@
 					checked={wallpaperColorsSelected}
 					disabled={wallpaperColorsDisabled}
 					onCheckedChange={toggleWallpaperColors}
+				/>
+			{/snippet}
+		</MineRow>
+		<MineRow
+			label
+			title={hostT('wallpaper.mask.title')}
+			aria-disabled={wallpaperMaskDisabled}
+			style={wallpaperMaskDisabled ? 'opacity: 0.5; cursor: not-allowed;' : undefined}
+		>
+			{#snippet trailing()}
+				<Switch
+					checked={wallpaperMaskSelected}
+					disabled={wallpaperMaskDisabled}
+					onCheckedChange={toggleWallpaperMask}
 				/>
 			{/snippet}
 		</MineRow>

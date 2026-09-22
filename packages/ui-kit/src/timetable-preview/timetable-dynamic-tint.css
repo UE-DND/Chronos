@@ -17,6 +17,15 @@
 	--timetable-holiday-date-fg: var(--color-on-error);
 }
 
+:root[data-wallpaper-mask='false'],
+[data-wallpaper-mask='false'],
+.dark[data-wallpaper-mask='false'],
+.dark [data-wallpaper-mask='false'] {
+	--dynamic-tint-sidebar: transparent;
+	--dynamic-tint-grid: transparent;
+	--dynamic-tint-holiday-overlay: transparent;
+}
+
 .timetable-dynamic-tint-body {
 	background-image: linear-gradient(
 		90deg,

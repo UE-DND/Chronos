@@ -191,6 +191,13 @@ describe('theme selection and wallpaper color override', () => {
 		await shell.updatePreferences({ wallpaperSource: 'custom' });
 		expect(mocks.updatePreferences).toHaveBeenLastCalledWith({ wallpaperSource: 'custom' });
 	});
+
+	it('updates wallpaperMaskEnabled preference via setWallpaperMaskEnabled', async () => {
+		mocks.updatePreferences.mockClear();
+		const shell = createAppShell();
+		await shell.setWallpaperMaskEnabled(false);
+		expect(mocks.updatePreferences).toHaveBeenCalledWith({ wallpaperMaskEnabled: false });
+	});
 });
 
 it('does not overwrite a restored preference during temporary theme absence', async () => {

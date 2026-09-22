@@ -27,6 +27,9 @@
 
 	const coursePalette = $derived(shell.appearance.coursePalette);
 	const hasWallpaper = $derived(shell.state.hasWallpaper);
+	const wallpaperMaskEnabled = $derived(
+		shell.controller.userPreferences?.wallpaperMaskEnabled ?? true
+	);
 	const layoutMode = $derived(shell.state.effectiveTimetableLayoutMode);
 	const capsuleCornerStyle = $derived(
 		shell.controller.userPreferences?.capsuleCornerStyle ?? 'sharp'
@@ -86,7 +89,10 @@
 		{/snippet}
 	</TopAppBar>
 
-	<div class="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+	<div
+		class="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden"
+		data-wallpaper-mask={wallpaperMaskEnabled ? 'true' : 'false'}
+	>
 		{#key screenState.currentTimetable?.id}
 			<TimetableWeekSwiper
 				{screen}
