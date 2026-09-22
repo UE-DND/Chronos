@@ -115,6 +115,13 @@
 		wheelEnd?.scrollToValue();
 	}
 
+	function handleStartTimeChange(start: TimeValue) {
+		const startMinutes = start.hour * 60 + start.minute;
+		const endMinutes = editDraft.end.hour * 60 + editDraft.end.minute;
+		if (endMinutes < startMinutes) editDraft.end = { ...start };
+		void tick().then(() => wheelEnd?.scrollToValue());
+	}
+
 	function confirmEdit() {
 		if (editPos === null) return;
 		wheelStart?.commitDraft();
@@ -277,6 +284,7 @@
 				label={hostT('timetable.details.period.start')}
 				labels={wheelLabels}
 				idPrefix="period-edit-start"
+				onValueChange={handleStartTimeChange}
 			/>
 		</div>
 		<div class="time-range-divider border-t border-outline" aria-hidden="true"></div>
@@ -290,6 +298,7 @@
 				label={hostT('timetable.details.period.end')}
 				labels={wheelLabels}
 				idPrefix="period-edit-end"
+				minimum={editDraft.start}
 			/>
 		</div>
 	</div>
