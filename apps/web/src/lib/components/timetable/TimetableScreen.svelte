@@ -25,8 +25,13 @@
 	const screenState = $derived(screen.state);
 	const shell = getContext<AppShellController>('appShell');
 
+	import { extractAdaptiveChromeColors, type AdaptiveChromeResult } from '@chronos/core';
+	import { getWallpaperBitmap } from '$lib/wallpaper/wallpaper-theme';
+
 	const coursePalette = $derived(shell.appearance.coursePalette);
 	const hasWallpaper = $derived(shell.state.hasWallpaper);
+	const wallpaperUri = $derived(shell.state.wallpaperUri);
+	const isDark = $derived(shell.state.isDark);
 	const wallpaperMaskEnabled = $derived(
 		shell.controller.userPreferences?.wallpaperMaskEnabled ?? true
 	);
@@ -34,6 +39,55 @@
 	const capsuleCornerStyle = $derived(
 		shell.controller.userPreferences?.capsuleCornerStyle ?? 'sharp'
 	);
+
+	let containerEl = $state<HTMLDivElement | undefined>();
+	let adaptiveColors = $state<AdaptiveChromeResult | null>(null);
+
+	$effect(() => {
+		if (!hasWallpaper || wallpaperMaskEnabled || !wallpaperUri) {
+			adaptiveColors = null;
+			return;
+		}
+
+		const currentUri = wallpaperUri;
+		const ac = new AbortController();
+		getWallpaperBitmap(currentUri, ac.signal)
+			.then((bitmap) => {
+				if (ac.signal.aborted) return;
+				const viewportWidth =
+					containerEl?.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 375);
+				const viewportHeight =
+					containerEl?.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 667);
+				const result = extractAdaptiveChromeColors(bitmap.pixels, bitmap.width, bitmap.height, {
+					viewportWidth,
+					viewportHeight,
+					isDark
+				});
+				if (!ac.signal.aborted && wallpaperUri === currentUri) {
+					adaptiveColors = result;
+				}
+			})
+			.catch(() => {
+				if (!ac.signal.aborted && wallpaperUri === currentUri) {
+					adaptiveColors = null;
+				}
+			});
+
+		return () => ac.abort();
+	});
+
+	const adaptiveStyle = $derived.by(() => {
+		if (!adaptiveColors) return '';
+		const { topBar, sidebar } = adaptiveColors;
+		return (
+			`--adaptive-top-fg: ${topBar.fg}; ` +
+			`--adaptive-top-fg-sub: ${topBar.fgSub}; ` +
+			`--adaptive-top-shadow: ${topBar.textShadow}; ` +
+			`--adaptive-side-fg: ${sidebar.fg}; ` +
+			`--adaptive-side-fg-sub: ${sidebar.fgSub}; ` +
+			`--adaptive-side-shadow: ${sidebar.textShadow};`
+		);
+	});
 
 	const pendingWeekDelete = $derived(screen.pendingWeekDelete);
 	let weekDeleteSheetOpen = $state(false);
@@ -90,8 +144,11 @@
 	</TopAppBar>
 
 	<div
+		bind:this={containerEl}
 		class="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden"
 		data-wallpaper-mask={wallpaperMaskEnabled ? 'true' : 'false'}
+		data-has-wallpaper={hasWallpaper ? 'true' : 'false'}
+		style={adaptiveStyle || undefined}
 	>
 		{#key screenState.currentTimetable?.id}
 			<TimetableWeekSwiper
