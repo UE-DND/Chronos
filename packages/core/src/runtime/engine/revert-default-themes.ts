@@ -19,7 +19,14 @@ export function planRevertToDefaultThemes(
 		(activeThemeId && !themes.isSelectable(activeThemeId)) ||
 		(preferences.visualThemeId && !themes.isSelectable(preferences.visualThemeId))
 	) {
-		return { nextThemeId: defaultThemeId, preferencesPatch: { visualThemeId: defaultThemeId } };
+		return {
+			nextThemeId: defaultThemeId,
+			preferencesPatch: {
+				visualThemeId: defaultThemeId,
+				wallpaperSource: 'none',
+				wallpaperColorEnabled: false
+			}
+		};
 	}
 	return null;
 }

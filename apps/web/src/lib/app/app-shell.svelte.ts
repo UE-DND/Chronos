@@ -190,7 +190,10 @@ export function createAppShell() {
 	async function setVisualTheme(themeId: string) {
 		if (!engine.themes.isSelectable(themeId)) return;
 		controller.setTheme(themeId);
-		await updatePreferences({ visualThemeId: themeId });
+		const theme = engine.themes.getTheme(themeId);
+		const wallpaperSource =
+			themeId !== engine.defaultThemeId && theme?.wallpaper ? 'theme' : 'none';
+		await updatePreferences({ visualThemeId: themeId, wallpaperSource });
 	}
 
 	async function setThemeMode(mode: ThemeMode) {

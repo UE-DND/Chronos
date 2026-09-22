@@ -41,7 +41,7 @@ export interface UserPreferences {
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 	schemaVersion: CURRENT_PREFERENCES_SCHEMA_VERSION,
 	themeMode: 'auto',
-	wallpaperSource: 'theme',
+	wallpaperSource: 'none',
 	wallpaperColorEnabled: false,
 	timetableLayoutMode: 'compact',
 	capsuleCornerStyle: 'sharp',

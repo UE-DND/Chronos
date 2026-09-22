@@ -866,7 +866,11 @@ describe('profile fallback lifecycle', () => {
 	it('falls back to a non-M3 profile without losing a pending selection', async () => {
 		const { env } = createMockEnv();
 		const engine = new ChronosEngine({ env });
-		await engine.updatePreferences({ visualThemeId: 'later', wallpaperColorEnabled: true });
+		await engine.updatePreferences({
+			visualThemeId: 'later',
+			wallpaperSource: 'theme',
+			wallpaperColorEnabled: true
+		});
 		const handle = await engine.loadPlugin({
 			id: 'base',
 			name: 'Base',
@@ -902,7 +906,8 @@ describe('profile fallback lifecycle', () => {
 		await engine.revertToDefaultThemes();
 		expect(engine.state.activeThemeId).toBe('base-theme');
 		expect(engine.state.userPreferences.visualThemeId).toBe('base-theme');
-		expect(engine.state.userPreferences.wallpaperColorEnabled).toBe(true);
+		expect(engine.state.userPreferences.wallpaperSource).toBe('none');
+		expect(engine.state.userPreferences.wallpaperColorEnabled).toBe(false);
 		engine.clearDefaultTheme();
 		handle.dispose();
 		expect(engine.themes.getTheme('base-theme')).toBeUndefined();

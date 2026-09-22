@@ -9,10 +9,10 @@ function store() {
 	} as unknown as Storage);
 }
 describe('wallpaper preferences', () => {
-	it('defaults to theme wallpaper with colors off, and persists source independently of theme', async () => {
+	it('defaults to no wallpaper with colors off, and persists source independently of theme', async () => {
 		const prefs = store();
 		expect(await prefs.getPreferences()).toMatchObject({
-			wallpaperSource: 'theme',
+			wallpaperSource: 'none',
 			wallpaperColorEnabled: false
 		});
 		await prefs.savePreferences({ wallpaperSource: 'custom', wallpaperColorEnabled: true });

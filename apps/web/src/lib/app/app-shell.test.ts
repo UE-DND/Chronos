@@ -46,15 +46,17 @@ vi.mock('$lib/services/app-engine', () => ({
 		events: { emit: vi.fn() },
 		on: () => ({ dispose: vi.fn() }),
 		themes: {
-			getTheme: () =>
+			getTheme: (id?: string) =>
 				mocks.themeAvailable
 					? {
+							wallpaper: id === 'theme-with-wallpaper' ? new Blob() : undefined,
 							resolveWallpaperColors: mocks.supportsWallpaper
 								? () => ({ workbenchColors: {} })
 								: undefined
 						}
 					: null,
-			isSelectable: (id: string) => id === 'custom'
+			isSelectable: (id: string) =>
+				id === 'custom' || id === 'theme-with-wallpaper' || id === 'm3-default'
 		},
 		resolveThemeId: () => 'm3-default'
 	}),
@@ -154,12 +156,40 @@ describe('theme selection and wallpaper color override', () => {
 		await shell.setVisualTheme('custom');
 		expect(mocks.updatePreferences).toHaveBeenLastCalledWith({
 			visualThemeId: 'custom',
+			wallpaperSource: 'none',
 			wallpaperColorEnabled: false
 		});
 		expect(mocks.setTheme).toHaveBeenCalledWith('custom');
 		await shell.updatePreferences({ wallpaperColorEnabled: false });
 		expect(mocks.updatePreferences).toHaveBeenLastCalledWith({ wallpaperColorEnabled: false });
 		expect(mocks.setTheme).toHaveBeenCalledTimes(1);
+	});
+
+	it('automatically selects theme wallpaper source when theme provides wallpaper', async () => {
+		mocks.updatePreferences.mockClear();
+		mocks.setTheme.mockClear();
+		const shell = createAppShell();
+		await shell.setVisualTheme('theme-with-wallpaper');
+		expect(mocks.updatePreferences).toHaveBeenLastCalledWith({
+			visualThemeId: 'theme-with-wallpaper',
+			wallpaperSource: 'theme',
+			wallpaperColorEnabled: false
+		});
+	});
+
+	it('automatically selects none wallpaper source when switching to default theme', async () => {
+		mocks.updatePreferences.mockClear();
+		mocks.setTheme.mockClear();
+		const shell = createAppShell();
+		await shell.setVisualTheme('m3-default');
+		expect(mocks.updatePreferences).toHaveBeenLastCalledWith({
+			visualThemeId: 'm3-default',
+			wallpaperSource: 'none',
+			wallpaperColorEnabled: false
+		});
+
+		await shell.updatePreferences({ wallpaperSource: 'custom' });
+		expect(mocks.updatePreferences).toHaveBeenLastCalledWith({ wallpaperSource: 'custom' });
 	});
 });
 

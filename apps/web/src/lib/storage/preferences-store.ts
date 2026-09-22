@@ -29,7 +29,8 @@ function normalizeLayoutMode(raw: string | null): TimetableLayoutMode {
 }
 
 function normalizeWallpaperSource(raw: string | null): WallpaperSource {
-	return raw === 'custom' || raw === 'none' ? raw : 'theme';
+	if (raw === 'custom' || raw === 'none' || raw === 'theme') return raw;
+	return DEFAULT_USER_PREFERENCES.wallpaperSource;
 }
 
 function normalizeCornerStyle(raw: string | null): CapsuleCornerStyle {

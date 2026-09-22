@@ -198,7 +198,7 @@ export async function resetAppToInitialState(): Promise<void> {
 	await engine.updatePreferences({
 		visualThemeId: profile.defaultTheme.themeId,
 		wallpaperColorEnabled: false,
-		wallpaperSource: 'theme'
+		wallpaperSource: 'none'
 	});
 	engine.setTheme(profile.defaultTheme.themeId);
 }
