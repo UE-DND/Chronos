@@ -8,6 +8,7 @@ import {
 } from './catalog-sort';
 
 const officialPluginNames = {
+	'theme-arknights': { 'zh-CN': 'Arknights', en: 'Arknights', type: 'theme' as const },
 	'theme-yumemita': { 'zh-CN': 'YUMEMITA', en: 'YUMEMITA', type: 'theme' as const },
 	'tool-wallpaper': {
 		'zh-CN': '自定义壁纸',
@@ -87,6 +88,7 @@ describe('catalog-sort', () => {
 
 	it('sorts official plugins by category then zh-CN pinyin order', () => {
 		expect(sortByLocale('zh-CN')).toEqual([
+			'theme-arknights',
 			'theme-yumemita',
 			'tool-qrcode',
 			'tool-calendar-holidays',
@@ -98,6 +100,7 @@ describe('catalog-sort', () => {
 
 	it('sorts official plugins by category then en alphabetical order', () => {
 		expect(sortByLocale('en')).toEqual([
+			'theme-arknights',
 			'theme-yumemita',
 			'tool-wallpaper',
 			'tool-calendar-holidays',
@@ -109,12 +112,12 @@ describe('catalog-sort', () => {
 
 	it('groups official plugins by category with sorted entries inside each group', () => {
 		expect(groupByLocale('zh-CN')).toEqual([
-			['theme-yumemita'],
+			['theme-arknights', 'theme-yumemita'],
 			['tool-qrcode', 'tool-calendar-holidays', 'tool-today', 'tool-wallpaper'],
 			['tool-error-log']
 		]);
 		expect(groupByLocale('en')).toEqual([
-			['theme-yumemita'],
+			['theme-arknights', 'theme-yumemita'],
 			['tool-wallpaper', 'tool-calendar-holidays', 'tool-qrcode', 'tool-today'],
 			['tool-error-log']
 		]);

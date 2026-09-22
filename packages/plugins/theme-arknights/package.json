@@ -1,0 +1,12 @@
+{
+	"name": "@chronos/plugin-theme-arknights",
+	"version": "0.1.0",
+	"type": "module",
+	"exports": {
+		"./colors.json": "./theme-arknights.colors.json",
+		"./icons.json": "./theme-arknights.icons.json"
+	},
+	"devDependencies": {
+		"@chronos/core": "workspace:*"
+	}
+}

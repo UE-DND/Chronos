@@ -400,6 +400,12 @@ importers:
         specifier: ^0.18.13
         version: 0.18.13
 
+  packages/plugins/theme-arknights:
+    devDependencies:
+      '@chronos/core':
+        specifier: workspace:*
+        version: link:../../core
+
   packages/plugins/theme-m3:
     dependencies:
       '@chronos/core':

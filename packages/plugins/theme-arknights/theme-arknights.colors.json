@@ -1,0 +1,238 @@
+{
+	"id": "arknights",
+	"name": {
+		"zh-CN": "Arknights",
+		"en": "Arknights"
+	},
+	"description": {
+		"zh-CN": "Arknights 主题",
+		"en": "Arknights icon theme"
+	},
+	"recommendedIconTheme": "arknights",
+	"coursePalette": {
+		"light": [
+			{
+				"background": "#DCE8F4",
+				"foreground": "#1A1C20"
+			},
+			{
+				"background": "#D7EBEF",
+				"foreground": "#1A1C20"
+			},
+			{
+				"background": "#E8E3D2",
+				"foreground": "#1A1C20"
+			},
+			{
+				"background": "#E9E2D8",
+				"foreground": "#1A1C20"
+			},
+			{
+				"background": "#E7DADA",
+				"foreground": "#1A1C20"
+			},
+			{
+				"background": "#DDE1E6",
+				"foreground": "#1A1C20"
+			}
+		],
+		"dark": [
+			{
+				"background": "#2C5480",
+				"foreground": "#FFFFFF"
+			},
+			{
+				"background": "#285E69",
+				"foreground": "#FFFFFF"
+			},
+			{
+				"background": "#6E5B24",
+				"foreground": "#FFFFFF"
+			},
+			{
+				"background": "#7A4D29",
+				"foreground": "#FFFFFF"
+			},
+			{
+				"background": "#6C3434",
+				"foreground": "#FFFFFF"
+			},
+			{
+				"background": "#46515E",
+				"foreground": "#FFFFFF"
+			}
+		]
+	},
+	"variants": {
+		"light": {
+			"colors": {
+				"color.surface-dim": "#D7DDE4",
+				"color.surface-bright": "#FFFFFF",
+				"color.surface-container-lowest": "#FFFFFF",
+				"color.surface-container-low": "#F7F8FA",
+				"color.surface-container": "#EEF1F4",
+				"color.surface-container-highest": "#D7DDE4",
+				"color.on-surface-variant": "#4A505A",
+				"color.inverse-surface": "#1A1C20",
+				"color.inverse-on-surface": "#FFFFFF",
+				"color.primary-fixed": "#DCE8F4",
+				"color.primary-fixed-dim": "#A8C4E0",
+				"color.on-primary-fixed": "#1D3C5D",
+				"color.on-primary-fixed-variant": "#2C5480",
+				"color.secondary-fixed": "#D7EBEF",
+				"color.secondary-fixed-dim": "#A9D3DC",
+				"color.on-secondary-fixed": "#123F48",
+				"color.on-secondary-fixed-variant": "#0F6675",
+				"color.tertiary": "#8A6C13",
+				"color.tertiary-dim": "#6E5B24",
+				"color.on-tertiary": "#FFFFFF",
+				"color.tertiary-container": "#E8E3D2",
+				"color.on-tertiary-container": "#4C3C12",
+				"color.tertiary-fixed": "#E8E3D2",
+				"color.tertiary-fixed-dim": "#D9CA99",
+				"color.on-tertiary-fixed": "#3B2F0E",
+				"color.on-tertiary-fixed-variant": "#6E5B24",
+				"color.error": "#963A3A",
+				"color.error-dim": "#7A2E2E",
+				"color.on-error": "#FFFFFF",
+				"color.error-container": "#F2DDDD",
+				"color.on-error-container": "#5E2525",
+				"color.shadow": "#1A1C20",
+				"color.scrim": "color-mix(in srgb, #1A1C20 70%, transparent)",
+				"color.on-on-primary": "#FFFFFF",
+				"color.tertiary-container-subtle": "#F2EFE5",
+				"color.on-tertiary-container-subtle": "#4C3C12",
+				"color.error-container-subtle": "#F6E9E9",
+				"color.on-error-container-subtle": "#5E2525",
+				"color.surface": "#F7F8FA",
+				"color.on-surface": "#1A1C20",
+				"color.primary": "#3F72AF",
+				"color.on-primary": "#FFFFFF",
+				"color.surface-variant": "#E4E8ED",
+				"color.outline": "#69727E",
+				"color.secondary": "#0F6675",
+				"color.primary-dim": "#2C5480",
+				"color.primary-container": "#DCE8F4",
+				"color.on-primary-container": "#1D3C5D",
+				"color.inverse-primary": "#5A8CC9",
+				"color.secondary-dim": "#0C5663",
+				"color.on-secondary": "#FFFFFF",
+				"color.secondary-container": "#D7EBEF",
+				"color.on-secondary-container": "#123F48",
+				"color.primary-container-subtle": "#EEF4FA",
+				"color.on-primary-container-subtle": "#1D3C5D",
+				"color.secondary-container-subtle": "#E8F3F5",
+				"color.on-secondary-container-subtle": "#123F48",
+				"color.outline-variant": "#B8C0CA",
+				"color.surface-container-high": "#E4E8ED",
+				"color.canvas": "#E9EDF2",
+				"color.ink": "#1A1C20",
+				"color.border-subtle": "#B8C0CA",
+				"color.success": "#0F6675",
+				"color.warning": "#9A561B",
+				"color.danger": "#963A3A",
+				"shell.bottomTab.activeBackground": "transparent",
+				"shell.bottomTab.activeForeground": "#3F72AF",
+				"shell.bottomBar.background": "#F7F8FA",
+				"shell.topBar.background": "#F7F8FA",
+				"leadingIcon.background": "color-mix(in srgb, #3F72AF 12%, transparent)",
+				"leadingIcon.color": "#2C5480",
+				"leadingIcon.backgroundPrimary": "color-mix(in srgb, #3F72AF 12%, transparent)",
+				"leadingIcon.colorPrimary": "#2C5480",
+				"leadingIcon.backgroundSecondary": "color-mix(in srgb, #0F6675 12%, transparent)",
+				"leadingIcon.colorSecondary": "#0F6675",
+				"leadingIcon.backgroundTertiary": "color-mix(in srgb, #8A6C13 14%, transparent)",
+				"leadingIcon.colorTertiary": "#8A6C13",
+				"leadingIcon.backgroundNeutral": "#E4E8ED",
+				"leadingIcon.colorNeutral": "#4A505A",
+				"timetable.period.activeBackground": "#DCE8F4",
+				"timetable.period.activeBackgroundImage": "none"
+			}
+		},
+		"dark": {
+			"colors": {
+				"color.surface-dim": "#1A1C20",
+				"color.surface-bright": "#3D4047",
+				"color.surface-container-lowest": "#1A1C20",
+				"color.surface-container-low": "#222428",
+				"color.surface-container": "#2B2D31",
+				"color.surface-container-highest": "#3D4047",
+				"color.on-surface-variant": "#C9CDD4",
+				"color.inverse-surface": "#F7F8FA",
+				"color.inverse-on-surface": "#1A1C20",
+				"color.primary-fixed": "#A8C4E0",
+				"color.primary-fixed-dim": "#5A8CC9",
+				"color.on-primary-fixed": "#1A1C20",
+				"color.on-primary-fixed-variant": "#1D3C5D",
+				"color.secondary-fixed": "#A9D3DC",
+				"color.secondary-fixed-dim": "#56B6C9",
+				"color.on-secondary-fixed": "#1A1C20",
+				"color.on-secondary-fixed-variant": "#285E69",
+				"color.tertiary": "#C9A84C",
+				"color.tertiary-dim": "#A98A38",
+				"color.on-tertiary": "#1A1C20",
+				"color.tertiary-container": "#6E5B24",
+				"color.on-tertiary-container": "#FFFFFF",
+				"color.tertiary-fixed": "#E1D39B",
+				"color.tertiary-fixed-dim": "#C9A84C",
+				"color.on-tertiary-fixed": "#1A1C20",
+				"color.on-tertiary-fixed-variant": "#5A491C",
+				"color.error": "#B84A4A",
+				"color.error-dim": "#963A3A",
+				"color.on-error": "#FFFFFF",
+				"color.error-container": "#6C3434",
+				"color.on-error-container": "#FFFFFF",
+				"color.shadow": "#1A1C20",
+				"color.scrim": "color-mix(in srgb, #1A1C20 75%, transparent)",
+				"color.on-on-primary": "#FFFFFF",
+				"color.tertiary-container-subtle": "color-mix(in srgb, #C9A84C 15%, #2B2D31)",
+				"color.on-tertiary-container-subtle": "#E1D39B",
+				"color.error-container-subtle": "color-mix(in srgb, #B84A4A 15%, #2B2D31)",
+				"color.on-error-container-subtle": "#E7A5A5",
+				"color.surface": "#2B2D31",
+				"color.on-surface": "#FFFFFF",
+				"color.primary": "#3F72AF",
+				"color.on-primary": "#FFFFFF",
+				"color.surface-variant": "#34373D",
+				"color.outline": "#3F4349",
+				"color.secondary": "#56B6C9",
+				"color.primary-dim": "#2C5480",
+				"color.primary-container": "#2C5480",
+				"color.on-primary-container": "#FFFFFF",
+				"color.inverse-primary": "#A8C4E0",
+				"color.secondary-dim": "#285E69",
+				"color.on-secondary": "#1A1C20",
+				"color.secondary-container": "#285E69",
+				"color.on-secondary-container": "#FFFFFF",
+				"color.primary-container-subtle": "color-mix(in srgb, #3F72AF 15%, #2B2D31)",
+				"color.on-primary-container-subtle": "#A8C4E0",
+				"color.secondary-container-subtle": "color-mix(in srgb, #56B6C9 15%, #2B2D31)",
+				"color.on-secondary-container-subtle": "#A9D3DC",
+				"color.outline-variant": "#2F3238",
+				"color.surface-container-high": "#34373D",
+				"color.canvas": "#1A1C20",
+				"color.ink": "#FFFFFF",
+				"color.border-subtle": "#3F4349",
+				"color.success": "#56B6C9",
+				"color.warning": "#E08E45",
+				"color.danger": "#B84A4A",
+				"shell.bottomTab.activeBackground": "transparent",
+				"shell.bottomTab.activeForeground": "#3F72AF",
+				"shell.bottomBar.background": "#2B2D31",
+				"shell.topBar.background": "#2B2D31",
+				"leadingIcon.background": "color-mix(in srgb, #3F72AF 18%, transparent)",
+				"leadingIcon.color": "#A8C4E0",
+				"leadingIcon.backgroundPrimary": "color-mix(in srgb, #3F72AF 18%, transparent)",
+				"leadingIcon.colorPrimary": "#A8C4E0",
+				"leadingIcon.backgroundSecondary": "color-mix(in srgb, #56B6C9 16%, transparent)",
+				"leadingIcon.colorSecondary": "#A9D3DC",
+				"leadingIcon.backgroundTertiary": "color-mix(in srgb, #C9A84C 16%, transparent)",
+				"leadingIcon.colorTertiary": "#E1D39B",
+				"leadingIcon.backgroundNeutral": "#34373D",
+				"leadingIcon.colorNeutral": "#C9CDD4",
+				"timetable.period.activeBackground": "#2C5480",
+				"timetable.period.activeBackgroundImage": "none"
+			}
+		}
+	}
+}

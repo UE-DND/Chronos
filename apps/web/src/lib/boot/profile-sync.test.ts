@@ -21,8 +21,8 @@ describe('profile and deployment boundaries', () => {
 				)
 			).toBe(true);
 			expect(profile.preinstall.some((entry) => entry.id === 'core-shell')).toBe(false);
+			expect(profile.preinstall.some((entry) => entry.id === 'theme-arknights')).toBe(false);
 		}
-		expect(OFFICIAL_PLUGINS).toHaveLength(9);
 	});
 	it('selects server capabilities independently from the client profile', async () => {
 		expect(

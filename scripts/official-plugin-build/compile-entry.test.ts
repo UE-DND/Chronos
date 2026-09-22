@@ -33,16 +33,25 @@ describe('official-plugin-build compile', () => {
 		};
 	}
 
-	it('builds theme plugin JSON assets without JS bundle', async () => {
-		const themePlugin = OFFICIAL_PLUGINS.find((p) => p.id === 'theme-yumemita');
-		expect(themePlugin).toBeDefined();
+	it.each(['theme-arknights', 'theme-yumemita'])(
+		'builds %s JSON assets without a JS bundle',
+		async (pluginId) => {
+			const themePlugin = OFFICIAL_PLUGINS.find((p) => p.id === pluginId);
+			expect(themePlugin).toBeDefined();
 
-		const result = await buildOfficialPluginAssets(themePlugin!, createDevBuildOptions());
+			const result = await buildOfficialPluginAssets(themePlugin!, createDevBuildOptions());
 
-		expect(result.colorsJson).toBeTruthy();
-		expect(result.iconThemeJson).toBeTruthy();
-		expect(result.code).toBeNull();
-	});
+			expect(result.colorsJson).toBeTruthy();
+			expect(result.iconThemeJson).toBeTruthy();
+			expect(result.code).toBeNull();
+			expect(result.cssCode).toBeNull();
+			if (pluginId === 'theme-arknights') {
+				expect(result.wallpaperBytes).toBeUndefined();
+			} else {
+				expect(result.wallpaperBytes).toBeTruthy();
+			}
+		}
+	);
 
 	it('compiles today plugin CSS with Chronos tokens and no preflight', async () => {
 		const todayPlugin = OFFICIAL_PLUGINS.find((p) => p.id === 'tool-today');

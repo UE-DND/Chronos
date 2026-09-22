@@ -54,10 +54,23 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 		tailwindSource: false,
 		name: { 'zh-CN': 'Material 3', en: 'Material 3' },
 		description: {
-			'zh-CN': 'Chronos 默认 Material 3 配色',
-			en: 'Chronos default Material 3 colors'
+			'zh-CN': 'Material 3 主题',
+			en: 'Material 3 theme'
 		},
 		colorsJson: resolve(root, 'packages/plugins/theme-m3/theme-m3.colors.json')
+	},
+	{
+		id: 'theme-arknights',
+		type: 'theme',
+		sourceDir: 'theme-arknights',
+		tailwindSource: false,
+		name: { 'zh-CN': 'Arknights', en: 'Arknights' },
+		description: {
+			'zh-CN': 'Arknights 主题',
+			en: 'An unofficial color and icon theme inspired by tactical terminal interfaces'
+		},
+		colorsJson: resolve(root, 'packages/plugins/theme-arknights/theme-arknights.colors.json'),
+		iconsJson: resolve(root, 'packages/plugins/theme-arknights/theme-arknights.icons.json')
 	},
 	{
 		id: 'theme-yumemita',
