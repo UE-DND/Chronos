@@ -93,6 +93,7 @@ describe('Domain Models in @chronos/core', () => {
 		expect(DEFAULT_USER_PREFERENCES.themeMode).toBe('auto');
 		expect(DEFAULT_USER_PREFERENCES.wallpaperSource).toBe('none');
 		expect(DEFAULT_USER_PREFERENCES.wallpaperColorEnabled).toBe(false);
+		expect(DEFAULT_USER_PREFERENCES.wallpaperMaskEnabled).toBe(true);
 		expect(DEFAULT_USER_PREFERENCES.timetableLayoutMode).toBe('compact');
 		expect(DEFAULT_USER_PREFERENCES.capsuleCornerStyle).toBe('sharp');
 		expect(DEFAULT_USER_PREFERENCES.hapticFeedbackEnabled).toBe(true);
@@ -101,6 +102,9 @@ describe('Domain Models in @chronos/core', () => {
 	});
 
 	it('provides standard PREFERENCE_STORAGE_KEYS', () => {
+		expect(PREFERENCE_STORAGE_KEYS.wallpaperMaskEnabled).toBe(
+			'chronos_preferences:wallpaper_mask_enabled'
+		);
 		expect(PREFERENCE_STORAGE_KEYS.hapticFeedbackEnabled).toBe(
 			'chronos_preferences:haptic_feedback_enabled'
 		);

@@ -13,6 +13,7 @@ export const PREFERENCE_STORAGE_KEYS = {
 	timetableLayoutMode: 'chronos_preferences:timetable_layout_mode',
 	wallpaperSource: 'chronos_preferences:wallpaper_source',
 	wallpaperColorEnabled: 'chronos_preferences:wallpaper_color_enabled',
+	wallpaperMaskEnabled: 'chronos_preferences:wallpaper_mask_enabled',
 	capsuleCornerStyle: 'chronos_preferences:capsule_corner_style',
 	hapticFeedbackEnabled: 'chronos_preferences:haptic_feedback_enabled',
 	reduceMotionEnabled: 'chronos_preferences:reduce_motion_enabled',
@@ -26,6 +27,7 @@ export interface UserPreferences {
 	themeMode: ThemeMode;
 	wallpaperSource: WallpaperSource;
 	wallpaperColorEnabled: boolean;
+	wallpaperMaskEnabled: boolean;
 	timetableLayoutMode: TimetableLayoutMode;
 	capsuleCornerStyle: CapsuleCornerStyle;
 	hapticFeedbackEnabled: boolean;
@@ -43,6 +45,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 	themeMode: 'auto',
 	wallpaperSource: 'none',
 	wallpaperColorEnabled: false,
+	wallpaperMaskEnabled: true,
 	timetableLayoutMode: 'compact',
 	capsuleCornerStyle: 'sharp',
 	hapticFeedbackEnabled: true,

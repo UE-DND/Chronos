@@ -77,6 +77,11 @@ export class PreferencesStore {
 		);
 		const wallpaperColorEnabled =
 			this.localStore.getItem(SETTINGS_KEYS.wallpaperColorEnabled) === 'true';
+		const wallpaperMaskRaw = this.localStore.getItem(SETTINGS_KEYS.wallpaperMaskEnabled);
+		const wallpaperMaskEnabled =
+			wallpaperMaskRaw === null
+				? DEFAULT_USER_PREFERENCES.wallpaperMaskEnabled
+				: wallpaperMaskRaw === 'true';
 		const capsuleCornerStyle = normalizeCornerStyle(
 			this.localStore.getItem(SETTINGS_KEYS.capsuleCornerStyle)
 		);
@@ -95,6 +100,7 @@ export class PreferencesStore {
 			themeMode,
 			wallpaperSource,
 			wallpaperColorEnabled,
+			wallpaperMaskEnabled,
 			timetableLayoutMode,
 			capsuleCornerStyle,
 			hapticFeedbackEnabled,
@@ -121,6 +127,12 @@ export class PreferencesStore {
 			this.localStore.setItem(
 				SETTINGS_KEYS.wallpaperColorEnabled,
 				String(patch.wallpaperColorEnabled)
+			);
+		}
+		if (patch.wallpaperMaskEnabled !== undefined) {
+			this.localStore.setItem(
+				SETTINGS_KEYS.wallpaperMaskEnabled,
+				String(patch.wallpaperMaskEnabled)
 			);
 		}
 		if (patch.capsuleCornerStyle !== undefined) {

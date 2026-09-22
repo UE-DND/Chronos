@@ -49,6 +49,7 @@ describe('TimetableScreenController', () => {
 				timetableLayoutMode: 'fixed',
 				wallpaperSource: 'theme',
 				wallpaperColorEnabled: false,
+				wallpaperMaskEnabled: true,
 				capsuleCornerStyle: 'rounded',
 				hapticFeedbackEnabled: true,
 				reduceMotionEnabled: false,

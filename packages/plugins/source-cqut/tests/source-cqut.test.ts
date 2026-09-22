@@ -21,6 +21,7 @@ function createMockEnv(httpResponse?: HttpResponse): ChronosEnv {
 		themeMode: 'auto',
 		wallpaperSource: 'theme',
 		wallpaperColorEnabled: false,
+		wallpaperMaskEnabled: true,
 		timetableLayoutMode: 'fixed',
 		capsuleCornerStyle: 'rounded',
 		hapticFeedbackEnabled: true,

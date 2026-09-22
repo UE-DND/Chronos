@@ -13,13 +13,19 @@ describe('wallpaper preferences', () => {
 		const prefs = store();
 		expect(await prefs.getPreferences()).toMatchObject({
 			wallpaperSource: 'none',
-			wallpaperColorEnabled: false
+			wallpaperColorEnabled: false,
+			wallpaperMaskEnabled: true
 		});
-		await prefs.savePreferences({ wallpaperSource: 'custom', wallpaperColorEnabled: true });
+		await prefs.savePreferences({
+			wallpaperSource: 'custom',
+			wallpaperColorEnabled: true,
+			wallpaperMaskEnabled: false
+		});
 		await prefs.savePreferences({ visualThemeId: 'Theme.MixedCase' });
 		expect(await prefs.getPreferences()).toMatchObject({
 			wallpaperSource: 'custom',
 			wallpaperColorEnabled: true,
+			wallpaperMaskEnabled: false,
 			visualThemeId: 'Theme.MixedCase'
 		});
 	});

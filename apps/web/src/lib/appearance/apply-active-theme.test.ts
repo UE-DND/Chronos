@@ -61,6 +61,7 @@ describe('applyActiveTheme', () => {
 						themeMode: 'auto',
 						wallpaperSource: 'theme',
 						wallpaperColorEnabled: false,
+						wallpaperMaskEnabled: true,
 
 						timetableLayoutMode: 'fixed',
 						capsuleCornerStyle: 'rounded',
@@ -137,6 +138,7 @@ describe('applyActiveTheme', () => {
 						themeMode: 'auto',
 						wallpaperSource: 'theme',
 						wallpaperColorEnabled: false,
+						wallpaperMaskEnabled: true,
 
 						timetableLayoutMode: 'fixed',
 						capsuleCornerStyle: 'rounded',

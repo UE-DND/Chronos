@@ -35,6 +35,7 @@ function createMockEnv(): ChronosEnv {
 				themeMode: 'auto',
 				wallpaperSource: 'theme',
 				wallpaperColorEnabled: false,
+				wallpaperMaskEnabled: true,
 				timetableLayoutMode: 'fixed',
 				capsuleCornerStyle: 'rounded',
 				hapticFeedbackEnabled: true,
