@@ -21,6 +21,8 @@ export { findInvalidSchemaFields } from './schema-form/validate-schema';
 export { default as DateField } from './form/DateField.svelte';
 export { default as TimePicker } from './form/TimePicker.svelte';
 export { default as TimeWheel } from './form/TimeWheel.svelte';
+export { default as PickerWheel } from './form/PickerWheel.svelte';
+export type { PickerWheelOption } from './form/picker-wheel';
 export { default as BottomSheet } from './overlay/BottomSheet.svelte';
 export {
 	clampDragOffset,
@@ -47,6 +49,7 @@ export {
 	formatDateDisplay,
 	isValidIsoDateString,
 	isoToCalendarDate,
+	resolvePickerDraftIso,
 	resolvePickerMonthIso,
 	type DateFieldLabels
 } from './form/date-field-utils';

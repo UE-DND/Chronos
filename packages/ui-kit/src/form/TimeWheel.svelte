@@ -1,227 +1,122 @@
 <script lang="ts">
-	import { haptic } from '../haptic/haptic';
+	import { tick } from 'svelte';
+	import PickerWheel from './PickerWheel.svelte';
 	import {
 		hourItems,
 		minuteItems,
-		snapTimeWheelIndex,
-		TIME_WHEEL_ROW_HEIGHT,
 		type TimePickerLabels,
 		type TimeValue
 	} from './time-wheel-utils';
-
-	const ROW_HEIGHT = TIME_WHEEL_ROW_HEIGHT;
 
 	let {
 		value = $bindable({ hour: 0, minute: 0 }),
 		label,
 		labels,
 		idPrefix,
-		disabled = false
+		disabled = false,
+		minimum,
+		onValueChange
 	}: {
 		value?: TimeValue;
 		label: string;
 		labels: TimePickerLabels;
 		idPrefix: string;
 		disabled?: boolean;
+		minimum?: TimeValue;
+		onValueChange?: (value: TimeValue) => void;
 	} = $props();
 
-	const hours = hourItems();
-	const minutes = minuteItems();
-	const wheelNodes: Record<'hour' | 'minute', HTMLElement | null> = { hour: null, minute: null };
+	let hourValue = $state(String(value.hour));
+	let minuteValue = $state(String(value.minute));
+	let hourWheel: PickerWheel | null = $state(null);
+	let minuteWheel: PickerWheel | null = $state(null);
+	const hours = $derived(
+		hourItems()
+			.filter((hour) => !minimum || hour >= minimum.hour)
+			.map((hour) => ({
+				value: String(hour),
+				label: String(hour).padStart(2, '0')
+			}))
+	);
+	const minutes = $derived(
+		minuteItems()
+			.filter((minute) => !minimum || Number(hourValue) > minimum.hour || minute >= minimum.minute)
+			.map((minute) => ({
+				value: String(minute),
+				label: String(minute).padStart(2, '0')
+			}))
+	);
 
-	let suppressTickUntil = 0;
-	let lastTickAt = 0;
-	let settleTimer = 0;
-	// Latest snapped indices seen during a gesture. Plain (non-reactive) on purpose:
-	// writing DOM-bound state mid-fling aborts platform momentum scrolling.
-	const liveIndex: Record<'hour' | 'minute', number> = { hour: 0, minute: 0 };
-
-	function pad(n: number): string {
-		return String(n).padStart(2, '0');
+	function clampToMinimum(next: TimeValue): TimeValue {
+		if (!minimum || next.hour * 60 + next.minute >= minimum.hour * 60 + minimum.minute) {
+			return next;
+		}
+		return { ...minimum };
 	}
 
-	function scrollColumn(kind: 'hour' | 'minute', index: number, smooth: boolean) {
-		const node = wheelNodes[kind];
-		if (!node) return;
-		node.scrollTo({
-			top: index * ROW_HEIGHT,
-			behavior: (smooth ? 'smooth' : 'instant') as ScrollBehavior
-		});
+	function setValue(next: TimeValue) {
+		const clamped = clampToMinimum(next);
+		const changed = clamped.hour !== value.hour || clamped.minute !== value.minute;
+		hourValue = String(clamped.hour);
+		minuteValue = String(clamped.minute);
+		if (!changed) return;
+		value = clamped;
+		onValueChange?.(clamped);
+	}
+
+	function syncDraftFromValue() {
+		const next = clampToMinimum(value);
+		hourValue = String(next.hour);
+		minuteValue = String(next.minute);
 	}
 
 	export function scrollToValue() {
-		suppressTickUntil = Date.now() + 150;
-		liveIndex.hour = value.hour;
-		liveIndex.minute = value.minute;
-		scrollColumn('hour', value.hour, false);
-		scrollColumn('minute', value.minute, false);
+		syncDraftFromValue();
+		void tick().then(() => {
+			hourWheel?.scrollToValue();
+			minuteWheel?.scrollToValue();
+		});
 	}
 
-	function fireTick() {
-		const now = Date.now();
-		if (now < suppressTickUntil || now - lastTickAt < 40) return;
-		lastTickAt = now;
-		haptic.medium();
+	function updateHour(next: string) {
+		setValue({ hour: Number(next), minute: Number(minuteValue) });
+		void tick().then(() => minuteWheel?.scrollToValue());
 	}
 
-	function handleWheelScroll(kind: 'hour' | 'minute', node: HTMLElement) {
-		// Fast path only: track the snapped index and vibrate. No reactive writes
-		// here — mutating the subtree mid-gesture kills fling momentum on iOS.
-		const max = kind === 'hour' ? hours.length - 1 : minutes.length - 1;
-		const index = snapTimeWheelIndex(node.scrollTop, max, ROW_HEIGHT);
-		if (liveIndex[kind] !== index) {
-			liveIndex[kind] = index;
-			fireTick();
-		}
-		window.clearTimeout(settleTimer);
-		settleTimer = window.setTimeout(settleDraft, 90);
+	function updateMinute(next: string) {
+		setValue({ hour: Number(hourValue), minute: Number(next) });
 	}
 
-	function readLiveIndexFromDom(kind: 'hour' | 'minute') {
-		const node = wheelNodes[kind];
-		if (!node) return;
-		const max = kind === 'hour' ? hours.length - 1 : minutes.length - 1;
-		liveIndex[kind] = snapTimeWheelIndex(node.scrollTop, max, ROW_HEIGHT);
-	}
-
-	function settleDraft() {
-		settleTimer = 0;
-		if (liveIndex.hour === value.hour && liveIndex.minute === value.minute) return;
-		value = { hour: liveIndex.hour, minute: liveIndex.minute };
-	}
-
-	/** Flush scroll position into bindable value before parent confirms. */
+	/** Flush scroll positions into the bindable value before the parent confirms. */
 	export function commitDraft(): TimeValue {
-		window.clearTimeout(settleTimer);
-		readLiveIndexFromDom('hour');
-		readLiveIndexFromDom('minute');
-		settleDraft();
-		return { hour: liveIndex.hour, minute: liveIndex.minute };
-	}
-
-	function pick(kind: 'hour' | 'minute', index: number) {
-		const max = kind === 'hour' ? hours.length - 1 : minutes.length - 1;
-		const clamped = Math.min(Math.max(index, 0), max);
-		// Optimistic single write: no fling in progress, so this cannot abort momentum.
-		value = kind === 'hour' ? { ...value, hour: clamped } : { ...value, minute: clamped };
-		liveIndex[kind] = clamped;
-		scrollColumn(kind, clamped, true);
-	}
-
-	function handleWheelKeydown(kind: 'hour' | 'minute', event: KeyboardEvent) {
-		// Base on the latest gesture truth, not the last settled value:
-		// value can lag liveIndex while a fling is still settling.
-		const current = liveIndex[kind];
-		if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-			event.preventDefault();
-			pick(kind, current + 1);
-		} else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-			event.preventDefault();
-			pick(kind, current - 1);
-		} else if (event.key === 'Home') {
-			event.preventDefault();
-			pick(kind, 0);
-		} else if (event.key === 'End') {
-			event.preventDefault();
-			pick(kind, kind === 'hour' ? 23 : 59);
-		}
-	}
-
-	function wheelAttach(node: HTMLElement, kind: 'hour' | 'minute') {
-		wheelNodes[kind] = node;
-		// Sync the gesture truth on mount: scrollToValue() runs a tick after
-		// the sheet opens and can be skipped if mounting lags, which would
-		// otherwise leave the untouched column at 0 on the next settle.
-		const max = kind === 'hour' ? hours.length - 1 : minutes.length - 1;
-		liveIndex[kind] = Math.min(Math.max(value[kind], 0), max);
-		node.scrollTo({ top: value[kind] * ROW_HEIGHT });
-		return () => {
-			if (wheelNodes[kind] === node) wheelNodes[kind] = null;
-		};
+		const hour = Number(hourWheel?.commitDraft() ?? hourValue);
+		const minute = Number(minuteWheel?.commitDraft() ?? minuteValue);
+		setValue({ hour, minute });
+		return value;
 	}
 </script>
 
 <div class="flex justify-center gap-3">
-	{#each [{ kind: 'hour', items: hours, current: value.hour, name: labels.hour } as const, { kind: 'minute', items: minutes, current: value.minute, name: labels.minute } as const] as column (column.kind)}
-		<div class="flex min-w-0 flex-1 flex-col items-center">
-			<div class="time-wheel-column relative w-full">
-				<div
-					role="listbox"
-					aria-label={labels.columnAria(label, column.name)}
-					tabindex={disabled ? -1 : 0}
-					class="time-wheel overflow-y-auto rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand"
-					{@attach (node) => wheelAttach(node, column.kind)}
-					onscroll={(event) => handleWheelScroll(column.kind, event.currentTarget)}
-					onscrollend={() => {
-						window.clearTimeout(settleTimer);
-						settleTimer = 0;
-						settleDraft();
-					}}
-					onkeydown={(event) => handleWheelKeydown(column.kind, event)}
-				>
-					{#each column.items as n (n)}
-						<!-- svelte-ignore a11y_click_events_have_key_events -->
-						<div
-							role="option"
-							tabindex="-1"
-							id="{idPrefix}-{column.kind}-{n}"
-							aria-selected={n === column.current}
-							class="time-wheel-row text-body-large flex cursor-pointer items-center justify-center tabular-nums transition-colors {n ===
-							column.current
-								? 'font-medium text-on-surface'
-								: 'text-on-surface-variant/60'}"
-							style:height="{ROW_HEIGHT}px"
-							onclick={() => pick(column.kind, n)}
-						>
-							{pad(n)}
-						</div>
-					{/each}
-				</div>
-				<div
-					aria-hidden="true"
-					class="time-wheel-fade-top pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-surface-container-high to-transparent"
-				></div>
-				<div
-					aria-hidden="true"
-					class="time-wheel-fade-bottom pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-surface-container-high to-transparent"
-				></div>
-				<div
-					aria-hidden="true"
-					class="pointer-events-none absolute inset-x-2 top-1/2 h-10 -translate-y-1/2 rounded-lg border-y border-outline-variant/40 bg-brand/5"
-				></div>
-			</div>
-		</div>
-	{/each}
+	<div class="flex min-w-0 flex-1 flex-col items-center">
+		<PickerWheel
+			bind:this={hourWheel}
+			bind:value={hourValue}
+			options={hours}
+			label={labels.columnAria(label, labels.hour)}
+			idPrefix={`${idPrefix}-hour`}
+			{disabled}
+			onValueChange={updateHour}
+		/>
+	</div>
+	<div class="flex min-w-0 flex-1 flex-col items-center">
+		<PickerWheel
+			bind:this={minuteWheel}
+			bind:value={minuteValue}
+			options={minutes}
+			label={labels.columnAria(label, labels.minute)}
+			idPrefix={`${idPrefix}-minute`}
+			{disabled}
+			onValueChange={updateMinute}
+		/>
+	</div>
 </div>
-
-<style>
-	.time-wheel-column {
-		--time-wheel-height: 200px;
-		--time-wheel-fade: 80px;
-	}
-	.time-wheel {
-		height: var(--time-wheel-height);
-		padding-block: var(--time-wheel-fade);
-		scroll-snap-type: y mandatory;
-		scrollbar-width: none;
-		touch-action: pan-y;
-		overscroll-behavior-y: contain;
-		-webkit-overflow-scrolling: touch;
-	}
-	.time-wheel-fade-top,
-	.time-wheel-fade-bottom {
-		height: var(--time-wheel-fade);
-	}
-	.time-wheel::-webkit-scrollbar {
-		display: none;
-	}
-	.time-wheel-row {
-		scroll-snap-align: center;
-	}
-	@media (orientation: landscape) and (max-height: 500px) {
-		.time-wheel-column {
-			--time-wheel-height: 140px;
-			--time-wheel-fade: 50px;
-		}
-	}
-</style>
