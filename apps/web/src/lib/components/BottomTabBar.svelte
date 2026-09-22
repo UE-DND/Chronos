@@ -15,7 +15,7 @@
 	import { haptic } from '$lib/haptic/haptic';
 	import Button from '$lib/components/ui/Button.svelte';
 	import LayoutOptionsSheet from '$lib/components/timetable/LayoutOptionsSheet.svelte';
-	import { DeleteFill, EditNote, TuneFill } from '$lib/icons';
+	import { Add, DeleteFill, EditNote, TuneFill } from '$lib/icons';
 
 	const timetableScreen = getContext<TimetableScreenController>('timetableScreen');
 	const shellTab = getContext<ShellTabController>('shellTab');
@@ -28,6 +28,12 @@
 	const isEditing = $derived(Boolean(timetableScreen?.state.isEditing));
 	const isDragging = $derived(Boolean(timetableScreen?.interaction.isDragging));
 	const isDragOverDeleteZone = $derived(Boolean(timetableScreen?.interaction.drag?.overDeleteZone));
+	const hasTimetable = $derived(Boolean(timetableScreen?.state.currentTimetable));
+	const deleteHint = $derived(
+		isDragOverDeleteZone
+			? hostT('timetable.deleteWeek.dropHint')
+			: hostT('timetable.deleteWeek.dragHint')
+	);
 
 	let layoutOptionsSheet = $state(false);
 
@@ -75,15 +81,16 @@
 	class="tab-bar-content flex h-full w-full flex-col justify-center"
 	class:timetable-delete-zone={isEditing && isDragging}
 	class:timetable-delete-zone--active={isEditing && isDragging && isDragOverDeleteZone}
-	aria-label={isEditing && isDragging ? hostT('timetable.deleteWeek.zoneAria') : undefined}
+	aria-label={isEditing && isDragging ? deleteHint : undefined}
 >
 	{#if isEditing}
 		<div class="edit-bottom-bar relative h-full w-full">
 			<div
 				class="edit-bottom-bar-layer edit-bottom-bar-controls h-full w-full {isDragging
-					? 'edit-bottom-bar-controls--dragging'
-					: ''} {isDragOverDeleteZone ? 'edit-bottom-bar-layer--hidden' : ''}"
-				aria-hidden={isDragOverDeleteZone}
+					? 'edit-bottom-bar-layer--hidden'
+					: ''}"
+				data-has-timetable={hasTimetable}
+				aria-hidden={isDragging}
 			>
 				<Button
 					variant={compactLandscape.current ? 'text' : 'outlined'}
@@ -101,6 +108,24 @@
 						{hostT('timetable.edit.aria')}
 					{/if}
 				</Button>
+				{#if hasTimetable}
+					<Button
+						variant={compactLandscape.current ? 'text' : 'outlined'}
+						class="edit-bottom-bar-action min-w-0"
+						aria-label={hostT('course.add')}
+						title={hostT('course.add')}
+						onclick={() => {
+							haptic.light();
+							goto(resolve('/timetable/course-editor'));
+						}}
+					>
+						{#if compactLandscape.current}
+							<Add class="size-6" aria-hidden="true" />
+						{:else}
+							{hostT('course.add')}
+						{/if}
+					</Button>
+				{/if}
 				<Button
 					variant={compactLandscape.current ? 'text' : 'outlined'}
 					class="edit-bottom-bar-action min-w-0"
@@ -117,31 +142,26 @@
 						{hostT('timetable.details.section.display')}
 					{/if}
 				</Button>
-				<div class="edit-bottom-bar-trash-slot" aria-hidden={!isDragging}>
-					<div
-						class="edit-bottom-bar-trash flex items-center justify-center rounded-full"
-						role="img"
-						aria-hidden="true"
-					>
-						<DeleteFill class="size-6 text-error/70" aria-hidden="true" />
-					</div>
-				</div>
 			</div>
 			<div
-				class="edit-bottom-bar-layer edit-bottom-bar-delete-hint flex h-full w-full items-center justify-center gap-2 px-4 {isDragOverDeleteZone
+				class="edit-bottom-bar-layer edit-bottom-bar-delete-hint flex h-full w-full items-center justify-center gap-2 px-4 {isDragging
 					? 'edit-bottom-bar-delete-hint--active'
 					: ''}"
 				role="status"
 				aria-live="polite"
-				aria-hidden={!isDragOverDeleteZone}
-				aria-label={hostT('timetable.deleteWeek.dropHint')}
+				aria-hidden={!isDragging}
+				aria-label={deleteHint}
 			>
 				<span class="edit-bottom-bar-delete-icon inline-flex shrink-0" aria-hidden="true">
 					<DeleteFill class="size-6 text-error" />
 				</span>
-				<span class="edit-bottom-bar-delete-text text-label-large truncate font-medium text-error">
-					{hostT('timetable.deleteWeek.dropHint')}
-				</span>
+				{#key deleteHint}
+					<span
+						class="edit-bottom-bar-delete-text text-label-large truncate font-medium text-error"
+					>
+						{deleteHint}
+					</span>
+				{/key}
 			</div>
 		</div>
 	{:else}
@@ -217,7 +237,7 @@
 		display: grid;
 		align-items: center;
 		column-gap: 0.5rem;
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 	}
 
 	.edit-bottom-bar-action {
@@ -228,40 +248,8 @@
 			opacity 150ms ease;
 	}
 
-	.edit-bottom-bar-trash-slot {
-		display: flex;
-		align-items: center;
-		justify-content: flex-end;
-		width: 0;
-		min-width: 0;
-		overflow: hidden;
-		pointer-events: none;
-		transition: width 200ms cubic-bezier(0.2, 0, 0, 1) 40ms;
-	}
-
-	.edit-bottom-bar-controls--dragging .edit-bottom-bar-trash-slot {
-		width: 3rem;
-		transition: width 240ms cubic-bezier(0.2, 0, 0, 1);
-	}
-
-	.edit-bottom-bar-trash {
-		width: 3rem;
-		height: 3rem;
-		flex-shrink: 0;
-		opacity: 0;
-		transform: scale(0.72);
-		transform-origin: right center;
-		transition:
-			opacity 100ms cubic-bezier(0.4, 0, 1, 1),
-			transform 120ms cubic-bezier(0.4, 0, 0.2, 1);
-	}
-
-	.edit-bottom-bar-controls--dragging .edit-bottom-bar-trash {
-		opacity: 1;
-		transform: scale(1);
-		transition:
-			opacity 120ms cubic-bezier(0.2, 0, 0, 1) 20ms,
-			transform 180ms cubic-bezier(0.22, 1.12, 0.36, 1);
+	.edit-bottom-bar-controls[data-has-timetable='false'] {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
 	.edit-bottom-bar-delete-hint {
@@ -279,15 +267,21 @@
 	.edit-bottom-bar-delete-text {
 		transform: translateY(6px);
 		opacity: 0;
-		transition:
-			transform 280ms cubic-bezier(0.2, 0, 0, 1),
-			opacity 220ms cubic-bezier(0.2, 0, 0, 1);
 	}
 
 	.edit-bottom-bar-delete-hint--active .edit-bottom-bar-delete-text {
-		transform: translateY(0);
-		opacity: 1;
-		transition-delay: 50ms;
+		animation: edit-bottom-bar-delete-text-enter 280ms cubic-bezier(0.2, 0, 0, 1) 50ms both;
+	}
+
+	@keyframes edit-bottom-bar-delete-text-enter {
+		from {
+			transform: translateY(6px);
+			opacity: 0;
+		}
+		to {
+			transform: translateY(0);
+			opacity: 1;
+		}
 	}
 
 	.edit-bottom-bar-delete-icon {
@@ -306,11 +300,14 @@
 
 	@media (prefers-reduced-motion: reduce) {
 		.edit-bottom-bar-layer,
-		.edit-bottom-bar-trash-slot,
-		.edit-bottom-bar-trash,
 		.edit-bottom-bar-delete-text,
 		.edit-bottom-bar-delete-icon {
 			transition-duration: 1ms !important;
+		}
+
+		.edit-bottom-bar-delete-text {
+			animation-duration: 1ms !important;
+			animation-delay: 0ms !important;
 		}
 
 		.edit-bottom-bar-layer--hidden {
@@ -319,11 +316,14 @@
 	}
 
 	:root.reduce-motion .edit-bottom-bar-layer,
-	:root.reduce-motion .edit-bottom-bar-trash-slot,
-	:root.reduce-motion .edit-bottom-bar-trash,
 	:root.reduce-motion .edit-bottom-bar-delete-text,
 	:root.reduce-motion .edit-bottom-bar-delete-icon {
 		transition-duration: 1ms !important;
+	}
+
+	:root.reduce-motion .edit-bottom-bar-delete-text {
+		animation-duration: 1ms !important;
+		animation-delay: 0ms !important;
 	}
 
 	:root.reduce-motion .edit-bottom-bar-layer--hidden {
@@ -364,32 +364,11 @@
 			color: var(--color-on-surface-variant);
 		}
 
-		.edit-bottom-bar-trash-slot {
-			width: auto;
-			height: 0;
-			justify-content: center;
-			transition: height 200ms cubic-bezier(0.2, 0, 0, 1) 40ms;
-		}
-
-		.edit-bottom-bar-controls--dragging .edit-bottom-bar-trash-slot {
-			width: auto;
-			height: 3rem;
-			transition: height 240ms cubic-bezier(0.2, 0, 0, 1);
-		}
-
-		.edit-bottom-bar-trash {
-			transform-origin: center bottom;
-		}
-
 		.edit-bottom-bar-delete-hint {
 			flex-direction: column;
 			gap: 0.375rem;
 			padding-inline: 0.375rem;
 			text-align: center;
-		}
-
-		.edit-bottom-bar-delete-text {
-			display: none;
 		}
 	}
 </style>
