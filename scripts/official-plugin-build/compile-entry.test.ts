@@ -45,11 +45,7 @@ describe('official-plugin-build compile', () => {
 			expect(result.iconThemeJson).toBeTruthy();
 			expect(result.code).toBeNull();
 			expect(result.cssCode).toBeNull();
-			if (pluginId === 'theme-arknights') {
-				expect(result.wallpaperBytes).toBeUndefined();
-			} else {
-				expect(result.wallpaperBytes).toBeTruthy();
-			}
+			expect(result.wallpaperBytes).toBeTruthy();
 		}
 	);
 

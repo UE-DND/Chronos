@@ -9,6 +9,10 @@
 		"en": "Arknights icon theme"
 	},
 	"recommendedIconTheme": "arknights",
+	"wallpaper": {
+		"url": "./wallpaper.jpg",
+		"sha256": "2aeb0c4ae37521c3d242a1bda8c930f7551d3c5f13185d1bbd3e0173d6c37ecc"
+	},
 	"coursePalette": {
 		"light": [
 			{

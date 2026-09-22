@@ -50,6 +50,13 @@ describe('@chronos/plugin-theme-arknights', () => {
 		expect(iconThemeContribution.id).toBe(THEME_ID);
 	});
 
+	it('defines the theme wallpaper', () => {
+		expect(colorsJson.wallpaper).toEqual({
+			url: './wallpaper.jpg',
+			sha256: '2aeb0c4ae37521c3d242a1bda8c930f7551d3c5f13185d1bbd3e0173d6c37ecc'
+		});
+	});
+
 	it('ships safe original line icons for each supported bottom tab', () => {
 		expect(Object.keys(iconThemeContribution.bottomTabIcons ?? {}).sort()).toEqual([
 			'mine',
