@@ -14,7 +14,11 @@ export const ONBOARDING_STEP = {
 
 export function hasSeenOnboarding(): boolean {
 	if (typeof window === 'undefined') return true;
-	return localStorage.getItem(SEEN_KEY) === '1';
+	try {
+		return localStorage.getItem(SEEN_KEY) === '1';
+	} catch {
+		return false;
+	}
 }
 
 /** First-launch onboarding: welcome → legal → highlights → install → display style → long press → CTA. */
@@ -73,8 +77,13 @@ export class OnboardingController {
 
 	finish() {
 		this.open = false;
+		this.hasChecked = true;
 		if (typeof window !== 'undefined') {
-			localStorage.setItem(SEEN_KEY, '1');
+			try {
+				localStorage.setItem(SEEN_KEY, '1');
+			} catch {
+				// Storage can be denied; keep onboarding closed for this session.
+			}
 		}
 	}
 }

@@ -105,5 +105,21 @@ describe('onboardingController', () => {
 			storage.set('chronos:onboarding-seen', '1');
 			expect(hasSeenOnboarding()).toBe(true);
 		});
+
+		it('still closes for the current session when storage is unavailable', () => {
+			vi.stubGlobal('localStorage', {
+				getItem: () => {
+					throw new Error('Storage denied');
+				},
+				setItem: () => {
+					throw new Error('Storage denied');
+				}
+			});
+
+			expect(hasSeenOnboarding()).toBe(false);
+			onboardingController.open = true;
+			expect(() => onboardingController.finish()).not.toThrow();
+			expect(onboardingController.isActive('/')).toBe(false);
+		});
 	});
 });
