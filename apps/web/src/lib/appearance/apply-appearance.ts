@@ -67,6 +67,11 @@ export async function applyAppearance(
 	try {
 		const pixels = await options.readPixels(input.wallpaperUri, signal);
 		check();
+		// Image decoding often resolves in a microtask immediately after the
+		// preference update. Let the browser paint that update before running the
+		// theme's synchronous quantizer on the main thread.
+		await new Promise<void>((resolve) => setTimeout(resolve, 0));
+		check();
 		const result = await input.theme.resolveWallpaperColors({
 			pixels,
 			mode: input.isDark ? 'dark' : 'light',
