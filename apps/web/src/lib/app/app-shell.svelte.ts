@@ -51,10 +51,6 @@ export function createAppShell() {
 		)
 	);
 	const hasWallpaper = $derived(Boolean(wallpaperUri));
-	const wallpaperMaskEnabled = $derived(
-		controller.userPreferences?.wallpaperMaskEnabled ??
-			DEFAULT_USER_PREFERENCES.wallpaperMaskEnabled
-	);
 	function canUseWallpaperColors(
 		themeId: string | null,
 		source: UserPreferences['wallpaperSource'] | undefined
@@ -167,13 +163,6 @@ export function createAppShell() {
 				const reduceMotionEnabled = controller.userPreferences?.reduceMotionEnabled ?? false;
 				applyReduceMotionClass(reduceMotionEnabled);
 			});
-
-			$effect(() => {
-				const mask = wallpaperMaskEnabled;
-				if (typeof document !== 'undefined') {
-					document.documentElement.dataset.wallpaperMask = mask ? 'true' : 'false';
-				}
-			});
 		});
 	}
 
@@ -186,9 +175,6 @@ export function createAppShell() {
 		appearance.destroy();
 		disposeAppearanceEffects?.();
 		disposeAppearanceEffects = null;
-		if (typeof document !== 'undefined') {
-			delete document.documentElement.dataset.wallpaperMask;
-		}
 	}
 
 	async function updatePreferences(patch: Partial<UserPreferences>) {
@@ -266,7 +252,9 @@ export function createAppShell() {
 				effectiveTimetableLayoutMode,
 				hasWallpaper,
 				wallpaperColorsAvailable,
-				wallpaperMaskEnabled,
+				wallpaperMaskEnabled:
+					controller.userPreferences?.wallpaperMaskEnabled ??
+					DEFAULT_USER_PREFERENCES.wallpaperMaskEnabled,
 				wallpaperUri
 			};
 		},

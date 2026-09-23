@@ -29,19 +29,13 @@
 	--timetable-chrome-side-shadow: none;
 }
 
-:root[data-wallpaper-mask='false'],
-[data-wallpaper-mask='false'],
-.dark[data-wallpaper-mask='false'],
-.dark [data-wallpaper-mask='false'] {
+[data-wallpaper-mask='false'][data-has-wallpaper='true'] {
 	--dynamic-tint-sidebar: transparent;
 	--dynamic-tint-grid: transparent;
 	--dynamic-tint-holiday-overlay: transparent;
 }
 
-:root[data-wallpaper-mask='false'][data-has-wallpaper='true'],
-[data-wallpaper-mask='false'][data-has-wallpaper='true'],
-.dark[data-wallpaper-mask='false'][data-has-wallpaper='true'],
-.dark [data-wallpaper-mask='false'][data-has-wallpaper='true'] {
+[data-wallpaper-mask='false'][data-has-wallpaper='true'] {
 	--timetable-chrome-top-fg: var(--adaptive-top-fg, var(--color-on-surface));
 	--timetable-chrome-top-fg-sub: var(--adaptive-top-fg-sub, var(--color-on-surface-variant));
 	--timetable-chrome-top-shadow: var(--adaptive-top-shadow, none);
