@@ -42,6 +42,7 @@
 
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let adaptiveColors = $state<AdaptiveChromeResult | null>(null);
+	let viewportRevision = $state(0);
 
 	$effect(() => {
 		if (!hasWallpaper || wallpaperMaskEnabled || !wallpaperUri) {
@@ -50,18 +51,37 @@
 		}
 
 		const currentUri = wallpaperUri;
+		const currentIsDark = isDark;
+		void containerEl;
+		void viewportRevision;
 		const ac = new AbortController();
 		getWallpaperBitmap(currentUri, ac.signal)
 			.then((bitmap) => {
 				if (ac.signal.aborted) return;
-				const viewportWidth =
-					containerEl?.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 375);
-				const viewportHeight =
-					containerEl?.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 667);
+				const wallpaperRect = document
+					.querySelector('[data-shell-wallpaper]')
+					?.getBoundingClientRect();
+				const gridRect = containerEl?.getBoundingClientRect();
+				const viewportWidth = wallpaperRect?.width || gridRect?.width || window.innerWidth;
+				const viewportHeight = wallpaperRect?.height || gridRect?.height || window.innerHeight;
+				const gridTop = gridRect && wallpaperRect ? gridRect.top - wallpaperRect.top : 0;
+				const gridHeight = gridRect?.height ?? viewportHeight;
 				const result = extractAdaptiveChromeColors(bitmap.pixels, bitmap.width, bitmap.height, {
 					viewportWidth,
 					viewportHeight,
-					isDark
+					topRegion: {
+						x: 0,
+						y: gridTop / viewportHeight,
+						width: 1,
+						height: (gridHeight / viewportHeight) * 0.1
+					},
+					sideRegion: {
+						x: 0,
+						y: (gridTop + gridHeight * 0.1) / viewportHeight,
+						width: 0.15,
+						height: (gridHeight / viewportHeight) * 0.9
+					},
+					isDark: currentIsDark
 				});
 				if (!ac.signal.aborted && wallpaperUri === currentUri) {
 					adaptiveColors = result;
@@ -130,7 +150,10 @@
 	});
 </script>
 
-<svelte:window onkeydown={active ? onWindowKeydown : undefined} />
+<svelte:window
+	onkeydown={active ? onWindowKeydown : undefined}
+	onresize={() => (viewportRevision += 1)}
+/>
 
 <div class="relative flex h-[calc(100dvh-var(--bottom-bar-height))] flex-col">
 	<TopAppBar class="timetable-week-top-bar shrink-0">
