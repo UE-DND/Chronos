@@ -9,49 +9,83 @@ export interface NormalizedRect {
 	height: number;
 }
 
-export interface AdaptiveChromeTone {
-	isDarkBg: boolean;
-	luminance: number;
-	fg: string;
-	fgSub: string;
-	textShadow: string;
+export type AdaptiveTextTone = 'dark' | 'light' | 'dark-outline' | 'light-outline';
+
+const DARK_TEXT_LUMINANCE =
+	0.2126 * linearChannel(15 / 255) +
+	0.7152 * linearChannel(23 / 255) +
+	0.0722 * linearChannel(42 / 255);
+const MIN_TEXT_CONTRAST = 4.5;
+
+function linearChannel(channel: number): number {
+	return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
 }
 
-export interface AdaptiveChromeResult {
-	topBar: AdaptiveChromeTone;
-	sidebar: AdaptiveChromeTone;
+function contrastRatio(first: number, second: number): number {
+	return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 }
 
-export const DEFAULT_TOP_BAR_REGION: NormalizedRect = {
-	x: 0,
-	y: 0,
-	width: 1.0,
-	height: 0.1
-};
+/** Selects a foreground for the pixels directly behind one text element. */
+export function selectAdaptiveTextTone(
+	pixels: Uint8ClampedArray | Uint8Array,
+	imageWidth: number,
+	imageHeight: number,
+	viewportRect: NormalizedRect,
+	viewportWidth: number,
+	viewportHeight: number,
+	isDark = false
+): AdaptiveTextTone {
+	if (
+		imageWidth <= 0 ||
+		imageHeight <= 0 ||
+		viewportWidth <= 0 ||
+		viewportHeight <= 0 ||
+		pixels.length < imageWidth * imageHeight * 4
+	) {
+		return isDark ? 'light-outline' : 'dark-outline';
+	}
 
-export const DEFAULT_SIDEBAR_REGION: NormalizedRect = {
-	x: 0,
-	y: 0.1,
-	width: 0.15,
-	height: 0.9
-};
+	const rect = mapViewportRectToCoverImageRect(
+		viewportRect,
+		viewportWidth,
+		viewportHeight,
+		imageWidth,
+		imageHeight
+	);
+	const startX = Math.max(0, Math.min(imageWidth - 1, Math.floor(rect.x * imageWidth)));
+	const endX = Math.max(
+		startX + 1,
+		Math.min(imageWidth, Math.ceil((rect.x + rect.width) * imageWidth))
+	);
+	const startY = Math.max(0, Math.min(imageHeight - 1, Math.floor(rect.y * imageHeight)));
+	const endY = Math.max(
+		startY + 1,
+		Math.min(imageHeight, Math.ceil((rect.y + rect.height) * imageHeight))
+	);
+	const base = isDark ? 0 : 255;
+	let darkContrast = Number.POSITIVE_INFINITY;
+	let lightContrast = Number.POSITIVE_INFINITY;
+	let totalLuminance = 0;
+	let sampleCount = 0;
 
-export interface CalculateRegionLuminanceOptions {
-	/**
-	 * Base background luminance for transparent / semi-transparent pixels in [0, 1].
-	 * Defaults to 1.0 (light theme surface) if isDark is false, or 0.0 (dark theme surface) if isDark is true.
-	 */
-	baseLuminance?: number;
-	isDark?: boolean;
-}
+	for (let y = startY; y < endY; y += 1) {
+		for (let x = startX; x < endX; x += 1) {
+			const index = (y * imageWidth + x) * 4;
+			const alpha = (pixels[index + 3] ?? 255) / 255;
+			const red = linearChannel(((pixels[index] ?? 0) * alpha + base * (1 - alpha)) / 255);
+			const green = linearChannel(((pixels[index + 1] ?? 0) * alpha + base * (1 - alpha)) / 255);
+			const blue = linearChannel(((pixels[index + 2] ?? 0) * alpha + base * (1 - alpha)) / 255);
+			const luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+			darkContrast = Math.min(darkContrast, contrastRatio(DARK_TEXT_LUMINANCE, luminance));
+			lightContrast = Math.min(lightContrast, contrastRatio(1, luminance));
+			totalLuminance += luminance;
+			sampleCount += 1;
+		}
+	}
 
-export interface ExtractAdaptiveChromeOptions {
-	topRegion?: NormalizedRect;
-	sideRegion?: NormalizedRect;
-	viewportWidth?: number;
-	viewportHeight?: number;
-	baseLuminance?: number;
-	isDark?: boolean;
+	if (darkContrast >= MIN_TEXT_CONTRAST && darkContrast >= lightContrast) return 'dark';
+	if (lightContrast >= MIN_TEXT_CONTRAST) return 'light';
+	return totalLuminance / sampleCount >= 0.2 ? 'dark-outline' : 'light-outline';
 }
 
 /**
@@ -97,127 +131,5 @@ export function mapViewportRectToCoverImageRect(
 		y: nyStart,
 		width: nxEnd - nxStart,
 		height: nyEnd - nyStart
-	};
-}
-
-/**
- * Calculates perceived relative luminance of a normalized sub-region from raw RGBA pixel buffer.
- * Supports alpha compositing against base background luminance for transparent/semi-transparent pixels.
- * Uses standard ITU-R BT.709 / sRGB coefficients: 0.2126 R + 0.7152 G + 0.0722 B.
- * Returns a value in [0, 1].
- */
-export function calculateRegionLuminance(
-	pixels: Uint8ClampedArray | Uint8Array,
-	imageWidth: number,
-	imageHeight: number,
-	region: NormalizedRect,
-	options?: CalculateRegionLuminanceOptions
-): number {
-	if (imageWidth <= 0 || imageHeight <= 0 || pixels.length < imageWidth * imageHeight * 4) {
-		return 0.5;
-	}
-
-	const baseLuminance = options?.baseLuminance ?? (options?.isDark ? 0.0 : 1.0);
-
-	const startX = Math.max(0, Math.min(imageWidth - 1, Math.floor(region.x * imageWidth)));
-	const endX = Math.max(
-		startX + 1,
-		Math.min(imageWidth, Math.ceil((region.x + region.width) * imageWidth))
-	);
-	const startY = Math.max(0, Math.min(imageHeight - 1, Math.floor(region.y * imageHeight)));
-	const endY = Math.max(
-		startY + 1,
-		Math.min(imageHeight, Math.ceil((region.y + region.height) * imageHeight))
-	);
-
-	let totalLuminance = 0;
-	let count = 0;
-
-	for (let y = startY; y < endY; y += 1) {
-		const rowOffset = y * imageWidth * 4;
-		for (let x = startX; x < endX; x += 1) {
-			const index = rowOffset + x * 4;
-			const r = pixels[index] ?? 0;
-			const g = pixels[index + 1] ?? 0;
-			const b = pixels[index + 2] ?? 0;
-			const a = (pixels[index + 3] ?? 255) / 255;
-
-			const pixelLum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-			const effectiveLum = pixelLum * a + baseLuminance * (1 - a);
-
-			totalLuminance += effectiveLum;
-			count += 1;
-		}
-	}
-
-	if (count === 0) return 0.5;
-	return totalLuminance / count;
-}
-
-/**
- * Derives high-contrast foreground color, secondary color, and text-shadow based on background luminance.
- */
-export function deriveAdaptiveChromeTone(luminance: number): AdaptiveChromeTone {
-	const isDarkBg = luminance < 0.5;
-	if (isDarkBg) {
-		return {
-			isDarkBg: true,
-			luminance,
-			fg: 'rgba(255, 255, 255, 0.98)',
-			fgSub: 'rgba(255, 255, 255, 0.72)',
-			textShadow: '0 1px 2px rgba(0, 0, 0, 0.7)'
-		};
-	}
-	return {
-		isDarkBg: false,
-		luminance,
-		fg: 'rgba(15, 23, 42, 0.95)',
-		fgSub: 'rgba(51, 65, 85, 0.8)',
-		textShadow: '0 1px 2px rgba(255, 255, 255, 0.7)'
-	};
-}
-
-/**
- * Extracts adaptive chrome styling parameters for top date bar and left period sidebar.
- * Automatically accounts for viewport cover cropping and transparent pixel blending.
- */
-export function extractAdaptiveChromeColors(
-	pixels: Uint8ClampedArray | Uint8Array,
-	imageWidth: number,
-	imageHeight: number,
-	options?: ExtractAdaptiveChromeOptions
-): AdaptiveChromeResult {
-	let topRegion = options?.topRegion ?? DEFAULT_TOP_BAR_REGION;
-	let sideRegion = options?.sideRegion ?? DEFAULT_SIDEBAR_REGION;
-
-	if (options?.viewportWidth && options?.viewportHeight) {
-		topRegion = mapViewportRectToCoverImageRect(
-			topRegion,
-			options.viewportWidth,
-			options.viewportHeight,
-			imageWidth,
-			imageHeight
-		);
-		sideRegion = mapViewportRectToCoverImageRect(
-			sideRegion,
-			options.viewportWidth,
-			options.viewportHeight,
-			imageWidth,
-			imageHeight
-		);
-	}
-
-	const topLum = calculateRegionLuminance(pixels, imageWidth, imageHeight, topRegion, {
-		baseLuminance: options?.baseLuminance,
-		isDark: options?.isDark
-	});
-	const sideLum = calculateRegionLuminance(pixels, imageWidth, imageHeight, sideRegion, {
-		baseLuminance: options?.baseLuminance,
-		isDark: options?.isDark
-	});
-
-	return {
-		topBar: deriveAdaptiveChromeTone(topLum),
-		sidebar: deriveAdaptiveChromeTone(sideLum)
 	};
 }
