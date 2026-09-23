@@ -15,6 +15,7 @@
 	import HighlightRowList from '$lib/components/ui/HighlightRowList.svelte';
 	import HighlightRow from '$lib/components/ui/HighlightRow.svelte';
 	import InstallGuideCard from '$lib/components/pwa/InstallGuideCard.svelte';
+	import LongPressDemo from './LongPressDemo.svelte';
 	import LayoutModePreview from './LayoutModePreview.svelte';
 	import { scrollRubberBand } from '@chronos/ui-kit';
 	import {
@@ -33,7 +34,7 @@
 	const step = $derived(onboardingController.step);
 	const showOnboarding = $derived(onboardingController.isActive(page.url.pathname));
 	const shouldRenderOnboarding = $derived(onboardingController.shouldRender(page.url.pathname));
-	const stepIndices = [0, 1, 2, 3, 4, 5] as const;
+	const stepIndices = [0, 1, 2, 3, 4, 5, 6] as const;
 	const isLastStep = $derived(step === onboardingController.totalSteps - 1);
 	const stepTitleId = 'onboarding-step-title';
 	const layoutMode = $derived(shell.state.effectiveTimetableLayoutMode);
@@ -322,6 +323,16 @@
 										{hostT('onboarding.layout.compact.landscapeUnavailable')}
 									</p>
 								{/if}
+							</div>
+						{:else if step === ONBOARDING_STEP.longPress}
+							<div class="flex flex-1 flex-col items-center justify-center gap-5">
+								<h2
+									id={stepTitleId}
+									class="text-headline-small text-center font-semibold text-on-surface"
+								>
+									{hostT('onboarding.longPress.title')}
+								</h2>
+								<LongPressDemo />
 							</div>
 						{:else if step === ONBOARDING_STEP.install}
 							<div class="flex flex-1 flex-col justify-center gap-4">

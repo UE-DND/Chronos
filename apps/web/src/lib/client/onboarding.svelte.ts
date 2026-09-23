@@ -7,8 +7,9 @@ export const ONBOARDING_STEP = {
 	legal: 1,
 	highlights: 2,
 	layout: 3,
-	install: 4,
-	done: 5
+	longPress: 4,
+	install: 5,
+	done: 6
 } as const;
 
 export function hasSeenOnboarding(): boolean {
@@ -16,12 +17,12 @@ export function hasSeenOnboarding(): boolean {
 	return localStorage.getItem(SEEN_KEY) === '1';
 }
 
-/** First-launch onboarding: welcome → legal → highlights → display style → install → CTA. */
+/** First-launch onboarding: welcome → legal → highlights → display style → long press → install → CTA. */
 export class OnboardingController {
 	open = $state(false);
 	step = $state(0);
 
-	readonly totalSteps = 6;
+	readonly totalSteps = 7;
 
 	private hasChecked = false;
 
