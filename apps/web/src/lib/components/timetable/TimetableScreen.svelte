@@ -25,8 +25,8 @@
 	const screenState = $derived(screen.state);
 	const shell = getContext<AppShellController>('appShell');
 
-	import { extractAdaptiveChromeColors, type AdaptiveChromeResult } from '@chronos/core';
 	import { getWallpaperBitmap } from '$lib/wallpaper/wallpaper-theme';
+	import { observeAdaptiveWallpaperText } from '$lib/wallpaper/adaptive-text';
 
 	const coursePalette = $derived(shell.appearance.coursePalette);
 	const hasWallpaper = $derived(shell.state.hasWallpaper);
@@ -41,72 +41,24 @@
 	);
 
 	let containerEl = $state<HTMLDivElement | undefined>();
-	let adaptiveColors = $state<AdaptiveChromeResult | null>(null);
-	let viewportRevision = $state(0);
 
 	$effect(() => {
-		if (!hasWallpaper || wallpaperMaskEnabled || !wallpaperUri) {
-			adaptiveColors = null;
-			return;
-		}
-
-		const currentUri = wallpaperUri;
-		const currentIsDark = isDark;
-		void containerEl;
-		void viewportRevision;
+		if (!hasWallpaper || wallpaperMaskEnabled || !wallpaperUri || !containerEl) return;
+		const container = containerEl;
+		const dark = isDark;
 		const ac = new AbortController();
-		getWallpaperBitmap(currentUri, ac.signal)
+		let stopObserving = () => {};
+		getWallpaperBitmap(wallpaperUri, ac.signal)
 			.then((bitmap) => {
-				if (ac.signal.aborted) return;
-				const wallpaperRect = document
-					.querySelector('[data-shell-wallpaper]')
-					?.getBoundingClientRect();
-				const gridRect = containerEl?.getBoundingClientRect();
-				const viewportWidth = wallpaperRect?.width || gridRect?.width || window.innerWidth;
-				const viewportHeight = wallpaperRect?.height || gridRect?.height || window.innerHeight;
-				const gridTop = gridRect && wallpaperRect ? gridRect.top - wallpaperRect.top : 0;
-				const gridHeight = gridRect?.height ?? viewportHeight;
-				const result = extractAdaptiveChromeColors(bitmap.pixels, bitmap.width, bitmap.height, {
-					viewportWidth,
-					viewportHeight,
-					topRegion: {
-						x: 0,
-						y: gridTop / viewportHeight,
-						width: 1,
-						height: (gridHeight / viewportHeight) * 0.1
-					},
-					sideRegion: {
-						x: 0,
-						y: (gridTop + gridHeight * 0.1) / viewportHeight,
-						width: 0.15,
-						height: (gridHeight / viewportHeight) * 0.9
-					},
-					isDark: currentIsDark
-				});
-				if (!ac.signal.aborted && wallpaperUri === currentUri) {
-					adaptiveColors = result;
-				}
+				if (!ac.signal.aborted)
+					stopObserving = observeAdaptiveWallpaperText(container, bitmap, dark);
 			})
-			.catch(() => {
-				if (!ac.signal.aborted && wallpaperUri === currentUri) {
-					adaptiveColors = null;
-				}
-			});
+			.catch(() => {});
 
-		return () => ac.abort();
-	});
-
-	const adaptiveStyle = $derived.by(() => {
-		if (!adaptiveColors) return '';
-		const { topBar, sidebar } = adaptiveColors;
-		return (
-			`--adaptive-top-fg: ${topBar.fg}; ` +
-			`--adaptive-top-fg-sub: ${topBar.fgSub}; ` +
-			`--adaptive-top-shadow: ${topBar.textShadow}; ` +
-			`--adaptive-side-fg: ${sidebar.fg}; ` +
-			`--adaptive-side-fg-sub: ${sidebar.fgSub}; ` +
-			`--adaptive-side-shadow: ${sidebar.textShadow};`
-		);
+		return () => {
+			ac.abort();
+			stopObserving();
+		};
 	});
 
 	const pendingWeekDelete = $derived(screen.pendingWeekDelete);
@@ -150,10 +102,7 @@
 	});
 </script>
 
-<svelte:window
-	onkeydown={active ? onWindowKeydown : undefined}
-	onresize={() => (viewportRevision += 1)}
-/>
+<svelte:window onkeydown={active ? onWindowKeydown : undefined} />
 
 <div class="relative flex h-[calc(100dvh-var(--bottom-bar-height))] flex-col">
 	<TopAppBar class="timetable-week-top-bar shrink-0">
@@ -171,7 +120,6 @@
 		class="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden"
 		data-wallpaper-mask={wallpaperMaskEnabled ? 'true' : 'false'}
 		data-has-wallpaper={hasWallpaper ? 'true' : 'false'}
-		style={adaptiveStyle || undefined}
 	>
 		{#key screenState.currentTimetable?.id}
 			<TimetableWeekSwiper
