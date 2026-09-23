@@ -48,14 +48,17 @@
 		const dark = isDark;
 		const ac = new AbortController();
 		let stopObserving = () => {};
-		getWallpaperBitmap(wallpaperUri, ac.signal)
-			.then((bitmap) => {
-				if (!ac.signal.aborted)
-					stopObserving = observeAdaptiveWallpaperText(container, bitmap, dark);
-			})
-			.catch(() => {});
+		const start = window.setTimeout(() => {
+			getWallpaperBitmap(wallpaperUri, ac.signal)
+				.then((bitmap) => {
+					if (!ac.signal.aborted)
+						stopObserving = observeAdaptiveWallpaperText(container, bitmap, dark);
+				})
+				.catch(() => {});
+		}, 0);
 
 		return () => {
+			window.clearTimeout(start);
 			ac.abort();
 			stopObserving();
 		};
