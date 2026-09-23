@@ -125,6 +125,7 @@ describe('createCourseEditor', () => {
 				showNonCurrentWeekCourses: true
 			}
 		});
+		expect(mocks.trackEvent).toHaveBeenCalledWith('course_save');
 		expect(onDone).toHaveBeenCalledOnce();
 	});
 
@@ -209,5 +210,32 @@ describe('createCourseEditor', () => {
 
 		expect(editor.conflicts.map((course) => course.id)).toEqual(['existing']);
 		expect(editor.canSave).toBe(true);
+	});
+
+	it('deletes an existing course and tracks course_delete', async () => {
+		const existing = {
+			id: 'existing-to-delete',
+			name: '大学物理',
+			teacher: '',
+			location: '',
+			dayOfWeek: 3,
+			startPeriod: 1,
+			endPeriod: 2,
+			weeks: [1],
+			remark: ''
+		};
+		const onDone = vi.fn();
+		const editor = createCourseEditor(
+			shellWith(timetable({ courses: [existing] })),
+			() => existing.id,
+			onDone
+		);
+		editor.syncFromRoute();
+
+		await editor.deleteCourse();
+
+		expect(mocks.deleteCourse).toHaveBeenCalledWith('existing-to-delete');
+		expect(mocks.trackEvent).toHaveBeenCalledWith('course_delete');
+		expect(onDone).toHaveBeenCalledOnce();
 	});
 });

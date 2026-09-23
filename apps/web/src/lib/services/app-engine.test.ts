@@ -10,6 +10,7 @@ import {
 	getOfficialPluginService
 } from './app-engine';
 import type { ChronosDB } from '$lib/storage/db';
+import { bindAnalyticsPort } from '$lib/client/analytics';
 import {
 	INSTALLED_STORAGE_KEY,
 	OFFICIAL_PLUGINS_PLUGIN_ID,
@@ -94,6 +95,18 @@ describe('app-engine bootstrap', () => {
 			'mine'
 		]);
 		expect(controller.getSlots('mine.section').length).toBeGreaterThan(0);
+	});
+
+	it('tracks course_editor_open when openCourseEditor is called', async () => {
+		const mockDb = createMockDb();
+		const mockStore = new MockLocalStorage();
+		const engine = await ensureEngineReady({ database: mockDb, localStorage: mockStore });
+		const track = vi.fn();
+		bindAnalyticsPort({ track });
+
+		engine.env.navigation?.openCourseEditor('c_123');
+
+		expect(track).toHaveBeenCalledWith('course_editor_open', { trigger: 'plugin' });
 	});
 
 	it('initializes shared ChronosEngine and ReactiveChronosController with builtin plugins and m3 theme', async () => {

@@ -7,7 +7,7 @@ import { registerHostShell } from '$lib/boot/core-shell';
 
 import { OfficialPluginService } from '$lib/services/official-plugins/official-plugin-service';
 import { snackbar } from '$lib/components/ui/snackbar-state.svelte';
-import { bindAnalyticsPort } from '$lib/client/analytics';
+import { bindAnalyticsPort, trackEvent } from '$lib/client/analytics';
 import { deploymentHasServerPlugins } from '$lib/boot/plugin-proxy-meta.generated';
 import { detectSystemAppLocale, syncAppLocaleOnStartup } from '$lib/i18n/locale-sync';
 import { HOST_MESSAGES, HOST_UI_PLUGIN_ID } from '$lib/i18n/host-messages';
@@ -51,6 +51,7 @@ function createEngine(options?: WebProviderOptions): ChronosEngine {
 		coursePresentation,
 		navigation: {
 			openCourseEditor(courseId: string) {
+				trackEvent('course_editor_open', { trigger: 'plugin' });
 				void import('$lib/navigation/nav-coordinator').then(({ navigateForward }) => {
 					void navigateForward(`/timetable/course-editor?courseId=${encodeURIComponent(courseId)}`);
 				});

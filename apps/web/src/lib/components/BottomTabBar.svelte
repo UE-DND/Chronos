@@ -15,6 +15,7 @@
 	import { haptic } from '$lib/haptic/haptic';
 	import Button from '$lib/components/ui/Button.svelte';
 	import LayoutOptionsSheet from '$lib/components/timetable/LayoutOptionsSheet.svelte';
+	import { trackEvent } from '$lib/client/analytics';
 	import { Add, DeleteFill, EditNote, TuneFill } from '$lib/icons';
 
 	const timetableScreen = getContext<TimetableScreenController>('timetableScreen');
@@ -74,6 +75,7 @@
 			return;
 		}
 		if (activeTabId === tab.id) {
+			trackEvent('shell_tab_scroll_top', { tabId: tab.id });
 			shellTab.scrollToTop(tab.id);
 			return;
 		}
@@ -120,6 +122,7 @@
 						title={hostT('course.add')}
 						onclick={() => {
 							haptic.light();
+							trackEvent('course_editor_open', { trigger: 'bottom_bar' });
 							goto(resolve('/timetable/course-editor'));
 						}}
 					>
