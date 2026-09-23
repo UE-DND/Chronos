@@ -1,20 +1,21 @@
 import type { Plugin } from 'vite';
 
-const WEIGHT_400 = /"400":\s*("(?:\\.|[^"\\])*")/g;
+const WEIGHT_700 = /"700":\s*("(?:\\.|[^"\\])*")/g;
 
 export function stripMaterialSymbolIconWeights(code: string): string | null {
 	const start = code.indexOf('const pathData = ');
 	const end = code.indexOf('\nconst metadata', start);
 	if (start < 0 || end < 0) return null;
 
-	const quoted = [...code.slice(start, end).matchAll(WEIGHT_400)].map((match) => match[1]);
-	if (quoted.length === 0 || quoted[0] === undefined) return null;
-
-	const regular = quoted[0];
-	const filled = quoted[1];
-	const pathData = filled
-		? `const pathData = {\n    regular: {\n        "400": ${regular}\n    },\n    filled: {\n        "400": ${filled}\n    }\n};`
-		: `const pathData = {\n    regular: {\n        "400": ${regular}\n    }\n};`;
+	const source = code.slice(start, end);
+	const readWeights = (section: string | undefined) =>
+		[...(section ?? '').matchAll(WEIGHT_700)].map((entry) => `        "700": ${entry[1]}`);
+	const regular = readWeights(source.match(/regular:\s*\{([\s\S]*?)\}/)?.[1]);
+	const filled = readWeights(source.match(/filled:\s*\{([\s\S]*?)\}/)?.[1]);
+	if (regular.length === 0) return null;
+	const variants = [`    regular: {\n${regular.join(',\n')}\n    }`];
+	if (filled.length > 0) variants.push(`    filled: {\n${filled.join(',\n')}\n    }`);
+	const pathData = `const pathData = {\n${variants.join(',\n')}\n};`;
 
 	return `${code.slice(0, start)}${pathData}${code.slice(end)}`;
 }

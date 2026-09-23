@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import { stripMaterialSymbolIconWeights } from './material-symbols-weight-plugin';
 
 describe('stripMaterialSymbolIconWeights', () => {
-	it('keeps only weight 400 for regular and filled variants', () => {
+	it('keeps only weight 700 for regular and filled variants', () => {
 		const input = `const pathData = {
     regular: {
         "100": "M1",
@@ -16,18 +16,18 @@ describe('stripMaterialSymbolIconWeights', () => {
     }
 };
 const metadata = {};
-export const IconW400 = pathData.regular[400];
+export const IconW700 = pathData.regular[700];
 `;
 		expect(stripMaterialSymbolIconWeights(input)).toBe(`const pathData = {
     regular: {
-        "400": "M4"
+        "700": "M7"
     },
     filled: {
-        "400": "F4"
+        "700": "F7"
     }
 };
 const metadata = {};
-export const IconW400 = pathData.regular[400];
+export const IconW700 = pathData.regular[700];
 `);
 	});
 
@@ -35,13 +35,14 @@ export const IconW400 = pathData.regular[400];
 		const input = `const pathData = {
     regular: {
         "100": "M1",
-        "400": "M4"
+        "400": "M4",
+        "700": "M7"
     }
 };
 const metadata = {};
 `;
 		expect(stripMaterialSymbolIconWeights(input)).toContain(
-			'regular: {\n        "400": "M4"\n    }\n};'
+			'regular: {\n        "700": "M7"\n    }\n};'
 		);
 		expect(stripMaterialSymbolIconWeights(input)).not.toContain('filled');
 	});
