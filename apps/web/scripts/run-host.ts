@@ -39,7 +39,6 @@ const environment = Object.fromEntries(
 	)
 );
 async function prepareAndRunHost(command: 'build' | 'dev') {
-	await runCommand('vp', ['exec', 'svelte-kit', 'sync'], webRoot);
 	await runCommand(
 		process.execPath,
 		['--experimental-strip-types', resolve(webRoot, 'scripts/emit-profile-artifacts.ts')],
