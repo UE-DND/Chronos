@@ -20,8 +20,8 @@ function registerCoreShellSlots(
 		id: 'timetable',
 		label: () => t('tab.timetable'),
 		order: 10,
-		icon: 'table-chart',
-		iconFill: 'table-chart-fill',
+		icon: 'view-week',
+		iconFill: 'view-week-fill',
 		hostPanel: 'timetable'
 	});
 

@@ -24,8 +24,8 @@ import {
 	History,
 	Refresh,
 	ScheduleFill,
-	TableChart,
-	TableChartFill
+	ViewWeek,
+	ViewWeekFill
 } from '$lib/icons';
 import type { Component } from 'svelte';
 
@@ -35,8 +35,8 @@ export const SHELL_ICON_MAP = {
 	'calendar-month-fill': CalendarMonthFill,
 	'calendar-clock': CalendarClock,
 	'calendar-clock-fill': CalendarClockFill,
-	'table-chart': TableChart,
-	'table-chart-fill': TableChartFill,
+	'view-week': ViewWeek,
+	'view-week-fill': ViewWeekFill,
 	person: Person,
 	'person-fill': PersonFill,
 	'list-alt': ListAltFill,

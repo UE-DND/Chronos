@@ -31,7 +31,7 @@ export {
 	CalendarClock,
 	CalendarClockFill
 } from '@material-symbols-svg/svelte/icons/calendar-clock';
-export { TableChart, TableChartFill } from '@material-symbols-svg/svelte/icons/table-chart';
+export { ViewWeek, ViewWeekFill } from '@material-symbols-svg/svelte/icons/view-week';
 export { Visibility } from '@material-symbols-svg/svelte/icons/visibility';
 export { VisibilityOff } from '@material-symbols-svg/svelte/icons/visibility-off';
 export { AddHomeFill } from '@material-symbols-svg/svelte/icons/add-home';
