@@ -524,27 +524,21 @@ export const en = {
 
 - Chronos **[ˈkrəʊ.nɒs]** is named after the Greek god of time
 - Chronos was originally created to replace the ad-ridden WakeUp timetable app
-- Chronos-Android v1.0.0 was written by GPT-5.4, going from an empty folder to a shippable release in 87 minutes
-- Chronos-PWA v0.1.0 was primarily written by Composer 2.5; the full migration took about a week and improved the experience over the old Android app
+- Chronos-Android v1.0.0 was written entirely by gpt-5.4, going from an empty folder to a shippable release in 87 minutes
+- Chronos-PWA was primarily written by composer-2.5 and gemini-3.6-flash, with an improved architecture and user experience over the old Android app
 
 ## Why PWA
 
-1. Solves app distribution on iOS
+1. Solves app distribution across the Apple ecosystem
 2. Android developers only do two things every day: wait for Studio to compile and read Gradle errors
 
-## Feedback
+## Feedback & Feature Suggestions
 
 Aside from GitHub Issues, this project has no other public feedback channels
 
-## Special thanks
+## Special Thanks
 
-- Important information published by [CQUT Campus Network Login Script](https://github.com/coldriver-chen/cqut-net-login)
-- Timetable fetch API provided by CFC Studio-Timetable
-
-## Join the team
-
-- Not happy with a feature? Chronos is fully open source — contributions welcome!
-- Maintained by [CQUT Open Source Project](https://cqut-openproject.github.io/home/); CQUT-OSP collects and maintains open source projects at our university`,
+- Timetable fetch API provided by CFC Studio-Timetable`,
 
 	// legal
 	'legal.zhOnlyNotice': 'Legal documents are currently available in Simplified Chinese only.',
