@@ -73,6 +73,10 @@
 			timetableScreen.jumpToCurrentWeek();
 			return;
 		}
+		if (activeTabId === tab.id) {
+			shellTab.scrollToTop(tab.id);
+			return;
+		}
 		shellTab.setActiveTab(tab.id);
 	}
 </script>

@@ -12,6 +12,7 @@ export function createShellTabController(getController: () => ReactiveChronosCon
 	const mountedTabIds = new SvelteSet<string>();
 	let initialized = false;
 	let defaultLaunchPending = false;
+	let scrollTopRequest = $state<{ id: string; token: number } | null>(null);
 
 	function mountTab(id: string): void {
 		if (!id) return;
@@ -70,6 +71,10 @@ export function createShellTabController(getController: () => ReactiveChronosCon
 		defaultLaunchPending = false;
 	}
 
+	function scrollToTop(id: string): void {
+		scrollTopRequest = { id, token: (scrollTopRequest?.token ?? 0) + 1 };
+	}
+
 	function warmup(id: string): void {
 		mountTab(id);
 	}
@@ -81,9 +86,13 @@ export function createShellTabController(getController: () => ReactiveChronosCon
 		get mountedTabIds() {
 			return mountedTabIds;
 		},
+		get scrollTopRequest() {
+			return scrollTopRequest;
+		},
 		init,
 		reconcileActiveTab,
 		setActiveTab,
+		scrollToTop,
 		warmup
 	};
 }

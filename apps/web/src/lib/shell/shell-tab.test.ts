@@ -163,4 +163,16 @@ describe('createShellTabController', () => {
 		expect(shellTab.activeTabId).toBe('today');
 		reloadedHandle.dispose();
 	});
+
+	it('emits a scrollToTop request with incremented token', () => {
+		const shellTab = createShellTabController(() => controller);
+		shellTab.init();
+		expect(shellTab.scrollTopRequest).toBeNull();
+
+		shellTab.scrollToTop('mine');
+		expect(shellTab.scrollTopRequest).toEqual({ id: 'mine', token: 1 });
+
+		shellTab.scrollToTop('mine');
+		expect(shellTab.scrollTopRequest).toEqual({ id: 'mine', token: 2 });
+	});
 });
