@@ -107,7 +107,7 @@ export function createCourseEditor(
 		isSaving = true;
 		try {
 			await controller.saveCurrentTimetableDetails({ courses, viewPrefs });
-			trackEvent('course_save');
+			trackEvent('course_save', { action: courseIndex === -1 ? 'create' : 'update' });
 			void onDone();
 		} catch {
 			snackbarKey('course.editor.saveFailed', undefined, undefined, 4000, 'assertive');

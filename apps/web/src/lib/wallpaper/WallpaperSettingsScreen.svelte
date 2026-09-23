@@ -36,10 +36,12 @@
 	const wallpaperMaskDisabled = $derived(!shell.state.hasWallpaper);
 	const sources = ['none', 'custom', 'theme'] as const;
 	async function selectSource(wallpaperSource: WallpaperSource) {
-		if (wallpaperSource === 'theme' && !selectedTheme?.wallpaper) return;
+		if (wallpaperSource === source || (wallpaperSource === 'theme' && !selectedTheme?.wallpaper))
+			return;
 		haptic.light();
 		try {
 			await shell.updatePreferences({ wallpaperSource });
+			trackEvent('wallpaper_source_change', { source: wallpaperSource });
 		} catch {
 			shell.controller.notify(hostT('wallpaper.settings.saveFailed'), 'error');
 		}

@@ -14,10 +14,12 @@
 		AcademicCalendarService,
 		COURSE_PALETTE_ENTRIES,
 		formatCompactDate,
-		IHostNavigation
+		IHostNavigation,
+		trackPluginAnalytics
 	} from '@chronos/core';
 	import { TODAY_MESSAGES } from './messages';
 	import { TODAY_PLUGIN_ID } from './constants';
+	import { TODAY_ANALYTICS } from './analytics';
 	import { resolvePeriodTimeRange } from './today-courses';
 	import { coursePaintKey, createTodayScreenController } from './today-screen.svelte';
 
@@ -37,6 +39,7 @@
 
 	const calendarService = new AcademicCalendarService();
 	const screen = createTodayScreenController();
+	let hasTrackedPreparingStatus = false;
 
 	const timetable = $derived(ui.current.currentTimetable);
 	const periodTimes = $derived(timetable?.academicConfig.periodTimes ?? []);
@@ -78,6 +81,22 @@
 	function openCourseEditor(courseId: string) {
 		courseEditorNavigation?.openCourseEditor(courseId);
 	}
+
+	$effect(() => {
+		if (
+			!active ||
+			hasTrackedPreparingStatus ||
+			!screen.courseEntries.some((entry) => entry.status === 'preparing')
+		)
+			return;
+
+		hasTrackedPreparingStatus = true;
+		trackPluginAnalytics(
+			controller.getPluginContext(pluginId),
+			TODAY_PLUGIN_ID,
+			TODAY_ANALYTICS.preparingStatusShown
+		);
+	});
 
 	onMount(() => {
 		void screen.init(controller, pluginId);
