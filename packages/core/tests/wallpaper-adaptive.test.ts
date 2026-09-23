@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vite-plus/test';
-import { mapViewportRectToCoverImageRect, selectAdaptiveTextTone } from '../src/index';
+import {
+	createAdaptiveTextToneSelector,
+	mapViewportRectToCoverImageRect,
+	selectAdaptiveTextTone
+} from '../src/index';
 
 describe('wallpaper cover mapping', () => {
 	it('maps the visible center crop of a landscape image', () => {
@@ -57,5 +61,31 @@ describe('adaptive text over wallpaper', () => {
 		const rect = { x: 0, y: 0, width: 1, height: 1 };
 		expect(selectAdaptiveTextTone(transparent, 1, 1, rect, 1, 1, false)).toBe('dark');
 		expect(selectAdaptiveTextTone(transparent, 1, 1, rect, 1, 1, true)).toBe('light');
+	});
+
+	it('prepared wallpaper sampling preserves per-pixel tone decisions', () => {
+		const width = 16;
+		const height = 12;
+		const image = new Uint8ClampedArray(width * height * 4);
+		for (let i = 0; i < image.length; i += 4) {
+			image[i] = (i * 17) % 256;
+			image[i + 1] = (i * 29) % 256;
+			image[i + 2] = (i * 43) % 256;
+			image[i + 3] = (i * 7) % 256;
+		}
+		for (const dark of [false, true]) {
+			const selectPrepared = createAdaptiveTextToneSelector(image, width, height, dark);
+			for (let i = 0; i < 40; i += 1) {
+				const rect = {
+					x: ((i * 7) % 20) / 20,
+					y: ((i * 11) % 20) / 20,
+					width: 0.04 + (i % 5) * 0.07,
+					height: 0.04 + (i % 4) * 0.09
+				};
+				expect(selectPrepared(rect, 390, 844)).toBe(
+					selectAdaptiveTextTone(image, width, height, rect, 390, 844, dark)
+				);
+			}
+		}
 	});
 });

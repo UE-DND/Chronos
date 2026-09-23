@@ -25,6 +25,51 @@ function contrastRatio(first: number, second: number): number {
 	return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 }
 
+function pixelLuminance(
+	pixels: Uint8ClampedArray | Uint8Array,
+	index: number,
+	base: number
+): number {
+	const alpha = (pixels[index + 3] ?? 255) / 255;
+	const red = linearChannel(((pixels[index] ?? 0) * alpha + base * (1 - alpha)) / 255);
+	const green = linearChannel(((pixels[index + 1] ?? 0) * alpha + base * (1 - alpha)) / 255);
+	const blue = linearChannel(((pixels[index + 2] ?? 0) * alpha + base * (1 - alpha)) / 255);
+	return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+/** Decode luminance once for a wallpaper that will be sampled on every scroll frame. */
+export function createAdaptiveTextToneSelector(
+	pixels: Uint8ClampedArray | Uint8Array,
+	imageWidth: number,
+	imageHeight: number,
+	isDark = false
+): (
+	viewportRect: NormalizedRect,
+	viewportWidth: number,
+	viewportHeight: number
+) => AdaptiveTextTone {
+	if (imageWidth <= 0 || imageHeight <= 0 || pixels.length < imageWidth * imageHeight * 4) {
+		return (rect, width, height) =>
+			selectAdaptiveTextTone(pixels, imageWidth, imageHeight, rect, width, height, isDark);
+	}
+	const luminances = new Float64Array(imageWidth * imageHeight);
+	const base = isDark ? 0 : 255;
+	for (let index = 0; index < luminances.length; index += 1) {
+		luminances[index] = pixelLuminance(pixels, index * 4, base);
+	}
+	return (rect, width, height) =>
+		selectAdaptiveTextToneFromPixels(
+			pixels,
+			imageWidth,
+			imageHeight,
+			rect,
+			width,
+			height,
+			isDark,
+			luminances
+		);
+}
+
 /** Selects a foreground for the pixels directly behind one text element. */
 export function selectAdaptiveTextTone(
 	pixels: Uint8ClampedArray | Uint8Array,
@@ -34,6 +79,27 @@ export function selectAdaptiveTextTone(
 	viewportWidth: number,
 	viewportHeight: number,
 	isDark = false
+): AdaptiveTextTone {
+	return selectAdaptiveTextToneFromPixels(
+		pixels,
+		imageWidth,
+		imageHeight,
+		viewportRect,
+		viewportWidth,
+		viewportHeight,
+		isDark
+	);
+}
+
+function selectAdaptiveTextToneFromPixels(
+	pixels: Uint8ClampedArray | Uint8Array,
+	imageWidth: number,
+	imageHeight: number,
+	viewportRect: NormalizedRect,
+	viewportWidth: number,
+	viewportHeight: number,
+	isDark: boolean,
+	luminances?: Float64Array
 ): AdaptiveTextTone {
 	if (
 		imageWidth <= 0 ||
@@ -70,12 +136,8 @@ export function selectAdaptiveTextTone(
 
 	for (let y = startY; y < endY; y += 1) {
 		for (let x = startX; x < endX; x += 1) {
-			const index = (y * imageWidth + x) * 4;
-			const alpha = (pixels[index + 3] ?? 255) / 255;
-			const red = linearChannel(((pixels[index] ?? 0) * alpha + base * (1 - alpha)) / 255);
-			const green = linearChannel(((pixels[index + 1] ?? 0) * alpha + base * (1 - alpha)) / 255);
-			const blue = linearChannel(((pixels[index + 2] ?? 0) * alpha + base * (1 - alpha)) / 255);
-			const luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+			const pixelIndex = y * imageWidth + x;
+			const luminance = luminances?.[pixelIndex] ?? pixelLuminance(pixels, pixelIndex * 4, base);
 			darkContrast = Math.min(darkContrast, contrastRatio(DARK_TEXT_LUMINANCE, luminance));
 			lightContrast = Math.min(lightContrast, contrastRatio(1, luminance));
 			totalLuminance += luminance;
