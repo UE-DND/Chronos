@@ -9,10 +9,8 @@
 	--timetable-today-date-fg: var(--color-on-primary);
 	--timetable-chrome-top-fg: var(--color-on-surface);
 	--timetable-chrome-top-fg-sub: var(--color-on-surface-variant);
-	--timetable-chrome-top-shadow: none;
 	--timetable-chrome-side-fg: var(--color-on-surface);
 	--timetable-chrome-side-fg-sub: var(--color-on-surface-variant);
-	--timetable-chrome-side-shadow: none;
 }
 
 .dark {
@@ -23,10 +21,8 @@
 	--timetable-holiday-date-fg: var(--color-on-error);
 	--timetable-chrome-top-fg: var(--color-on-surface);
 	--timetable-chrome-top-fg-sub: var(--color-on-surface-variant);
-	--timetable-chrome-top-shadow: none;
 	--timetable-chrome-side-fg: var(--color-on-surface);
 	--timetable-chrome-side-fg-sub: var(--color-on-surface-variant);
-	--timetable-chrome-side-shadow: none;
 }
 
 [data-wallpaper-mask='false'][data-has-wallpaper='true'] {
@@ -59,17 +55,14 @@
 
 .timetable-chrome-top-text {
 	color: var(--timetable-chrome-top-fg-sub);
-	text-shadow: var(--timetable-chrome-top-shadow);
 }
 
 .timetable-chrome-top-date {
 	color: var(--timetable-chrome-top-fg);
-	text-shadow: var(--timetable-chrome-top-shadow);
 }
 
 .timetable-chrome-side-index {
 	color: var(--timetable-chrome-side-fg);
-	text-shadow: var(--timetable-chrome-side-shadow);
 }
 
 .period-active .timetable-chrome-side-index {
@@ -79,7 +72,6 @@
 
 .timetable-chrome-side-time {
 	color: var(--timetable-chrome-side-fg-sub);
-	text-shadow: var(--timetable-chrome-side-shadow);
 }
 
 .timetable-dynamic-tint-body {
