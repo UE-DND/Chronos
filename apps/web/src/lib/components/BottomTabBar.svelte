@@ -114,8 +114,8 @@
 				</Button>
 				{#if hasTimetable}
 					<Button
-						variant={compactLandscape.current ? 'text' : 'outlined'}
-						class="edit-bottom-bar-action min-w-0"
+						variant="filled"
+						class="edit-bottom-bar-action edit-bottom-bar-add-action min-w-0"
 						aria-label={hostT('course.add')}
 						title={hostT('course.add')}
 						onclick={() => {
@@ -123,11 +123,7 @@
 							goto(resolve('/timetable/course-editor'));
 						}}
 					>
-						{#if compactLandscape.current}
-							<Add class="size-6" aria-hidden="true" />
-						{:else}
-							{hostT('course.add')}
-						{/if}
+						<Add class="size-6" aria-hidden="true" />
 					</Button>
 				{/if}
 				<Button
@@ -366,6 +362,10 @@
 			border: 0;
 			padding-inline: 0;
 			color: var(--color-on-surface-variant);
+		}
+
+		.edit-bottom-bar-add-action {
+			color: var(--color-on-primary);
 		}
 
 		.edit-bottom-bar-delete-hint {
