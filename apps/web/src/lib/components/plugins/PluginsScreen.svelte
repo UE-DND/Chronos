@@ -312,7 +312,7 @@
 						{hostT('plugins.builtin.count', { count: activeInstallTasks.length })}
 					</span>
 				</div>
-				<div class="ui-section-surface divide-y divide-border/40">
+				<div class="ui-section-surface [&>*+*]:border-t [&>*+*]:border-border/40">
 					{#each activeInstallTasks as task (task.pluginId)}
 						{@const manifest = task.manifest}
 						{@const name = resolveManifestText(manifest.name)}
@@ -371,7 +371,7 @@
 					</div>
 				</div>
 			{:else}
-				<div class="ui-section-surface divide-y divide-border/40">
+				<div class="ui-section-surface [&>*+*]:border-t [&>*+*]:border-border/40">
 					{#each installedRecords as record (record.manifest.id)}
 						{@const name = resolveManifestText(record.manifest.name)}
 						{@const desc = resolveManifestText(record.manifest.description)}
@@ -501,7 +501,7 @@
 									})}
 								</span>
 							</div>
-							<div class="ui-section-surface divide-y divide-border/40">
+							<div class="ui-section-surface [&>*+*]:border-t [&>*+*]:border-border/40">
 								{#each group.entries as entry (entry.manifest.id)}
 									{@const manifest = entry.manifest}
 									{@const name = resolveManifestText(manifest.name)}
