@@ -5,8 +5,7 @@ import { createCourseEditor } from './course-editor.svelte';
 const mocks = vi.hoisted(() => ({
 	saveCurrentTimetableDetails: vi.fn(),
 	deleteCourse: vi.fn(),
-	snackbarKey: vi.fn(),
-	trackEvent: vi.fn()
+	snackbarKey: vi.fn()
 }));
 
 vi.mock('$lib/services/app-engine', () => ({
@@ -18,10 +17,6 @@ vi.mock('$lib/services/app-engine', () => ({
 
 vi.mock('$lib/components/ui/snackbar-state.svelte', () => ({
 	snackbarKey: mocks.snackbarKey
-}));
-
-vi.mock('$lib/client/analytics', () => ({
-	trackEvent: mocks.trackEvent
 }));
 
 function timetable(patch: Partial<Timetable> = {}): Timetable {
@@ -61,7 +56,6 @@ describe('createCourseEditor', () => {
 		mocks.saveCurrentTimetableDetails.mockReset().mockResolvedValue(undefined);
 		mocks.deleteCourse.mockReset().mockResolvedValue(undefined);
 		mocks.snackbarKey.mockReset();
-		mocks.trackEvent.mockReset();
 		vi.stubGlobal('crypto', { randomUUID: () => 'test-uuid' });
 	});
 
@@ -143,7 +137,6 @@ describe('createCourseEditor', () => {
 			}
 		});
 		expect(candidateId).toBe('c_test-uuid');
-		expect(mocks.trackEvent).toHaveBeenCalledWith('course_save');
 		expect(onDone).toHaveBeenCalledOnce();
 	});
 
@@ -230,7 +223,7 @@ describe('createCourseEditor', () => {
 		expect(editor.canSave).toBe(true);
 	});
 
-	it('deletes an existing course and tracks course_delete', async () => {
+	it('deletes an existing course', async () => {
 		const existing = {
 			id: 'existing-to-delete',
 			name: '大学物理',
@@ -253,7 +246,6 @@ describe('createCourseEditor', () => {
 		await editor.deleteCourse();
 
 		expect(mocks.deleteCourse).toHaveBeenCalledWith('existing-to-delete');
-		expect(mocks.trackEvent).toHaveBeenCalledWith('course_delete');
 		expect(onDone).toHaveBeenCalledOnce();
 	});
 

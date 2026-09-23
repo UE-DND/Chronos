@@ -4,11 +4,6 @@ import { fetchLatestProjectRelease } from './release-feed-adapter';
 import * as serviceWorkerAdapter from './service-worker-adapter';
 import { AppError, failure, success } from '@chronos/core';
 
-const mockTrackEvent = vi.fn();
-vi.mock('$lib/client/analytics', () => ({
-	trackEvent: (...args: unknown[]) => mockTrackEvent(...args)
-}));
-
 describe('fetchLatestProjectRelease', () => {
 	it('successfully parses release from project version.json', async () => {
 		const mockFetch = vi.fn().mockResolvedValue({
@@ -63,7 +58,6 @@ describe('createUpdateState', () => {
 	});
 
 	it('detects when a newer version is available from remote', async () => {
-		mockTrackEvent.mockClear();
 		const updateState = createUpdateState({
 			currentVersion: '0.1.4',
 			fetchLatestRelease: async () =>
@@ -85,16 +79,9 @@ describe('createUpdateState', () => {
 		expect(updateState.state.latestRelease?.tagName).toBe('v0.2.0');
 		expect(updateState.state.errorMessage).toBeNull();
 		expect(updateState.state.lastChecked).not.toBeNull();
-		expect(mockTrackEvent).toHaveBeenCalledWith('update_check_attempt');
-		expect(mockTrackEvent).toHaveBeenCalledWith('update_check_success', {
-			has_update: true,
-			latest_version: 'v0.2.0',
-			update_source: 'semver'
-		});
 	});
 
 	it('detects when already on latest version', async () => {
-		mockTrackEvent.mockClear();
 		const updateState = createUpdateState({
 			currentVersion: '0.2.0',
 			fetchLatestRelease: async () =>
@@ -113,16 +100,9 @@ describe('createUpdateState', () => {
 		expect(updateState.state.checking).toBe(false);
 		expect(updateState.state.hasUpdate).toBe(false);
 		expect(updateState.state.latestRelease?.tagName).toBe('v0.2.0');
-		expect(mockTrackEvent).toHaveBeenCalledWith('update_check_attempt');
-		expect(mockTrackEvent).toHaveBeenCalledWith('update_check_success', {
-			has_update: false,
-			latest_version: 'v0.2.0',
-			update_source: 'none'
-		});
 	});
 
 	it('does NOT trigger update when remote version is lower than current version', async () => {
-		mockTrackEvent.mockClear();
 		const updateState = createUpdateState({
 			currentVersion: '0.2.1',
 			fetchLatestRelease: async () =>
@@ -140,16 +120,9 @@ describe('createUpdateState', () => {
 
 		expect(updateState.state.checking).toBe(false);
 		expect(updateState.state.hasUpdate).toBe(false);
-		expect(mockTrackEvent).toHaveBeenCalledWith('update_check_attempt');
-		expect(mockTrackEvent).toHaveBeenCalledWith('update_check_success', {
-			has_update: false,
-			latest_version: 'v0.2.0',
-			update_source: 'none'
-		});
 	});
 
 	it('falls back to local catalog when remote fetch fails', async () => {
-		mockTrackEvent.mockClear();
 		const updateState = createUpdateState({
 			currentVersion: '0.2.0',
 			fetchLatestRelease: async () => failure(AppError.network('Offline')),
@@ -174,15 +147,9 @@ describe('createUpdateState', () => {
 		expect(updateState.state.hasUpdate).toBe(false);
 		expect(updateState.state.latestRelease?.tagName).toBe('v0.2.0');
 		expect(updateState.state.errorMessage).toBeNull();
-		expect(mockTrackEvent).toHaveBeenCalledWith('update_check_success', {
-			has_update: false,
-			latest_version: 'v0.2.0',
-			update_source: 'none'
-		});
 	});
 
 	it('detects update when catalog fallback matches current version but SW is waiting', async () => {
-		mockTrackEvent.mockClear();
 		const updateState = createUpdateState({
 			currentVersion: '0.2.0',
 			fetchLatestRelease: async () => failure(AppError.network('Offline')),
@@ -209,15 +176,9 @@ describe('createUpdateState', () => {
 		expect(updateState.state.hasNewerVersion).toBe(false);
 		expect(updateState.state.updateSource).toBe('sw');
 		expect(updateState.state.latestRelease?.tagName).toBe('v0.2.0');
-		expect(mockTrackEvent).toHaveBeenCalledWith('update_check_success', {
-			has_update: true,
-			latest_version: 'v0.2.0',
-			update_source: 'sw'
-		});
 	});
 
 	it('detects update when remote reports same version but SW is waiting', async () => {
-		mockTrackEvent.mockClear();
 		const updateState = createUpdateState({
 			currentVersion: '0.2.0',
 			fetchLatestRelease: async () =>
@@ -237,15 +198,9 @@ describe('createUpdateState', () => {
 		expect(updateState.state.hasUpdate).toBe(true);
 		expect(updateState.state.hasNewerVersion).toBe(false);
 		expect(updateState.state.updateSource).toBe('sw');
-		expect(mockTrackEvent).toHaveBeenCalledWith('update_check_success', {
-			has_update: true,
-			latest_version: 'v0.2.0',
-			update_source: 'sw'
-		});
 	});
 
 	it('detects update when service worker has a waiting update upon remote failure', async () => {
-		mockTrackEvent.mockClear();
 		const updateState = createUpdateState({
 			currentVersion: '0.2.0',
 			fetchLatestRelease: async () => failure(AppError.network('Offline')),
@@ -262,15 +217,9 @@ describe('createUpdateState', () => {
 		expect(updateState.state.checking).toBe(false);
 		expect(updateState.state.hasUpdate).toBe(true);
 		expect(updateState.state.errorMessage).toBeNull();
-		expect(mockTrackEvent).toHaveBeenCalledWith('update_check_attempt');
-		expect(mockTrackEvent).toHaveBeenCalledWith('update_check_success', {
-			has_update: true,
-			update_source: 'sw'
-		});
 	});
 
 	it('reports failure event when check update fails completely', async () => {
-		mockTrackEvent.mockClear();
 		const updateState = createUpdateState({
 			currentVersion: '0.2.0',
 			fetchLatestRelease: async () => failure(AppError.network('网络连接失败')),
@@ -286,14 +235,9 @@ describe('createUpdateState', () => {
 		expect(updateState.state.checking).toBe(false);
 		expect(updateState.state.hasUpdate).toBe(false);
 		expect(updateState.state.errorMessage).toBe('网络连接失败');
-		expect(mockTrackEvent).toHaveBeenCalledWith('update_check_attempt');
-		expect(mockTrackEvent).toHaveBeenCalledWith('update_check_fail', {
-			error_message: '网络连接失败'
-		});
 	});
 
 	it('triggers applyUpdate and tracks event when installUpdate is called', async () => {
-		mockTrackEvent.mockClear();
 		const applyUpdateMock = vi.fn().mockResolvedValue(undefined);
 		const updateState = createUpdateState({
 			currentVersion: '0.2.0',
@@ -303,7 +247,6 @@ describe('createUpdateState', () => {
 		await updateState.installUpdate();
 
 		expect(applyUpdateMock).toHaveBeenCalled();
-		expect(mockTrackEvent).toHaveBeenCalledWith('pwa_update_apply');
 	});
 
 	it('updates install progress from applyUpdate callbacks', async () => {
@@ -335,7 +278,6 @@ describe('createUpdateState', () => {
 	});
 
 	it('resets updating state and stores i18n key when install fails', async () => {
-		mockTrackEvent.mockClear();
 		const { SwUpdateError } = await import('$lib/client/pwa-sw');
 		const applyUpdateMock = vi.fn().mockRejectedValue(new SwUpdateError('download_timeout'));
 		const updateState = createUpdateState({
@@ -348,9 +290,6 @@ describe('createUpdateState', () => {
 		expect(updateState.state.updating).toBe(false);
 		expect(updateState.state.installPhase).toBeNull();
 		expect(updateState.state.errorMessage).toBe('about.update.error.downloadTimeout');
-		expect(mockTrackEvent).toHaveBeenCalledWith('pwa_update_install_fail', {
-			code: 'download_timeout'
-		});
 	});
 
 	it('maps download_failed install errors to the download failed message key', async () => {
@@ -367,7 +306,6 @@ describe('createUpdateState', () => {
 	});
 
 	it('keeps the last successful check when a later remote fetch fails', async () => {
-		mockTrackEvent.mockClear();
 		let fetchCount = 0;
 		const updateState = createUpdateState({
 			currentVersion: '0.2.0',
@@ -398,12 +336,6 @@ describe('createUpdateState', () => {
 		expect(updateState.state.hasUpdate).toBe(true);
 		expect(updateState.state.latestRelease?.tagName).toBe('v0.3.0');
 		expect(updateState.state.errorMessage).toBeNull();
-		expect(mockTrackEvent).toHaveBeenLastCalledWith('update_check_success', {
-			has_update: true,
-			latest_version: 'v0.3.0',
-			update_source: 'semver',
-			cached: true
-		});
 	});
 
 	it('forwards install progress through the built-in service worker adapter', async () => {
@@ -432,7 +364,6 @@ describe('createUpdateState', () => {
 	});
 
 	it('supports pluggable ServiceWorkerAdapter and ReleaseFeedAdapter', async () => {
-		mockTrackEvent.mockClear();
 		const mockSwAdapter = {
 			isSupported: () => true,
 			isUpdatePending: () => false,
