@@ -7,7 +7,7 @@
 	"scripts": {
 		"dev": "node --experimental-strip-types apps/web/scripts/run-host.ts dev",
 		"build": "node --experimental-strip-types apps/web/scripts/run-host.ts build",
-		"prepare": "vp config && node --experimental-strip-types apps/web/scripts/emit-profile-artifacts.ts && ln -sfn apps/web/.svelte-kit .svelte-kit"
+		"prepare": "vp config && node --experimental-strip-types apps/web/scripts/emit-profile-artifacts.ts"
 	},
 	"devDependencies": {
 		"@resvg/resvg-js": "^2.6.2",
