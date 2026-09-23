@@ -33,11 +33,11 @@ function createCourseId(): string {
 	return `c_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function draftCourse(draft: CourseDraft, timetable: Timetable): Course | null {
+function draftCourse(draft: CourseDraft, timetable: Timetable, newCourseId: string): Course | null {
 	const schedule = buildCourseSchedule(draft, timetable.academicConfig);
 	if (!schedule) return null;
 	return createCourse({
-		id: draft.id || '__new_course__',
+		id: draft.id || newCourseId,
 		name: draft.name,
 		teacher: draft.teacher,
 		location: draft.location,
@@ -54,10 +54,13 @@ export function createCourseEditor(
 	let draft = $state<CourseDraft | null>(null);
 	let syncedCourseKey = $state<string | null>(null);
 	let isSaving = $state(false);
+	let newCourseId = '';
 	const controller = getAppController();
 
 	const timetable = $derived(shell.controller.currentTimetable);
-	const candidate = $derived(draft && timetable ? draftCourse(draft, timetable) : null);
+	const candidate = $derived(
+		draft && timetable ? draftCourse(draft, timetable, newCourseId) : null
+	);
 	const conflicts = $derived.by(() => {
 		if (!candidate || !timetable) return [];
 		return findCourseScheduleConflicts(candidate, timetable.courses, {
@@ -73,6 +76,7 @@ export function createCourseEditor(
 		if (syncedCourseKey === key) return;
 		syncedCourseKey = key;
 		if (!courseId) {
+			newCourseId = createCourseId();
 			draft = emptyDraft();
 			return;
 		}
@@ -84,7 +88,7 @@ export function createCourseEditor(
 
 	async function save() {
 		if (!timetable || !draft || !candidate || !canSave) return;
-		const course = { ...candidate, id: draft.id || createCourseId() };
+		const course = candidate;
 		const courseIndex = timetable.courses.findIndex((entry) => entry.id === course.id);
 		const courses = [...timetable.courses];
 		if (courseIndex === -1) courses.push(course);

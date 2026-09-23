@@ -108,6 +108,7 @@ describe('createCourseEditor', () => {
 		});
 
 		expect(editor.canSave).toBe(true);
+		const candidateId = editor.candidate?.id;
 		await editor.save();
 
 		expect(mocks.saveCurrentTimetableDetails).toHaveBeenCalledWith({
@@ -125,6 +126,7 @@ describe('createCourseEditor', () => {
 				showNonCurrentWeekCourses: true
 			}
 		});
+		expect(candidateId).toBe('c_test-uuid');
 		expect(mocks.trackEvent).toHaveBeenCalledWith('course_save');
 		expect(onDone).toHaveBeenCalledOnce();
 	});
