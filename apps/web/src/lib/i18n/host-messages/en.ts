@@ -385,6 +385,11 @@ export const en = {
 	'onboarding.layout.compact.desc': 'Show the full day on one screen without scrolling',
 	'onboarding.layout.compact.landscapeUnavailable':
 		'Compact landscape: unavailable; choose in portrait',
+	'onboarding.longPress.title': 'Long press your timetable to discover more',
+	'onboarding.longPress.description':
+		'Long press a class to edit the timetable, drag a class to move it, or drag it to the remove area and confirm.',
+	'onboarding.longPress.coursePrimary': 'Mathematics',
+	'onboarding.longPress.courseSecondary': 'English',
 	'onboarding.install.title': 'Add to home screen',
 	'onboarding.install.subtitle': 'Open quickly from your home screen and use offline.',
 	'onboarding.done.title': 'Start using Chronos',

@@ -375,6 +375,11 @@ export const zhCn = {
 	'onboarding.layout.compact.label': '一屏显示',
 	'onboarding.layout.compact.desc': '一屏展示全天课程，无需滚动',
 	'onboarding.layout.compact.landscapeUnavailable': '紧凑横屏不可用，竖屏后可选择',
+	'onboarding.longPress.title': '长按课表页，发现更多功能',
+	'onboarding.longPress.description':
+		'长按课程进入编辑模式，可拖动课程调整位置，或拖到删除区并确认删除。',
+	'onboarding.longPress.coursePrimary': '高等数学',
+	'onboarding.longPress.courseSecondary': '大学英语',
 	'onboarding.install.title': '安装到主屏幕',
 	'onboarding.install.subtitle': '添加到主屏幕后可快捷打开，并支持离线使用。',
 	'onboarding.done.title': '开始使用 Chronos',
