@@ -63,7 +63,8 @@ export function createWallpaperBitmapReader() {
 
 		const request = ++generation;
 		inFlightUri = uri;
-		const promise = readWallpaperBitmap(uri, signal);
+		// The decode is shared; each caller owns only its own cancellation.
+		const promise = readWallpaperBitmap(uri);
 		inFlightPromise = promise;
 
 		try {

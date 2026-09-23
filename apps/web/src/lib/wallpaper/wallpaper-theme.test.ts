@@ -92,6 +92,19 @@ describe('wallpaper-theme bitmap reader', () => {
 		expect(drawImage).toHaveBeenCalledTimes(1);
 	});
 
+	it('keeps a shared decode available when one caller aborts', async () => {
+		const { drawImage } = mockCanvasAndImage({ decodeDelayMs: () => 15 });
+		const reader = createWallpaperBitmapReader();
+		const firstController = new AbortController();
+		const first = reader('blob:shared', firstController.signal);
+		const second = reader('blob:shared', new AbortController().signal);
+
+		firstController.abort();
+		await expect(first).rejects.toThrow();
+		await expect(second).resolves.toMatchObject({ width: 128, height: 64 });
+		expect(drawImage).toHaveBeenCalledTimes(1);
+	});
+
 	it('handles out-of-order race conditions safely', async () => {
 		// URI 1 takes 30ms, URI 2 takes 5ms
 		const { drawImage } = mockCanvasAndImage({
