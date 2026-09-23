@@ -11,11 +11,11 @@
 	import type { TimetableLayoutMode } from '@chronos/core';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
-	import Radio from '$lib/components/ui/Radio.svelte';
 	import AppHero from '$lib/components/AppHero.svelte';
 	import HighlightRowList from '$lib/components/ui/HighlightRowList.svelte';
 	import HighlightRow from '$lib/components/ui/HighlightRow.svelte';
 	import InstallGuideCard from '$lib/components/pwa/InstallGuideCard.svelte';
+	import LayoutModePreview from './LayoutModePreview.svelte';
 	import { scrollRubberBand } from '@chronos/ui-kit';
 	import {
 		CheckCircleFill,
@@ -274,41 +274,54 @@
 								<p class="text-body-small text-center text-on-surface-variant">
 									{hostT('onboarding.layout.hint')}
 								</p>
-								<div class="flex flex-col gap-3">
+								<div class="grid grid-cols-2 gap-3" role="radiogroup" aria-labelledby={stepTitleId}>
 									{#each layoutOptions as option (option.mode)}
 										{@const selected = layoutMode === option.mode}
+										{@const unavailable = compactLandscape && option.mode === 'compact'}
 										<label
-											class="block w-full {compactLandscape && option.mode === 'compact'
-												? 'cursor-not-allowed'
+											class="flex min-w-0 flex-col items-center text-center {unavailable
+												? 'cursor-not-allowed opacity-50'
 												: 'cursor-pointer'}"
-											aria-disabled={compactLandscape && option.mode === 'compact'}
 										>
-											<Card
-												variant="outlined"
-												class="flex items-start gap-3.5 {selected
-													? 'border-brand ring-1 ring-brand'
-													: ''}"
+											<input
+												type="radio"
+												name="onboarding-layout-mode"
+												value={option.mode}
+												checked={selected}
+												disabled={unavailable}
+												onchange={() => void selectLayoutMode(option.mode)}
+												aria-label={option.label}
+												aria-describedby="onboarding-layout-{option.mode}-desc"
+												class="peer sr-only"
+											/>
+											<span
+												class="block w-full rounded-2xl border-[3px] p-1 shadow-raised transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-brand {selected
+													? 'border-brand'
+													: 'border-transparent'}"
 											>
-												<div class="flex min-w-0 flex-1 flex-col justify-center">
-													<p class="text-body-large text-on-surface">{option.label}</p>
-													<p class="text-body-small text-on-surface-variant">
-														{compactLandscape && option.mode === 'compact'
-															? hostT('onboarding.layout.compact.landscapeUnavailable')
-															: option.description}
-													</p>
-												</div>
-												<div class="flex shrink-0 items-center self-center">
-													<Radio
-														name="onboarding-layout-mode"
-														checked={selected}
-														disabled={compactLandscape && option.mode === 'compact'}
-														onchange={() => selectLayoutMode(option.mode)}
-													/>
-												</div>
-											</Card>
+												<LayoutModePreview mode={option.mode} />
+											</span>
+											<span
+												class="text-title-medium mt-2 font-semibold {selected
+													? 'text-on-surface'
+													: 'text-on-surface-variant'}">{option.label}</span
+											>
+											<span id="onboarding-layout-{option.mode}-desc" class="sr-only">
+												{unavailable
+													? hostT('onboarding.layout.compact.landscapeUnavailable')
+													: option.description}
+											</span>
 										</label>
 									{/each}
 								</div>
+								<p class="text-body-small text-center text-on-surface-variant">
+									{layoutOptions.find((option) => option.mode === layoutMode)?.description}
+								</p>
+								{#if compactLandscape}
+									<p class="text-body-small text-center text-on-surface-variant">
+										{hostT('onboarding.layout.compact.landscapeUnavailable')}
+									</p>
+								{/if}
 							</div>
 						{:else if step === ONBOARDING_STEP.install}
 							<div class="flex flex-1 flex-col justify-center gap-4">
