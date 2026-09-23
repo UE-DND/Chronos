@@ -89,6 +89,7 @@
 <style>
 	.demo {
 		--cycle: 8s;
+		--start-delay: 1s;
 		position: relative;
 		display: flex;
 		flex-direction: column;
@@ -322,6 +323,21 @@
 	.confirm-card {
 		width: 100%;
 		max-width: 18rem;
+	}
+
+	.moving-group,
+	.course-primary,
+	.course-secondary,
+	.target,
+	.touch-indicator,
+	.toolbar-view,
+	.toolbar-actions,
+	.delete-zone,
+	.delete-icon,
+	.drag-hint,
+	.drop-hint,
+	.confirm-overlay {
+		animation-delay: var(--start-delay);
 	}
 
 	@keyframes course-path {

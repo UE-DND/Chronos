@@ -82,15 +82,17 @@ describe('onboardingController', () => {
 		});
 	});
 
-	it('visits the long-press demo between layout and install and stops at the final step', () => {
+	it('visits install after highlights, then layout and long-press demo before done', () => {
 		expect(onboardingController.totalSteps).toBe(7);
-		onboardingController.openAt(ONBOARDING_STEP.layout);
-		onboardingController.next();
-		expect(onboardingController.step).toBe(ONBOARDING_STEP.longPress);
+		onboardingController.openAt(ONBOARDING_STEP.highlights);
 		onboardingController.next();
 		expect(onboardingController.step).toBe(ONBOARDING_STEP.install);
-		onboardingController.back();
+		onboardingController.next();
+		expect(onboardingController.step).toBe(ONBOARDING_STEP.layout);
+		onboardingController.next();
 		expect(onboardingController.step).toBe(ONBOARDING_STEP.longPress);
+		onboardingController.back();
+		expect(onboardingController.step).toBe(ONBOARDING_STEP.layout);
 		onboardingController.openAt(99);
 		expect(onboardingController.step).toBe(ONBOARDING_STEP.done);
 		onboardingController.next();

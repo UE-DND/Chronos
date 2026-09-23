@@ -264,6 +264,19 @@
 									/>
 								</HighlightRowList>
 							</div>
+						{:else if step === ONBOARDING_STEP.install}
+							<div class="flex flex-1 flex-col justify-center gap-4">
+								<h2
+									id={stepTitleId}
+									class="text-headline-small text-center font-semibold text-on-surface"
+								>
+									{hostT('onboarding.install.title')}
+								</h2>
+								<p class="text-body-small text-center text-on-surface-variant">
+									{hostT('onboarding.install.subtitle')}
+								</p>
+								<InstallGuideCard inOnboarding />
+							</div>
 						{:else if step === ONBOARDING_STEP.layout}
 							<div class="flex flex-1 flex-col justify-center gap-4">
 								<h2
@@ -333,19 +346,6 @@
 									{hostT('onboarding.longPress.title')}
 								</h2>
 								<LongPressDemo />
-							</div>
-						{:else if step === ONBOARDING_STEP.install}
-							<div class="flex flex-1 flex-col justify-center gap-4">
-								<h2
-									id={stepTitleId}
-									class="text-headline-small text-center font-semibold text-on-surface"
-								>
-									{hostT('onboarding.install.title')}
-								</h2>
-								<p class="text-body-small text-center text-on-surface-variant">
-									{hostT('onboarding.install.subtitle')}
-								</p>
-								<InstallGuideCard inOnboarding />
 							</div>
 						{:else}
 							<div class="flex flex-1 flex-col items-center justify-center gap-3 text-center">
