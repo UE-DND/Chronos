@@ -96,6 +96,22 @@ describe('createCourseEditor', () => {
 		expect(editor.candidate?.weeks).toEqual([1, 3]);
 	});
 
+	it('allows remarks at the limit and blocks remarks over the limit', () => {
+		const editor = createCourseEditor(shellWith(timetable()), () => null, vi.fn());
+		editor.syncFromRoute();
+		Object.assign(editor.draft!, {
+			name: '高等数学',
+			dayOfWeek: 1,
+			startPeriod: 1,
+			endPeriod: 2,
+			remark: 'x'.repeat(200)
+		});
+
+		expect(editor.canSave).toBe(true);
+		editor.draft!.remark += 'x';
+		expect(editor.canSave).toBe(false);
+	});
+
 	it('saves a globally unique new weekend course and reveals that day', async () => {
 		const onDone = vi.fn();
 		const editor = createCourseEditor(shellWith(timetable()), () => null, onDone);

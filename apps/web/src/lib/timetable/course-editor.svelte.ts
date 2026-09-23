@@ -5,6 +5,7 @@ import { courseToDraft } from '$lib/timetable/timetable-mappers';
 import { getAppController } from '$lib/services/app-engine';
 import { snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
 import {
+	COURSE_REMARK_MAX_LENGTH,
 	createCourse,
 	findCourseScheduleConflicts,
 	type Course,
@@ -68,7 +69,10 @@ export function createCourseEditor(
 			endWeek: timetable.academicConfig.endWeek
 		});
 	});
-	const canSave = $derived(Boolean(candidate && draft?.name.trim()) && !isSaving);
+	const canSave = $derived(
+		Boolean(candidate && draft?.name.trim() && draft.remark.length <= COURSE_REMARK_MAX_LENGTH) &&
+			!isSaving
+	);
 
 	function syncFromRoute() {
 		const courseId = getCourseId();
