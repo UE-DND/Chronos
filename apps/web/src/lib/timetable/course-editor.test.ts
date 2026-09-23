@@ -240,4 +240,40 @@ describe('createCourseEditor', () => {
 		expect(mocks.trackEvent).toHaveBeenCalledWith('course_delete');
 		expect(onDone).toHaveBeenCalledOnce();
 	});
+
+	it('waits for navigation after deleting a course', async () => {
+		const existing = {
+			id: 'course-to-delete',
+			name: '大学物理',
+			teacher: '',
+			location: '',
+			dayOfWeek: 3,
+			startPeriod: 1,
+			endPeriod: 2,
+			weeks: [1],
+			remark: ''
+		};
+		let finishNavigation!: () => void;
+		const navigation = new Promise<void>((resolve) => {
+			finishNavigation = resolve;
+		});
+		const onDone = vi.fn(() => navigation);
+		const editor = createCourseEditor(
+			shellWith(timetable({ courses: [existing] })),
+			() => existing.id,
+			onDone
+		);
+		editor.syncFromRoute();
+
+		let deletionFinished = false;
+		const deletion = editor.deleteCourse().then(() => {
+			deletionFinished = true;
+		});
+		await vi.waitFor(() => expect(onDone).toHaveBeenCalledOnce());
+		expect(deletionFinished).toBe(false);
+
+		finishNavigation();
+		await deletion;
+		expect(deletionFinished).toBe(true);
+	});
 });

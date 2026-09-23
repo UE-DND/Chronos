@@ -49,7 +49,7 @@ function draftCourse(draft: CourseDraft, timetable: Timetable, newCourseId: stri
 export function createCourseEditor(
 	shell: AppShellController,
 	getCourseId: () => string | null,
-	onDone: () => void
+	onDone: () => void | Promise<void>
 ) {
 	let draft = $state<CourseDraft | null>(null);
 	let syncedCourseKey = $state<string | null>(null);
@@ -104,7 +104,7 @@ export function createCourseEditor(
 		try {
 			await controller.saveCurrentTimetableDetails({ courses, viewPrefs });
 			trackEvent('course_save');
-			onDone();
+			void onDone();
 		} catch {
 			snackbarKey('course.editor.saveFailed', undefined, undefined, 4000, 'assertive');
 		} finally {
@@ -116,7 +116,7 @@ export function createCourseEditor(
 		if (!draft?.id) return;
 		await controller.deleteCourse(draft.id);
 		trackEvent('course_delete');
-		onDone();
+		await onDone();
 	}
 
 	function setRecurrenceMode(mode: CourseRecurrenceMode) {

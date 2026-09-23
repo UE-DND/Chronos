@@ -36,7 +36,6 @@
 
 	async function confirmDelete() {
 		await editor.deleteCourse();
-		deleteDialogOpen = false;
 	}
 </script>
 

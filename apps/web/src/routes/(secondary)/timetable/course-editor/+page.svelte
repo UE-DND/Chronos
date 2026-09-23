@@ -17,7 +17,7 @@
 	const editor = createCourseEditor(
 		shell,
 		() => courseId,
-		() => navigateForward('/')
+		() => navigateForward('/', { replace: true })
 	);
 
 	$effect(() => {
