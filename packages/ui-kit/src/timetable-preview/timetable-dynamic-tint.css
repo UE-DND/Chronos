@@ -35,13 +35,26 @@
 	--dynamic-tint-holiday-overlay: transparent;
 }
 
-[data-wallpaper-mask='false'][data-has-wallpaper='true'] {
-	--timetable-chrome-top-fg: var(--adaptive-top-fg, var(--color-on-surface));
-	--timetable-chrome-top-fg-sub: var(--adaptive-top-fg-sub, var(--color-on-surface-variant));
-	--timetable-chrome-top-shadow: var(--adaptive-top-shadow, none);
-	--timetable-chrome-side-fg: var(--adaptive-side-fg, var(--color-on-surface));
-	--timetable-chrome-side-fg-sub: var(--adaptive-side-fg-sub, var(--color-on-surface-variant));
-	--timetable-chrome-side-shadow: var(--adaptive-side-shadow, none);
+[data-wallpaper-mask='false'][data-has-wallpaper='true'] [data-adaptive-tone='dark'],
+[data-wallpaper-mask='false'][data-has-wallpaper='true'] [data-adaptive-tone='dark-outline'] {
+	color: #0f172a;
+	text-shadow: none;
+}
+
+[data-wallpaper-mask='false'][data-has-wallpaper='true'] [data-adaptive-tone='light'],
+[data-wallpaper-mask='false'][data-has-wallpaper='true'] [data-adaptive-tone='light-outline'] {
+	color: #fff;
+	text-shadow: none;
+}
+
+[data-wallpaper-mask='false'][data-has-wallpaper='true'] [data-adaptive-tone='dark-outline'] {
+	-webkit-text-stroke: 1.5px rgb(255 255 255 / 0.9);
+	paint-order: stroke fill;
+}
+
+[data-wallpaper-mask='false'][data-has-wallpaper='true'] [data-adaptive-tone='light-outline'] {
+	-webkit-text-stroke: 1.5px rgb(15 23 42 / 0.85);
+	paint-order: stroke fill;
 }
 
 .timetable-chrome-top-text {
