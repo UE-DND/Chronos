@@ -40,8 +40,8 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 		sourceDir: 'source-cqut',
 		name: { 'zh-CN': '重庆理工大学', en: 'CQUT' },
 		description: {
-			'zh-CN': '导入 HTML 课表；在线同步需要部署教务代理',
-			en: 'Import HTML timetables; online sync requires the deployed CQUT proxy'
+			'zh-CN': '在线课表及正方教务导入支持',
+			en: 'Online timetable and ZF educational system import support'
 		},
 		entry: resolve(root, 'packages/plugins/source-cqut/bundle/entry.ts')
 	},

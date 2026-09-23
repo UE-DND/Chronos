@@ -62,7 +62,7 @@ export function createHtmlConfirmSchema(t: (key: string) => string) {
 export const SOURCE_CQUT_MESSAGES = {
 	'zh-cn': {
 		'plugin.name': 'CQUT-Timetable',
-		'plugin.description': '从「知行理工」导入课表',
+		'plugin.description': '在线课表及正方教务导入支持',
 		'import.online.tab.title': '知行理工',
 		'import.online.tab.supporting': '输入知行理工账号密码，获取在线课表',
 		'import.online.field.username.title': '账号',
@@ -110,7 +110,7 @@ export const SOURCE_CQUT_MESSAGES = {
 	},
 	en: {
 		'plugin.name': 'CQUT Timetable',
-		'plugin.description': 'Import timetables from CQUT ZhiXing',
+		'plugin.description': 'Online timetable and ZF educational system import support',
 		'import.online.tab.title': 'CQUT Online',
 		'import.online.tab.supporting': 'Sign in with CQUT credentials to fetch your timetable',
 		'import.online.field.username.title': 'Account',
