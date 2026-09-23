@@ -19,6 +19,7 @@
 	let boxWidth = 0;
 	let boxHeight = 0;
 	let lastKey = '';
+	let lastInputKey = '';
 
 	function boxSize(el: HTMLElement, entry?: ResizeObserverEntry) {
 		const box = entry?.contentBoxSize?.[0];
@@ -36,6 +37,16 @@
 		boxWidth = width;
 		boxHeight = height;
 		const content = text;
+		const inputKey = JSON.stringify([
+			content,
+			style,
+			className,
+			width,
+			height,
+			window.devicePixelRatio
+		]);
+		if (inputKey === lastInputKey) return;
+		lastInputKey = inputKey;
 		const computed = getComputedStyle(el);
 		const key = JSON.stringify([
 			content,
@@ -75,10 +86,9 @@
 			return el.scrollHeight <= el.clientHeight + 0.5;
 		};
 		const cached = getMiddleTruncateResult(key);
-		const display =
-			cached !== undefined && fits(cached) ? cached : truncateMiddleByFit(content, fits);
-		if (display !== cached) setMiddleTruncateResult(key, display);
-		el.textContent = display;
+		const display = cached ?? truncateMiddleByFit(content, fits);
+		if (cached === undefined) setMiddleTruncateResult(key, display);
+		if (el.textContent !== display) el.textContent = display;
 		if (display !== content) {
 			el.title = content;
 		} else {
@@ -89,6 +99,7 @@
 	const truncateAttach: Attachment<HTMLElement> = (el) => {
 		node = el;
 		lastKey = '';
+		lastInputKey = '';
 		let rafId = 0;
 		const observer = new ResizeObserver((entries) => {
 			cancelAnimationFrame(rafId);
@@ -99,6 +110,7 @@
 		});
 		const unsubscribeFonts = subscribeMiddleTruncateFontChanges(() => {
 			lastKey = '';
+			lastInputKey = '';
 			const size = boxSize(el);
 			apply(el, size.width, size.height);
 		});
@@ -113,6 +125,7 @@
 			unsubscribeFonts();
 			if (node === el) node = null;
 			lastKey = '';
+			lastInputKey = '';
 			boxWidth = 0;
 			boxHeight = 0;
 		};
