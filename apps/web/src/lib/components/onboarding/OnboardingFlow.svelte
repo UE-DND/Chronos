@@ -39,6 +39,7 @@
 	const stepTitleId = 'onboarding-step-title';
 	const layoutMode = $derived(shell.state.effectiveTimetableLayoutMode);
 	const compactLandscape = $derived(shell.state.compactLandscape);
+	let dialogNode = $state<HTMLElement | null>(null);
 
 	const layoutOptions = $derived.by(() => {
 		return [
@@ -62,6 +63,15 @@
 		return () => {
 			document.body.style.overflow = prevOverflow;
 		};
+	});
+
+	$effect(() => {
+		if (!showOnboarding || !dialogNode) return;
+		queueMicrotask(() => {
+			if (showOnboarding && dialogNode && !dialogNode.contains(document.activeElement)) {
+				dialogNode.focus();
+			}
+		});
 	});
 
 	function dialogAttach(node: HTMLElement) {
@@ -93,8 +103,6 @@
 		}
 
 		node.addEventListener('keydown', onKeydown);
-		queueMicrotask(() => node.focus());
-
 		return () => node.removeEventListener('keydown', onKeydown);
 	}
 
@@ -169,6 +177,7 @@
 
 {#if shouldRenderOnboarding}
 	<div
+		bind:this={dialogNode}
 		class="fixed inset-0 z-[var(--z-onboarding)] flex flex-col bg-canvas text-ink outline-none"
 		class:invisible={!showOnboarding}
 		class:pointer-events-none={!showOnboarding}
