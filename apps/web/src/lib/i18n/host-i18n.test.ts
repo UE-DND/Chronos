@@ -49,5 +49,8 @@ describe('host-i18n', () => {
 
 		engine.setLocale('zh-cn');
 		expect(hostT('common.cancel')).toBe('取消');
+		expect(hostT('course.editor.delete.desc', { name: '数据库原理及应用' })).toBe(
+			'将删除所有周此时段的「数据库原理及应用」。'
+		);
 	});
 });

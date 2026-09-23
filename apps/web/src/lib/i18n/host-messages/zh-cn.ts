@@ -302,7 +302,7 @@ export const zhCn = {
 	'course.editor.save': '保存',
 	'course.editor.saveFailed': '课程保存失败，请重试',
 	'course.editor.delete.title': '删除课程？',
-	'course.editor.delete.desc': '删除后无法恢复。',
+	'course.editor.delete.desc': '将删除所有周此时段的「{name}」。',
 	'course.editor.notFound': '未找到课程',
 	'course.form.name': '课程名称',
 	'course.form.teacher': '教师',

@@ -308,7 +308,7 @@ export const en = {
 	'course.editor.save': 'Save',
 	'course.editor.saveFailed': 'Could not save the course. Please try again.',
 	'course.editor.delete.title': 'Delete course?',
-	'course.editor.delete.desc': 'This cannot be undone.',
+	'course.editor.delete.desc': 'This removes "{name}" from this time slot in every week.',
 	'course.editor.notFound': 'Course not found',
 	'course.form.name': 'Course name',
 	'course.form.teacher': 'Instructor',

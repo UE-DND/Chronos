@@ -50,7 +50,7 @@
 			bind:open={deleteDialogOpen}
 			showHandle={false}
 			title={hostT('course.editor.delete.title')}
-			description={hostT('course.editor.delete.desc')}
+			description={hostT('course.editor.delete.desc', { name: draft.name })}
 		>
 			{#snippet footer()}
 				<Button variant="text" onclick={() => (deleteDialogOpen = false)}>
