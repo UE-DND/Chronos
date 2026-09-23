@@ -72,6 +72,11 @@
 	text-shadow: var(--timetable-chrome-side-shadow);
 }
 
+.period-active .timetable-chrome-side-index {
+	color: inherit;
+	text-shadow: none;
+}
+
 .timetable-chrome-side-time {
 	color: var(--timetable-chrome-side-fg-sub);
 	text-shadow: var(--timetable-chrome-side-shadow);
