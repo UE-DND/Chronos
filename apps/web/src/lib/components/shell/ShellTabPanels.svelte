@@ -9,7 +9,7 @@
 	import TimetableScreen from '$lib/components/timetable/TimetableScreen.svelte';
 	import EmptyTimetableState from '$lib/components/timetable/EmptyTimetableState.svelte';
 	import LoadingIndicator from '$lib/components/ui/LoadingIndicator.svelte';
-	import { scrollRubberBand } from '@chronos/ui-kit';
+	import { isReducedMotionActive, scrollRubberBand } from '@chronos/ui-kit';
 	import { getAppController } from '$lib/services/app-engine';
 
 	interface Props {
@@ -86,6 +86,28 @@
 		});
 	});
 
+	let mineScrollEl = $state<HTMLElement | null>(null);
+	let wasMineSelected = false;
+
+	$effect(() => {
+		if (mineSelected && !wasMineSelected && mineScrollEl) {
+			mineScrollEl.scrollTop = 0;
+			wasMineSelected = true;
+		} else if (!mineSelected) {
+			wasMineSelected = false;
+		}
+	});
+
+	$effect(() => {
+		const req = shellTab.scrollTopRequest;
+		if (req && mineTabId && req.id === mineTabId && mineScrollEl) {
+			mineScrollEl.scrollTo({
+				top: 0,
+				behavior: isReducedMotionActive() ? 'auto' : 'smooth'
+			});
+		}
+	});
+
 	function openCourseDetail(courseId: string) {
 		detailCourseId = courseId;
 		detailOpen = true;
@@ -101,20 +123,6 @@
 		return () => clearTimeout(id);
 	}
 </script>
-
-{#snippet panel(active: boolean, content: Snippet)}
-	<div
-		use:scrollRubberBand
-		class={[
-			'app-scroll-y absolute inset-0 overflow-y-auto',
-			active ? 'z-10' : 'pointer-events-none z-0 hidden'
-		]}
-		inert={!active}
-		aria-hidden={!active}
-	>
-		{@render content()}
-	</div>
-{/snippet}
 
 {#snippet loading()}
 	<div class="flex min-h-[60vh] items-center justify-center p-4">
@@ -139,7 +147,18 @@
 			</div>
 		{/if}
 		{#if mineMounted}
-			{@render panel(mineSelected, minePanel)}
+			<div
+				bind:this={mineScrollEl}
+				use:scrollRubberBand
+				class={[
+					'app-scroll-y absolute inset-0 overflow-y-auto',
+					mineSelected ? 'z-10' : 'pointer-events-none z-0 hidden'
+				]}
+				inert={!mineActive}
+				aria-hidden={!mineSelected}
+			>
+				{@render minePanel()}
+			</div>
 		{/if}
 		{#each mountedPluginTabs as tab (tab.id)}
 			{@const ownerId = controller.resolveSlotOwner('shell.bottom-bar.tab', tab.id)}
