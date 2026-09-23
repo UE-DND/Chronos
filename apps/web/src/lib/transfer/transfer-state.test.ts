@@ -113,6 +113,32 @@ describe('createTransferState', () => {
 		});
 	});
 
+	it('persists the selected import mode and restores it after reload', async () => {
+		const importTimetable = vi.fn().mockResolvedValue(undefined);
+		const mockEngine = {
+			importTimetable,
+			state: { currentTimetable: { id: 'current' } },
+			services: { get: () => null }
+		} as unknown as Parameters<typeof createTransferState>[0];
+		const sampleTimetable = {
+			id: 'preview-1',
+			name: 'Test Schedule',
+			courses: [{ id: 'c1' }],
+			academicConfig: { termStartDate: '', startWeek: 1, endWeek: 20, periodTimes: [] }
+		} as never;
+
+		slotImportHandlers.set('share-link', async () => sampleTimetable);
+		const controller = createTransferState(mockEngine);
+		expect(await controller.previewWithSlot('share-link', {})).toBe(true);
+		expect(controller.setImportMode(ImportMode.OVERWRITE_CURRENT)).toBe(true);
+
+		const restored = createTransferState(mockEngine);
+		expect(restored.loadPersistedPreview()).toBe(true);
+		expect(restored.state.importMode).toBe(ImportMode.OVERWRITE_CURRENT);
+		expect(await restored.confirmImport()).toBe(true);
+		expect(importTimetable).toHaveBeenCalledWith(sampleTimetable, { overwriteActive: true });
+	});
+
 	it('calls finalizePreview before importing through engine', async () => {
 		finalizePreview.mockClear();
 		const importTimetable = vi.fn().mockResolvedValue(undefined);

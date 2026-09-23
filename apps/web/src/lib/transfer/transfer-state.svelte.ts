@@ -78,6 +78,7 @@ export function createTransferState(engine?: ChronosEngine) {
 			return false;
 		}
 		importMode = mode;
+		persistPreview();
 		clearMessages();
 		return true;
 	}
