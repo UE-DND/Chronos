@@ -20,11 +20,9 @@ export { CheckCircleFillW700 as CheckCircleFill } from '@material-symbols-svg/sv
 export { EditW700 as Edit } from '@material-symbols-svg/svelte/icons/edit';
 export { CodeFillW700 as CodeFill } from '@material-symbols-svg/svelte/icons/code';
 export { GavelFillW700 as GavelFill } from '@material-symbols-svg/svelte/icons/gavel';
-export { ArticleFillW700 as ArticleFill } from '@material-symbols-svg/svelte/icons/article';
 export { ShieldFillW700 as ShieldFill } from '@material-symbols-svg/svelte/icons/shield';
 export { OpenInNewFillW700 as OpenInNewFill } from '@material-symbols-svg/svelte/icons/open-in-new';
 export { DescriptionFillW700 as DescriptionFill } from '@material-symbols-svg/svelte/icons/description';
-export { FolderZipFillW700 as FolderZipFill } from '@material-symbols-svg/svelte/icons/folder-zip';
 export { LayersClearFillW700 as LayersClearFill } from '@material-symbols-svg/svelte/icons/layers-clear';
 export { ScheduleFillW700 as ScheduleFill } from '@material-symbols-svg/svelte/icons/schedule';
 export { EventFillW700 as EventFill } from '@material-symbols-svg/svelte/icons/event';

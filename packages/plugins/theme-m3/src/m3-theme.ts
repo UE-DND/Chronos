@@ -10,10 +10,10 @@ import {
 } from '@ktibow/material-color-utilities-nightly';
 import type { CoursePaletteEntry } from '@chronos/core';
 
-export const BRAND_SOURCE_ARGB = 0xff0068b7;
+const BRAND_SOURCE_ARGB = 0xff0068b7;
 
 /** M3 theme defaults, owned by this plugin. */
-export const M3_BASE_COLOR_KEYS = [
+const M3_BASE_COLOR_KEYS = [
 	'canvas',
 	'ink',
 	'border-subtle',
@@ -213,7 +213,7 @@ export function schemeAccentCssVars(sourceArgb: number, isDark: boolean): Record
 	return vars;
 }
 
-export function coursePaletteFromSource(sourceArgb: number): CoursePaletteEntry[] {
+function coursePaletteFromSource(sourceArgb: number): CoursePaletteEntry[] {
 	const scheme = createDynamicScheme(sourceArgb, false);
 	const palettes = [scheme.primaryPalette, scheme.secondaryPalette, scheme.tertiaryPalette];
 	const entries: CoursePaletteEntry[] = [];

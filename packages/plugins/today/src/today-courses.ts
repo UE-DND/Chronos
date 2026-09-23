@@ -33,16 +33,6 @@ export function resolvePeriodTimeRange(
 	return { startTime: start.startTime, endTime: end.endTime };
 }
 
-export function formatPeriodRange(
-	periodTimes: PeriodTime[],
-	startPeriod: number,
-	endPeriod: number
-): string {
-	const range = resolvePeriodTimeRange(periodTimes, startPeriod, endPeriod);
-	if (!range) return '';
-	return `${range.startTime}–${range.endTime}`;
-}
-
 export function sortCourseHits(hits: CourseQueryHit[], locale: string): CourseQueryHit[] {
 	return [...hits].sort((left, right) => {
 		const startDiff = left.course.startPeriod - right.course.startPeriod;

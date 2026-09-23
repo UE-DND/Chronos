@@ -9,7 +9,7 @@ export interface PackageExportAlias {
 	replacement: string;
 }
 
-export function parsePackageExports(
+function parsePackageExports(
 	pkgDir: string,
 	pkg: { name: string; exports?: Record<string, unknown>; main?: string },
 	seen: Set<string>

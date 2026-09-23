@@ -11,7 +11,7 @@ export function isPwaStandalone(): boolean {
 	);
 }
 
-export const PWA_DISPLAY_MODE_MEDIA_QUERIES = [...INSTALLED_DISPLAY_MODES, 'browser'] as const;
+const PWA_DISPLAY_MODE_MEDIA_QUERIES = [...INSTALLED_DISPLAY_MODES, 'browser'] as const;
 
 export interface PwaEnvironmentFlags {
 	isStandalone: boolean;
@@ -57,7 +57,7 @@ export function detectPwaEnvironment(
 	return { isStandalone: standalone, isIOS, isMacSafari };
 }
 
-export function readPwaEnvironmentFromWindow(win: Window): PwaEnvironmentFlags {
+function readPwaEnvironmentFromWindow(win: Window): PwaEnvironmentFlags {
 	const navData = win.navigator as Navigator & {
 		userAgentData?: { platform?: string; brands?: { brand: string }[] };
 	};
@@ -71,7 +71,7 @@ export function readPwaEnvironmentFromWindow(win: Window): PwaEnvironmentFlags {
 	});
 }
 
-export const SNOOZE_KEY = 'chronos:pwa-install-snoozed-until';
+const SNOOZE_KEY = 'chronos:pwa-install-snoozed-until';
 export const SNOOZE_DURATION_MS = 3 * 24 * 60 * 60 * 1000;
 
 export function parseSnoozedUntil(raw: string | null): number | null {
@@ -84,14 +84,14 @@ export function isInstallPromptSnoozed(snoozedUntil: number | null, now = Date.n
 	return snoozedUntil !== null && now < snoozedUntil;
 }
 
-export const APPINSTALLED_DEDUP_MS = 2000;
+const APPINSTALLED_DEDUP_MS = 2000;
 
 export interface InstallPromptLifecycleCallbacks {
 	onBeforeInstall: (prompt: BeforeInstallPromptEvent) => void;
 	onAppInstalled: () => void;
 }
 
-export function attachInstallPromptLifecycle(
+function attachInstallPromptLifecycle(
 	window: Window,
 	callbacks: InstallPromptLifecycleCallbacks
 ): () => void {
@@ -113,7 +113,7 @@ export function attachInstallPromptLifecycle(
 	};
 }
 
-export function scheduleEnvironmentRecheck(
+function scheduleEnvironmentRecheck(
 	onRecheck: () => void,
 	delays: number[] = [100, 500, 1000]
 ): () => void {
@@ -125,11 +125,11 @@ export function scheduleEnvironmentRecheck(
 	};
 }
 
-export function restoreStoredInstallPrompt(window: Window): BeforeInstallPromptEvent | null {
+function restoreStoredInstallPrompt(window: Window): BeforeInstallPromptEvent | null {
 	return window.__chronosInstallPrompt ?? null;
 }
 
-export function storeInstallPrompt(window: Window, prompt: BeforeInstallPromptEvent | null): void {
+function storeInstallPrompt(window: Window, prompt: BeforeInstallPromptEvent | null): void {
 	window.__chronosInstallPrompt = prompt;
 }
 

@@ -135,9 +135,6 @@ export function createCourseEditor(
 		get canSave() {
 			return canSave;
 		},
-		get isSaving() {
-			return isSaving;
-		},
 		get timetable() {
 			return timetable;
 		},

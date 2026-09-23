@@ -106,7 +106,7 @@ export function readBuildCache<T>(path: string, key: string): BuildCache<T> | nu
 		return null;
 	}
 }
-export function atomicWrite(path: string, contents: string | Uint8Array): void {
+function atomicWrite(path: string, contents: string | Uint8Array): void {
 	mkdirSync(dirname(path), { recursive: true });
 	const temporary = `${path}.${randomUUID()}.tmp`;
 	writeFileSync(temporary, contents);

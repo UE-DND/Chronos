@@ -3,7 +3,7 @@ export type BackFallback = { kind: 'shell'; tab?: string } | { kind: 'route'; hr
 export type BackPlan =
 	| { type: 'traverse'; targetId: string; delta: number }
 	| { type: 'fallback'; fallback: BackFallback };
-export function isValidTarget(frame: Readonly<NavFrame>): boolean {
+function isValidTarget(frame: Readonly<NavFrame>): boolean {
 	return frame.kind === 'route' || frame.valid;
 }
 export function resolveBack(snapshot: NavigationSnapshot, fallback: BackFallback): BackPlan {

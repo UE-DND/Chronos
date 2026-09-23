@@ -18,7 +18,6 @@
 	let node = $state<HTMLElement | null>(null);
 	let boxWidth = 0;
 	let boxHeight = 0;
-	let lastKey = '';
 	let lastInputKey = '';
 
 	function boxSize(el: HTMLElement, entry?: ResizeObserverEntry) {
@@ -72,9 +71,6 @@
 			computed.writingMode,
 			window.devicePixelRatio
 		]);
-		if (key === lastKey) return;
-		lastKey = key;
-
 		if (width <= 0 || height <= 0) {
 			el.textContent = content;
 			el.removeAttribute('title');
@@ -98,7 +94,6 @@
 
 	const truncateAttach: Attachment<HTMLElement> = (el) => {
 		node = el;
-		lastKey = '';
 		lastInputKey = '';
 		let rafId = 0;
 		const observer = new ResizeObserver((entries) => {
@@ -109,7 +104,6 @@
 			});
 		});
 		const unsubscribeFonts = subscribeMiddleTruncateFontChanges(() => {
-			lastKey = '';
 			lastInputKey = '';
 			const size = boxSize(el);
 			apply(el, size.width, size.height);
@@ -124,7 +118,6 @@
 			observer.disconnect();
 			unsubscribeFonts();
 			if (node === el) node = null;
-			lastKey = '';
 			lastInputKey = '';
 			boxWidth = 0;
 			boxHeight = 0;

@@ -14,7 +14,7 @@ export type ApplyAppearanceInput = {
 	themePaletteEntries?: readonly CoursePaletteEntry[] | null;
 };
 
-export function syncThemeChrome(target: HTMLElement, isDark: boolean) {
+function syncThemeChrome(target: HTMLElement, isDark: boolean) {
 	if (typeof document === 'undefined' || target !== document.documentElement) return;
 	const color = getComputedStyle(target).getPropertyValue('--color-surface').trim();
 	if (color) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color);

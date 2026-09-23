@@ -1,5 +1,5 @@
 /** Server deployment is independent of client installation state. */
-export const DEPLOYMENTS: Record<string, { serverPlugins: string[] }> = {
+const DEPLOYMENTS: Record<string, { serverPlugins: string[] }> = {
 	'chronos-default': { serverPlugins: [] },
 	'chronos-cqut': { serverPlugins: ['source-cqut'] },
 	'chronos-cqut-offline': { serverPlugins: [] },

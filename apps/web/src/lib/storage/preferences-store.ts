@@ -13,7 +13,7 @@ import {
 	PREFERENCE_STORAGE_KEYS
 } from '@chronos/core';
 
-export const SETTINGS_KEYS = PREFERENCE_STORAGE_KEYS;
+const SETTINGS_KEYS = PREFERENCE_STORAGE_KEYS;
 
 function normalizeThemeMode(raw: string | null): ThemeMode {
 	const value = raw?.trim().toLowerCase();

@@ -48,7 +48,7 @@ export function detectSystemAppLocale(): AppLocale {
 }
 
 /** Startup locale resolution; currently always follows the system language. */
-export function resolveAppLocale(_saved?: AppLocale | null): AppLocale {
+function resolveAppLocale(_saved?: AppLocale | null): AppLocale {
 	return detectSystemAppLocale();
 }
 

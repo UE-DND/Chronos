@@ -14,7 +14,7 @@ const APP_CACHE_PATTERNS: RegExp[] = [
 	new RegExp(`^(${PAGES_CACHE_NAME}|official-plugins|pwa-manifest|static-legal-licenses)$`)
 ];
 
-export function isAppCache(cacheName: string): boolean {
+function isAppCache(cacheName: string): boolean {
 	return APP_CACHE_PATTERNS.some((pattern) => pattern.test(cacheName));
 }
 
