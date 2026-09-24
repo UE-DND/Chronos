@@ -1,0 +1,59 @@
+name: Deploy Vercel production
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-production
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      valid: ${{ steps.validate.outputs.valid }}
+    steps:
+      - id: validate
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo 'valid=true' >> "$GITHUB_OUTPUT"
+          fi
+
+  quality:
+    needs: version
+    if: needs.version.outputs.valid == 'true'
+    uses: ./.github/workflows/quality.yml
+
+  deploy:
+    needs: [version, quality]
+    if: needs.version.outputs.valid == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: voidzero-dev/setup-vp@8a7496fd44e8a1b0a88a7459e36213b2fefc1d15 # v1
+        with:
+          node-version: '24'
+          cache: true
+          run-install: false
+
+      - run: vp install --frozen-lockfile
+      - name: Deploy tagged version
+        env:
+          pnpm_config_strict_dep_builds: 'false'
+        run: |
+          vpx vercel@50.44.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vpx vercel@50.44.0 build --prod --token="$VERCEL_TOKEN"
+          vpx vercel@50.44.0 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
