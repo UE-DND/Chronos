@@ -19,7 +19,7 @@ export function createErrorLogPlugin(options: CreateErrorLogPluginOptions = {}) 
 		toolGroup: 'dev',
 		order: 50,
 		author: 'Chronos',
-		homepage: 'https://github.com/CQUT-OpenProject/Chronos',
+		homepage: 'https://github.com/UE-DND/Chronos',
 		async apply(ctx, t) {
 			const runtime = createErrorLogRuntime(ctx);
 			await runtime.load();

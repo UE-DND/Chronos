@@ -20,7 +20,7 @@ export function createClockPlugin(options: CreateClockPluginOptions = {}) {
 		toolGroup: 'dev',
 		order: 55,
 		author: 'Chronos',
-		homepage: 'https://github.com/CQUT-OpenProject/Chronos',
+		homepage: 'https://github.com/UE-DND/Chronos',
 		async apply(ctx, t) {
 			activeCtx = ctx;
 			const stored = parseStoredFrozenEpoch(await ctx.storage.get(CLOCK_STORAGE_KEY));

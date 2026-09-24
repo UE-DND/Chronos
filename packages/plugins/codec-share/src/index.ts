@@ -42,8 +42,8 @@ export function createShareCodecPlugin(options: CreateShareCodecPluginOptions = 
 		descriptionKey: 'plugin.description',
 		category: 'codec',
 		order: 30,
-		author: 'CQUT OpenProject',
-		homepage: 'https://github.com/CQUT-OpenProject/Chronos',
+		author: 'UE-DND',
+		homepage: 'https://github.com/UE-DND/Chronos',
 		async apply(ctx, t) {
 			const shareLinkImportSchema = createShareLinkImportSchema(t);
 			const decodeLabels: ShareDecodeLabels = {

@@ -41,8 +41,8 @@ export function createCqutPlugin(options: CreateCqutPluginOptions = {}) {
 		descriptionKey: 'plugin.description',
 		category: 'source',
 		order: 10,
-		author: 'CQUT OpenProject',
-		homepage: 'https://github.com/CQUT-OpenProject/Chronos',
+		author: 'UE-DND',
+		homepage: 'https://github.com/UE-DND/Chronos',
 		allowedDomains: ['authserver.cqut.edu.cn', 'uis.cqut.edu.cn', 'timetable-cfc.cqut.edu.cn'],
 		apply(ctx, t) {
 			registerCqutImportTabs({

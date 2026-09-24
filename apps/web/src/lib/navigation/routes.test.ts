@@ -59,8 +59,8 @@ describe('navigation routes', () => {
 		expect(appRouteHref('/transfer/import')).toBe('/Chronos/transfer/import');
 		expect(appRouteHref('/mine')).toBe('/Chronos/mine');
 		expect(appRouteHref('/Chronos/transfer/import')).toBe('/Chronos/transfer/import');
-		expect(appRouteHref('https://github.com/CQUT-OpenProject/Chronos')).toBe(
-			'https://github.com/CQUT-OpenProject/Chronos'
+		expect(appRouteHref('https://github.com/UE-DND/Chronos')).toBe(
+			'https://github.com/UE-DND/Chronos'
 		);
 	});
 });

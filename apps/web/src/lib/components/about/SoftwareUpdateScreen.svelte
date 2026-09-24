@@ -200,7 +200,7 @@
 		/>
 		<MineRow
 			title={hostT('about.update.more.repo')}
-			supporting="CQUT-OpenProject/Chronos"
+			supporting="UE-DND/Chronos"
 			href={SOURCE_CODE_URL}
 			target="_blank"
 			rel="noreferrer"

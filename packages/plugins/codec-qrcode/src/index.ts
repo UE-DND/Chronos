@@ -183,8 +183,8 @@ export function createQrCodecPlugin(options: CreateQrCodecPluginOptions = {}) {
 		category: 'tool',
 		toolGroup: 'utility',
 		order: 35,
-		author: 'CQUT OpenProject',
-		homepage: 'https://github.com/CQUT-OpenProject/Chronos',
+		author: 'UE-DND',
+		homepage: 'https://github.com/UE-DND/Chronos',
 		async apply(ctx, t) {
 			const qrCodeImportSchema = createQrCodeImportSchema(t);
 

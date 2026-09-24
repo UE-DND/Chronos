@@ -2,7 +2,7 @@
 
 **生效日期：2026 年 8 月 26 日**
 
-CQUT-OpenProject（以下简称「我们」）深知个人信息对您的重要性。本隐私政策旨在向您说明 Chronos（以下简称「本软件」）如何收集、使用、存储和保护您的信息，以及您所享有的相关权利。
+UE-DND（以下简称「我们」）深知个人信息对您的重要性。本隐私政策旨在向您说明 Chronos（以下简称「本软件」）如何收集、使用、存储和保护您的信息，以及您所享有的相关权利。
 
 请您在使用本软件前仔细阅读本政策。**您安装、访问或使用本软件，即视为您已阅读、理解并同意本政策。** 如您不同意本政策任何内容，请立即停止使用本软件。
 
@@ -226,10 +226,10 @@ CQUT-OpenProject（以下简称「我们」）深知个人信息对您的重要�
 
 如您对本隐私政策有任何疑问、意见或建议，请通过以下方式联系我们：
 
-- GitHub Issues：[https://github.com/CQUT-OpenProject/Chronos/issues](https://github.com/CQUT-OpenProject/Chronos/issues)
+- GitHub Issues：[https://github.com/UE-DND/Chronos/issues](https://github.com/UE-DND/Chronos/issues)
 
 我们将在合理期限内予以回复。
 
 ---
 
-*本政策最终解释权归 CQUT-OpenProject 所有。*
+*本政策最终解释权归 UE-DND 所有。*
