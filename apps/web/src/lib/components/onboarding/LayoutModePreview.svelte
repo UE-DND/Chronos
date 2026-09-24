@@ -78,7 +78,7 @@
 
 	.mode-fixed .grid {
 		height: 165%;
-		animation: scroll-preview 5.2s ease-in-out infinite;
+		animation: scroll-preview 3s ease-in-out infinite;
 	}
 
 	.periods {
@@ -167,13 +167,13 @@
 
 	@keyframes scroll-preview {
 		0%,
-		15%,
-		85%,
+		10%,
+		90%,
 		100% {
 			transform: translateY(0);
 		}
-		45%,
-		60% {
+		42%,
+		58% {
 			transform: translateY(-39%);
 		}
 	}

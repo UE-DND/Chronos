@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import { Add, CalendarMonthFill, DeleteFill, Person } from '$lib/icons';
+	import { Add, CalendarMonthFill, DeleteFill, EditNote, Person, TuneFill } from '$lib/icons';
 
 	const days = [
 		'timetable.dayShort.mon',
@@ -49,38 +49,40 @@
 		<div class="toolbar-view toolbar-layer">
 			<span class="view-tab text-primary">
 				<span class="view-tab-icon bg-primary-container"><CalendarMonthFill class="size-5" /></span>
-				{hostT('tab.timetable')}
+				<span class="tab-pill bg-current opacity-40"></span>
 			</span>
 			<span class="view-tab text-on-surface-variant">
 				<span class="view-tab-icon"><Person class="size-5" /></span>
-				{hostT('tab.mine')}
+				<span class="tab-pill bg-current opacity-30"></span>
 			</span>
 		</div>
 		<div class="toolbar-actions toolbar-layer">
-			<span>{hostT('timetable.edit.aria')}</span>
+			<span class="action-btn border border-outline-variant text-on-surface-variant">
+				<EditNote class="size-5" />
+			</span>
 			<span class="add-action bg-primary text-on-primary"><Add class="size-5" /></span>
-			<span>{hostT('timetable.details.section.display')}</span>
+			<span class="action-btn border border-outline-variant text-on-surface-variant">
+				<TuneFill class="size-5" />
+			</span>
 		</div>
 		<div class="delete-zone toolbar-layer font-medium text-error">
 			<span class="delete-icon"><DeleteFill class="size-6" /></span>
 			<span class="delete-labels">
-				<span class="drag-hint">{hostT('timetable.deleteWeek.dragHint')}</span>
-				<span class="drop-hint">{hostT('timetable.deleteWeek.dropHint')}</span>
+				<span class="drag-hint delete-hint-pill"></span>
+				<span class="drop-hint delete-hint-pill delete-hint-pill--active"></span>
 			</span>
 		</div>
 	</div>
 	<div class="confirm-overlay">
-		<div class="confirm-card rounded-2xl bg-surface-container-high p-4 shadow-overlay">
-			<p class="text-body-medium font-semibold">{hostT('timetable.deleteWeek.title')}</p>
-			<p class="text-label-small mt-1 text-on-surface-variant">
-				{hostT('timetable.deleteWeek.desc', {
-					week: 1,
-					name: hostT('onboarding.longPress.coursePrimary')
-				})}
-			</p>
-			<div class="text-label-small mt-3 flex justify-end gap-4 font-medium">
-				<span>{hostT('common.cancel')}</span>
-				<span class="text-error">{hostT('common.delete')}</span>
+		<div
+			class="confirm-sheet rounded-t-3xl bg-surface-container-high px-5 pt-5 pb-4 shadow-overlay"
+		>
+			<div class="confirm-title-pill mx-auto"></div>
+			<div class="confirm-desc-pill mx-auto mt-2.5"></div>
+			<div class="confirm-desc-pill confirm-desc-pill--short mx-auto mt-1.5"></div>
+			<div class="mt-4 flex gap-3 border-t border-outline-variant/40 pt-3">
+				<div class="confirm-btn-pill bg-outline-variant/50"></div>
+				<div class="confirm-btn-pill bg-error"></div>
 			</div>
 		</div>
 	</div>
@@ -88,8 +90,8 @@
 
 <style>
 	.demo {
-		--cycle: 8s;
-		--start-delay: 1s;
+		--cycle: 6s;
+		--start-delay: 0.6s;
 		position: relative;
 		display: flex;
 		flex-direction: column;
@@ -245,22 +247,26 @@
 		border-radius: 999px;
 	}
 
+	.tab-pill {
+		width: 1.4rem;
+		height: 0.22rem;
+		border-radius: 999px;
+		margin-top: 0.2rem;
+	}
+
 	.toolbar-actions {
-		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 0.4rem;
-		padding: 0 0.65rem;
+		justify-content: center;
+		gap: 1rem;
 		opacity: 0;
 		animation: actions-bar-state var(--cycle) linear infinite;
 	}
 
-	.toolbar-actions > span:not(.add-action) {
-		min-width: 0;
-		padding: 0.38rem 0.2rem;
-		border: 1px solid var(--color-outline-variant);
+	.action-btn {
+		display: grid;
+		width: 3rem;
+		height: 2rem;
+		place-items: center;
 		border-radius: 999px;
-		text-align: center;
-		white-space: nowrap;
 	}
 
 	.add-action {
@@ -268,7 +274,6 @@
 		width: 2rem;
 		height: 2rem;
 		place-items: center;
-		justify-self: center;
 		border-radius: 999px;
 	}
 
@@ -299,6 +304,20 @@
 		grid-area: 1 / 1;
 	}
 
+	.delete-hint-pill {
+		display: block;
+		width: 5.5rem;
+		height: 0.35rem;
+		border-radius: 999px;
+		background: currentColor;
+		opacity: 0.45;
+	}
+
+	.delete-hint-pill--active {
+		width: 4rem;
+		opacity: 0.75;
+	}
+
 	.drag-hint {
 		animation: drag-hint-state var(--cycle) linear infinite;
 	}
@@ -312,17 +331,49 @@
 		position: absolute;
 		z-index: 5;
 		inset: 0;
-		display: grid;
-		place-items: center;
-		padding: 1rem;
-		background: color-mix(in srgb, var(--color-on-surface) 24%, transparent);
 		opacity: 0;
-		animation: confirm-state var(--cycle) linear infinite;
+		visibility: hidden;
+		pointer-events: none;
+		background: color-mix(in srgb, var(--color-on-surface) 32%, transparent);
+		animation: confirm-backdrop var(--cycle) linear infinite both;
 	}
 
-	.confirm-card {
-		width: 100%;
-		max-width: 18rem;
+	.confirm-sheet {
+		position: absolute;
+		inset-inline: 0;
+		bottom: 0;
+		display: flex;
+		flex-direction: column;
+		transform: translateY(100%);
+		animation: confirm-sheet var(--cycle) cubic-bezier(0.05, 0.7, 0.1, 1) infinite both;
+	}
+
+	.confirm-title-pill {
+		width: 5.5rem;
+		height: 0.75rem;
+		border-radius: 999px;
+		background: var(--color-on-surface);
+		opacity: 0.75;
+	}
+
+	.confirm-desc-pill {
+		width: 13rem;
+		max-width: 90%;
+		height: 0.45rem;
+		border-radius: 999px;
+		background: var(--color-on-surface-variant);
+		opacity: 0.35;
+	}
+
+	.confirm-desc-pill--short {
+		width: 8rem;
+	}
+
+	.confirm-btn-pill {
+		flex: 1;
+		height: 1.8rem;
+		border-radius: 999px;
+		opacity: 0.85;
 	}
 
 	.moving-group,
@@ -336,7 +387,8 @@
 	.delete-icon,
 	.drag-hint,
 	.drop-hint,
-	.confirm-overlay {
+	.confirm-overlay,
+	.confirm-sheet {
 		animation-delay: var(--start-delay);
 	}
 
@@ -543,16 +595,35 @@
 		}
 	}
 
-	@keyframes confirm-state {
+	@keyframes confirm-backdrop {
 		0%,
 		79%,
 		96%,
 		100% {
 			opacity: 0;
+			pointer-events: none;
+			visibility: hidden;
 		}
-		84%,
+		83%,
 		92% {
 			opacity: 1;
+			pointer-events: auto;
+			visibility: visible;
+		}
+	}
+
+	@keyframes confirm-sheet {
+		0%,
+		79% {
+			transform: translateY(100%);
+		}
+		83%,
+		92% {
+			transform: translateY(0);
+		}
+		96%,
+		100% {
+			transform: translateY(100%);
 		}
 	}
 
@@ -568,8 +639,12 @@
 		.delete-icon,
 		.drag-hint,
 		.drop-hint,
-		.confirm-overlay {
+		.confirm-overlay,
+		.confirm-sheet {
 			animation: none;
+		}
+		.confirm-overlay {
+			display: none;
 		}
 		.course-primary {
 			transform: scale(0.92);
@@ -619,8 +694,13 @@
 	:global(:root.reduce-motion) .delete-icon,
 	:global(:root.reduce-motion) .drag-hint,
 	:global(:root.reduce-motion) .drop-hint,
-	:global(:root.reduce-motion) .confirm-overlay {
+	:global(:root.reduce-motion) .confirm-overlay,
+	:global(:root.reduce-motion) .confirm-sheet {
 		animation: none;
+	}
+
+	:global(:root.reduce-motion) .confirm-overlay {
+		display: none;
 	}
 
 	:global(:root.reduce-motion) .course-primary {
