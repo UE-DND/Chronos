@@ -42,6 +42,7 @@ describe('deploy-targets configuration & isolation', () => {
 			isMobile: true,
 			disablePwa: true,
 			defaultDeployment: 'mobile',
+			defaultProfile: 'chronos-default',
 			adapterKind: 'static-spa'
 		});
 
@@ -52,6 +53,7 @@ describe('deploy-targets configuration & isolation', () => {
 			isMobile: false,
 			disablePwa: false,
 			defaultDeployment: 'pages',
+			defaultProfile: 'chronos-default',
 			adapterKind: 'static-pages'
 		});
 
@@ -61,7 +63,8 @@ describe('deploy-targets configuration & isolation', () => {
 			basePath: '',
 			isMobile: false,
 			disablePwa: false,
-			defaultDeployment: 'chronos-cqut',
+			defaultDeployment: 'chronos-default',
+			defaultProfile: 'chronos-default',
 			adapterKind: 'vercel'
 		});
 	});

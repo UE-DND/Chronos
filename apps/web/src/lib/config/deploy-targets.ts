@@ -8,6 +8,7 @@ export interface DeployTargetDefinition {
 	readonly isMobile: boolean;
 	readonly disablePwa: boolean;
 	readonly defaultDeployment: string;
+	readonly defaultProfile: string;
 	readonly adapterKind: AdapterKind;
 }
 
@@ -17,7 +18,8 @@ export const DEPLOY_TARGET_DEFINITIONS: Record<DeployTarget, DeployTargetDefinit
 		basePath: '',
 		isMobile: false,
 		disablePwa: false,
-		defaultDeployment: 'chronos-cqut',
+		defaultDeployment: 'chronos-default',
+		defaultProfile: 'chronos-default',
 		adapterKind: 'vercel'
 	},
 	pages: {
@@ -26,6 +28,7 @@ export const DEPLOY_TARGET_DEFINITIONS: Record<DeployTarget, DeployTargetDefinit
 		isMobile: false,
 		disablePwa: false,
 		defaultDeployment: 'pages',
+		defaultProfile: 'chronos-default',
 		adapterKind: 'static-pages'
 	},
 	mobile: {
@@ -34,6 +37,7 @@ export const DEPLOY_TARGET_DEFINITIONS: Record<DeployTarget, DeployTargetDefinit
 		isMobile: true,
 		disablePwa: true,
 		defaultDeployment: 'mobile',
+		defaultProfile: 'chronos-default',
 		adapterKind: 'static-spa'
 	}
 };

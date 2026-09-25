@@ -50,7 +50,7 @@ Chronos 分别配置客户端预安装的插件、服务端启用的插件和部
 
 | 变量                    | 作用                                                   | 默认值                                                                      |
 | ----------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------- |
-| `CHRONOS_PROFILE`       | 选择客户端发行配置，包括预安装插件、默认主题和初始偏好 | 未指定时 Pages 使用 `chronos-default`，其他 target 使用 `chronos-cqut`      |
+| `CHRONOS_PROFILE`       | 选择客户端发行配置，包括预安装插件、默认主题和初始偏好 | 未指定时 Pages / Mobile 使用 `chronos-default`，Vercel 使用 `chronos-cqut`  |
 | `CHRONOS_DEPLOYMENT`    | 选择服务端启用的插件                                   | 跟随 target：Vercel 为 `chronos-cqut`，Pages 为 `pages`，Mobile 为 `mobile` |
 | `CHRONOS_DEPLOY_TARGET` | 选择部署平台、适配器和 PWA 构建行为                    | 未设置时使用 Vercel；也可设为 `pages` 或 `mobile`                           |
 
@@ -62,9 +62,9 @@ Profile、deployment 和 deploy target 是独立配置。Profile 选择客户端
 | `pages`       | 静态站点，路径前缀为 `/Chronos` | 启用 | `pages`，无服务端插件  |
 | `mobile`      | Capacitor 使用的静态 SPA        | 禁用 | `mobile`，无服务端插件 |
 
-`vp run mobile:build` 使用 `mobile` target 和 `chronos-default` profile，然后同步 Capacitor 工程。移动端目前预装默认 Profile 的插件，不包含服务端插件。需要服务端代理的插件功能不会注册。配置定义见 [deploy-targets.ts](apps/web/src/lib/config/deploy-targets.ts)、[profile-definitions.ts](apps/web/src/lib/profile-codegen/profile-definitions.ts) 和 [deployment-definitions.ts](apps/web/src/lib/profile-codegen/deployment-definitions.ts)。
+`vp run mobile:build` 使用 `mobile` target，默认使用 `chronos-default` profile（可通过 `--profile` 参数指定不同 profile），然后同步 Capacitor 工程。移动端不包含服务端插件，需要服务端代理的插件功能不会注册。配置定义见 [deploy-targets.ts](apps/web/src/lib/config/deploy-targets.ts)、[profile-definitions.ts](apps/web/src/lib/profile-codegen/profile-definitions.ts) 和 [deployment-definitions.ts](apps/web/src/lib/profile-codegen/deployment-definitions.ts)。
 
-Web 的软件更新使用 Service Worker；移动端构建关闭 PWA。移动端目前没有原生应用更新适配器，不能通过软件更新页安装新的原生应用版本。发布原生更新时，需要构建并分发新的应用包。
+Web 的软件更新使用 Service Worker；移动端构建关闭 PWA。移动端通过原生平台适配器打开外部应用商店或 GitHub 发布下载链接进行更新。
 
 | 构建任务                       | 客户端预安装插件                             | 服务端插件    |
 | ------------------------------ | -------------------------------------------- | ------------- |
