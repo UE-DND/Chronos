@@ -7,6 +7,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const webStatic = resolve(root, 'apps/web/static');
 const pwaDir = resolve(webStatic, 'pwa');
 const sourceSvgPath = resolve(webStatic, 'chronos-icon.svg');
+const androidRes = resolve(root, 'apps/mobile/android/app/src/main/res');
+const iosAppIconDir = resolve(root, 'apps/mobile/ios/App/App/Assets.xcassets/AppIcon.appiconset');
 
 const BG = '#f0f4f8';
 const BRAND = '#0068B7';
@@ -42,10 +44,34 @@ function writePng(output: string, svg: string, size: number): void {
 	console.log(`Wrote ${output} (${size}x${size})`);
 }
 
+function writeCapacitorIcons(): void {
+	const iosIconPath = resolve(iosAppIconDir, 'AppIcon-512@2x.png');
+	writePng(iosIconPath, anyIconSvg(), 1024);
+
+	const densities = [
+		['mdpi', 48, 108],
+		['hdpi', 72, 162],
+		['xhdpi', 96, 216],
+		['xxhdpi', 144, 324],
+		['xxxhdpi', 192, 432]
+	] as const;
+	for (const [density, launcherSize, foregroundSize] of densities) {
+		const mipmapDir = resolve(androidRes, `mipmap-${density}`);
+		writePng(resolve(mipmapDir, 'ic_launcher.png'), anyIconSvg(), launcherSize);
+		writePng(resolve(mipmapDir, 'ic_launcher_round.png'), anyIconSvg(), launcherSize);
+		writePng(resolve(mipmapDir, 'ic_launcher_foreground.png'), anyIconSvg(), foregroundSize);
+	}
+}
+
 function anyIconSvg(): string {
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SOURCE_VIEWBOX}" height="${SOURCE_VIEWBOX}" viewBox="0 0 ${SOURCE_VIEWBOX} ${SOURCE_VIEWBOX}">
 ${sourceInner}
 </svg>`;
+}
+
+mkdirSync(iosAppIconDir, { recursive: true });
+for (const density of ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi']) {
+	mkdirSync(resolve(androidRes, `mipmap-${density}`), { recursive: true });
 }
 
 function paddedIconSvg(canvasSize: number, contentRatio: number, background = BG): string {
@@ -109,3 +135,5 @@ writeFileSync(
 	renderPng(screenshotSvg(wideW, wideH), wideW)
 );
 console.log(`Wrote ${resolve(pwaDir, 'screenshot-wide.png')} (${wideW}x${wideH})`);
+
+writeCapacitorIcons();

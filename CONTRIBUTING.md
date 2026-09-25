@@ -74,8 +74,11 @@ Vercel 构建会生成 Serverless 函数和静态资源。Pages 的输出目录�
 | `packages/ui-kit`    | Svelte 组件、响应式控制器、表单 Schema 和插件组件容器 | 依赖 `core`                                                            |
 | `packages/plugins/*` | 数据源、编解码、工具和主题                            | 可以依赖 `core`、`ui-kit` 和通用库；不能引用宿主内部模块或其他业务插件 |
 | `packages/codec-kit` | 字节编解码基础函数                                    | 作为共享库使用，不作为插件加载                                         |
-| `apps/web`           | 页面路由、平台适配、插件安装、课表导入和主题显示      | 组合并使用其他模块                                                     |
+| `apps/web`           | 页面路由、纯 Web 平台适配、插件安装与主题显示         | 纯 Web 宿主；Vercel/Pages 依赖图不包含 `@capacitor/*` 原生依赖         |
+| `apps/mobile`        | 原生容器工程、移动平台适配器和原生插件集成            | 依赖 Capacitor 原生库；在移动构建时通过配置提供原生平台适配器实现      |
 | `scripts`            | 插件构建、资源生成和产物校验                          | 具体算法和资源生成逻辑由对应插件实现                                   |
+
+宿主与平台适配器边界：`apps/web` 是标准 Web 宿主，在任何构建目标下均不直接依赖 `@capacitor/*`。原生移动能力由独立移动宿主 `apps/mobile` 维护，仅在 Mobile 静态 SPA 构建时通过配置与别名注入平台适配器。插件与业务代码面向 `HostPlatformAdapter` 或 `ChronosEnv` 编程，插件不得直接导入 `@capacitor/*`。
 
 引擎管理课表等业务状态。`ReactiveChronosController` 将状态提供给界面，并在状态变化时通知界面。宿主控制器管理页面交互状态。
 
