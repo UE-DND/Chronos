@@ -13,10 +13,14 @@ export interface CalendarHoliday {
 	label: string;
 }
 
+export type HolidayDataSource = 'remote' | 'bundled' | 'cached' | 'unavailable';
+
 export interface HolidayCalendarConfig {
 	holidays: CalendarHoliday[];
 	syncedAt?: number;
 	syncedYears?: number[];
+	sourceByYear?: Record<number, HolidayDataSource>;
+	lastAttemptedAt?: number;
 }
 
 export interface AcademicConfig {
@@ -110,7 +114,10 @@ export function createTimetable(
 				? {
 						holidayCalendar: {
 							...partial.academicConfig.holidayCalendar,
-							holidays: [...partial.academicConfig.holidayCalendar.holidays]
+							holidays: [...partial.academicConfig.holidayCalendar.holidays],
+							sourceByYear: partial.academicConfig.holidayCalendar.sourceByYear
+								? { ...partial.academicConfig.holidayCalendar.sourceByYear }
+								: undefined
 						}
 					}
 				: {})

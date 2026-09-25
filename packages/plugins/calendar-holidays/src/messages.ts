@@ -21,6 +21,9 @@ export const HOLIDAY_MESSAGES = {
 		'screen.list.emptyHint': '同步后，课表将标注法定放假日',
 		'screen.error.noTimetable': '请先选择或创建课表',
 		'screen.error.syncFailed': '同步失败，请检查网络后重试',
+		'screen.sync.source.bundled': '使用内置离线数据：{years}',
+		'screen.sync.source.cached': '网络数据暂不可用，沿用已有数据：{years}',
+		'screen.sync.source.unavailable': '暂无可用数据：{years}',
 		'screen.notify.synced': '法定节假日已同步'
 	},
 	en: {
@@ -43,6 +46,9 @@ export const HOLIDAY_MESSAGES = {
 		'screen.list.emptyHint': 'After syncing, holidays will appear on your timetable',
 		'screen.error.noTimetable': 'Select or create a timetable first',
 		'screen.error.syncFailed': 'Sync failed. Check your network and try again.',
+		'screen.sync.source.bundled': 'Using bundled offline data: {years}',
+		'screen.sync.source.cached': 'Online data unavailable; keeping saved data: {years}',
+		'screen.sync.source.unavailable': 'No data available: {years}',
 		'screen.notify.synced': 'Public holidays synced'
 	}
 } satisfies PluginMessageCatalog;

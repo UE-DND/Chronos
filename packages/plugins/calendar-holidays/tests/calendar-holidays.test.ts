@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vite-plus/test';
-import { parseHolidayCnOffDays } from '../src/holiday-cn-client';
+import { parseHolidayCnOffDays, fetchHolidayCnYears } from '../src/holiday-cn-client';
 import { needsHolidaySync, syncHolidayCalendarFromHolidayCn } from '../src/holiday-sync';
 import {
 	ChronosEngine,
@@ -22,6 +22,57 @@ describe('calendar-holidays plugin', () => {
 			]
 		});
 		expect(holidays).toEqual([{ date: '2026-01-01', label: '元旦' }]);
+	});
+
+	it('returns online freshness when HTTP request succeeds', async () => {
+		const http: IHttpService = {
+			request: vi.fn().mockResolvedValue({
+				ok: true,
+				status: 200,
+				json: async () => ({
+					year: 2026,
+					papers: [],
+					days: [{ date: '2026-01-01', name: '元旦', isOffDay: true }]
+				})
+			}),
+			proxy: vi.fn()
+		};
+
+		const result = await fetchHolidayCnYears(http, [2026]);
+		expect(result.sourceByYear).toEqual({ 2026: 'remote' });
+		expect(result.byYear[2026]).toEqual([{ date: '2026-01-01', label: '元旦' }]);
+	});
+
+	it('returns fallback freshness when HTTP fails but static fallback exists', async () => {
+		const http: IHttpService = {
+			request: vi.fn().mockRejectedValue(new Error('Network error')),
+			proxy: vi.fn()
+		};
+
+		const result = await fetchHolidayCnYears(http, [2026]);
+		expect(result.sourceByYear).toEqual({ 2026: 'bundled' });
+		expect(result.byYear[2026].length).toBeGreaterThan(0);
+	});
+
+	it('reports unavailable years alongside years with bundled data', async () => {
+		const http: IHttpService = {
+			request: vi.fn().mockRejectedValue(new Error('Network error')),
+			proxy: vi.fn()
+		};
+
+		const result = await fetchHolidayCnYears(http, [2026, 2035]);
+		expect(result.sourceByYear).toEqual({ 2026: 'bundled', 2035: 'unavailable' });
+		expect(result.byYear[2035]).toEqual([]);
+	});
+
+	it('retries bundled or cached data after cooldown', () => {
+		const calendar = {
+			holidays: [{ date: '2026-10-01', label: '国庆节' }],
+			sourceByYear: { 2026: 'bundled' as const },
+			lastAttemptedAt: 10_000
+		};
+		expect(needsHolidaySync(calendar, [2026], 10_000 + 60 * 60 * 1000)).toBe(false);
+		expect(needsHolidaySync(calendar, [2026], 10_000 + 7 * 60 * 60 * 1000)).toBe(true);
 	});
 
 	it('needsHolidaySync returns false when synced years cover the term', () => {
@@ -110,7 +161,9 @@ describe('calendar-holidays plugin', () => {
 			expect.objectContaining({
 				holidays: [{ date: '2026-10-01', label: '国庆节' }],
 				syncedAt: expect.any(Number),
-				syncedYears: [2026]
+				syncedYears: [2026],
+				sourceByYear: { 2026: 'remote' },
+				lastAttemptedAt: expect.any(Number)
 			})
 		);
 
@@ -281,6 +334,53 @@ describe('calendar-holidays plugin', () => {
 		);
 		expect(timetables.get('t2')?.academicConfig.holidayCalendar).toBeUndefined();
 
+		engine.dispose();
+	});
+
+	it('keeps cached year data and records unavailable years on partial failure', async () => {
+		const timetable = createTimetable({
+			id: 't-partial',
+			name: '部分失败课表',
+			academicConfig: {
+				termStartDate: '2034-12-01',
+				startWeek: 1,
+				endWeek: 20,
+				periodTimes: [],
+				holidayCalendar: {
+					holidays: [{ date: '2034-12-25', label: '已有节日' }],
+					sourceByYear: { 2034: 'remote' },
+					syncedYears: [2034],
+					syncedAt: 100
+				}
+			}
+		});
+		const { env, timetables } = createMockEnv({
+			http: { request: vi.fn().mockRejectedValue(new Error('offline')) }
+		});
+		timetables.set(timetable.id, timetable);
+		const engine = new ChronosEngine({ env });
+		await engine.init();
+		await engine.switchTimetable(timetable.id);
+		const ctx = {
+			get state() {
+				return engine.state;
+			},
+			actions: engine.actions,
+			service: ((id: unknown) => {
+				if (id === IHttpService) return engine.http;
+				if (id === IStorageService) return engine.storage;
+				return undefined;
+			}) as ChronosContext['service']
+		} as unknown as ChronosContext;
+
+		await syncHolidayCalendarFromHolidayCn(ctx, { force: true });
+
+		const saved = timetables.get(timetable.id)?.academicConfig.holidayCalendar;
+		expect(saved?.holidays).toContainEqual({ date: '2034-12-25', label: '已有节日' });
+		expect(saved?.sourceByYear).toMatchObject({ 2034: 'cached', 2035: 'unavailable' });
+		expect(saved?.syncedYears).toEqual([]);
+		expect(saved?.lastAttemptedAt).toEqual(expect.any(Number));
+		expect(needsHolidaySync(saved, [2034, 2035], Date.now())).toBe(false);
 		engine.dispose();
 	});
 

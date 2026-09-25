@@ -1,4 +1,5 @@
 import {
+	type CalendarHoliday,
 	inferYearsFromAcademicConfig,
 	clearHolidayCalendarFromStorage,
 	type ChronosContext,
@@ -10,6 +11,7 @@ import {
 import { fetchHolidayCnYears } from './holiday-cn-client';
 
 const syncInFlightByTimetableId = new Map<string, Promise<boolean>>();
+const AUTO_RETRY_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 export async function clearHolidayCalendarFromAllTimetables(ctx: ChronosContext): Promise<number> {
 	return clearHolidayCalendarFromStorage(ctx.service(IStorageService));
@@ -17,11 +19,17 @@ export async function clearHolidayCalendarFromAllTimetables(ctx: ChronosContext)
 
 export function needsHolidaySync(
 	existing: HolidayCalendarConfig | undefined,
-	requiredYears: readonly number[]
+	requiredYears: readonly number[],
+	now = Date.now()
 ): boolean {
-	if (!existing?.syncedAt || !existing.syncedYears?.length) return true;
-	const syncedYears = new Set(existing.syncedYears);
-	return requiredYears.some((year) => !syncedYears.has(year));
+	if (!existing) return true;
+	const syncedYears = new Set(existing.syncedYears ?? []);
+	const hasUnsyncedYear = requiredYears.some((year) => {
+		const source = existing.sourceByYear?.[year];
+		return source ? source !== 'remote' || !syncedYears.has(year) : !syncedYears.has(year);
+	});
+	if (!hasUnsyncedYear) return false;
+	return !existing.lastAttemptedAt || now - existing.lastAttemptedAt >= AUTO_RETRY_INTERVAL_MS;
 }
 
 export interface SyncHolidayCalendarOptions {
@@ -78,12 +86,54 @@ async function performHolidaySync(
 	}
 
 	const http = ctx.service(IHttpService);
-	const { holidays } = await fetchHolidayCnYears(http, requiredYears);
+	const fetched = await fetchHolidayCnYears(http, requiredYears);
+	const existing = latest.academicConfig.holidayCalendar;
+	const existingYears = new Set<number>([
+		...Object.keys(existing?.sourceByYear ?? {}).map(Number),
+		...(existing?.holidays ?? []).map((holiday) => Number(holiday.date.slice(0, 4)))
+	]);
+	const sourceByYear: NonNullable<HolidayCalendarConfig['sourceByYear']> = {
+		...existing?.sourceByYear
+	};
+	const holidayByYear = new Map<number, CalendarHoliday[]>();
+	for (const holiday of existing?.holidays ?? []) {
+		const year = Number(holiday.date.slice(0, 4));
+		const bucket = holidayByYear.get(year) ?? [];
+		bucket.push(holiday);
+		holidayByYear.set(year, bucket);
+	}
+
+	const remoteYears = new Set<number>();
+	for (const year of requiredYears) {
+		const source = fetched.sourceByYear[year]!;
+		if (source === 'unavailable') {
+			if (existingYears.has(year)) {
+				sourceByYear[year] = 'cached';
+			} else {
+				sourceByYear[year] = 'unavailable';
+			}
+			continue;
+		}
+		sourceByYear[year] = source;
+		holidayByYear.set(year, fetched.byYear[year]!);
+		if (source === 'remote') remoteYears.add(year);
+	}
+
+	const holidays = [...holidayByYear.values()]
+		.flat()
+		.sort((left, right) => left.date.localeCompare(right.date));
+	const hasRequiredYearData = requiredYears.some((year) => sourceByYear[year] !== 'unavailable');
+	const syncedYears = Object.entries(sourceByYear)
+		.filter(([, source]) => source === 'remote')
+		.map(([year]) => Number(year))
+		.sort((left, right) => left - right);
 
 	const holidayCalendar: HolidayCalendarConfig = {
 		holidays,
-		syncedAt: Date.now(),
-		syncedYears: [...requiredYears]
+		syncedAt: remoteYears.size > 0 ? Date.now() : existing?.syncedAt,
+		syncedYears,
+		sourceByYear,
+		lastAttemptedAt: Date.now()
 	};
 
 	const updatedAcademicConfig = {
@@ -95,14 +145,18 @@ async function performHolidaySync(
 		await ctx.actions.saveCurrentTimetableDetails({
 			academicConfig: updatedAcademicConfig
 		});
-		return true;
+	} else {
+		const updated: Timetable = {
+			...latest,
+			academicConfig: updatedAcademicConfig,
+			updatedAt: Date.now()
+		};
+		await storage.saveTimetable(updated);
 	}
 
-	const updated: Timetable = {
-		...latest,
-		academicConfig: updatedAcademicConfig,
-		updatedAt: Date.now()
-	};
-	await storage.saveTimetable(updated);
+	if (!hasRequiredYearData) {
+		const missingYears = requiredYears.filter((year) => sourceByYear[year] === 'unavailable');
+		throw new Error(`No holiday data available for years: ${missingYears.join(', ')}`);
+	}
 	return true;
 }

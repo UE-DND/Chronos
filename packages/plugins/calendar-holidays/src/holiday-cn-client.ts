@@ -1,5 +1,4 @@
-import type { CalendarHoliday } from '@chronos/core';
-import type { IHttpService } from '@chronos/core';
+import type { CalendarHoliday, HolidayDataSource, IHttpService } from '@chronos/core';
 import { HOLIDAY_CN_CDN_BASE } from './constants';
 import fallback2025 from '../static/data/2025.json';
 import fallback2026 from '../static/data/2026.json';
@@ -32,44 +31,44 @@ export function parseHolidayCnOffDays(payload: HolidayCnYearPayload): CalendarHo
 async function fetchHolidayCnYear(
 	http: IHttpService,
 	year: number
-): Promise<HolidayCnYearPayload | null> {
+): Promise<{ holidays: CalendarHoliday[]; source: Exclude<HolidayDataSource, 'cached'> }> {
 	const url = `${HOLIDAY_CN_CDN_BASE}/${year}.json`;
 	try {
 		const response = await http.request(url, { method: 'GET', timeoutMs: 15_000 });
 		if (!response.ok) {
 			throw new Error(`HTTP ${response.status}`);
 		}
-		return await response.json<HolidayCnYearPayload>();
+		const payload = await response.json<HolidayCnYearPayload>();
+		return { holidays: parseHolidayCnOffDays(payload), source: 'remote' };
 	} catch (error) {
 		const fallback = FALLBACK_BY_YEAR[year];
 		if (fallback) {
-			return fallback;
+			return { holidays: parseHolidayCnOffDays(fallback), source: 'bundled' };
 		}
 		console.warn(`[calendar-holidays] No holiday-cn data for ${year}`, error);
-		return null;
+		return { holidays: [], source: 'unavailable' };
 	}
+}
+
+export interface HolidayCnFetchResult {
+	byYear: Record<number, CalendarHoliday[]>;
+	sourceByYear: Record<number, Exclude<HolidayDataSource, 'cached'>>;
 }
 
 export async function fetchHolidayCnYears(
 	http: IHttpService,
 	years: readonly number[]
-): Promise<{ holidays: CalendarHoliday[] }> {
-	const payloads = (await Promise.all(years.map((year) => fetchHolidayCnYear(http, year)))).filter(
-		(payload): payload is HolidayCnYearPayload => payload !== null
-	);
-
-	if (payloads.length === 0) {
-		throw new Error(`No holiday-cn data for years: ${years.join(', ')}`);
-	}
-
-	const holidays = payloads.flatMap((payload) => parseHolidayCnOffDays(payload));
-	const byDate = new Map<string, CalendarHoliday>();
-	for (const holiday of holidays) {
-		if (!byDate.has(holiday.date)) {
-			byDate.set(holiday.date, holiday);
-		}
-	}
+): Promise<HolidayCnFetchResult> {
+	const results = await Promise.all(years.map((year) => fetchHolidayCnYear(http, year)));
+	const byYear: Record<number, CalendarHoliday[]> = {};
+	const sourceByYear: HolidayCnFetchResult['sourceByYear'] = {};
+	years.forEach((year, index) => {
+		const result = results[index]!;
+		byYear[year] = result.holidays;
+		sourceByYear[year] = result.source;
+	});
 	return {
-		holidays: [...byDate.values()].sort((left, right) => left.date.localeCompare(right.date))
+		byYear,
+		sourceByYear
 	};
 }
