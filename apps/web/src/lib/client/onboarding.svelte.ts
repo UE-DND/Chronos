@@ -58,10 +58,6 @@ export class OnboardingController {
 		return !this.hasChecked && !hasSeenOnboarding();
 	}
 
-	shouldShow(pathname: string): boolean {
-		return this.isActive(pathname);
-	}
-
 	shouldRender(pathname: string): boolean {
 		return this.isOpen || this.isActive(pathname);
 	}
