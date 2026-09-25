@@ -1,14 +1,14 @@
-# ADR 0009: 架构深化收敛、消除双轨实现与清理无用代码
+# ADR 0009：导入和课表排版的模块边界
 
 - 状态：Accepted
 - 日期：2026-08-21
 
 ## 决策
 
-导入执行委托给插槽的 `executeImport`；宿主 `transfer-state` 统一处理预览和确认，延续 [ADR 0008](0008-host-decoupling-and-deep-ingest-seam.md)。宿主直接复用 core 领域模型，不维护影子实体。
+插槽的 `executeImport` 负责执行导入。宿主的 `transfer-state` 统一处理预览和确认，沿用 [ADR 0008](0008-host-decoupling-and-deep-ingest-seam.md) 的边界。宿主直接使用 `core` 领域模型，不维护副本。
 
-课表排版算法留在 core，只计算逻辑网格与冲突分列。Svelte 坐标适配和 DOM 渲染归 ui-kit，不向核心算法传入视图私有概念。
+课表排版算法放在 `core`，只计算逻辑网格和冲突分列。Svelte 坐标适配和 DOM 渲染放在 `ui-kit`。核心算法不接收视图专用概念。
 
 ## 取舍
 
-纯算法可以独立测试，视图适配仍需验证其与算法结果的对应关系。
+纯算法可以独立测试。视图适配仍需验证它是否正确呈现算法结果。
