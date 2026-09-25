@@ -122,13 +122,14 @@ export default defineConfig({
 				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 			},
 			'build:mobile': {
-				command: 'vp run --filter @chronos/web build:mobile',
-				cache: false
+				command:
+					'CHRONOS_DEPLOY_TARGET=mobile node --experimental-strip-types apps/web/scripts/run-host.ts build',
+				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV']
 			},
 			'mobile:build': {
 				command:
-					'vp run --filter @chronos/web build:mobile && vp run --filter @chronos/mobile sync',
-				cache: false
+					'CHRONOS_DEPLOY_TARGET=mobile node --experimental-strip-types apps/web/scripts/run-host.ts build && vp run --filter @chronos/mobile sync',
+				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV']
 			},
 			'mobile:sync': {
 				command: 'vp run --filter @chronos/mobile sync',
