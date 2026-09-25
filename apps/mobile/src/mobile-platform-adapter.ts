@@ -31,10 +31,7 @@ export function isCapacitorNative(): boolean {
 
 export function resolvePlatformType(): PlatformType {
 	if (!isCapacitorNative()) return 'web';
-	const platform = Capacitor.getPlatform();
-	if (platform === 'ios') return 'ios';
-	if (platform === 'android') return 'android';
-	return 'web';
+	return Capacitor.getPlatform() === 'android' ? 'android' : 'web';
 }
 
 const IMPACT_STYLE_MAP: Record<NativeHapticImpactStyle, ImpactStyle> = {

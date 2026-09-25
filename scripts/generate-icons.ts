@@ -8,7 +8,6 @@ const webStatic = resolve(root, 'apps/web/static');
 const pwaDir = resolve(webStatic, 'pwa');
 const sourceSvgPath = resolve(webStatic, 'chronos-icon.svg');
 const androidRes = resolve(root, 'apps/mobile/android/app/src/main/res');
-const iosAppIconDir = resolve(root, 'apps/mobile/ios/App/App/Assets.xcassets/AppIcon.appiconset');
 
 const BG = '#f0f4f8';
 const BRAND = '#0068B7';
@@ -44,10 +43,7 @@ function writePng(output: string, svg: string, size: number): void {
 	console.log(`Wrote ${output} (${size}x${size})`);
 }
 
-function writeCapacitorIcons(): void {
-	const iosIconPath = resolve(iosAppIconDir, 'AppIcon-512@2x.png');
-	writePng(iosIconPath, anyIconSvg(), 1024);
-
+function writeAndroidIcons(): void {
 	const densities = [
 		['mdpi', 48, 108],
 		['hdpi', 72, 162],
@@ -69,7 +65,6 @@ ${sourceInner}
 </svg>`;
 }
 
-mkdirSync(iosAppIconDir, { recursive: true });
 for (const density of ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi']) {
 	mkdirSync(resolve(androidRes, `mipmap-${density}`), { recursive: true });
 }
@@ -136,4 +131,4 @@ writeFileSync(
 );
 console.log(`Wrote ${resolve(pwaDir, 'screenshot-wide.png')} (${wideW}x${wideH})`);
 
-writeCapacitorIcons();
+writeAndroidIcons();

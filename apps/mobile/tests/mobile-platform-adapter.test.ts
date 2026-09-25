@@ -105,14 +105,15 @@ describe('mobile-platform-adapter', () => {
 			expect(resolvePlatformType()).toBe('web');
 		});
 
-		it('reports correct platform when native', () => {
+		it('reports Android for the supported native platform', () => {
 			capacitorState.isNative = true;
 			capacitorState.platform = 'android';
 			expect(isCapacitorNative()).toBe(true);
 			expect(resolvePlatformType()).toBe('android');
 
 			capacitorState.platform = 'ios';
-			expect(resolvePlatformType()).toBe('ios');
+			// No iOS Capacitor target is shipped, so unknown native targets are not exposed as iOS.
+			expect(resolvePlatformType()).toBe('web');
 		});
 	});
 

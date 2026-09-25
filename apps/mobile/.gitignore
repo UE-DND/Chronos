@@ -1,8 +1,6 @@
 # Capacitor web assets (synced from apps/web/build)
 android/app/src/main/assets/public
 android/app/src/main/assets/capacitor.config.json
-ios/App/App/public
-ios/App/App/capacitor.config.json
 
 # Android build outputs & caches
 android/.gradle
@@ -13,10 +11,3 @@ android/*.iml
 android/app/*.iml
 android/local.properties
 android/.cxx
-
-# iOS build outputs & pods
-ios/App/Pods
-ios/App/Podfile.lock
-ios/App/App.xcworkspace/xcuserdata
-ios/App/App.xcodeproj/xcuserdata
-ios/App/App.xcodeproj/project.xcworkspace/xcuserdata

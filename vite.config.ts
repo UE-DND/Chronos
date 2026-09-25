@@ -138,10 +138,6 @@ export default defineConfig({
 				command: 'vp run --filter @chronos/mobile open:android',
 				cache: false
 			},
-			'mobile:open:ios': {
-				command: 'vp run --filter @chronos/mobile open:ios',
-				cache: false
-			},
 			'bundle:analyze': {
 				command:
 					'ANALYZE=true CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-host.ts build',
@@ -187,8 +183,7 @@ export default defineConfig({
 			'**/*.bundle.js',
 			'dist/**',
 			'.svelte-kit/',
-			'apps/mobile/android/**',
-			'apps/mobile/ios/**'
+			'apps/mobile/android/**'
 		],
 		options: {
 			typeAware: true,
@@ -216,8 +211,7 @@ export default defineConfig({
 			'**/node_modules/',
 			'/drizzle/',
 			'**/*.generated.ts',
-			'apps/mobile/android/**',
-			'apps/mobile/ios/**'
+			'apps/mobile/android/**'
 		]
 	},
 	plugins: [

@@ -69,4 +69,3 @@ apps/web/src/lib/boot/plugin-proxy-meta.generated.ts
 apps/web/src/lib/server/plugin-server-loader.generated.ts
 apps/web/src/routes/api/plugins/
 apps/mobile/android/app/src/main/res/mipmap-*/ic_launcher*.png
-apps/mobile/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
