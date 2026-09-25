@@ -74,12 +74,18 @@
 			}
 
 			if (disposition === 'download') {
-				downloadExportResult(result);
+				const delivery = await downloadExportResult(result);
+				if (delivery.status === 'canceled') {
+					return;
+				}
+				if (delivery.status === 'failed') {
+					throw new Error(hostT('transfer.export.failed'));
+				}
 				trackEvent('export_slot_execute_success', { actionId: action.id });
 				snackbar(
 					resolveLocalizedText(result.successMessage) ||
 						hostT('transfer.export.fileSaved', {
-							filename: result.filename ?? hostT('timetable.defaultName')
+							filename: delivery.filename
 						})
 				);
 				return;

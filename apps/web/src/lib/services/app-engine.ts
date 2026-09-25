@@ -4,6 +4,7 @@ import { ReactiveChronosController } from '@chronos/ui-kit';
 import { getOverlayHistoryPort } from '$lib/navigation/overlay-history-port';
 import { resolveActiveProfile } from '$lib/boot/profile-registry';
 import { registerHostShell } from '$lib/boot/core-shell';
+import { getHostPlatform } from '$lib/platform/host-platform';
 
 import { OfficialPluginService } from '$lib/services/official-plugins/official-plugin-service';
 import { snackbar } from '$lib/components/ui/snackbar-state.svelte';
@@ -45,8 +46,10 @@ function createEngine(options?: WebProviderOptions): ChronosEngine {
 		return engineRef.current;
 	});
 
+	const hostPlatform = getHostPlatform();
 	const env = createWebChronosEnv({
 		...options,
+		platform: options?.platform ?? hostPlatform.platformType,
 		enablePluginProxy: deploymentHasServerPlugins(),
 		coursePresentation,
 		navigation: {

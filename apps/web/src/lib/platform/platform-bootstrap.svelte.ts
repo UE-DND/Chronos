@@ -7,6 +7,8 @@ import { initAnalytics } from '$lib/client/analytics';
 import { attachOfflineUx } from '$lib/platform/offline-ux.svelte';
 import { ensureEngineReady } from '$lib/services/app-engine';
 import { configureHostI18n } from '$lib/i18n/host-i18n.svelte';
+import { getHostPlatform } from '$lib/platform/host-platform';
+import { dispatchSystemBack } from '$lib/navigation/nav-coordinator';
 import type { TimetableScreenController } from '$lib/timetable/timetable-screen.svelte';
 import { registerHyperellipse } from 'hyperellipse';
 
@@ -23,10 +25,30 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 	let started = false;
 	let disposeEffects: (() => void) | null = null;
 	let disposeOfflineUx: (() => void) | null = null;
+	let disposePlatform: (() => void) | null = null;
 
 	function init(): () => void {
 		if (started) return () => {};
 		started = true;
+
+		const platform = getHostPlatform();
+
+		disposePlatform =
+			platform.init?.({
+				onSystemBack: () => dispatchSystemBack(),
+				onDeepLink: (url) => {
+					const path = url.hostname === 's' || url.pathname.startsWith('/s') ? '/s' : url.pathname;
+					const target = `${path}${url.search}${url.hash}`;
+					void import('$lib/navigation/nav-coordinator').then(({ navigateForward }) => {
+						void navigateForward(target);
+					});
+				},
+				onAppResume: () => {
+					void ensureEngineReady().then((engine) => {
+						engine.refreshSystemTime();
+					});
+				}
+			}) ?? null;
 
 		registerHyperellipse();
 		connectivity.init();
@@ -39,10 +61,15 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 				deps.shell.init();
 				deps.timetableScreen.init(deps.shell);
 				// Gate first so the async install init cannot auto-popup behind onboarding.
-				pwaInstallController.setInstallPromptGate(() => onboardingController.state.open);
+				if (!platform.supportsPwaInstall) {
+					pwaInstallController.setInstallPromptGate(() => true);
+				} else {
+					pwaInstallController.setInstallPromptGate(() => onboardingController.state.open);
+				}
 				void pwaInstallController.init();
 				initAnalytics();
 				window.__chronosHideBootFallback?.();
+				platform.hideBootSplash?.();
 
 				disposeOfflineUx = attachOfflineUx(connectivity);
 
@@ -61,10 +88,15 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 							pwaInstallController.tryScheduleInstallDialog();
 						}
 					});
+
+					$effect(() => {
+						platform.syncTheme?.(deps.shell.state.isDark);
+					});
 				});
 			})
 			.catch((error) => {
 				console.error('[bootstrap] Failed to initialize profile', error);
+				platform.hideBootSplash?.();
 				window.__chronosShowBootFailure?.();
 			});
 
@@ -75,6 +107,8 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 			disposeOfflineUx?.();
 			disposeOfflineUx = null;
 			connectivity.destroy();
+			disposePlatform?.();
+			disposePlatform = null;
 			started = false;
 		};
 	}

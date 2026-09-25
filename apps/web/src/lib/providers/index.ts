@@ -6,6 +6,9 @@ import { PluginProxyHttpAdapter } from './plugin-proxy-http';
 import { WebRuntimeProvider } from './web-runtime';
 import { WebAnalyticsProvider } from './web-analytics';
 import { WebErrorCaptureProvider } from './web-error-capture';
+import { env } from '$env/dynamic/public';
+
+import type { PlatformType } from '@chronos/core';
 
 export {
 	DexieStorageProvider,
@@ -21,6 +24,7 @@ export interface WebProviderOptions {
 	localStorage?: Storage | null;
 	allowedDomains?: string[];
 	enablePluginProxy?: boolean;
+	platform?: PlatformType;
 	navigation?: {
 		openCourseEditor(courseId: string): void;
 	};
@@ -50,10 +54,16 @@ export function createWebProviders(options?: WebProviderOptions) {
 export function createWebChronosEnv(options?: WebProviderOptions) {
 	const providers = createWebProviders(options);
 	return {
-		platform: 'web' as const,
+		platform: options?.platform ?? ('web' as const),
 		hostLinks: {
-			getImportUrl: () =>
-				typeof window === 'undefined' ? null : new URL(resolve('/s'), window.location.origin).href
+			getImportUrl: () => {
+				if (options?.platform === 'ios' || options?.platform === 'android') {
+					return env.PUBLIC_CHRONOS_SHARE_IMPORT_URL?.trim() || null;
+				}
+				return typeof window === 'undefined'
+					? null
+					: new URL(resolve('/s'), window.location.origin).href;
+			}
 		},
 		http: providers.http,
 		storage: providers.storage,

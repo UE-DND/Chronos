@@ -123,4 +123,35 @@ describe('createPlatformBootstrap', () => {
 
 		expect(mocks.connectivityInit).toHaveBeenCalledTimes(1);
 	});
+
+	it('hides splash screen on boot failure so error UI is shown', async () => {
+		const { ensureEngineReady } = await import('$lib/services/app-engine');
+		vi.mocked(ensureEngineReady).mockRejectedValueOnce(new Error('Profile boot error'));
+		const hideBootSplash = vi.fn();
+		const showBootFailure = vi.fn();
+		vi.stubGlobal('window', {
+			__chronosHideBootFallback: vi.fn(),
+			__chronosShowBootFailure: showBootFailure
+		});
+
+		const { setHostPlatform, resetHostPlatform } = await import('./host-platform');
+		setHostPlatform({
+			id: 'mobile',
+			isNative: true,
+			platformType: 'android',
+			supportsPwaInstall: false,
+			shouldShowInstallGuide: false,
+			hideBootSplash
+		});
+
+		const platform = createPlatformBootstrap(deps);
+		platform.init();
+
+		await vi.waitFor(() => {
+			expect(hideBootSplash).toHaveBeenCalled();
+			expect(showBootFailure).toHaveBeenCalled();
+		});
+
+		resetHostPlatform();
+	});
 });

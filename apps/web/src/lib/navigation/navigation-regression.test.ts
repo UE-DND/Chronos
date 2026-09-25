@@ -2,6 +2,7 @@ import { createHistoryOverlaySync } from '@chronos/ui-kit';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import {
 	configureNavigationCoordinator,
+	dispatchSystemBack,
 	navigateBack,
 	navigateForward,
 	onBeforeNavigate,
@@ -12,7 +13,7 @@ import {
 	stageShellTabDeparture,
 	getPendingTraversal
 } from './nav-coordinator';
-import { getNavigationSnapshot, getTopFrame, initNavStack } from './nav-stack';
+import { getNavigationSnapshot, getTopFrame, initNavStack, type RouteFrame } from './nav-stack';
 
 /** Router-owned wrapping is deliberately opaque to the coordinator. */
 function browserAdapter(initial = '/') {
@@ -388,5 +389,51 @@ describe('navigation and overlay browser contract', () => {
 		openOverlayHistory('sheet', vi.fn());
 		expect(browser.getPage().state).toHaveProperty('other', 'preserved');
 		expect(browser.getPage().state).not.toHaveProperty('routerIndex');
+	});
+
+	describe('dispatchSystemBack', () => {
+		it('returns exit when on root shell without overlays', () => {
+			browserAdapter('/');
+			expect(dispatchSystemBack()).toBe('exit');
+		});
+
+		it('consumes back and dismisses top overlay when present', () => {
+			const browser = browserAdapter('/');
+			const dismiss = vi.fn();
+			openOverlayHistory('bottom-sheet', dismiss);
+			expect(getTopFrame()?.kind).toBe('overlay');
+
+			expect(dispatchSystemBack()).toBe('consumed');
+			browser.complete();
+			expect(dismiss).toHaveBeenCalled();
+		});
+
+		it('consumes back and pops when on a secondary route', async () => {
+			const browser = browserAdapter('/');
+			await navigateForward('/about');
+			expect(browser.renderedHref).toBe('/about');
+
+			expect(dispatchSystemBack()).toBe('consumed');
+			expect(browser.historyGo).toHaveBeenCalledWith(-1);
+		});
+
+		it('consumes back and replaces to shell when on a deeplink secondary route', () => {
+			const browser = browserAdapter('/about');
+			expect((getTopFrame() as RouteFrame | undefined)?.entry).toBe('deeplink');
+
+			expect(dispatchSystemBack()).toBe('consumed');
+			expect(browser.goto).toHaveBeenCalledWith('/', { replaceState: true });
+		});
+
+		it('consumes back while navigation is in flight', () => {
+			browserAdapter('/');
+			onBeforeNavigate({
+				type: 'goto',
+				willUnload: false,
+				to: { url: new URL('https://app/about') }
+			} as never);
+
+			expect(dispatchSystemBack()).toBe('consumed');
+		});
 	});
 });

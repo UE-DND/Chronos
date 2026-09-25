@@ -1,9 +1,13 @@
 import type { ExportResult } from '@chronos/core';
+import { getHostPlatform } from './host-platform';
 
-export function downloadExportResult(
-	result: ExportResult,
-	fallbackFilename = 'timetable-export'
-): void {
+export type ExportDeliveryResult =
+	| { status: 'downloaded'; filename: string }
+	| { status: 'shared'; filename: string }
+	| { status: 'canceled' }
+	| { status: 'failed'; error?: unknown };
+
+function browserDownload(result: ExportResult, fallbackFilename: string): void {
 	const part: BlobPart =
 		typeof result.content === 'string' ? result.content : new Uint8Array(result.content);
 	const blob = new Blob([part], { type: result.mimeType });
@@ -15,6 +19,33 @@ export function downloadExportResult(
 	anchor.click();
 	document.body.removeChild(anchor);
 	URL.revokeObjectURL(url);
+}
+
+export async function downloadExportResult(
+	result: ExportResult,
+	fallbackFilename = 'timetable-export'
+): Promise<ExportDeliveryResult> {
+	const filename = result.filename ?? fallbackFilename;
+	const platform = getHostPlatform();
+
+	if (platform.isNative && platform.shareFile) {
+		const shareResult = await platform.shareFile(filename, result.content, result.mimeType);
+		if (shareResult.status === 'shared') {
+			return { status: 'shared', filename };
+		}
+		if (shareResult.status === 'canceled') {
+			return { status: 'canceled' };
+		}
+		try {
+			browserDownload(result, fallbackFilename);
+			return { status: 'downloaded', filename };
+		} catch (error) {
+			return { status: 'failed', error: shareResult.error ?? error };
+		}
+	}
+
+	browserDownload(result, fallbackFilename);
+	return { status: 'downloaded', filename };
 }
 
 export async function copyTextWithFallback(text: string): Promise<boolean> {
