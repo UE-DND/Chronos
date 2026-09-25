@@ -2,15 +2,26 @@ import { isShellRoute } from '$lib/navigation/routes';
 
 const SEEN_KEY = 'chronos:onboarding-seen';
 
-export const ONBOARDING_STEP = {
-	welcome: 0,
-	legal: 1,
-	highlights: 2,
-	install: 3,
-	layout: 4,
-	longPress: 5,
-	done: 6
-} as const;
+export const ONBOARDING_STEPS = [
+	'welcome',
+	'legal',
+	'highlights',
+	'install',
+	'layout',
+	'longPress',
+	'done'
+] as const;
+
+export type OnboardingStepId = (typeof ONBOARDING_STEPS)[number];
+
+export interface OnboardingState {
+	readonly open: boolean;
+	readonly currentStepId: OnboardingStepId;
+	readonly stepIndex: number;
+	readonly stepCount: number;
+	readonly canGoBack: boolean;
+	readonly isLastStep: boolean;
+}
 
 export function hasSeenOnboarding(): boolean {
 	if (typeof window === 'undefined') return true;
@@ -23,16 +34,26 @@ export function hasSeenOnboarding(): boolean {
 
 /** First-launch onboarding: welcome → legal → highlights → install → display style → long press → CTA. */
 export class OnboardingController {
-	open = $state(false);
-	step = $state(0);
-
-	readonly totalSteps = 7;
+	private isOpen = $state(false);
+	private currentStepId = $state<OnboardingStepId>(ONBOARDING_STEPS[0]);
 
 	private hasChecked = false;
 
+	get state(): OnboardingState {
+		const stepIndex = ONBOARDING_STEPS.indexOf(this.currentStepId);
+		return {
+			open: this.isOpen,
+			currentStepId: this.currentStepId,
+			stepIndex,
+			stepCount: ONBOARDING_STEPS.length,
+			canGoBack: stepIndex > 0,
+			isLastStep: stepIndex === ONBOARDING_STEPS.length - 1
+		};
+	}
+
 	isActive(pathname: string): boolean {
 		if (!isShellRoute(pathname)) return false;
-		if (this.open) return true;
+		if (this.isOpen) return true;
 		if (typeof window === 'undefined') return false;
 		return !this.hasChecked && !hasSeenOnboarding();
 	}
@@ -42,7 +63,7 @@ export class OnboardingController {
 	}
 
 	shouldRender(pathname: string): boolean {
-		return this.open || this.isActive(pathname);
+		return this.isOpen || this.isActive(pathname);
 	}
 
 	/** Called once app state has finished loading; shows onboarding for new users only. */
@@ -51,32 +72,35 @@ export class OnboardingController {
 		this.hasChecked = true;
 
 		if (hasTimetable || hasSeenOnboarding()) {
-			this.open = false;
+			this.isOpen = false;
 			return;
 		}
 
-		this.step = 0;
-		this.open = true;
+		this.currentStepId = ONBOARDING_STEPS[0];
+		this.isOpen = true;
 	}
 
-	/** Reopens the flow at a specific step, e.g. from the empty state's "查看导入方式说明" link. */
-	openAt(step: number) {
-		this.step = Math.min(Math.max(step, 0), this.totalSteps - 1);
-		this.open = true;
+	/** Reopens the flow at a specific step, e.g. from the empty state's import guide link. */
+	openAt(stepId: OnboardingStepId) {
+		if (!(ONBOARDING_STEPS as readonly string[]).includes(stepId)) return;
+		this.currentStepId = stepId;
+		this.isOpen = true;
 	}
 
 	next() {
-		if (this.step >= this.totalSteps - 1) return;
-		this.step += 1;
+		const stepIndex = ONBOARDING_STEPS.indexOf(this.currentStepId);
+		const nextStepId = ONBOARDING_STEPS[stepIndex + 1];
+		if (nextStepId) this.currentStepId = nextStepId;
 	}
 
 	back() {
-		if (this.step <= 0) return;
-		this.step -= 1;
+		const stepIndex = ONBOARDING_STEPS.indexOf(this.currentStepId);
+		const previousStepId = ONBOARDING_STEPS[stepIndex - 1];
+		if (previousStepId) this.currentStepId = previousStepId;
 	}
 
 	finish() {
-		this.open = false;
+		this.isOpen = false;
 		this.hasChecked = true;
 		if (typeof window !== 'undefined') {
 			try {

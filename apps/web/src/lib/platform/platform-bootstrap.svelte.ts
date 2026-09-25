@@ -39,7 +39,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 				deps.shell.init();
 				deps.timetableScreen.init(deps.shell);
 				// Gate first so the async install init cannot auto-popup behind onboarding.
-				pwaInstallController.setInstallPromptGate(() => onboardingController.open);
+				pwaInstallController.setInstallPromptGate(() => onboardingController.state.open);
 				void pwaInstallController.init();
 				initAnalytics();
 				window.__chronosHideBootFallback?.();
@@ -54,7 +54,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 					});
 
 					$effect(() => {
-						if (onboardingController.open) {
+						if (onboardingController.state.open) {
 							pwaInstallController.cancelScheduledDialog();
 							pwaInstallController.dismiss({ track: false });
 						} else {

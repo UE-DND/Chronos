@@ -7,7 +7,7 @@
 	import { resolve } from '$app/paths';
 	import type { AppShellController } from '$lib/app/app-shell.svelte';
 	import { trackEvent } from '$lib/client/analytics';
-	import { onboardingController, ONBOARDING_STEP } from '$lib/client/onboarding.svelte';
+	import { onboardingController, ONBOARDING_STEPS } from '$lib/client/onboarding.svelte';
 	import type { TimetableLayoutMode } from '@chronos/core';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -31,11 +31,12 @@
 	import { haptic } from '$lib/haptic/haptic';
 
 	const shell = getContext<AppShellController>('appShell');
-	const step = $derived(onboardingController.step);
+	const onboardingState = $derived(onboardingController.state);
+	const step = $derived(onboardingState.currentStepId);
+	const stepIndex = $derived(onboardingState.stepIndex);
 	const showOnboarding = $derived(onboardingController.isActive(page.url.pathname));
 	const shouldRenderOnboarding = $derived(onboardingController.shouldRender(page.url.pathname));
-	const stepIndices = [0, 1, 2, 3, 4, 5, 6] as const;
-	const isLastStep = $derived(step === onboardingController.totalSteps - 1);
+	const isLastStep = $derived(onboardingState.isLastStep);
 	const stepTitleId = 'onboarding-step-title';
 	const layoutMode = $derived(shell.state.effectiveTimetableLayoutMode);
 	const compactLandscape = $derived(shell.state.compactLandscape);
@@ -109,17 +110,17 @@
 	const stepTransitionDuration = $derived(isReducedMotionActive() ? 1 : 200);
 
 	function handleNext() {
-		if (step === ONBOARDING_STEP.legal) {
+		if (step === 'legal') {
 			trackEvent('onboarding_legal_continue');
 		} else {
-			trackEvent('onboarding_step_next', { step });
+			trackEvent('onboarding_step_next', { step: stepIndex });
 		}
 		haptic.light();
 		onboardingController.next();
 	}
 
 	function handleBack() {
-		trackEvent('onboarding_step_back', { step });
+		trackEvent('onboarding_step_back', { step: stepIndex });
 		haptic.light();
 		onboardingController.back();
 	}
@@ -135,7 +136,7 @@
 	}
 
 	function handleLater() {
-		trackEvent('onboarding_skip', { step });
+		trackEvent('onboarding_skip', { step: stepIndex });
 		haptic.light();
 		completeOnboarding();
 	}
@@ -210,7 +211,7 @@
 						in:fade={{ duration: stepTransitionDuration, delay: stepTransitionDuration }}
 						out:fade={{ duration: stepTransitionDuration }}
 					>
-						{#if step === ONBOARDING_STEP.welcome}
+						{#if step === 'welcome'}
 							<div class="flex flex-1 flex-col items-center justify-center gap-4 text-center">
 								<AppHero
 									title={hostT('onboarding.welcome.title')}
@@ -218,7 +219,7 @@
 									titleId={stepTitleId}
 								/>
 							</div>
-						{:else if step === ONBOARDING_STEP.legal}
+						{:else if step === 'legal'}
 							<div class="flex flex-1 flex-col justify-center gap-4">
 								<h2
 									id={stepTitleId}
@@ -247,7 +248,7 @@
 									{hostT('legal.zhOnlyNotice')}
 								</p>
 							</div>
-						{:else if step === ONBOARDING_STEP.highlights}
+						{:else if step === 'highlights'}
 							<div class="flex flex-1 flex-col items-center justify-center gap-6">
 								<h2
 									id={stepTitleId}
@@ -273,7 +274,7 @@
 									/>
 								</HighlightRowList>
 							</div>
-						{:else if step === ONBOARDING_STEP.install}
+						{:else if step === 'install'}
 							<div class="flex flex-1 flex-col justify-center gap-4">
 								<h2
 									id={stepTitleId}
@@ -286,7 +287,7 @@
 								</p>
 								<InstallGuideCard inOnboarding />
 							</div>
-						{:else if step === ONBOARDING_STEP.layout}
+						{:else if step === 'layout'}
 							<div class="flex flex-1 flex-col justify-center gap-4">
 								<h2
 									id={stepTitleId}
@@ -346,7 +347,7 @@
 									</p>
 								{/if}
 							</div>
-						{:else if step === ONBOARDING_STEP.longPress}
+						{:else if step === 'longPress'}
 							<div class="flex flex-1 flex-col items-center justify-center gap-5">
 								<h2
 									id={stepTitleId}
@@ -383,30 +384,28 @@
 					class="flex list-none justify-center gap-1.5"
 					aria-label={hostT('onboarding.steps.aria')}
 				>
-					{#each stepIndices as stepIndex (stepIndex)}
+					{#each ONBOARDING_STEPS as stepId, index (stepId)}
 						<li
-							class="h-1.5 w-6 rounded-full transition-colors {stepIndex <= step
+							class="h-1.5 w-6 rounded-full transition-colors {index <= stepIndex
 								? 'bg-brand'
 								: 'bg-outline-variant'}"
-							aria-current={stepIndex === step ? 'step' : undefined}
+							aria-current={stepId === step ? 'step' : undefined}
 							aria-label={hostT('onboarding.steps.label', {
-								current: stepIndex + 1,
-								total: stepIndices.length
+								current: index + 1,
+								total: onboardingState.stepCount
 							})}
 						></li>
 					{/each}
 				</ol>
 				<div class="flex gap-3">
 					{#if !isLastStep}
-						{#if step > 0}
+						{#if onboardingState.canGoBack}
 							<Button variant="text" class="flex-1" onclick={handleBack}>
 								{hostT('onboarding.back')}
 							</Button>
 						{/if}
 						<Button variant="filled" class="flex-1" onclick={handleNext}>
-							{step === ONBOARDING_STEP.legal
-								? hostT('onboarding.legal.continue')
-								: hostT('onboarding.next')}
+							{step === 'legal' ? hostT('onboarding.legal.continue') : hostT('onboarding.next')}
 						</Button>
 					{:else}
 						<Button variant="text" class="flex-1" onclick={handleLater}>

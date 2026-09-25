@@ -7,7 +7,8 @@ const mocks = vi.hoisted(() => ({
 	setInstallPromptGate: vi.fn(),
 	tryScheduleInstallDialog: vi.fn(),
 	initAnalytics: vi.fn(),
-	attachOfflineUx: vi.fn(() => vi.fn())
+	attachOfflineUx: vi.fn(() => vi.fn()),
+	onboardingState: { open: false } as { open: boolean }
 }));
 
 vi.mock('$lib/platform/connectivity.svelte', () => ({
@@ -49,7 +50,7 @@ vi.mock('$lib/platform/offline-ux.svelte', () => ({
 
 vi.mock('$lib/client/onboarding.svelte', () => ({
 	onboardingController: {
-		open: false,
+		state: mocks.onboardingState,
 		maybeShow: vi.fn()
 	}
 }));
@@ -82,6 +83,7 @@ describe('createPlatformBootstrap', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.onboardingState.open = false;
 		vi.stubGlobal('window', { __chronosHideBootFallback: vi.fn() });
 	});
 
@@ -102,6 +104,10 @@ describe('createPlatformBootstrap', () => {
 		expect(mocks.pwaInstallInit).toHaveBeenCalled();
 		expect(mocks.initAnalytics).toHaveBeenCalled();
 		expect(mocks.setInstallPromptGate).toHaveBeenCalled();
+		const installPromptGate = mocks.setInstallPromptGate.mock.calls[0][0];
+		expect(installPromptGate()).toBe(false);
+		mocks.onboardingState.open = true;
+		expect(installPromptGate()).toBe(true);
 		expect(mocks.attachOfflineUx).toHaveBeenCalled();
 		expect(window.__chronosHideBootFallback).toHaveBeenCalled();
 

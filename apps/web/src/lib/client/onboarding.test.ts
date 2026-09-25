@@ -1,9 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { hasSeenOnboarding, ONBOARDING_STEP, OnboardingController } from './onboarding.svelte';
+import {
+	hasSeenOnboarding,
+	ONBOARDING_STEPS,
+	OnboardingController,
+	type OnboardingStepId
+} from './onboarding.svelte';
 
-describe('onboardingController', () => {
+describe('OnboardingController', () => {
 	let storage = new Map<string, string>();
-	let onboardingController: OnboardingController;
+	let controller: OnboardingController;
 
 	beforeEach(() => {
 		storage = new Map<string, string>();
@@ -20,90 +25,143 @@ describe('onboardingController', () => {
 				storage.clear();
 			}
 		});
-		onboardingController = new OnboardingController();
+		controller = new OnboardingController();
 	});
 
 	afterEach(() => {
 		vi.unstubAllGlobals();
 	});
 
+	it('defines the complete ordered flow with semantic step IDs', () => {
+		expect(ONBOARDING_STEPS).toEqual([
+			'welcome',
+			'legal',
+			'highlights',
+			'install',
+			'layout',
+			'longPress',
+			'done'
+		]);
+		expect(controller.state.stepCount).toBe(ONBOARDING_STEPS.length);
+	});
+
 	describe('isActive', () => {
-		it('activates early on shell route before engine check when not seen', () => {
-			onboardingController.open = false;
-			expect(onboardingController.isActive('/')).toBe(true);
+		it('activates early on shell routes before the engine check for new users', () => {
+			expect(controller.state.open).toBe(false);
+			expect(controller.isActive('/')).toBe(true);
 		});
 
-		it('stays inactive when onboarding was seen', () => {
+		it('stays inactive when onboarding was already seen', () => {
 			storage.set('chronos:onboarding-seen', '1');
-			onboardingController.open = false;
-			expect(onboardingController.isActive('/')).toBe(false);
+			expect(controller.isActive('/')).toBe(false);
 		});
 
-		it('stays active on shell route when open', () => {
-			onboardingController.open = true;
-			expect(onboardingController.isActive('/')).toBe(true);
+		it('stays active on a shell route when explicitly opened', () => {
+			controller.openAt('welcome');
+			expect(controller.isActive('/')).toBe(true);
 		});
 
-		it('is inactive on legal routes even when open', () => {
-			onboardingController.open = true;
-			expect(onboardingController.isActive('/legal/terms')).toBe(false);
-			expect(onboardingController.isActive('/legal/privacy')).toBe(false);
+		it('is inactive on legal routes while remaining open for the return trip', () => {
+			controller.openAt('legal');
+			expect(controller.isActive('/legal/terms')).toBe(false);
+			expect(controller.isActive('/legal/privacy')).toBe(false);
+			expect(controller.state.open).toBe(true);
 		});
 
-		it('closes after maybeShow when user already has a timetable', () => {
-			onboardingController.maybeShow(true);
-			expect(onboardingController.isActive('/')).toBe(false);
-			expect(onboardingController.open).toBe(false);
+		it('closes after startup when the user already has a timetable', () => {
+			controller.maybeShow(true);
+			expect(controller.isActive('/')).toBe(false);
+			expect(controller.state.open).toBe(false);
 		});
 	});
 
 	describe('shouldRender', () => {
-		it('renders overlay on legal routes while open', () => {
-			onboardingController.open = true;
-			expect(onboardingController.shouldRender('/legal/terms')).toBe(true);
+		it('renders the overlay on legal routes while it is open', () => {
+			controller.openAt('legal');
+			expect(controller.shouldRender('/legal/terms')).toBe(true);
 		});
 
-		it('does not render after maybeShow dismisses onboarding', () => {
-			onboardingController.maybeShow(true);
-			expect(onboardingController.shouldRender('/')).toBe(false);
+		it('does not render after startup dismisses onboarding', () => {
+			controller.maybeShow(true);
+			expect(controller.shouldRender('/')).toBe(false);
 		});
 	});
 
 	describe('maybeShow', () => {
-		it('opens onboarding for new users without a timetable', () => {
-			onboardingController.maybeShow(false);
-			expect(onboardingController.open).toBe(true);
-			expect(onboardingController.step).toBe(0);
+		it('opens at the welcome step for a new user without a timetable', () => {
+			controller.maybeShow(false);
+			expect(controller.state).toEqual({
+				open: true,
+				currentStepId: 'welcome',
+				stepIndex: 0,
+				stepCount: 7,
+				canGoBack: false,
+				isLastStep: false
+			});
 		});
 
 		it('keeps onboarding closed for returning users with a timetable', () => {
-			onboardingController.maybeShow(true);
-			expect(onboardingController.open).toBe(false);
+			controller.maybeShow(true);
+			expect(controller.state.open).toBe(false);
+		});
+
+		it('checks startup eligibility only once', () => {
+			controller.maybeShow(true);
+			controller.maybeShow(false);
+			expect(controller.state.open).toBe(false);
 		});
 	});
 
-	it('visits install after highlights, then layout and long-press demo before done', () => {
-		expect(onboardingController.totalSteps).toBe(7);
-		onboardingController.openAt(ONBOARDING_STEP.highlights);
-		onboardingController.next();
-		expect(onboardingController.step).toBe(ONBOARDING_STEP.install);
-		onboardingController.next();
-		expect(onboardingController.step).toBe(ONBOARDING_STEP.layout);
-		onboardingController.next();
-		expect(onboardingController.step).toBe(ONBOARDING_STEP.longPress);
-		onboardingController.back();
-		expect(onboardingController.step).toBe(ONBOARDING_STEP.layout);
-		onboardingController.openAt(99);
-		expect(onboardingController.step).toBe(ONBOARDING_STEP.done);
-		onboardingController.next();
-		expect(onboardingController.step).toBe(ONBOARDING_STEP.done);
+	describe('step navigation', () => {
+		it('updates the semantic step and complete progress summary', () => {
+			controller.openAt('highlights');
+			expect(controller.state).toMatchObject({
+				open: true,
+				currentStepId: 'highlights',
+				stepIndex: 2,
+				stepCount: 7,
+				canGoBack: true,
+				isLastStep: false
+			});
+
+			controller.next();
+			expect(controller.state.currentStepId).toBe('install');
+			expect(controller.state.stepIndex).toBe(3);
+			controller.back();
+			expect(controller.state.currentStepId).toBe('highlights');
+		});
+
+		it('keeps navigation within the first and last steps', () => {
+			controller.back();
+			expect(controller.state.currentStepId).toBe('welcome');
+			expect(controller.state.canGoBack).toBe(false);
+
+			controller.openAt('done');
+			expect(controller.state).toMatchObject({
+				currentStepId: 'done',
+				stepIndex: 6,
+				canGoBack: true,
+				isLastStep: true
+			});
+			controller.next();
+			expect(controller.state.currentStepId).toBe('done');
+		});
+
+		it('ignores an invalid runtime step ID without changing state', () => {
+			controller.openAt('highlights');
+			const before = controller.state;
+			controller.openAt('unknown' as OnboardingStepId);
+			expect(controller.state).toEqual(before);
+		});
 	});
 
-	describe('hasSeenOnboarding', () => {
-		it('reads the seen flag from localStorage', () => {
-			expect(hasSeenOnboarding()).toBe(false);
-			storage.set('chronos:onboarding-seen', '1');
-			expect(hasSeenOnboarding()).toBe(true);
+	describe('finish', () => {
+		it('persists the seen marker and closes onboarding', () => {
+			controller.openAt('done');
+			controller.finish();
+			expect(controller.state.open).toBe(false);
+			expect(storage.get('chronos:onboarding-seen')).toBe('1');
+			expect(controller.isActive('/')).toBe(false);
 		});
 
 		it('still closes for the current session when storage is unavailable', () => {
@@ -117,9 +175,10 @@ describe('onboardingController', () => {
 			});
 
 			expect(hasSeenOnboarding()).toBe(false);
-			onboardingController.open = true;
-			expect(() => onboardingController.finish()).not.toThrow();
-			expect(onboardingController.isActive('/')).toBe(false);
+			controller.openAt('welcome');
+			expect(() => controller.finish()).not.toThrow();
+			expect(controller.state.open).toBe(false);
+			expect(controller.isActive('/')).toBe(false);
 		});
 	});
 });

@@ -6,7 +6,7 @@
 	import { onboardingController } from '$lib/client/onboarding.svelte';
 
 	const backFallback = $derived(
-		(onboardingController.open
+		(onboardingController.state.open
 			? { kind: 'shell' as const }
 			: { kind: 'route' as const, href: '/about' as Pathname }) satisfies BackFallback
 	);
