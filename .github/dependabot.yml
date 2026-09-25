@@ -9,3 +9,11 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "@types/node"
+      - dependency-name: oxlint
+      - dependency-name: oxlint-tsgolint
+      - dependency-name: oxfmt
+      - dependency-name: rolldown
+      - dependency-name: vite
+      - dependency-name: vitest
