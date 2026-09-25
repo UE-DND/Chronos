@@ -4,8 +4,11 @@ import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import tailwindcss from '@tailwindcss/vite';
 import { functionsMixins } from 'vite-plugin-functions-mixins';
 import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus';
-import adapter from '@sveltejs/adapter-vercel';
-import adapterStatic from '@sveltejs/adapter-static';
+import {
+	resolveDeployTarget,
+	getDeployTargetDefinition,
+	createDeployTargetAdapter
+} from './scripts/build-config/deploy-targets.ts';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import { chronosBundleAnalyzer } from './src/lib/profile-codegen/chronos-bundle-analyzer.ts';
@@ -41,10 +44,10 @@ function chronosVersionPlugin() {
 	};
 }
 
-const isPagesBuild = process.env.CHRONOS_DEPLOY_TARGET === 'pages';
+const deployTarget = resolveDeployTarget();
+const targetDef = getDeployTargetDefinition(deployTarget);
 const shouldAnalyze = process.env.ANALYZE === 'true';
-const pagesBase = '/Chronos';
-const basePath = isPagesBuild ? pagesBase : '';
+const basePath = targetDef.basePath;
 
 function resolveManualChunk(id: string): string | undefined {
 	if (!id.includes('node_modules')) return undefined;
@@ -60,7 +63,17 @@ export default defineConfig(({ mode }) => {
 
 	return {
 		resolve: {
-			alias: createChronosAlias(monorepoRoot),
+			alias: [
+				...createChronosAlias(monorepoRoot),
+				{
+					find: '$chronos-platform-adapter',
+					replacement: targetDef.isMobile
+						? fileURLToPath(
+								new URL('../../apps/mobile/src/mobile-platform-adapter.ts', import.meta.url)
+							)
+						: fileURLToPath(new URL('./src/lib/platform/web-platform-adapter.ts', import.meta.url))
+				}
+			],
 			dedupe: ['svelte']
 		},
 		optimizeDeps: {
@@ -71,7 +84,8 @@ export default defineConfig(({ mode }) => {
 			__CHRONOS_PROFILE__: JSON.stringify(resolveProfileId()),
 			__ANALYTICS_ENABLED__: JSON.stringify(
 				mode === 'test' || Boolean(env.PUBLIC_POSTHOG_KEY?.trim())
-			)
+			),
+			__CHRONOS_PLATFORM_TARGET__: JSON.stringify(targetDef.target)
 		},
 		build: {
 			rolldownOptions: {
@@ -136,11 +150,10 @@ export default defineConfig(({ mode }) => {
 				paths: {
 					base: basePath
 				},
-				adapter: isPagesBuild
-					? adapterStatic({ fallback: '404.html' })
-					: adapter({ maxDuration: 60, regions: ['sin1'] })
+				adapter: createDeployTargetAdapter(targetDef)
 			}),
 			SvelteKitPWA({
+				disable: targetDef.disablePwa,
 				registerType: 'prompt',
 				manifest: {
 					name: 'Chronos',

@@ -8,7 +8,7 @@ import { buildAllOfficialPlugins } from '../../../scripts/official-plugin-build/
 import { buildAllOfficialPluginsDev } from '../../../scripts/official-plugin-build/build-all-dev.ts';
 import { writeHostBuildContext } from '../../../scripts/official-plugin-build/host-context.ts';
 import { resolveProfileId } from '../src/lib/profile-codegen/profile-definitions.ts';
-import { resolveDeployment } from '../src/lib/profile-codegen/deployment-definitions.ts';
+import { resolveDeployTarget, getDeployTargetDefinition } from './build-config/deploy-targets.ts';
 
 const webRoot = fileURLToPath(new URL('..', import.meta.url));
 const root = resolve(webRoot, '../..');
@@ -25,10 +25,9 @@ for (const [key, value] of Object.entries(loaded))
 	if (/^(CHRONOS_|PUBLIC_|VITE_)/.test(key) && process.env[key] === undefined)
 		process.env[key] = value;
 const profileId = resolveProfileId();
-const deployment =
-	process.env.CHRONOS_DEPLOYMENT ??
-	(process.env.CHRONOS_DEPLOY_TARGET === 'pages' ? 'pages' : 'chronos-cqut');
-resolveDeployment();
+const deployTarget = resolveDeployTarget();
+const targetDef = getDeployTargetDefinition(deployTarget);
+const deployment = process.env.CHRONOS_DEPLOYMENT ?? targetDef.defaultDeployment;
 process.env.CHRONOS_PROFILE = profileId;
 const environment = Object.fromEntries(
 	Object.entries(process.env).filter(
@@ -55,7 +54,7 @@ async function prepareAndRunHost(command: 'build' | 'dev') {
 			mode,
 			profileId,
 			deployment,
-			base: process.env.CHRONOS_DEPLOY_TARGET === 'pages' ? '/Chronos' : '',
+			base: targetDef.basePath,
 			environment
 		},
 		results

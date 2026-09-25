@@ -19,6 +19,12 @@ export default defineConfig({
 		alias: [
 			{ find: '$lib', replacement: fileURLToPath(new URL('./apps/web/src/lib', import.meta.url)) },
 			{
+				find: '$chronos-platform-adapter',
+				replacement: fileURLToPath(
+					new URL('./apps/web/src/lib/platform/web-platform-adapter.ts', import.meta.url)
+				)
+			},
+			{
 				find: '$app/environment',
 				replacement: fileURLToPath(
 					new URL(
@@ -115,6 +121,27 @@ export default defineConfig({
 					'CHRONOS_DEPLOY_TARGET=pages CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-host.ts build && cp apps/web/build/404.html apps/web/build/index.html',
 				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 			},
+			'build:mobile': {
+				command: 'vp run --filter @chronos/web build:mobile',
+				cache: false
+			},
+			'mobile:build': {
+				command:
+					'vp run --filter @chronos/web build:mobile && vp run --filter @chronos/mobile sync',
+				cache: false
+			},
+			'mobile:sync': {
+				command: 'vp run --filter @chronos/mobile sync',
+				cache: false
+			},
+			'mobile:open:android': {
+				command: 'vp run --filter @chronos/mobile open:android',
+				cache: false
+			},
+			'mobile:open:ios': {
+				command: 'vp run --filter @chronos/mobile open:ios',
+				cache: false
+			},
 			'bundle:analyze': {
 				command:
 					'ANALYZE=true CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-host.ts build',
@@ -159,7 +186,9 @@ export default defineConfig({
 			'apps/web/static/official-plugins/bundles/**',
 			'**/*.bundle.js',
 			'dist/**',
-			'.svelte-kit/'
+			'.svelte-kit/',
+			'apps/mobile/android/**',
+			'apps/mobile/ios/**'
 		],
 		options: {
 			typeAware: true,
@@ -186,7 +215,9 @@ export default defineConfig({
 			'**/.svelte-kit/',
 			'**/node_modules/',
 			'/drizzle/',
-			'**/*.generated.ts'
+			'**/*.generated.ts',
+			'apps/mobile/android/**',
+			'apps/mobile/ios/**'
 		]
 	},
 	plugins: [
@@ -199,11 +230,18 @@ export default defineConfig({
 	test: {
 		expect: { requireAssertions: true },
 		environment: 'node',
-		include: ['apps/web/src/**/*.{test,spec}.{js,ts}', 'packages/**/*.{test,spec}.{js,ts}'],
+		include: [
+			'apps/web/src/**/*.{test,spec}.{js,ts}',
+			'apps/web/scripts/**/*.{test,spec}.{js,ts}',
+			'apps/mobile/**/*.{test,spec}.{js,ts}',
+			'packages/**/*.{test,spec}.{js,ts}',
+			'scripts/**/*.{test,spec}.{js,ts}'
+		],
 		exclude: [
 			'apps/web/src/**/*.svelte.{test,spec}.{js,ts}',
 			'**/node_modules/**',
-			'packages/**/node_modules/**'
+			'packages/**/node_modules/**',
+			'apps/mobile/**/node_modules/**'
 		],
 		server: {
 			deps: {
