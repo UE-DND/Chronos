@@ -8,19 +8,19 @@ Chronos 使用 [Vite+](https://viteplus.dev) 管理运行时和开发工具。�
 
 ### 常用命令
 
-| 命令 | 用途 |
-| --- | --- |
-| `vp run dev` | 启动 Web 开发服务器和本地插件市场 |
-| `vp run check` | 检查格式、Lint 和类型 |
-| `vp run test` | 运行全部单元测试 |
-| `vp run build` | 按当前环境配置构建应用和插件 |
+| 命令                                                                     | 用途                               |
+| ------------------------------------------------------------------------ | ---------------------------------- |
+| `vp run dev`                                                             | 启动 Web 开发服务器和本地插件市场  |
+| `vp run check`                                                           | 检查格式、Lint 和类型              |
+| `vp run test`                                                            | 运行全部单元测试                   |
+| `vp run build`                                                           | 按当前环境配置构建应用和插件       |
 | `vp run build:cqut`、`vp run build:cqut-offline`、`vp run build:default` | 使用预设配置构建客户端和服务端插件 |
-| `vp run build:pages` | 构建 GitHub Pages 静态站点 |
-| `vp run build:official-plugins` | 单独构建官方插件 |
-| `vp run verify:official-plugins` | 校验已生成的插件文件 |
-| `vp run theme:generate` | 更新默认主题资源快照和首屏颜色 |
-| `vp run bundle:analyze` | 构建应用并分析包体积 |
-| `vp run icons:png` | 从 SVG 生成 PWA 图标 |
+| `vp run build:pages`                                                     | 构建 GitHub Pages 静态站点         |
+| `vp run build:official-plugins`                                          | 单独构建官方插件                   |
+| `vp run verify:official-plugins`                                         | 校验已生成的插件文件               |
+| `vp run theme:generate`                                                  | 更新默认主题资源快照和首屏颜色     |
+| `vp run bundle:analyze`                                                  | 构建应用并分析包体积               |
+| `vp run icons:png`                                                       | 从 SVG 生成 PWA 图标               |
 
 开发和构建任务应使用 `vp run dev`、`vp run build`。不要使用 `vp dev` 或 `vp build`。任务定义见 [vite.config.ts](vite.config.ts) 和 [package.json](package.json)。
 
@@ -46,19 +46,19 @@ Chronos 使用 [Vite+](https://viteplus.dev) 管理运行时和开发工具。�
 
 Chronos 分别配置客户端预安装的插件、服务端启用的插件和部署平台。
 
-| 变量 | 作用 | 默认值 |
-| --- | --- | --- |
-| `CHRONOS_PROFILE` | 选择客户端发行配置，包括预安装插件、默认主题和初始偏好 | Pages 使用 `chronos-default`，其他环境使用 `chronos-cqut` |
-| `CHRONOS_DEPLOYMENT` | 选择服务端启用的插件 | Pages 使用不含服务端插件的 `pages`，其他环境使用 `chronos-cqut` |
-| `CHRONOS_DEPLOY_TARGET` | 选择部署平台和 SvelteKit 适配器 | 未设置时使用 Vercel；设为 `pages` 时生成纯静态站点 |
+| 变量                    | 作用                                                   | 默认值                                                          |
+| ----------------------- | ------------------------------------------------------ | --------------------------------------------------------------- |
+| `CHRONOS_PROFILE`       | 选择客户端发行配置，包括预安装插件、默认主题和初始偏好 | Pages 使用 `chronos-default`，其他环境使用 `chronos-cqut`       |
+| `CHRONOS_DEPLOYMENT`    | 选择服务端启用的插件                                   | Pages 使用不含服务端插件的 `pages`，其他环境使用 `chronos-cqut` |
+| `CHRONOS_DEPLOY_TARGET` | 选择部署平台和 SvelteKit 适配器                        | 未设置时使用 Vercel；设为 `pages` 时生成纯静态站点              |
 
 `CHRONOS_PROFILE` 只控制客户端配置，不会改变服务端插件。常用的 `build:*` 任务已设置客户端和服务端配置。自定义组合时，需要分别设置这两项。配置定义见 [profile-definitions.ts](apps/web/src/lib/profile-codegen/profile-definitions.ts) 和 [deployment-definitions.ts](apps/web/src/lib/profile-codegen/deployment-definitions.ts)。
 
-| 构建任务 | 客户端预安装插件 | 服务端插件 |
-| --- | --- | --- |
-| `build:default`、`build:pages` | `theme-m3`、`codec-share` | 无 |
-| `build:cqut-offline` | 上述插件和 `source-cqut`，默认使用 HTML 导入 | 无 |
-| `build:cqut` | 上述插件和 `source-cqut`，默认使用在线导入 | `source-cqut` |
+| 构建任务                       | 客户端预安装插件                             | 服务端插件    |
+| ------------------------------ | -------------------------------------------- | ------------- |
+| `build:default`、`build:pages` | `theme-m3`、`codec-share`                    | 无            |
+| `build:cqut-offline`           | 上述插件和 `source-cqut`，默认使用 HTML 导入 | 无            |
+| `build:cqut`                   | 上述插件和 `source-cqut`，默认使用在线导入   | `source-cqut` |
 
 Vercel 构建会生成 Serverless 函数和静态资源。Pages 的输出目录是 `apps/web/build`。你可以推送 `v*` 标签部署，也可以手动运行工作流。具体步骤见 [pages.yml](.github/workflows/pages.yml)。
 
@@ -68,14 +68,14 @@ Vercel 构建会生成 Serverless 函数和静态资源。Pages 的输出目录�
 
 “宿主”指运行和管理插件的主应用。当前 Web 宿主位于 `apps/web`。其他模块的职责如下。
 
-| 模块 | 主要职责 | 依赖规则 |
-| --- | --- | --- |
-| `packages/core` | 领域模型、排课算法、核心引擎、平台接口和插件扩展接口 | 不依赖 DOM、SvelteKit 或特定高校代码 |
-| `packages/ui-kit` | Svelte 组件、响应式控制器、表单 Schema 和插件组件容器 | 依赖 `core` |
-| `packages/plugins/*` | 数据源、编解码、工具和主题 | 可以依赖 `core`、`ui-kit` 和通用库；不能引用宿主内部模块或其他业务插件 |
-| `packages/codec-kit` | 字节编解码基础函数 | 作为共享库使用，不作为插件加载 |
-| `apps/web` | 页面路由、平台适配、插件安装、课表导入和主题显示 | 组合并使用其他模块 |
-| `scripts` | 插件构建、资源生成和产物校验 | 具体算法和资源生成逻辑由对应插件实现 |
+| 模块                 | 主要职责                                              | 依赖规则                                                               |
+| -------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------- |
+| `packages/core`      | 领域模型、排课算法、核心引擎、平台接口和插件扩展接口  | 不依赖 DOM、SvelteKit 或特定高校代码                                   |
+| `packages/ui-kit`    | Svelte 组件、响应式控制器、表单 Schema 和插件组件容器 | 依赖 `core`                                                            |
+| `packages/plugins/*` | 数据源、编解码、工具和主题                            | 可以依赖 `core`、`ui-kit` 和通用库；不能引用宿主内部模块或其他业务插件 |
+| `packages/codec-kit` | 字节编解码基础函数                                    | 作为共享库使用，不作为插件加载                                         |
+| `apps/web`           | 页面路由、平台适配、插件安装、课表导入和主题显示      | 组合并使用其他模块                                                     |
+| `scripts`            | 插件构建、资源生成和产物校验                          | 具体算法和资源生成逻辑由对应插件实现                                   |
 
 引擎管理课表等业务状态。`ReactiveChronosController` 将状态提供给界面，并在状态变化时通知界面。宿主控制器管理页面交互状态。
 
@@ -152,15 +152,15 @@ Bundle、Manifest 和 Catalog 都由构建生成，不需要提交到版本库�
 
 端口是宿主提供给引擎和插件的平台接口。方法定义见 [services.ts](packages/core/src/types/services.ts)。宿主传入这些能力的方式见 [env.ts](packages/core/src/types/env.ts)。
 
-| 端口 | 职责 |
-| --- | --- |
-| `IStorageService` | 读写课表、偏好和插件 KV，并查询多个课表中的课程。今日插件已使用 `queryCourses`。 |
-| `IHttpService` | 发起请求、调用服务端代理和检查服务端能力。 |
-| `IRuntimeService` | 提供平台标识和 SHA-256 计算。 |
-| `IVaultService` | 可选的凭据加密存储。Web 端未实现。 |
-| `IAnalyticsService`、`IErrorCaptureService` | 提供可选的产品统计和错误捕获。 |
-| `IHostNavigation`、`IHostLinks` | 提供可选的宿主页面导航和公开链接查询。 |
-| `ICoursePresentationService` | 查询课程调色板，以及按课表获取课程颜色。 |
+| 端口                                        | 职责                                                                             |
+| ------------------------------------------- | -------------------------------------------------------------------------------- |
+| `IStorageService`                           | 读写课表、偏好和插件 KV，并查询多个课表中的课程。今日插件已使用 `queryCourses`。 |
+| `IHttpService`                              | 发起请求、调用服务端代理和检查服务端能力。                                       |
+| `IRuntimeService`                           | 提供平台标识和 SHA-256 计算。                                                    |
+| `IVaultService`                             | 可选的凭据加密存储。Web 端未实现。                                               |
+| `IAnalyticsService`、`IErrorCaptureService` | 提供可选的产品统计和错误捕获。                                                   |
+| `IHostNavigation`、`IHostLinks`             | 提供可选的宿主页面导航和公开链接查询。                                           |
+| `ICoursePresentationService`                | 查询课程调色板，以及按课表获取课程颜色。                                         |
 
 插件 KV 支持 JSON 和二进制数据。二进制数据可以写入 `Blob` 或 `Uint8Array`，读取时统一返回 `Blob`。同一个键只能保存一种数据。写入 JSON 会替换原有二进制数据，反之亦然。详情见 [ADR 0036](.agents/docs/adr/0036-plugin-kv-binary-storage.md)。
 
@@ -170,17 +170,17 @@ Bundle、Manifest 和 Catalog 都由构建生成，不需要提交到版本库�
 
 完整定义见 [slots.ts](packages/core/src/types/slots.ts)。贡献按 `order` 从小到大排序，未设置时按 `50` 处理。同一插槽内，ID 相同的贡献由后注册者覆盖。`LocalizedText` 支持字符串、按语言组织的文本对象，以及返回文本的回调函数。
 
-| 槽位 | 用途与处理规则 |
-| --- | --- |
-| `import.source.tab` | 注册多个导入来源。可以使用 Schema 或自定义界面，并共用宿主导入流程。 |
-| `export.action` | 注册多个导出操作，由 `pickPrimary` 选择主操作。 |
-| `mine.section`、`mine.item` | 注册“我的”页面中的分组和条目。未指定分组时，宿主使用 `app-support`。 |
-| `shell.route.screen` | 注册 `/plugins/[pluginId]/[id]` 独立页面，也可以用 `landscapeRail` 提供横屏侧栏内容。 |
-| `shell.bottom-bar.tab` | 注册应用底部标签页。`hostPanel` 标记宿主页面，`defaultLaunch` 声明默认启动页候选。 |
-| `timetable.cell.badge` | 汇总插件提供的课程徽章。没有贡献时直接返回。 |
-| `course.detail.action` | 注册课程详情页操作。 |
-| `theme.definition` | 注册供用户选择的配色主题。 |
-| `theme.icon.definition` | 注册图标主题，由当前配色主题决定使用哪套图标。 |
+| 槽位                        | 用途与处理规则                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------- |
+| `import.source.tab`         | 注册多个导入来源。可以使用 Schema 或自定义界面，并共用宿主导入流程。                  |
+| `export.action`             | 注册多个导出操作，由 `pickPrimary` 选择主操作。                                       |
+| `mine.section`、`mine.item` | 注册“我的”页面中的分组和条目。未指定分组时，宿主使用 `app-support`。                  |
+| `shell.route.screen`        | 注册 `/plugins/[pluginId]/[id]` 独立页面，也可以用 `landscapeRail` 提供横屏侧栏内容。 |
+| `shell.bottom-bar.tab`      | 注册应用底部标签页。`hostPanel` 标记宿主页面，`defaultLaunch` 声明默认启动页候选。    |
+| `timetable.cell.badge`      | 汇总插件提供的课程徽章。没有贡献时直接返回。                                          |
+| `course.detail.action`      | 注册课程详情页操作。                                                                  |
+| `theme.definition`          | 注册供用户选择的配色主题。                                                            |
+| `theme.icon.definition`     | 注册图标主题，由当前配色主题决定使用哪套图标。                                        |
 
 应用启动时，按排序结果选择第一个声明 `defaultLaunch` 的标签页。没有声明时选择课表页；仍未找到时选择第一项。切换标签页只改变应用内部状态，不增加路由历史记录。
 
