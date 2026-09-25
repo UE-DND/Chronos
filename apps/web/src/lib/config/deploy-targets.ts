@@ -10,6 +10,7 @@ export interface DeployTargetDefinition {
 	readonly defaultDeployment: string;
 	readonly defaultProfile: string;
 	readonly adapterKind: AdapterKind;
+	readonly supportsServerPlugins: boolean;
 }
 
 export const DEPLOY_TARGET_DEFINITIONS: Record<DeployTarget, DeployTargetDefinition> = {
@@ -20,7 +21,8 @@ export const DEPLOY_TARGET_DEFINITIONS: Record<DeployTarget, DeployTargetDefinit
 		disablePwa: false,
 		defaultDeployment: 'chronos-default',
 		defaultProfile: 'chronos-default',
-		adapterKind: 'vercel'
+		adapterKind: 'vercel',
+		supportsServerPlugins: true
 	},
 	pages: {
 		target: 'pages',
@@ -29,7 +31,8 @@ export const DEPLOY_TARGET_DEFINITIONS: Record<DeployTarget, DeployTargetDefinit
 		disablePwa: false,
 		defaultDeployment: 'pages',
 		defaultProfile: 'chronos-default',
-		adapterKind: 'static-pages'
+		adapterKind: 'static-pages',
+		supportsServerPlugins: false
 	},
 	mobile: {
 		target: 'mobile',
@@ -38,7 +41,8 @@ export const DEPLOY_TARGET_DEFINITIONS: Record<DeployTarget, DeployTargetDefinit
 		disablePwa: true,
 		defaultDeployment: 'mobile',
 		defaultProfile: 'chronos-default',
-		adapterKind: 'static-spa'
+		adapterKind: 'static-spa',
+		supportsServerPlugins: false
 	}
 };
 

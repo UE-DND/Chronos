@@ -1,7 +1,11 @@
 import { resolveDeployTarget, getDeployTargetDefinition } from '../config/deploy-targets.ts';
 
+export interface DeploymentDefinition {
+	serverPlugins: string[];
+}
+
 /** Server deployment is independent of client installation state. */
-const DEPLOYMENTS: Record<string, { serverPlugins: string[] }> = {
+export const DEPLOYMENTS: Record<string, DeploymentDefinition> = {
 	'chronos-default': { serverPlugins: [] },
 	'chronos-cqut': { serverPlugins: ['source-cqut'] },
 	'chronos-cqut-offline': { serverPlugins: [] },

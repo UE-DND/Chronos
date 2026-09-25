@@ -47,6 +47,8 @@ export const CHRONOS_PROFILES: Record<string, ChronosProfile> = {
 	'chronos-cqut-offline': CQUT_OFFLINE_PROFILE
 };
 
+import { resolveDeployTarget, getDeployTargetDefinition } from '../config/deploy-targets.ts';
+
 export type ProfileResolveEnv = {
 	CHRONOS_PROFILE?: string;
 	CHRONOS_DEPLOY_TARGET?: string;
@@ -54,7 +56,9 @@ export type ProfileResolveEnv = {
 
 export function resolveProfileId(env: ProfileResolveEnv = process.env): string {
 	if (env.CHRONOS_PROFILE) return env.CHRONOS_PROFILE;
-	return env.CHRONOS_DEPLOY_TARGET === 'pages' ? 'chronos-default' : 'chronos-cqut';
+	const target = resolveDeployTarget(env);
+	const targetDef = getDeployTargetDefinition(target);
+	return targetDef.defaultProfile;
 }
 
 export function resolveProfile(profileId: string): ChronosProfile {

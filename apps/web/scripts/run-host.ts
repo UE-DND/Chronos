@@ -7,8 +7,7 @@ import { loadEnv } from 'vite';
 import { buildAllOfficialPlugins } from '../../../scripts/official-plugin-build/build-all.ts';
 import { buildAllOfficialPluginsDev } from '../../../scripts/official-plugin-build/build-all-dev.ts';
 import { writeHostBuildContext } from '../../../scripts/official-plugin-build/host-context.ts';
-import { resolveProfileId } from '../src/lib/profile-codegen/profile-definitions.ts';
-import { resolveDeployTarget, getDeployTargetDefinition } from './build-config/deploy-targets.ts';
+import { resolveAndValidateBuildContext } from './build-config/build-context.ts';
 
 const webRoot = fileURLToPath(new URL('..', import.meta.url));
 const root = resolve(webRoot, '../..');
@@ -16,6 +15,7 @@ const command = process.argv[2];
 if (command !== 'build' && command !== 'dev') throw new Error('Expected build or dev');
 const args = process.argv.slice(process.argv[3] === '--' ? 4 : 3);
 const modeArg = args.findIndex((arg) => arg === '--mode' || arg === '-m');
+
 const mode =
 	(modeArg >= 0 ? args[modeArg + 1] : args.find((arg) => arg.startsWith('--mode='))?.slice(7)) ??
 	(command === 'dev' ? 'development' : 'production');
@@ -24,11 +24,17 @@ const loaded = loadEnv(mode, webRoot, '');
 for (const [key, value] of Object.entries(loaded))
 	if (/^(CHRONOS_|PUBLIC_|VITE_)/.test(key) && process.env[key] === undefined)
 		process.env[key] = value;
-const profileId = resolveProfileId();
-const deployTarget = resolveDeployTarget();
-const targetDef = getDeployTargetDefinition(deployTarget);
-const deployment = process.env.CHRONOS_DEPLOYMENT ?? targetDef.defaultDeployment;
-process.env.CHRONOS_PROFILE = profileId;
+
+const buildContext = await resolveAndValidateBuildContext({
+	root,
+	command,
+	mode
+});
+
+process.env.CHRONOS_DEPLOY_TARGET = buildContext.target;
+process.env.CHRONOS_DEPLOYMENT = buildContext.deploymentId;
+process.env.CHRONOS_PROFILE = buildContext.profileId;
+
 const environment = Object.fromEntries(
 	Object.entries(process.env).filter(
 		(entry): entry is [string, string] =>
@@ -52,9 +58,9 @@ async function prepareAndRunHost(command: 'build' | 'dev') {
 		{
 			command,
 			mode,
-			profileId,
-			deployment,
-			base: targetDef.basePath,
+			profileId: buildContext.profileId,
+			deployment: buildContext.deploymentId,
+			base: buildContext.targetDef.basePath,
 			environment
 		},
 		results
@@ -63,7 +69,7 @@ async function prepareAndRunHost(command: 'build' | 'dev') {
 		root,
 		'dist/host-context',
 		command,
-		profileId,
+		buildContext.profileId,
 		'context.json'
 	);
 	rmSync(resolve(webRoot, 'static/licenses/third-party.json'), { force: true });
