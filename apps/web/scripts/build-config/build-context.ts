@@ -16,8 +16,52 @@ import type { ChronosProfile } from '../../../../packages/core/src/profile/profi
 import { OFFICIAL_PLUGINS } from '../../../../scripts/official-plugins.config.ts';
 import { resolveDeploymentServerPlugins } from '../../../../scripts/official-plugin-build/server-definition.ts';
 import { resolve } from 'node:path';
+import { loadDistributionConfig } from './distributions.ts';
+
+export interface BuildContextCliOptions {
+	distribution?: string;
+	target?: string;
+	profile?: string;
+	deployment?: string;
+}
+
+export interface ParsedBuildCliArgs {
+	options: BuildContextCliOptions;
+	remainingArgs: string[];
+}
+
+export function parseBuildCliArgs(argv: string[]): ParsedBuildCliArgs {
+	const options: BuildContextCliOptions = {};
+	const remainingArgs: string[] = [];
+	const flags = new Map<string, keyof BuildContextCliOptions>([
+		['--distribution', 'distribution'],
+		['--target', 'target'],
+		['--profile', 'profile'],
+		['--deployment', 'deployment']
+	]);
+
+	for (let i = 0; i < argv.length; i++) {
+		const arg = argv[i]!;
+		const equalsIndex = arg.indexOf('=');
+		const flag = equalsIndex >= 0 ? arg.slice(0, equalsIndex) : arg;
+		const option = flags.get(flag);
+		if (!option) {
+			remainingArgs.push(arg);
+			continue;
+		}
+
+		const value = equalsIndex >= 0 ? arg.slice(equalsIndex + 1) : argv[++i];
+		if (!value || value.startsWith('--')) {
+			throw new Error(`Expected a value after ${flag}`);
+		}
+		options[option] = value;
+	}
+
+	return { options, remainingArgs };
+}
 
 export interface BuildContextOptions {
+	cli?: BuildContextCliOptions;
 	command?: 'build' | 'dev';
 	mode?: string;
 	root?: string;
@@ -27,6 +71,7 @@ export interface BuildContextOptions {
 export interface ValidatedBuildContext {
 	target: DeployTarget;
 	targetDef: DeployTargetDefinition;
+	distributionId: string;
 	deploymentId: string;
 	deploymentDef: DeploymentDefinition;
 	profileId: string;
@@ -39,14 +84,20 @@ export async function resolveAndValidateBuildContext(
 	options: BuildContextOptions = {}
 ): Promise<ValidatedBuildContext> {
 	const env = options.env ?? process.env;
+	const cli = options.cli ?? {};
 
 	// 1. Resolve Deploy Target
-	const rawTarget = env.CHRONOS_DEPLOY_TARGET;
+	const rawTarget = cli.target ?? env.CHRONOS_DEPLOY_TARGET;
 	const target = resolveDeployTarget(rawTarget);
 	const targetDef = getDeployTargetDefinition(target);
+	const distributionConfig = loadDistributionConfig();
+	const distributionId =
+		cli.distribution ?? env.CHRONOS_DISTRIBUTION ?? distributionConfig.defaults[target];
+	const distribution = distributionConfig.distributions[distributionId];
+	if (!distribution) throw new Error(`Unknown distribution: "${distributionId}"`);
 
 	// 2. Resolve Deployment
-	const deploymentId = env.CHRONOS_DEPLOYMENT ?? targetDef.defaultDeployment;
+	const deploymentId = cli.deployment ?? env.CHRONOS_DEPLOYMENT ?? distribution.deployment;
 	const deploymentDef = DEPLOYMENTS[deploymentId];
 	if (!deploymentDef) {
 		throw new Error(
@@ -56,7 +107,7 @@ export async function resolveAndValidateBuildContext(
 
 	// 3. Resolve Profile
 	const profileEnv: ProfileResolveEnv = {
-		CHRONOS_PROFILE: env.CHRONOS_PROFILE,
+		CHRONOS_PROFILE: cli.profile ?? env.CHRONOS_PROFILE ?? distribution.profile,
 		CHRONOS_DEPLOY_TARGET: target
 	};
 	const profileId = profileEnv.CHRONOS_PROFILE ?? targetDef.defaultProfile;
@@ -93,6 +144,7 @@ export async function resolveAndValidateBuildContext(
 	return {
 		target,
 		targetDef,
+		distributionId,
 		deploymentId,
 		deploymentDef,
 		profileId,

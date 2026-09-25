@@ -53,8 +53,7 @@ jobs:
       - name: Deploy tagged version
         env:
           pnpm_config_strict_dep_builds: 'false'
-          CHRONOS_DEPLOYMENT: chronos-cqut
-          CHRONOS_PROFILE: chronos-cqut
+          CHRONOS_DISTRIBUTION: cqut
         run: |
           vpx vercel@50.44.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
           vpx vercel@50.44.0 build --prod --token="$VERCEL_TOKEN"

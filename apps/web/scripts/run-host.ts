@@ -7,13 +7,14 @@ import { loadEnv } from 'vite';
 import { buildAllOfficialPlugins } from '../../../scripts/official-plugin-build/build-all.ts';
 import { buildAllOfficialPluginsDev } from '../../../scripts/official-plugin-build/build-all-dev.ts';
 import { writeHostBuildContext } from '../../../scripts/official-plugin-build/host-context.ts';
-import { resolveAndValidateBuildContext } from './build-config/build-context.ts';
+import { parseBuildCliArgs, resolveAndValidateBuildContext } from './build-config/build-context.ts';
 
 const webRoot = fileURLToPath(new URL('..', import.meta.url));
 const root = resolve(webRoot, '../..');
 const command = process.argv[2];
 if (command !== 'build' && command !== 'dev') throw new Error('Expected build or dev');
-const args = process.argv.slice(process.argv[3] === '--' ? 4 : 3);
+const rawArgs = process.argv.slice(process.argv[3] === '--' ? 4 : 3);
+const { options: cliOptions, remainingArgs: args } = parseBuildCliArgs(rawArgs);
 const modeArg = args.findIndex((arg) => arg === '--mode' || arg === '-m');
 
 const mode =
@@ -26,6 +27,7 @@ for (const [key, value] of Object.entries(loaded))
 		process.env[key] = value;
 
 const buildContext = await resolveAndValidateBuildContext({
+	cli: cliOptions,
 	root,
 	command,
 	mode
@@ -34,6 +36,7 @@ const buildContext = await resolveAndValidateBuildContext({
 process.env.CHRONOS_DEPLOY_TARGET = buildContext.target;
 process.env.CHRONOS_DEPLOYMENT = buildContext.deploymentId;
 process.env.CHRONOS_PROFILE = buildContext.profileId;
+process.env.CHRONOS_DISTRIBUTION = buildContext.distributionId;
 
 const environment = Object.fromEntries(
 	Object.entries(process.env).filter(

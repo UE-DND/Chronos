@@ -6,8 +6,8 @@
 	"scripts": {
 		"dev": "node --experimental-strip-types scripts/run-host.ts dev",
 		"build": "node --experimental-strip-types scripts/run-host.ts build",
-		"build:pages": "CHRONOS_DEPLOY_TARGET=pages node --experimental-strip-types scripts/run-host.ts build && cp build/404.html build/index.html",
-		"build:mobile": "CHRONOS_DEPLOY_TARGET=mobile node --experimental-strip-types scripts/run-host.ts build",
+		"build:pages": "CHRONOS_DEPLOY_TARGET=pages CHRONOS_DISTRIBUTION=pages node --experimental-strip-types scripts/run-host.ts build && cp build/404.html build/index.html",
+		"build:mobile": "CHRONOS_DEPLOY_TARGET=mobile CHRONOS_DISTRIBUTION=mobile node --experimental-strip-types scripts/run-host.ts build",
 		"preview": "vp preview .",
 		"analyze": "ANALYZE=true node --experimental-strip-types scripts/run-host.ts build",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -16,8 +16,8 @@
 	},
 	"dependencies": {
 		"@chronos/core": "workspace:*",
-		"@chronos/plugin-theme-m3": "workspace:*",
 		"@chronos/plugin-codec-share": "workspace:*",
+		"@chronos/plugin-theme-m3": "workspace:*",
 		"@chronos/ui-kit": "workspace:*",
 		"@material-symbols-svg/svelte": "^0.14.0",
 		"bits-ui": "^2.19.0",
@@ -41,6 +41,7 @@
 		"@types/node": "^24",
 		"@vite-pwa/sveltekit": "^1.1.0",
 		"rolldown-license-plugin": "^3.0.11",
+		"smol-toml": "^1.9.0",
 		"svelte": "^5.57.0",
 		"svelte-check": "^4.7.6",
 		"tailwindcss": "^4.3.0",

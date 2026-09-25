@@ -8,21 +8,21 @@ Chronos 使用 [Vite+](https://viteplus.dev) 管理运行时和开发工具。�
 
 ### 常用命令
 
-| 命令                                                                     | 用途                              |
-| ------------------------------------------------------------------------ | --------------------------------- |
-| `vp run dev`                                                             | 启动 Web 开发服务器和本地插件市场 |
-| `vp run check`                                                           | 检查格式、Lint 和类型             |
-| `vp run test`                                                            | 运行全部单元测试                  |
-| `vp run build`                                                           | 按当前环境配置构建应用和插件      |
-| `vp run build:cqut`、`vp run build:cqut-offline`、`vp run build:default` | 构建预设 Web 发行版               |
-| `vp run build:pages`                                                     | 构建 GitHub Pages 静态站点        |
-| `vp run mobile:build`、`vp run mobile:sync`                              | 构建移动端资源并同步到原生工程    |
-| `vp run mobile:open:android`                                             | 在 Android Studio 中打开工程      |
-| `vp run build:official-plugins`                                          | 单独构建官方插件                  |
-| `vp run verify:official-plugins`                                         | 校验已生成的插件文件              |
-| `vp run theme:generate`                                                  | 更新默认主题资源快照和首屏颜色    |
-| `vp run bundle:analyze`                                                  | 构建应用并分析包体积              |
-| `vp run icons:png`                                                       | 从 SVG 生成 PWA 图标              |
+| 命令                                                                     | 用途                                 |
+| ------------------------------------------------------------------------ | ------------------------------------ |
+| `vp run dev`                                                             | 启动 Web 开发服务器和本地插件市场    |
+| `vp run check`                                                           | 检查格式、Lint 和类型                |
+| `vp run test`                                                            | 运行全部单元测试                     |
+| `vp run build`                                                           | 按 target 默认发行配置构建应用和插件 |
+| `vp run build:cqut`、`vp run build:cqut-offline`、`vp run build:default` | 构建预设 Web 发行版                  |
+| `vp run build:pages`                                                     | 构建 GitHub Pages 静态站点           |
+| `vp run mobile:build`、`vp run mobile:sync`                              | 构建移动端资源并同步到原生工程       |
+| `vp run mobile:open:android`                                             | 在 Android Studio 中打开工程         |
+| `vp run build:official-plugins`                                          | 单独构建官方插件                     |
+| `vp run verify:official-plugins`                                         | 校验已生成的插件文件                 |
+| `vp run theme:generate`                                                  | 更新默认主题资源快照和首屏颜色       |
+| `vp run bundle:analyze`                                                  | 构建应用并分析包体积                 |
+| `vp run icons:png`                                                       | 从 SVG 生成 PWA 图标                 |
 
 开发和构建任务应使用 `vp run dev`、`vp run build`。不要使用 `vp dev` 或 `vp build`。任务定义见 [vite.config.ts](vite.config.ts) 和 [package.json](package.json)。
 
@@ -48,21 +48,32 @@ Chronos 使用 [Vite+](https://viteplus.dev) 管理运行时和开发工具。�
 
 Chronos 分别配置客户端预安装的插件、服务端启用的插件和部署平台。
 
-| 变量                    | 作用                                                   | 默认值                                                                      |
-| ----------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------- |
-| `CHRONOS_PROFILE`       | 选择客户端发行配置，包括预安装插件、默认主题和初始偏好 | 未指定时 Pages / Mobile 使用 `chronos-default`，Vercel 使用 `chronos-cqut`  |
-| `CHRONOS_DEPLOYMENT`    | 选择服务端启用的插件                                   | 跟随 target：Vercel 为 `chronos-cqut`，Pages 为 `pages`，Mobile 为 `mobile` |
-| `CHRONOS_DEPLOY_TARGET` | 选择部署平台、适配器和 PWA 构建行为                    | 未设置时使用 Vercel；也可设为 `pages` 或 `mobile`                           |
+| 变量                    | 作用                                                                   | 默认值                                            |
+| ----------------------- | ---------------------------------------------------------------------- | ------------------------------------------------- |
+| `CHRONOS_DISTRIBUTION`  | 选择 `apps/web/config/distributions.toml` 中的 profile/deployment 组合 | 未指定时按 target 选择默认发行项                  |
+| `CHRONOS_PROFILE`       | 覆盖发行项的客户端 profile                                             | 发行项 profile                                    |
+| `CHRONOS_DEPLOYMENT`    | 覆盖发行项的服务端 deployment                                          | 发行项 deployment                                 |
+| `CHRONOS_DEPLOY_TARGET` | 选择部署平台、适配器和 PWA 构建行为                                    | 未设置时使用 Vercel；也可设为 `pages` 或 `mobile` |
 
-Profile、deployment 和 deploy target 是独立配置。Profile 选择客户端预装内容；deployment 选择服务端插件；deploy target 选择平台适配器、SvelteKit 适配器和 PWA 行为。自定义组合时，应分别设置需要覆盖的配置。常用 `build:*` 任务会显式选择配置。
+发行项把 profile 与 deployment 配成一组；deploy target 仍独立选择。Profile 选择客户端预装内容，deployment 选择服务端插件，target 选择平台适配器、SvelteKit 适配器和 PWA 行为。解析优先级为：target 决定默认发行项；`CHRONOS_DISTRIBUTION` / `--distribution` 选择发行项；profile/deployment 环境变量覆盖发行项；对应 CLI 参数优先级最高。常用 `build:*` 任务会显式选择发行项。
+
+需要可复用的自定义组合时，在 `apps/web/config/distributions.toml` 添加发行项：
+
+```toml
+[distributions.my-offline]
+profile = "chronos-cqut-offline"
+deployment = "chronos-default"
+```
+
+然后使用 `CHRONOS_DISTRIBUTION=my-offline vp run build`。临时组合可直接覆盖字段，例如 `vp run build -- --profile chronos-default --deployment chronos-cqut`；也可以使用对应的 `CHRONOS_PROFILE`、`CHRONOS_DEPLOYMENT` 和 `CHRONOS_DEPLOY_TARGET` 环境变量。构建会检查所选 profile、deployment 和 target 的有效性与兼容性。
 
 | Deploy target | 构建形态                        | PWA  | 默认 deployment        |
 | ------------- | ------------------------------- | ---- | ---------------------- |
-| `vercel`      | Vercel Serverless 和静态资源    | 启用 | `chronos-cqut`         |
+| `vercel`      | Vercel Serverless 和静态资源    | 启用 | `chronos-default`      |
 | `pages`       | 静态站点，路径前缀为 `/Chronos` | 启用 | `pages`，无服务端插件  |
 | `mobile`      | Capacitor 使用的静态 SPA        | 禁用 | `mobile`，无服务端插件 |
 
-`vp run mobile:build` 使用 `mobile` target，默认使用 `chronos-default` profile（可通过 `--profile` 参数指定不同 profile），然后同步 Capacitor 工程。移动端不包含服务端插件，需要服务端代理的插件功能不会注册。配置定义见 [deploy-targets.ts](apps/web/src/lib/config/deploy-targets.ts)、[profile-definitions.ts](apps/web/src/lib/profile-codegen/profile-definitions.ts) 和 [deployment-definitions.ts](apps/web/src/lib/profile-codegen/deployment-definitions.ts)。
+`vp run mobile:build` 使用 `mobile` target 和 `mobile` 发行项，然后同步 Capacitor 工程。移动端不包含服务端插件，需要服务端代理的插件功能不会注册。target 定义见 [deploy-targets.ts](apps/web/src/lib/config/deploy-targets.ts)，profile 和 deployment 组合见 [distributions.toml](apps/web/config/distributions.toml)。
 
 Web 的软件更新使用 Service Worker；移动端构建关闭 PWA。移动端通过原生平台适配器打开外部应用商店或 GitHub 发布下载链接进行更新。
 

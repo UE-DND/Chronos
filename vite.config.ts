@@ -81,7 +81,7 @@ export default defineConfig({
 	},
 	define: {
 		__BUILD_TIME__: JSON.stringify(new Date().toISOString()),
-		__CHRONOS_PROFILE__: JSON.stringify('chronos-cqut'),
+		__CHRONOS_PROFILE__: JSON.stringify(process.env.CHRONOS_PROFILE ?? 'chronos-default'),
 		__ANALYTICS_ENABLED__: JSON.stringify(true),
 		__SVELTEKIT_APP_VERSION__: JSON.stringify(appVersion),
 		__SVELTEKIT_DEV__: JSON.stringify(false),
@@ -103,32 +103,32 @@ export default defineConfig({
 			},
 			'build:cqut': {
 				command:
-					'CHRONOS_DEPLOYMENT=chronos-cqut CHRONOS_PROFILE=chronos-cqut node --experimental-strip-types apps/web/scripts/run-host.ts build',
+					'CHRONOS_DISTRIBUTION=cqut node --experimental-strip-types apps/web/scripts/run-host.ts build',
 				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 			},
 			'build:cqut-offline': {
 				command:
-					'CHRONOS_DEPLOYMENT=chronos-cqut-offline CHRONOS_PROFILE=chronos-cqut-offline node --experimental-strip-types apps/web/scripts/run-host.ts build',
+					'CHRONOS_DISTRIBUTION=cqut-offline node --experimental-strip-types apps/web/scripts/run-host.ts build',
 				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 			},
 			'build:default': {
 				command:
-					'CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-host.ts build',
+					'CHRONOS_DISTRIBUTION=default node --experimental-strip-types apps/web/scripts/run-host.ts build',
 				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 			},
 			'build:pages': {
 				command:
-					'CHRONOS_DEPLOY_TARGET=pages CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-host.ts build && cp apps/web/build/404.html apps/web/build/index.html',
+					'CHRONOS_DEPLOY_TARGET=pages CHRONOS_DISTRIBUTION=pages node --experimental-strip-types apps/web/scripts/run-host.ts build && cp apps/web/build/404.html apps/web/build/index.html',
 				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 			},
 			'build:mobile': {
 				command:
-					'CHRONOS_DEPLOY_TARGET=mobile node --experimental-strip-types apps/web/scripts/run-host.ts build',
+					'CHRONOS_DEPLOY_TARGET=mobile CHRONOS_DISTRIBUTION=mobile node --experimental-strip-types apps/web/scripts/run-host.ts build',
 				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV']
 			},
 			'mobile:build': {
 				command:
-					'CHRONOS_DEPLOY_TARGET=mobile node --experimental-strip-types apps/web/scripts/run-host.ts build && vp run --filter @chronos/mobile sync',
+					'CHRONOS_DEPLOY_TARGET=mobile CHRONOS_DISTRIBUTION=mobile node --experimental-strip-types apps/web/scripts/run-host.ts build && vp run --filter @chronos/mobile sync',
 				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV']
 			},
 			'mobile:sync': {
@@ -141,7 +141,7 @@ export default defineConfig({
 			},
 			'bundle:analyze': {
 				command:
-					'ANALYZE=true CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-host.ts build',
+					'ANALYZE=true CHRONOS_DISTRIBUTION=default node --experimental-strip-types apps/web/scripts/run-host.ts build',
 				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 			},
 			check:

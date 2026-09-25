@@ -293,6 +293,7 @@ export default defineConfig(({ mode }) => {
 			setupFiles: ['src/test-setup.ts'],
 			include: [
 				'src/**/*.{test,spec}.{js,ts}',
+				'scripts/**/*.{test,spec}.{js,ts}',
 				'../../packages/**/*.{test,spec}.{js,ts}',
 				'../../scripts/**/*.{test,spec}.{js,ts}'
 			],

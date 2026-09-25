@@ -43,7 +43,8 @@ describe('deploy-targets configuration & isolation', () => {
 			disablePwa: true,
 			defaultDeployment: 'mobile',
 			defaultProfile: 'chronos-default',
-			adapterKind: 'static-spa'
+			adapterKind: 'static-spa',
+			supportsServerPlugins: false
 		});
 
 		const pages = getDeployTargetDefinition('pages');
@@ -54,7 +55,8 @@ describe('deploy-targets configuration & isolation', () => {
 			disablePwa: false,
 			defaultDeployment: 'pages',
 			defaultProfile: 'chronos-default',
-			adapterKind: 'static-pages'
+			adapterKind: 'static-pages',
+			supportsServerPlugins: false
 		});
 
 		const vercel = getDeployTargetDefinition('vercel');
@@ -65,7 +67,8 @@ describe('deploy-targets configuration & isolation', () => {
 			disablePwa: false,
 			defaultDeployment: 'chronos-default',
 			defaultProfile: 'chronos-default',
-			adapterKind: 'vercel'
+			adapterKind: 'vercel',
+			supportsServerPlugins: true
 		});
 	});
 
@@ -88,7 +91,7 @@ describe('deploy-targets configuration & isolation', () => {
 			serverPlugins: []
 		});
 		expect(resolveDeployment({ CHRONOS_DEPLOY_TARGET: 'vercel' })).toEqual({
-			serverPlugins: ['source-cqut']
+			serverPlugins: []
 		});
 	});
 
