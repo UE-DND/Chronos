@@ -27,6 +27,7 @@ publishedAt: 2026-01-01
 			`---
 name: Chronos 2.0.0
 publishedAt: 2026-02-01
+androidUpdateUrl: https://example.com/chronos.apk
 ---
 
 - latest release`
@@ -52,6 +53,7 @@ publishedAt: 2026-01-15
 			tagName: 'v2.0.0',
 			name: 'Chronos 2.0.0',
 			publishedAt: '2026-02-01',
+			platforms: { android: { updateUrl: 'https://example.com/chronos.apk' } },
 			body: '- latest release'
 		});
 	});

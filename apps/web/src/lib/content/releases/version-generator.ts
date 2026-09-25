@@ -37,11 +37,12 @@ export function getLatestReleaseFromEntries(entriesDir: string): Release | null 
 	for (const file of files) {
 		const tagName = file.replace(/\.md$/, '');
 		const content = readFileSync(join(entriesDir, file), 'utf8');
-		const { name, publishedAt, body } = parseFrontmatter(content);
+		const { name, publishedAt, platforms, body } = parseFrontmatter(content);
 		releases.push({
 			tagName,
 			name: name ?? tagName,
 			publishedAt: publishedAt ?? '',
+			...(platforms ? { platforms } : {}),
 			body
 		});
 	}

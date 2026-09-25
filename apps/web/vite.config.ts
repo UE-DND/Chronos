@@ -82,6 +82,9 @@ export default defineConfig(({ mode }) => {
 		define: {
 			__BUILD_TIME__: JSON.stringify(new Date().toISOString()),
 			__CHRONOS_PROFILE__: JSON.stringify(resolveProfileId()),
+			__ANDROID_RELEASE_FEED_URL__: JSON.stringify(
+				env.PUBLIC_ANDROID_RELEASE_FEED_URL?.trim() ?? ''
+			),
 			__ANALYTICS_ENABLED__: JSON.stringify(
 				mode === 'test' || Boolean(env.PUBLIC_POSTHOG_KEY?.trim())
 			),

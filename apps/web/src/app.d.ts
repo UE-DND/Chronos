@@ -60,6 +60,7 @@ declare const __BUILD_TIME__: string;
 declare const __CHRONOS_PROFILE__: string;
 declare const __ANALYTICS_ENABLED__: boolean;
 declare const __CHRONOS_PLATFORM_TARGET__: string;
+declare const __ANDROID_RELEASE_FEED_URL__: string;
 
 declare module '$chronos-platform-adapter' {
 	export function getBootPlatformAdapter(): import('$lib/platform/host-platform').HostPlatformAdapter;

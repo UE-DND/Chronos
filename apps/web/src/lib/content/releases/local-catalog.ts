@@ -31,11 +31,12 @@ function buildReleaseIndex(): Record<string, Release> {
 	const index: Record<string, Release> = {};
 	for (const [path, raw] of Object.entries(RELEASE_FILES)) {
 		const tagName = tagNameFromPath(path);
-		const { name, publishedAt, body } = parseFrontmatter(raw);
+		const { name, publishedAt, platforms, body } = parseFrontmatter(raw);
 		index[tagName] = {
 			tagName,
 			name: name ?? '',
 			publishedAt: publishedAt ?? '',
+			...(platforms ? { platforms } : {}),
 			body
 		};
 	}

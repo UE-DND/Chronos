@@ -2,7 +2,7 @@ import { base } from '$app/paths';
 import { AppError, failure, success, type AppResult } from '@chronos/core';
 import { createLocalReleaseCatalog } from './local-catalog';
 import type { ReleaseCatalog } from './catalog';
-import type { Release } from './release';
+import { parseAndroidUpdateUrl, type Release } from './release';
 
 /**
  * Seam for fetching remote or local release changelog feed.
@@ -36,6 +36,7 @@ export async function fetchLatestProjectRelease(
 			tagName?: string;
 			name?: string;
 			publishedAt?: string;
+			platforms?: { android?: { updateUrl?: string } };
 			body?: string;
 		};
 
@@ -43,10 +44,12 @@ export async function fetchLatestProjectRelease(
 			return failure(AppError.dataFormat('版本发布数据格式无效'));
 		}
 
+		const androidUpdateUrl = parseAndroidUpdateUrl(data.platforms?.android?.updateUrl);
 		return success({
 			tagName: data.tagName,
 			name: data.name || data.tagName,
 			publishedAt: data.publishedAt || '',
+			platforms: androidUpdateUrl ? { android: { updateUrl: androidUpdateUrl } } : undefined,
 			body: data.body || ''
 		});
 	} catch (error) {
@@ -66,23 +69,40 @@ export function createReleaseFeedAdapter(
 		versionUrl?: string;
 		fetchLatestRelease?: () => Promise<AppResult<Release>>;
 		localCatalog?: ReleaseCatalog;
+		allowLocalFallback?: boolean;
+		requireVersionUrl?: boolean;
 	} = {}
 ): ReleaseFeedAdapter {
 	const {
 		fetchFn = fetch,
 		versionUrl,
 		fetchLatestRelease: customFetchRelease,
-		localCatalog = createLocalReleaseCatalog()
+		localCatalog = createLocalReleaseCatalog(),
+		allowLocalFallback = true,
+		requireVersionUrl = false
 	} = options;
 
 	return {
 		async fetchLatestRelease(): Promise<AppResult<Release>> {
+			if (!customFetchRelease && requireVersionUrl && !versionUrl?.trim()) {
+				return failure(AppError.network('未配置 Android 版本检查地址'));
+			}
+			if (!customFetchRelease && requireVersionUrl) {
+				try {
+					if (new URL(versionUrl!).protocol !== 'https:') {
+						return failure(AppError.dataFormat('Android 版本检查地址必须使用 HTTPS'));
+					}
+				} catch {
+					return failure(AppError.dataFormat('Android 版本检查地址无效'));
+				}
+			}
 			const remoteResult = customFetchRelease
 				? await customFetchRelease()
 				: await fetchLatestProjectRelease(fetchFn, versionUrl);
 			if (remoteResult.ok) {
 				return remoteResult;
 			}
+			if (!allowLocalFallback) return remoteResult;
 
 			// Fallback to local catalog when offline or remote unavailable
 			const localResult = await localCatalog.listReleases();
