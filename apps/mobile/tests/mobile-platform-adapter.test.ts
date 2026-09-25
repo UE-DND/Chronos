@@ -29,6 +29,8 @@ const mockApp = vi.hoisted(() => ({
 	exitApp: vi.fn()
 }));
 
+const mockAppLauncher = vi.hoisted(() => ({ openUrl: vi.fn().mockResolvedValue(undefined) }));
+
 const mockSplashScreen = vi.hoisted(() => ({
 	hide: vi.fn()
 }));
@@ -69,6 +71,8 @@ vi.mock('@capacitor/status-bar', () => ({
 vi.mock('@capacitor/app', () => ({
 	App: mockApp
 }));
+
+vi.mock('@capacitor/app-launcher', () => ({ AppLauncher: mockAppLauncher }));
 
 vi.mock('@capacitor/splash-screen', () => ({
 	SplashScreen: mockSplashScreen
@@ -307,6 +311,50 @@ describe('mobile-platform-adapter', () => {
 			expect(adapter.platformType).toBe('android');
 			expect(adapter.supportsPwaInstall).toBe(false);
 			expect(adapter.shouldShowInstallGuide).toBe(false);
+		});
+
+		it('opens a configured HTTPS update URL with Capacitor AppLauncher', async () => {
+			capacitorState.isNative = true;
+			capacitorState.platform = 'android';
+			const adapter = createMobilePlatformAdapter();
+			const action = adapter.getUpdateAction?.();
+
+			expect(action).toBeDefined();
+			expect(action?.mode).toBe('external-link');
+			expect(action?.canApplyInApp).toBe(false);
+			expect(action?.actionLabelKey).toBe('about.update.external');
+
+			await action?.applyUpdate({
+				tagName: 'v1.1.0',
+				name: 'Chronos 1.1.0',
+				publishedAt: '2026-09-25',
+				body: '',
+				platforms: {
+					android: { updateUrl: 'https://example.com/chronos.apk' }
+				}
+			});
+
+			expect(mockAppLauncher.openUrl).toHaveBeenCalledWith({
+				url: 'https://example.com/chronos.apk'
+			});
+		});
+
+		it('does not invent an update URL when release metadata omits one', async () => {
+			capacitorState.isNative = true;
+			capacitorState.platform = 'android';
+			const adapter = createMobilePlatformAdapter();
+			const action = adapter.getUpdateAction?.();
+
+			await expect(
+				action?.applyUpdate({
+					tagName: 'v1.1.0',
+					name: 'Chronos 1.1.0',
+					publishedAt: '2026-09-25',
+					body: ''
+				})
+			).rejects.toThrow('当前版本没有可用的 Android 更新地址');
+
+			expect(mockAppLauncher.openUrl).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -4,6 +4,7 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { App } from '@capacitor/app';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { Share } from '@capacitor/share';
+import { AppLauncher } from '@capacitor/app-launcher';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import type { PluginListenerHandle } from '@capacitor/core';
 import type {
@@ -17,7 +18,8 @@ import { CHRONOS_NATIVE_BRIDGE_KEY } from '@chronos/ui-kit';
 import type {
 	HostPlatformAdapter,
 	HostPlatformInitCallbacks,
-	NativeShareResult
+	NativeShareResult,
+	PlatformUpdateAction
 } from '../../web/src/lib/platform/host-platform';
 
 export function isCapacitorNative(): boolean {
@@ -226,6 +228,12 @@ export async function shareFileWithMobile(
 	}
 }
 
+export async function openMobileUpdateUrl(targetUrl: string): Promise<void> {
+	const url = new URL(targetUrl);
+	if (url.protocol !== 'https:') throw new Error('更新地址必须使用 HTTPS');
+	await AppLauncher.openUrl({ url: url.toString() });
+}
+
 export function createMobilePlatformAdapter(): HostPlatformAdapter {
 	const isNative = isCapacitorNative();
 	const platformType = resolvePlatformType();
@@ -247,6 +255,18 @@ export function createMobilePlatformAdapter(): HostPlatformAdapter {
 		},
 		shareFile(filename: string, content: string | Uint8Array, mimeType: string) {
 			return shareFileWithMobile(filename, content, mimeType);
+		},
+		getUpdateAction(): PlatformUpdateAction {
+			return {
+				mode: 'external-link',
+				canApplyInApp: false,
+				actionLabelKey: 'about.update.external',
+				async applyUpdate(release) {
+					const targetUrl = release?.platforms?.android?.updateUrl;
+					if (!targetUrl) throw new Error('当前版本没有可用的 Android 更新地址');
+					await openMobileUpdateUrl(targetUrl);
+				}
+			};
 		}
 	};
 }
