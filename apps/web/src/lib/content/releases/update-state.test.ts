@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { createUpdateState } from './update-state.svelte';
-import { fetchLatestProjectRelease } from './release-feed-adapter';
+import { createReleaseFeedAdapter, fetchLatestProjectRelease } from './release-feed-adapter';
 import * as serviceWorkerAdapter from './service-worker-adapter';
 import { AppError, failure, success } from '@chronos/core';
 
@@ -42,6 +42,52 @@ describe('fetchLatestProjectRelease', () => {
 			'/version.json'
 		);
 		expect(errorResult.ok).toBe(false);
+	});
+
+	it('keeps only a valid HTTPS Android update URL from the remote feed', async () => {
+		const fetchFn = vi.fn().mockResolvedValue({
+			ok: true,
+			status: 200,
+			json: async () => ({
+				tagName: 'v0.3.0',
+				platforms: { android: { updateUrl: 'market://details?id=chronos' } }
+			})
+		});
+		const result = await fetchLatestProjectRelease(
+			fetchFn as unknown as typeof fetch,
+			'/version.json'
+		);
+		expect(result.ok).toBe(true);
+		if (result.ok) expect(result.value.platforms).toBeUndefined();
+	});
+});
+
+describe('createReleaseFeedAdapter', () => {
+	it('does not fall back to the bundled catalog when remote-only mode is enabled', async () => {
+		const listReleases = vi.fn(async () =>
+			success([{ tagName: 'v9.9.9', name: 'local', publishedAt: '', body: '' }])
+		);
+		const adapter = createReleaseFeedAdapter({
+			fetchLatestRelease: async () => failure(AppError.network('offline')),
+			localCatalog: { listReleases, getRelease: async () => failure(AppError.notFound('none')) },
+			allowLocalFallback: false
+		});
+		const result = await adapter.fetchLatestRelease();
+		expect(result.ok).toBe(false);
+		expect(listReleases).not.toHaveBeenCalled();
+	});
+
+	it('returns unavailable without requesting a same-origin feed when the URL is unset', async () => {
+		const fetchFn = vi.fn();
+		const adapter = createReleaseFeedAdapter({
+			fetchFn: fetchFn as unknown as typeof fetch,
+			versionUrl: '',
+			allowLocalFallback: false,
+			requireVersionUrl: true
+		});
+		const result = await adapter.fetchLatestRelease();
+		expect(result.ok).toBe(false);
+		expect(fetchFn).not.toHaveBeenCalled();
 	});
 });
 
@@ -395,5 +441,66 @@ describe('createUpdateState', () => {
 
 		await updateState.installUpdate();
 		expect(mockSwAdapter.applyUpdateAndReload).toHaveBeenCalledOnce();
+	});
+
+	it('uses platformUpdateAction external link without setting fake download progress', async () => {
+		const applyUpdateMock = vi.fn().mockResolvedValue(undefined);
+		const updateState = createUpdateState({
+			currentVersion: '0.2.0',
+			fetchLatestRelease: async () =>
+				success({
+					tagName: 'v0.3.0',
+					name: 'Chronos 0.3.0',
+					publishedAt: '2026-08-19',
+					body: 'Major upgrade',
+					platforms: { android: { updateUrl: 'https://example.com/update' } }
+				}),
+			platformUpdateAction: {
+				mode: 'external-link',
+				canApplyInApp: false,
+				actionLabelKey: 'about.update.external',
+				applyUpdate: applyUpdateMock
+			}
+		});
+
+		await updateState.checkUpdate();
+		expect(updateState.updateAction?.canApplyInApp).toBe(false);
+		expect(updateState.updateAction?.actionLabelKey).toBe('about.update.external');
+
+		await updateState.installUpdate();
+
+		expect(applyUpdateMock).toHaveBeenCalledWith(
+			expect.objectContaining({ tagName: 'v0.3.0' }),
+			undefined
+		);
+		expect(updateState.state.updating).toBe(false);
+		expect(updateState.state.installPhase).toBeNull();
+	});
+
+	it('reports Android feed failure instead of using local releases or service workers', async () => {
+		const checkSwUpdate = vi.fn(async () => true);
+		const listReleases = vi.fn(async () =>
+			success([{ tagName: 'v9.9.9', name: 'bundled', publishedAt: '', body: '' }])
+		);
+		const updateState = createUpdateState({
+			currentVersion: '0.2.0',
+			fetchLatestRelease: async () => failure(AppError.network('offline')),
+			localCatalog: { listReleases, getRelease: async () => failure(AppError.notFound('none')) },
+			checkSwUpdate,
+			platformUpdateAction: {
+				mode: 'external-link',
+				canApplyInApp: false,
+				actionLabelKey: 'about.update.external',
+				applyUpdate: vi.fn()
+			}
+		});
+
+		await updateState.checkUpdate();
+
+		expect(updateState.state.hasUpdate).toBe(false);
+		expect(updateState.state.latestRelease).toBeNull();
+		expect(updateState.state.errorMessage).toBe('offline');
+		expect(listReleases).not.toHaveBeenCalled();
+		expect(checkSwUpdate).not.toHaveBeenCalled();
 	});
 });

@@ -483,6 +483,8 @@ export const en = {
 	'about.update.current': 'Current version',
 	'about.update.changelog': "What's new",
 	'about.update.install': 'Install update',
+	'about.update.external': 'Go to update',
+	'about.update.unavailable': 'No Android update link is available for this release.',
 	'about.update.installing': 'Updating…',
 	'about.update.phase.downloading': 'Downloading update…',
 	'about.update.phase.installing': 'Installing update…',

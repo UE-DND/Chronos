@@ -468,6 +468,8 @@ export const zhCn = {
 	'about.update.current': '当前版本',
 	'about.update.changelog': '更新内容',
 	'about.update.install': '立即安装更新',
+	'about.update.external': '前往更新',
+	'about.update.unavailable': '此版本未配置 Android 更新地址。',
 	'about.update.installing': '正在更新…',
 	'about.update.phase.downloading': '正在下载更新…',
 	'about.update.phase.installing': '正在安装更新…',

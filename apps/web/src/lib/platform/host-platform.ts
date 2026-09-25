@@ -1,5 +1,19 @@
 import type { PlatformType } from '@chronos/core';
 import { getBootPlatformAdapter } from '$chronos-platform-adapter';
+import type { Release } from '../content/releases/release';
+import type { SwUpdateProgress } from '../client/pwa-sw';
+
+export type PlatformUpdateMode = 'service-worker' | 'external-link';
+
+export interface PlatformUpdateAction {
+	readonly mode: PlatformUpdateMode;
+	readonly canApplyInApp: boolean;
+	readonly actionLabelKey: string;
+	applyUpdate(
+		release?: Release | null,
+		options?: { onProgress?: (progress: SwUpdateProgress) => void }
+	): Promise<void>;
+}
 
 export type NativeShareResult =
 	| { status: 'shared' }
@@ -26,6 +40,7 @@ export interface HostPlatformAdapter {
 		content: string | Uint8Array,
 		mimeType: string
 	): Promise<NativeShareResult>;
+	getUpdateAction?(): PlatformUpdateAction;
 }
 
 export function getDefaultWebPlatform(): HostPlatformAdapter {
@@ -34,7 +49,18 @@ export function getDefaultWebPlatform(): HostPlatformAdapter {
 		isNative: false,
 		platformType: 'web',
 		supportsPwaInstall: true,
-		shouldShowInstallGuide: true
+		shouldShowInstallGuide: true,
+		getUpdateAction() {
+			return {
+				mode: 'service-worker',
+				canApplyInApp: true,
+				actionLabelKey: 'about.update.install',
+				async applyUpdate(_release, options) {
+					const { applyUpdateAndReload } = await import('../client/pwa-sw');
+					await applyUpdateAndReload(options);
+				}
+			};
+		}
 	};
 }
 

@@ -41,6 +41,7 @@
 
 	const controller = getAppController();
 	const activeLocale = $derived(appLocaleToBcp47(controller.currentLocale));
+	const androidUpdateUrl = $derived(updateState.state.latestRelease?.platforms?.android?.updateUrl);
 
 	onMount(() => {
 		void updateState.checkUpdate();
@@ -148,15 +149,25 @@
 							{formatErrorMessage(updateState.state.errorMessage)}
 						</p>
 					{/if}
-					<Button
-						variant="filled"
-						class="w-full"
-						disabled={updateState.state.updating}
-						onclick={() => void updateState.installUpdate()}
-					>
-						<DownloadFill class="size-5" />
-						{hostT('about.update.install')}
-					</Button>
+					{#if updateState.updateAction?.mode === 'external-link' && !androidUpdateUrl}
+						<p class="text-body-small text-on-surface-variant">
+							{hostT('about.update.unavailable')}
+						</p>
+					{:else}
+						<Button
+							variant="filled"
+							class="w-full"
+							disabled={updateState.state.updating}
+							onclick={() => void updateState.installUpdate()}
+						>
+							{#if updateState.updateAction && !updateState.updateAction.canApplyInApp}
+								<OpenInNewFill class="size-5" />
+							{:else}
+								<DownloadFill class="size-5" />
+							{/if}
+							{hostT(updateState.updateAction?.actionLabelKey ?? 'about.update.install')}
+						</Button>
+					{/if}
 				{/if}
 			</div>
 		</div>

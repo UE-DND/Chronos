@@ -6,6 +6,7 @@ import type { ReleaseCatalog } from './catalog';
 import { compareReleaseVersions, type Release } from './release';
 import { createReleaseFeedAdapter, type ReleaseFeedAdapter } from './release-feed-adapter';
 import { SwUpdateError, type ApplyUpdateOptions } from '$lib/client/pwa-sw';
+import { getHostPlatform, type PlatformUpdateAction } from '$lib/platform/host-platform';
 import {
 	createDefaultServiceWorkerAdapter,
 	type ServiceWorkerAdapter,
@@ -34,6 +35,7 @@ export interface UpdateStateOptions {
 	currentVersion?: string;
 	releaseFeedAdapter?: ReleaseFeedAdapter;
 	swAdapter?: ServiceWorkerAdapter;
+	platformUpdateAction?: PlatformUpdateAction;
 	fetchLatestRelease?: () => Promise<AppResult<Release>>;
 	localCatalog?: ReleaseCatalog;
 	checkSwUpdate?: () => Promise<boolean>;
@@ -49,11 +51,16 @@ interface CachedCheckSnapshot {
 
 export function createUpdateState(options: UpdateStateOptions = {}) {
 	const currentVersion = options.currentVersion ?? APP_VERSION;
+	const hostUpdateAction = options.platformUpdateAction ?? getHostPlatform().getUpdateAction?.();
+	const isExternalUpdatePlatform = hostUpdateAction?.mode === 'external-link';
 	const feedAdapter: ReleaseFeedAdapter =
 		options.releaseFeedAdapter ??
 		createReleaseFeedAdapter({
 			fetchLatestRelease: options.fetchLatestRelease,
-			localCatalog: options.localCatalog
+			localCatalog: options.localCatalog,
+			versionUrl: isExternalUpdatePlatform ? __ANDROID_RELEASE_FEED_URL__ : undefined,
+			allowLocalFallback: !isExternalUpdatePlatform,
+			requireVersionUrl: isExternalUpdatePlatform
 		});
 
 	const defaultSw = createDefaultServiceWorkerAdapter();
@@ -115,7 +122,9 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 		errorMessage = null;
 		trackEvent('update_check_attempt');
 
-		const swHasUpdate = swAdapter.isUpdatePending() || (await swAdapter.checkForUpdate());
+		const swHasUpdate = isExternalUpdatePlatform
+			? false
+			: swAdapter.isUpdatePending() || (await swAdapter.checkForUpdate());
 
 		try {
 			const result = await feedAdapter.fetchLatestRelease();
@@ -137,7 +146,7 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 					has_update: true,
 					update_source: updateSource
 				});
-			} else if (restoreCachedCheckSnapshot(swHasUpdate)) {
+			} else if (!isExternalUpdatePlatform && restoreCachedCheckSnapshot(swHasUpdate)) {
 				trackEvent('update_check_success', {
 					has_update: hasUpdate,
 					latest_version: latestRelease?.tagName ?? '',
@@ -159,7 +168,7 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 					has_update: true,
 					update_source: updateSource
 				});
-			} else if (restoreCachedCheckSnapshot(swHasUpdate)) {
+			} else if (!isExternalUpdatePlatform && restoreCachedCheckSnapshot(swHasUpdate)) {
 				trackEvent('update_check_success', {
 					has_update: hasUpdate,
 					latest_version: latestRelease?.tagName ?? '',
@@ -191,20 +200,56 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 		return 'about.update.error.installFailed';
 	}
 
+	const platformUpdateAction: PlatformUpdateAction | undefined = hostUpdateAction
+		? {
+				mode: hostUpdateAction.mode,
+				canApplyInApp: hostUpdateAction.canApplyInApp,
+				actionLabelKey: hostUpdateAction.actionLabelKey,
+				applyUpdate(release, opts) {
+					if (!hostUpdateAction.canApplyInApp) {
+						return hostUpdateAction.applyUpdate(release, opts);
+					}
+					return swAdapter.applyUpdateAndReload(opts);
+				}
+			}
+		: undefined;
+
 	async function installUpdate() {
 		if (updating) return;
 		updating = true;
+		errorMessage = null;
+
+		if (platformUpdateAction && !platformUpdateAction.canApplyInApp) {
+			trackEvent('external_update_open');
+			try {
+				await platformUpdateAction.applyUpdate(latestRelease);
+			} catch (err) {
+				errorMessage = err instanceof Error ? err.message : '打开更新链接失败';
+			} finally {
+				updating = false;
+			}
+			return;
+		}
+
 		installPhase = 'downloading';
 		installPercent = 5;
-		errorMessage = null;
 		trackEvent('pwa_update_apply');
 		try {
-			await swAdapter.applyUpdateAndReload({
-				onProgress: (progress) => {
-					installPhase = progress.phase;
-					installPercent = progress.percent;
-				}
-			});
+			if (platformUpdateAction) {
+				await platformUpdateAction.applyUpdate(latestRelease, {
+					onProgress: (progress) => {
+						installPhase = progress.phase;
+						installPercent = progress.percent;
+					}
+				});
+			} else {
+				await swAdapter.applyUpdateAndReload({
+					onProgress: (progress) => {
+						installPhase = progress.phase;
+						installPercent = progress.percent;
+					}
+				});
+			}
 			// Reload should unmount the page; reset if the browser did not navigate.
 			updating = false;
 			installPhase = null;
@@ -237,6 +282,9 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 	return {
 		get state() {
 			return state;
+		},
+		get updateAction() {
+			return platformUpdateAction;
 		},
 		checkUpdate,
 		installUpdate

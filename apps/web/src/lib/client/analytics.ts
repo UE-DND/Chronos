@@ -58,6 +58,7 @@ export type HostAnalyticsEvent =
 	| 'pwa_install_cta_click'
 	| 'pwa_update_apply'
 	| 'pwa_update_install_fail'
+	| 'external_update_open'
 	| 'update_check_attempt'
 	| 'update_check_success'
 	| 'update_check_fail'
