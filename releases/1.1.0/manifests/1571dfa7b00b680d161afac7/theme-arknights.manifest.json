@@ -1,0 +1,21 @@
+{
+	"id": "theme-arknights",
+	"name": {
+		"zh-CN": "Arknights",
+		"en": "Arknights"
+	},
+	"version": "1.1.0",
+	"description": {
+		"zh-CN": "Arknights 主题",
+		"en": "An unofficial color and icon theme inspired by tactical terminal interfaces"
+	},
+	"author": "Chronos",
+	"type": "theme",
+	"bundleFormat": "esm",
+	"downloadSizeBytes": 858440,
+	"colorsUrl": "../../bundles/theme-arknights/1571dfa7b00b680d161afac7/colors.json",
+	"colorsSha256": "cde328b29e398efd27cfef51551676d34131b5d0e049cd14e2423cfe1d13f928",
+	"themeId": "arknights",
+	"iconThemeUrl": "../../bundles/theme-arknights/1571dfa7b00b680d161afac7/icons.json",
+	"iconThemeSha256": "988ff6fec21eb0294201956122c0f8dc2776937097cc82262a7d59687401c1c5"
+}

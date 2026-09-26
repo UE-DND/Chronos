@@ -1,0 +1,21 @@
+{
+	"id": "tool-today",
+	"name": {
+		"zh-CN": "今日",
+		"en": "Today"
+	},
+	"version": "1.1.0",
+	"description": {
+		"zh-CN": "快速查看当天课程",
+		"en": "Quickly view today's courses"
+	},
+	"author": "Chronos",
+	"type": "tool",
+	"bundleFormat": "esm",
+	"toolGroup": "utility",
+	"downloadSizeBytes": 115493,
+	"bundleUrl": "../../bundles/tool-today/63223159b92f6c997fc62c85/bundle.js",
+	"sha256": "42d47705f45daec17f9a3213709fb0c7bb778324c4ac0a4de670c8acf145262c",
+	"cssUrl": "../../bundles/tool-today/63223159b92f6c997fc62c85/bundle.css",
+	"cssSha256": "5ba81b94ae3fed077c71e4c425d3621b3d951bd38cf26a07d4d4f6e66c17b3f3"
+}
