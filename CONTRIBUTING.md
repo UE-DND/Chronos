@@ -18,13 +18,14 @@ Chronos 使用 [Vite+](https://viteplus.dev) 管理运行时和开发工具。�
 | `vp run build:pages`                                                     | 构建 GitHub Pages 静态站点           |
 | `vp run mobile:build`、`vp run mobile:sync`                              | 构建移动端资源并同步到原生工程       |
 | `vp run mobile:open:android`                                             | 在 Android Studio 中打开工程         |
+| `vp run check:web`、`vp run test:web`                                    | 单独检查或测试 Web 包                |
 | `vp run build:official-plugins`                                          | 单独构建官方插件                     |
 | `vp run verify:official-plugins`                                         | 校验已生成的插件文件                 |
 | `vp run theme:generate`                                                  | 更新默认主题资源快照和首屏颜色       |
 | `vp run bundle:analyze`                                                  | 构建应用并分析包体积                 |
 | `vp run icons:png`                                                       | 从 SVG 生成 PWA 图标                 |
 
-开发和构建任务应使用 `vp run dev`、`vp run build`。不要使用 `vp dev` 或 `vp build`。任务定义见 [vite.config.ts](vite.config.ts) 和 [package.json](package.json)。
+开发和构建任务应从仓库根目录使用 `vp run dev`、`vp run build`。发行参数通过 `--` 传递，例如 `vp run dev -- --distribution cqut`。不要使用 `vp dev` 或 `vp build`。Web 包的单独检查和测试使用 `vp run check:web`、`vp run test:web`。任务定义见 [vite.config.ts](vite.config.ts) 和 [package.json](package.json)。
 
 ### 检查与提交
 

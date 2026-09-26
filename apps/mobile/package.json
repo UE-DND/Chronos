@@ -4,7 +4,6 @@
 	"version": "1.0.2",
 	"type": "module",
 	"scripts": {
-		"build": "vp run --filter @chronos/web build:mobile && vp run sync",
 		"sync": "node --experimental-strip-types ../../scripts/generate-icons.ts && vpx cap sync",
 		"copy": "vpx cap copy",
 		"open:android": "vpx cap open android",

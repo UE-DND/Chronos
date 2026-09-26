@@ -4,15 +4,9 @@
 	"version": "1.0.2",
 	"type": "module",
 	"scripts": {
-		"dev": "node --experimental-strip-types scripts/run-host.ts dev",
-		"build": "node --experimental-strip-types scripts/run-host.ts build",
-		"build:pages": "CHRONOS_DEPLOY_TARGET=pages CHRONOS_DISTRIBUTION=pages node --experimental-strip-types scripts/run-host.ts build && cp build/404.html build/index.html",
-		"build:mobile": "CHRONOS_DEPLOY_TARGET=mobile CHRONOS_DISTRIBUTION=mobile node --experimental-strip-types scripts/run-host.ts build",
-		"preview": "vp preview .",
+		"check:web": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"analyze": "ANALYZE=true node --experimental-strip-types scripts/run-host.ts build",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"test": "vp test -- --run"
+		"test:web": "vp test -- --run"
 	},
 	"dependencies": {
 		"@chronos/core": "workspace:*",
