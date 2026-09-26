@@ -8,6 +8,8 @@ import { AppLauncher } from '@capacitor/app-launcher';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Clipboard } from '@capacitor/clipboard';
 import type { PluginListenerHandle } from '@capacitor/core';
+import type { IHttpService } from '@chronos/core';
+import { MobilePluginHttpAdapter } from './http/mobile-plugin-http-adapter';
 import type {
 	NativeHostBridge,
 	NativeHostCapability,
@@ -277,6 +279,13 @@ export function createMobilePlatformAdapter(): HostPlatformAdapter {
 		shareFile(filename: string, content: string | Uint8Array, mimeType: string) {
 			return shareFileWithMobile(filename, content, mimeType);
 		},
+		...(isNative && platformType === 'android'
+			? {
+					wrapHttpService(inner: IHttpService): IHttpService {
+						return new MobilePluginHttpAdapter(inner);
+					}
+				}
+			: {}),
 		getUpdateAction(): PlatformUpdateAction {
 			return {
 				mode: 'external-link',

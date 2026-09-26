@@ -188,6 +188,36 @@ describe('mobile-platform-adapter', () => {
 		});
 	});
 
+	describe('wrapHttpService', () => {
+		it('does not expose the native proxy outside Capacitor', () => {
+			const adapter = createMobilePlatformAdapter();
+			expect('wrapHttpService' in adapter).toBe(false);
+		});
+
+		it('does not expose the Android proxy on unsupported native platforms', () => {
+			capacitorState.isNative = true;
+			capacitorState.platform = 'ios';
+			const adapter = createMobilePlatformAdapter();
+			expect('wrapHttpService' in adapter).toBe(false);
+		});
+
+		it('wraps inner http service in MobilePluginHttpAdapter on native Android', () => {
+			capacitorState.isNative = true;
+			capacitorState.platform = 'android';
+			const adapter = createMobilePlatformAdapter();
+			expect(typeof adapter.wrapHttpService).toBe('function');
+
+			const innerHttp = {
+				request: vi.fn(),
+				supportsPluginServer: vi.fn().mockReturnValue(false)
+			};
+			const wrapped = adapter.wrapHttpService!(innerHttp);
+
+			expect(wrapped.supportsPluginServer?.('source-cqut', 'preview')).toBe(true);
+			expect(wrapped.supportsPluginServer?.('source-cqut', 'other')).toBe(false);
+		});
+	});
+
 	describe('lifecycle and listener cleanup', () => {
 		it('injects bridge into window and cleans up on teardown', async () => {
 			capacitorState.isNative = true;

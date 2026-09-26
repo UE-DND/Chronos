@@ -25,6 +25,9 @@ export interface WebProviderOptions {
 	allowedDomains?: string[];
 	enablePluginProxy?: boolean;
 	platform?: PlatformType;
+	wrapHttpService?: (
+		inner: import('@chronos/core').IHttpService
+	) => import('@chronos/core').IHttpService;
 	navigation?: {
 		openCourseEditor(courseId: string): void;
 	};
@@ -36,8 +39,11 @@ export interface WebProviderOptions {
  */
 export function createWebProviders(options?: WebProviderOptions) {
 	const baseHttp = new WebHttpProxyProvider(options?.allowedDomains);
-	const http =
+	let http: import('@chronos/core').IHttpService =
 		options?.enablePluginProxy === true ? new PluginProxyHttpAdapter(baseHttp) : baseHttp;
+	if (options?.wrapHttpService) {
+		http = options.wrapHttpService(http);
+	}
 
 	return {
 		storage: new DexieStorageProvider(options?.database, options?.localStorage),

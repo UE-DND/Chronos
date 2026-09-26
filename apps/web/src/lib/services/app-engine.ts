@@ -50,6 +50,7 @@ function createEngine(options?: WebProviderOptions): ChronosEngine {
 	const env = createWebChronosEnv({
 		...options,
 		platform: options?.platform ?? hostPlatform.platformType,
+		wrapHttpService: options?.wrapHttpService ?? hostPlatform.wrapHttpService?.bind(hostPlatform),
 		enablePluginProxy: deploymentHasServerPlugins(),
 		coursePresentation,
 		navigation: {

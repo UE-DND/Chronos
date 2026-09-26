@@ -41,6 +41,9 @@ export interface HostPlatformAdapter {
 		mimeType: string
 	): Promise<NativeShareResult>;
 	getUpdateAction?(): PlatformUpdateAction;
+	wrapHttpService?(
+		inner: import('@chronos/core').IHttpService
+	): import('@chronos/core').IHttpService;
 }
 
 export function getDefaultWebPlatform(): HostPlatformAdapter {
