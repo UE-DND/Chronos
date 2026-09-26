@@ -3,8 +3,13 @@ name: Deploy GitHub Pages
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*.*.*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: '正式版本标签（vX.Y.Z）；重试或回滚也必须选择标签'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -14,28 +19,89 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.validate.outputs.tag }}
+      commit: ${{ steps.source.outputs.commit }}
+      version: ${{ steps.source.outputs.version }}
+      epoch: ${{ steps.source.outputs.epoch }}
+    steps:
+      - id: validate
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Expected a release tag vX.Y.Z'; exit 1; }
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ steps.validate.outputs.tag }}
+      - id: source
+        env:
+          TAG: ${{ steps.validate.outputs.tag }}
+        run: |
+          VERSION="$(node -p "JSON.parse(require('fs').readFileSync('apps/web/package.json','utf8')).version")"
+          [[ "$TAG" == "v$VERSION" ]] || { echo 'Tag and host version differ'; exit 1; }
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "epoch=$(git show -s --format=%ct HEAD)" >> "$GITHUB_OUTPUT"
+
   quality:
+    needs: version
     uses: ./.github/workflows/quality.yml
+    with:
+      ref: ${{ needs.version.outputs.commit }}
 
   build:
-    needs: quality
+    needs: [version, quality]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      previous: ${{ steps.market.outputs.previous }}
     env:
       CHRONOS_DEPLOY_TARGET: pages
       CHRONOS_DISTRIBUTION: pages
+      SOURCE_DATE_EPOCH: ${{ needs.version.outputs.epoch }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
+        with:
+          ref: ${{ needs.version.outputs.commit }}
       - uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
         with:
           node-version: '24'
           cache: true
           run-install: false
-
       - run: vp install --frozen-lockfile
-
       - run: vp run build:pages
-
+      - name: Load immutable plugin history
+        run: |
+          set +e
+          git ls-remote --exit-code origin refs/heads/codex/plugin-dist
+          RESULT=$?
+          set -e
+          if [[ "$RESULT" == 0 ]]; then
+            git fetch origin codex/plugin-dist
+            git worktree add --detach dist/plugin-history FETCH_HEAD
+          elif [[ "$RESULT" == 2 ]]; then
+            git worktree add --detach dist/plugin-history HEAD
+            git -C dist/plugin-history switch --orphan codex/plugin-dist
+          else
+            exit "$RESULT"
+          fi
+      - id: market
+        name: Validate and assemble all published plugin versions
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          COMMIT: ${{ needs.version.outputs.commit }}
+        run: node --experimental-strip-types scripts/official-plugin-build/plugin-release.ts stage dist/plugin-market dist/plugin-history apps/web/build "$VERSION" "$COMMIT"
+      - name: Save immutable plugin history
+        run: |
+          git -C dist/plugin-history add releases
+          if ! git -C dist/plugin-history diff --cached --quiet; then
+            git -C dist/plugin-history -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '📦 保存官方插件发布产物'
+            git -C dist/plugin-history push origin HEAD:refs/heads/codex/plugin-dist
+          fi
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: apps/web/build
@@ -53,3 +119,26 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  verify:
+    needs: [version, build, deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.version.outputs.commit }}
+      - uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+        with:
+          node-version: '24'
+          run-install: false
+      - env:
+          VERSION: ${{ needs.version.outputs.version }}
+          PREVIOUS: ${{ needs.build.outputs.previous }}
+        run: node --experimental-strip-types scripts/official-plugin-build/plugin-release.ts smoke https://ue-dnd.github.io/Chronos/plugins/releases/ "$VERSION" "$PREVIOUS"
+
+  vercel:
+    needs: [version, verify]
+    uses: ./.github/workflows/vercel-production.yml
+    with:
+      tag: ${{ needs.version.outputs.tag }}
+    secrets: inherit

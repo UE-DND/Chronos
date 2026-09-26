@@ -1,9 +1,11 @@
 name: Deploy Vercel production
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -13,27 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  version:
-    runs-on: ubuntu-latest
-    outputs:
-      valid: ${{ steps.validate.outputs.valid }}
-    steps:
-      - id: validate
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo 'valid=true' >> "$GITHUB_OUTPUT"
-          fi
-
-  quality:
-    needs: version
-    if: needs.version.outputs.valid == 'true'
-    uses: ./.github/workflows/quality.yml
-
   deploy:
-    needs: [version, quality]
-    if: needs.version.outputs.valid == 'true'
     runs-on: ubuntu-latest
     environment: production
     env:
@@ -42,6 +24,8 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ inputs.tag }}
 
       - uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
         with:
