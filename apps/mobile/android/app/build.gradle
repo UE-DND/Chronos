@@ -64,6 +64,9 @@ android {
                 storePassword releaseSigning.storePassword
                 keyAlias releaseSigning.keyAlias
                 keyPassword releaseSigning.keyPassword
+                v1SigningEnabled true
+                v2SigningEnabled true
+                enableV3Signing = true
             }
         }
     }

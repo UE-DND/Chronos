@@ -20,15 +20,14 @@ const feed = {
 		'chronos-default': {
 			host: { ...host, target: 'mobile', deploymentId: 'mobile' },
 			apkUrl:
-				'https://github.com/UE-DND/Chronos/releases/download/v1.0.3/Chronos-chronos-default-1.0.3.apk',
+				'https://github.com/UE-DND/Chronos/releases/download/v1.0.3/Chronos-default-1.0.3.apk',
 			sha256: 'd'.repeat(64),
 			sizeBytes: 100,
 			pluginCatalogUrl: 'https://ue-dnd.github.io/Chronos/plugins/releases/1.0.3/catalog.json'
 		},
 		'chronos-cqut': {
 			host: { ...host, profileId: 'chronos-cqut', target: 'mobile', deploymentId: 'mobile' },
-			apkUrl:
-				'https://github.com/UE-DND/Chronos/releases/download/v1.0.3/Chronos-chronos-cqut-1.0.3.apk',
+			apkUrl: 'https://github.com/UE-DND/Chronos/releases/download/v1.0.3/Chronos-cqut-1.0.3.apk',
 			sha256: 'e'.repeat(64),
 			sizeBytes: 100,
 			pluginCatalogUrl: 'https://ue-dnd.github.io/Chronos/plugins/releases/1.0.3/catalog.json'
@@ -40,7 +39,7 @@ describe('published host updates', () => {
 	it('selects only the installed Android profile and signing identity', () => {
 		expect(
 			selectAndroidUpdate(feed, 'chronos-cqut', 'org.uednd.chronos', 'c'.repeat(64)).apkUrl
-		).toContain('chronos-cqut-1.0.3.apk');
+		).toContain('Chronos-cqut-1.0.3.apk');
 		expect(() =>
 			selectAndroidUpdate(feed, 'missing', 'org.uednd.chronos', 'c'.repeat(64))
 		).toThrow();

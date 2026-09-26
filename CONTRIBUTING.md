@@ -117,7 +117,7 @@ Web 的软件更新使用 Service Worker；移动端构建关闭 PWA。Web 在�
 | `build:cqut-offline`           | 上述插件和 `source-cqut`，默认使用 HTML 导入 | 无            |
 | `build:cqut`                   | 上述插件和 `source-cqut`，默认使用在线导入   | `source-cqut` |
 
-Vercel 构建会生成 Serverless 函数和静态资源。Pages 的输出目录是 `apps/web/build`。你可以推送 `v*` 标签部署，也可以手动运行工作流。具体步骤见 [pages.yml](.github/workflows/pages.yml)。
+Vercel 构建会生成 Serverless 函数和静态资源。Pages 的输出目录是 `apps/web/build`。你可以推送 `v*` 标签部署，也可以手动运行工作流。具体步骤见 [release.yml](.github/workflows/release.yml)。
 
 统计服务使用 `PUBLIC_POSTHOG_KEY` 和 `PUBLIC_POSTHOG_HOST`。Key 留空时，生产构建不会包含统计功能。新增服务端插件见 [ADR 0044](.agents/docs/adr/0044-server-plugin-definition-and-deployment-assembly.md)。
 

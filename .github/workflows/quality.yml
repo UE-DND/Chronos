@@ -22,19 +22,26 @@ jobs:
     name: Quality checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref || github.sha }}
 
-      - uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
         with:
           node-version: '24'
           cache: true
           run-install: false
 
-      - run: vp install --frozen-lockfile
-      - run: vp run check
-      - run: vp run test
+      - name: Install dependencies
+        run: vp install --frozen-lockfile
+      - name: Run code check and linter
+        run: vp run check
+      - name: Run test suite
+        run: vp run test
+      - name: Verify official plugins
+        run: vp run verify:official-plugins
 
   build:
     name: Build (${{ matrix.name }})
@@ -60,24 +67,29 @@ jobs:
             command: vp run build:pages
             license_path: apps/web/build/licenses/third-party.json
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref || github.sha }}
 
-      - uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
         with:
           node-version: '24'
           cache: true
           run-install: false
 
-      - run: vp install --frozen-lockfile
-      - run: ${{ matrix.command }}
-      - run: test -s "${{ matrix.license_path }}"
-      - run: vp run verify:official-plugins
+      - name: Install dependencies
+        run: vp install --frozen-lockfile
+      - name: Build ${{ matrix.name }} distribution
+        run: ${{ matrix.command }}
+      - name: Verify third-party license artifact
+        run: test -s "${{ matrix.license_path }}"
 
   complete:
     name: CI complete
     needs: [checks, build]
     runs-on: ubuntu-latest
     steps:
-      - run: 'true'
+      - name: Verify required checks passed
+        run: 'true'

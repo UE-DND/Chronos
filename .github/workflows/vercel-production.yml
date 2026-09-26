@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   deploy:
+    name: Deploy to Vercel production
     runs-on: ubuntu-latest
     environment: production
     env:
@@ -23,18 +24,21 @@ jobs:
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout tagged release
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: refs/tags/${{ inputs.tag }}
 
-      - uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
         with:
           node-version: '24'
           cache: true
           run-install: false
 
-      - run: vp install --frozen-lockfile
-      - name: Deploy tagged version
+      - name: Install dependencies
+        run: vp install --frozen-lockfile
+      - name: Deploy tagged version to Vercel
         env:
           pnpm_config_strict_dep_builds: 'false'
           CHRONOS_DISTRIBUTION: cqut
