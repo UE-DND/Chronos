@@ -170,7 +170,7 @@ export default defineConfig({
 			},
 			'build:official-plugins': {
 				command: 'node --experimental-strip-types scripts/build-official-plugins.ts',
-				env: ['PUBLIC_*', 'VITE_*', 'NODE_ENV', 'SOURCE_DATE_EPOCH']
+				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'SOURCE_DATE_EPOCH']
 			},
 			'fetch:holiday-cn-fallback':
 				'node --experimental-strip-types scripts/fetch-holiday-cn-fallback.ts',

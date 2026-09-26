@@ -4,6 +4,8 @@ import { rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { loadEnv } from 'vite';
+import { verifyHostPlugins } from '../../../scripts/verify-host-plugins.ts';
+import { bundlePreinstall } from '../../../scripts/official-plugin-build/bundle-preinstall.ts';
 import { buildAllOfficialPlugins } from '../../../scripts/official-plugin-build/build-all.ts';
 import { buildAllOfficialPluginsDev } from '../../../scripts/official-plugin-build/build-all-dev.ts';
 import { writeHostBuildContext } from '../../../scripts/official-plugin-build/host-context.ts';
@@ -56,6 +58,12 @@ async function prepareAndRunHost(command: 'build' | 'dev') {
 		command === 'dev'
 			? await buildAllOfficialPluginsDev({ root, environment })
 			: await buildAllOfficialPlugins({ root, environment });
+	if (command === 'build')
+		bundlePreinstall(
+			resolve(root, 'dist/plugin-market'),
+			resolve(webRoot, 'static/official-plugins'),
+			buildContext.profile.preinstall.map((plugin) => plugin.id)
+		);
 	writeHostBuildContext(
 		root,
 		{
@@ -77,6 +85,11 @@ async function prepareAndRunHost(command: 'build' | 'dev') {
 	);
 	rmSync(resolve(webRoot, 'static/licenses/third-party.json'), { force: true });
 	await runCommand('vp', [command, resolve(webRoot), ...args], webRoot);
+	if (command === 'build')
+		verifyHostPlugins(
+			resolve(webRoot, buildContext.target === 'vercel' ? '.vercel/output/static' : 'build'),
+			buildContext.profileId
+		);
 }
 try {
 	await prepareAndRunHost(command);

@@ -2,10 +2,10 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveMarketFile, marketFiles } from './official-plugin-build/market-files.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-/** Manifest/asset URLs are served from apps/web/static. */
-const defaultWebPublicDir = resolve(root, 'apps/web/static');
+const defaultWebPublicDir = resolve(root, 'dist/plugin-market');
 
 const ASSET_FIELDS: ReadonlyArray<readonly [urlField: string, hashField: string]> = [
 	['bundleUrl', 'sha256'],
@@ -40,7 +40,11 @@ function verifySelfContainedPluginCss(
 	const seen = new Set<string>();
 
 	for (const manifestUrl of catalog.manifests) {
-		const manifestPath = resolve(webPublicDir, ...manifestUrl.replace(/^\//, '').split('/'));
+		const manifestPath = resolveMarketFile(
+			webPublicDir,
+			resolve(webPublicDir, 'catalog.json'),
+			manifestUrl
+		);
 		if (!existsSync(manifestPath)) continue;
 		const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;
 		const pluginId = typeof manifest.id === 'string' ? manifest.id : undefined;
@@ -56,7 +60,7 @@ function verifySelfContainedPluginCss(
 			continue;
 		}
 
-		const cssPath = resolve(webPublicDir, ...cssUrl.replace(/^\//, '').split('/'));
+		const cssPath = resolveMarketFile(webPublicDir, manifestPath, cssUrl);
 		if (!existsSync(cssPath)) {
 			console.error(`✗ ${pluginId}: missing bundle.css at ${cssUrl}`);
 			failures++;
@@ -90,13 +94,18 @@ function verifySelfContainedPluginCss(
  * in its manifest. Stale artifacts (rebuilt bundle without recomputed manifest,
  * or vice versa) fail loudly here instead of at user install time.
  */
-export function verifyOfficialPlugins(webPublicDir = defaultWebPublicDir): void {
-	const catalogPath = resolve(webPublicDir, 'official-plugins/catalog.json');
+export function verifyOfficialPlugins(webPublicDir = defaultWebPublicDir, checkCss = true): void {
+	marketFiles(webPublicDir);
+	const catalogPath = resolve(webPublicDir, 'catalog.json');
 	const catalog = JSON.parse(readFileSync(catalogPath, 'utf8')) as { manifests: string[] };
 	let failures = 0;
 
 	for (const manifestUrl of catalog.manifests) {
-		const manifestPath = resolve(webPublicDir, ...manifestUrl.replace(/^\//, '').split('/'));
+		const manifestPath = resolveMarketFile(
+			webPublicDir,
+			resolve(webPublicDir, 'catalog.json'),
+			manifestUrl
+		);
 		if (!existsSync(manifestPath)) {
 			console.error(`✗ missing manifest: ${manifestUrl}`);
 			failures++;
@@ -107,11 +116,11 @@ export function verifyOfficialPlugins(webPublicDir = defaultWebPublicDir): void 
 
 		let assetBytes = 0;
 		if (typeof manifest.colorsUrl === 'string') {
-			const colorPath = resolve(webPublicDir, manifest.colorsUrl.replace(/^\//, ''));
+			const colorPath = resolveMarketFile(webPublicDir, manifestPath, manifest.colorsUrl);
 			if (existsSync(colorPath)) {
 				const wallpaper = JSON.parse(readFileSync(colorPath, 'utf8')).wallpaper;
 				if (wallpaper) {
-					const imagePath = resolve(dirname(colorPath), wallpaper.url);
+					const imagePath = resolveMarketFile(webPublicDir, colorPath, wallpaper.url);
 					if (existsSync(imagePath)) assetBytes += readFileSync(imagePath).byteLength;
 					if (
 						!existsSync(imagePath) ||
@@ -133,7 +142,7 @@ export function verifyOfficialPlugins(webPublicDir = defaultWebPublicDir): void 
 				failures++;
 				continue;
 			}
-			const assetPath = resolve(webPublicDir, ...url.replace(/^\//, '').split('/'));
+			const assetPath = resolveMarketFile(webPublicDir, manifestPath, url);
 			if (!existsSync(assetPath)) {
 				console.error(`✗ ${pluginId}: missing asset ${url}`);
 				failures++;
@@ -155,7 +164,7 @@ export function verifyOfficialPlugins(webPublicDir = defaultWebPublicDir): void 
 		}
 	}
 
-	failures += verifySelfContainedPluginCss(catalog, webPublicDir);
+	if (checkCss) failures += verifySelfContainedPluginCss(catalog, webPublicDir);
 
 	if (failures > 0) {
 		console.error(`verify-official-plugins: ${failures} failure(s)`);
@@ -167,5 +176,5 @@ export function verifyOfficialPlugins(webPublicDir = defaultWebPublicDir): void 
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
-	verifyOfficialPlugins();
+	verifyOfficialPlugins(process.argv[2]);
 }

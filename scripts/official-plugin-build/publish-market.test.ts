@@ -3,7 +3,6 @@ import { mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import * as cache from './cache.ts';
-import { readPublishedPluginLicenses } from '../../apps/web/src/lib/legal/bundled-licenses.ts';
 import { publishOfficialPluginMarket } from './publish-market.ts';
 import { buildManifestForPlugin } from './build-manifest.ts';
 import { verifyOfficialPlugins } from '../verify-official-plugins.ts';
@@ -33,14 +32,19 @@ function plugin(id: string, code: string) {
 }
 it('keeps the live catalog and its bytes readable across failed publication, then switches atomically', () => {
 	root = mkdtempSync(resolve(tmpdir(), 'chronos-market-'));
-	const publicRoot = resolve(root, 'apps/web/static');
-	const catalogPath = resolve(publicRoot, 'official-plugins/catalog.json');
+	const publicRoot = resolve(root, 'dist/plugin-market');
+	const catalogPath = resolve(publicRoot, 'catalog.json');
 	const first = publishOfficialPluginMarket(root, [
 		plugin('fixture', 'old'),
 		plugin('removed', 'removed')
 	]);
 	const originalCatalog = readFileSync(catalogPath, 'utf8');
-	const originalAsset = resolve(publicRoot, String(first[0].manifest!.bundleUrl).slice(1));
+	const originalAsset = resolve(
+		publicRoot,
+		'manifests',
+		'revision',
+		String(first[0].manifest!.bundleUrl)
+	);
 	const write = cache.writeChanged;
 	const observed: boolean[] = [];
 	const spy = vi.spyOn(cache, 'writeChanged').mockImplementation((path, value) => {
@@ -69,17 +73,27 @@ it('keeps the live catalog and its bytes readable across failed publication, the
 	expect(catalog).not.toBe(originalCatalog);
 	expect(readFileSync(originalAsset, 'utf8')).toBe('old');
 	expect(
-		readPublishedPluginLicenses(resolve(root, 'apps/web'))
-			.map((item) => item.version)
+		JSON.parse(
+			readFileSync(
+				resolve(
+					publicRoot,
+					'manifests',
+					JSON.parse(catalog).manifests[0].split('/')[2],
+					'fixture.licenses.json'
+				),
+				'utf8'
+			)
+		)
+			.map((item: { version: string }) => item.version)
 			.sort()
-	).toEqual(['new', 'old', 'removed']);
+	).toEqual(['new']);
 	publishOfficialPluginMarket(root, [plugin('fixture', 'new')]);
 	expect(readFileSync(catalogPath, 'utf8')).toBe(catalog);
 });
 it('never replaces a valid catalog when staged integrity verification fails', () => {
 	root = mkdtempSync(resolve(tmpdir(), 'chronos-market-'));
 	publishOfficialPluginMarket(root, [plugin('fixture', 'old')]);
-	const path = resolve(root, 'apps/web/static/official-plugins/catalog.json');
+	const path = resolve(root, 'dist/plugin-market/catalog.json');
 	const before = readFileSync(path, 'utf8');
 	const invalid = plugin('fixture', 'new');
 	invalid.code = 'corrupted';

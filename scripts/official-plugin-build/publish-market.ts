@@ -25,8 +25,8 @@ export function publishOfficialPluginMarket(
 			for (const field of ['bundleUrl', 'cssUrl', 'colorsUrl', 'iconThemeUrl']) {
 				if (typeof manifest[field] === 'string')
 					manifest[field] = manifest[field].replace(
-						`/bundles/${result.id}/`,
-						`/bundles/${result.id}/${revision}/`
+						`/official-plugins/bundles/${result.id}/`,
+						`../../bundles/${result.id}/${revision}/`
 					);
 			}
 			const output = { ...result, manifest };
@@ -40,7 +40,7 @@ export function publishOfficialPluginMarket(
 				resolve(manifestDir, `${result.id}.licenses.json`),
 				JSON.stringify(result.licenses ?? [])
 			);
-			manifests.push(`/official-plugins/manifests/${revision}/${result.id}.manifest.json`);
+			manifests.push(`./manifests/${revision}/${result.id}.manifest.json`);
 			return output;
 		});
 		let previous: { updatedAt?: number; manifests?: string[] } = {};
@@ -62,7 +62,7 @@ export function publishOfficialPluginMarket(
 			manifests
 		};
 		writeChanged(staged.catalogPath, `${JSON.stringify(catalog, null, '\t')}\n`);
-		verifyOfficialPlugins(resolve(temporary, 'apps/web/static'));
+		verifyOfficialPlugins(dirname(staged.catalogPath));
 		const market = dirname(paths.catalogPath);
 		const stagedMarket = dirname(staged.catalogPath);
 		const copyResources = (relative = '') => {

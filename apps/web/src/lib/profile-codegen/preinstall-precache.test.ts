@@ -13,12 +13,12 @@ it('precaches only profile assets, using deployed paths and downloader integrity
 			join(root, 'static/official-plugins/catalog.json'),
 			JSON.stringify({
 				version: 1,
-				manifests: ['/official-plugins/manifests/revision/theme.manifest.json']
+				manifests: ['./manifests/revision/theme.manifest.json']
 			})
 		);
 		writeFileSync(
 			join(root, 'static/official-plugins/manifests/revision/theme.manifest.json'),
-			JSON.stringify({ colorsUrl: '/official-plugins/bundles/theme/revision/colors.json' })
+			JSON.stringify({ colorsUrl: '../../bundles/theme/revision/colors.json' })
 		);
 		writeFileSync(
 			join(root, 'static/official-plugins/bundles/theme/revision/colors.json'),

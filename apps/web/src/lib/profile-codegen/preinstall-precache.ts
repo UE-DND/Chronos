@@ -21,16 +21,17 @@ export function preinstallPrecache(webRoot: string, profile: ChronosProfile, bas
 	for (const plugin of profile.preinstall) {
 		const url = catalog.manifests.find((url) => url.endsWith(`/${plugin.id}.manifest.json`));
 		if (!url) throw new Error(`Preinstall missing from official catalog: ${plugin.id}`);
-		add(url.slice(1));
-		const manifest = JSON.parse(readFileSync(join(webRoot, 'static', url), 'utf8'));
+		const manifestPath = posix.join('official-plugins', url);
+		add(manifestPath);
+		const manifest = JSON.parse(readFileSync(join(webRoot, 'static', manifestPath), 'utf8'));
 		for (const field of ['bundleUrl', 'cssUrl', 'colorsUrl', 'iconThemeUrl']) {
 			const assetUrl = manifest[field] as string | undefined;
 			if (!assetUrl) continue;
-			add(assetUrl.slice(1));
+			const assetPath = posix.join(posix.dirname(manifestPath), assetUrl);
+			add(assetPath);
 			if (field === 'colorsUrl') {
-				const colors = JSON.parse(readFileSync(join(webRoot, 'static', assetUrl), 'utf8'));
-				if (colors.wallpaper)
-					add(posix.join(posix.dirname(assetUrl), colors.wallpaper.url).slice(1));
+				const colors = JSON.parse(readFileSync(join(webRoot, 'static', assetPath), 'utf8'));
+				if (colors.wallpaper) add(posix.join(posix.dirname(assetPath), colors.wallpaper.url));
 			}
 		}
 	}
