@@ -36,6 +36,16 @@
 			"import": "./server/definition.ts",
 			"default": "./server/definition.ts"
 		},
+		"./mobile": {
+			"types": "./src/mobile/index.ts",
+			"import": "./src/mobile/index.ts",
+			"default": "./src/mobile/index.ts"
+		},
+		"./mobile/definition": {
+			"types": "./src/mobile/definition.ts",
+			"import": "./src/mobile/definition.ts",
+			"default": "./src/mobile/definition.ts"
+		},
 		"./CqutOnlineImportTab": {
 			"types": "./src/CqutOnlineImportTab.svelte",
 			"import": "./src/CqutOnlineImportTab.svelte",
