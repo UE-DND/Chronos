@@ -17,7 +17,7 @@
 		"bits-ui": "^2.19.0",
 		"dexie": "^4.4.5",
 		"hyperellipse": "^1.0.5",
-		"marked": "^18.0.11",
+		"marked": "^18.0.14",
 		"posthog-js": "^1.434.11",
 		"vite-plugin-functions-mixins": "^0.4.1",
 		"workbox-window": "^7.4.1"
