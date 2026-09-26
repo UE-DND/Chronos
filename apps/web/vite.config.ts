@@ -1,3 +1,4 @@
+import { nativeBuildGuard } from '../../scripts/architecture/native-build-guard.ts';
 import { preinstallPrecachePlugin } from './src/lib/profile-codegen/preinstall-precache';
 import { fileURLToPath } from 'node:url';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
@@ -141,6 +142,7 @@ export default defineConfig(({ mode }) => {
 		},
 		plugins: lazyPlugins(() => [
 			hostBuildContextPlugin(monorepoRoot),
+			nativeBuildGuard(targetDef.isMobile),
 			chronosBundleAnalyzer(shouldAnalyze),
 			chronosLicensePlugin(webRoot),
 			materialSymbolsWeightPlugin(),

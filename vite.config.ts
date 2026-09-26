@@ -145,7 +145,7 @@ export default defineConfig({
 				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 			},
 			check:
-				'node --experimental-strip-types apps/web/scripts/emit-profile-artifacts.ts && vp check',
+				'node --experimental-strip-types scripts/architecture/check-boundaries.ts && node --experimental-strip-types apps/web/scripts/emit-profile-artifacts.ts && vp check && vp run --filter @chronos/web check:web',
 			'check:watch': {
 				command:
 					'(cd apps/web && svelte-kit sync) && svelte-check --tsconfig ./apps/web/tsconfig.json --watch',

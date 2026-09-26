@@ -1,0 +1,107 @@
+{
+	"schemaVersion": 1,
+	"id": "scenario-timetable",
+	"name": "回归验证课表",
+	"courses": [
+		{
+			"id": "scenario-0",
+			"name": "线性代数",
+			"teacher": "示例教师",
+			"location": "A101",
+			"dayOfWeek": 1,
+			"startPeriod": 1,
+			"endPeriod": 2,
+			"weeks": [1, 3, 5, 7, 9, 11, 13, 15],
+			"remark": ""
+		},
+		{
+			"id": "scenario-4",
+			"name": "课程设计",
+			"teacher": "示例教师",
+			"location": "A101",
+			"dayOfWeek": 1,
+			"startPeriod": 2,
+			"endPeriod": 3,
+			"weeks": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+			"remark": ""
+		},
+		{
+			"id": "scenario-1",
+			"name": "大学英语",
+			"teacher": "示例教师",
+			"location": "A101",
+			"dayOfWeek": 2,
+			"startPeriod": 3,
+			"endPeriod": 4,
+			"weeks": [2, 4, 6, 8, 10, 12, 14, 16],
+			"remark": ""
+		},
+		{
+			"id": "scenario-2",
+			"name": "数据库原理",
+			"teacher": "示例教师",
+			"location": "A101",
+			"dayOfWeek": 3,
+			"startPeriod": 1,
+			"endPeriod": 2,
+			"weeks": [1, 2, 3, 4, 5, 6, 7, 8],
+			"remark": ""
+		},
+		{
+			"id": "scenario-3",
+			"name": "数据库原理",
+			"teacher": "示例教师",
+			"location": "A101",
+			"dayOfWeek": 3,
+			"startPeriod": 3,
+			"endPeriod": 4,
+			"weeks": [9, 10, 11, 12, 13, 14, 15, 16],
+			"remark": ""
+		},
+		{
+			"id": "scenario-5",
+			"name": "周末实验",
+			"teacher": "示例教师",
+			"location": "A101",
+			"dayOfWeek": 6,
+			"startPeriod": 1,
+			"endPeriod": 2,
+			"weeks": [1, 2, 3, 4],
+			"remark": ""
+		}
+	],
+	"academicConfig": {
+		"termStartDate": "2026-03-02",
+		"startWeek": 1,
+		"endWeek": 16,
+		"periodTimes": [
+			{
+				"index": 1,
+				"startTime": "08:00",
+				"endTime": "08:45"
+			},
+			{
+				"index": 2,
+				"startTime": "09:00",
+				"endTime": "09:45"
+			},
+			{
+				"index": 3,
+				"startTime": "10:00",
+				"endTime": "10:45"
+			},
+			{
+				"index": 4,
+				"startTime": "11:00",
+				"endTime": "11:45"
+			}
+		]
+	},
+	"viewPrefs": {
+		"showSaturday": true,
+		"showSunday": false,
+		"showNonCurrentWeekCourses": true
+	},
+	"createdAt": 1772409600000,
+	"updatedAt": 1772409600000
+}
