@@ -17,6 +17,29 @@ export interface PluginServerDefinition {
 	};
 }
 
+/** Build-time metadata for a plugin action that can execute through a native host. */
+export interface MobilePluginServerDefinition {
+	pluginId: string;
+	actions: readonly string[];
+	/** HTTPS origins whose cookies must be cleared when the short-lived session ends. */
+	cookieOrigins: readonly string[];
+}
+
+export interface MobilePluginServerContext {
+	createHttpSession():
+		| import('./services').IHostHttpSession
+		| Promise<import('./services').IHostHttpSession>;
+}
+
+export type MobilePluginServerHandler = (
+	payload: unknown,
+	options?: { timeoutMs?: number; signal?: AbortSignal }
+) => Promise<PluginServerResponse<unknown>>;
+
+export interface MobilePluginServerModule {
+	createHandlers(context: MobilePluginServerContext): Record<string, MobilePluginServerHandler>;
+}
+
 export interface PluginServerManifest {
 	handlers: Record<string, Partial<Record<PluginHttpMethod, PluginServerHandler>>>;
 	proxy?: {
