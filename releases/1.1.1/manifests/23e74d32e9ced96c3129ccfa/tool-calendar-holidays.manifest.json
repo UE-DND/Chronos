@@ -1,0 +1,21 @@
+{
+	"id": "tool-calendar-holidays",
+	"name": {
+		"zh-CN": "法定节假日",
+		"en": "Public Holidays"
+	},
+	"version": "1.1.1",
+	"description": {
+		"zh-CN": "在课表中展示法定节假日",
+		"en": "Show public holidays on the timetable"
+	},
+	"author": "Chronos",
+	"type": "tool",
+	"bundleFormat": "esm",
+	"toolGroup": "utility",
+	"downloadSizeBytes": 96603,
+	"bundleUrl": "../../bundles/tool-calendar-holidays/23e74d32e9ced96c3129ccfa/bundle.js",
+	"sha256": "990e7d89d34050057b0890af30fb2073104ce75351a311f29410f93dbad7e5ab",
+	"cssUrl": "../../bundles/tool-calendar-holidays/23e74d32e9ced96c3129ccfa/bundle.css",
+	"cssSha256": "25fe0cf97acf447a01d779434183554a3630162cb9c9ad0959bd66512f2536b7"
+}

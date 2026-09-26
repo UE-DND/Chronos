@@ -1,0 +1,21 @@
+{
+	"id": "codec-share",
+	"name": {
+		"zh-CN": "分享口令",
+		"en": "Share token"
+	},
+	"version": "1.1.1",
+	"description": {
+		"zh-CN": "通过分享口令导入和分享课表",
+		"en": "Import and share timetables with share tokens"
+	},
+	"author": "Chronos",
+	"type": "tool",
+	"bundleFormat": "esm",
+	"toolGroup": "utility",
+	"downloadSizeBytes": 90789,
+	"bundleUrl": "../../bundles/codec-share/7b910a50c51eaff378b35738/bundle.js",
+	"sha256": "fc72ce6d20f7c9922d8ad6ac64fc2a57458c46a52398be6f7dc56ea130d0f8ef",
+	"cssUrl": "../../bundles/codec-share/7b910a50c51eaff378b35738/bundle.css",
+	"cssSha256": "b7380bf14bf33268208a1b3746a37eb742a992f7841420b4698208da59407c27"
+}
