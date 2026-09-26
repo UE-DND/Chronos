@@ -15,5 +15,6 @@ updates:
       - dependency-name: oxlint-tsgolint
       - dependency-name: oxfmt
       - dependency-name: rolldown
+      - dependency-name: typescript
       - dependency-name: vite
       - dependency-name: vitest
