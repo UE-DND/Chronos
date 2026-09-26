@@ -4,37 +4,53 @@
 
 ## 开发工作流
 
-Chronos 使用 [Vite+](https://viteplus.dev) 管理运行时和开发工具。请使用 `vp` 或 `vpx`，不要直接调用其他包管理器或一次性工具运行器。
+Chronos 是由 Web 宿主、共享包、插件包和 Capacitor 移动端组成的 workspace。项目使用 [Vite+](https://viteplus.dev) 管理依赖和开发工具；在仓库根目录运行命令，并使用 `vp` 或 `vpx`，不要直接调用 npm、pnpm、yarn、npx 等工具。尚未安装 Vite+ 时，请按[官方安装说明](https://viteplus.dev/guide/global-cli)安装全局 `vp` 命令。CI 使用 Node.js 24，本地使用相同主版本可避免运行时差异。
+
+### 初次运行
+
+在仓库根目录安装依赖并启动开发服务器：
+
+```sh
+vp install
+vp run dev
+```
+
+首次克隆、切换分支或拉取依赖变更后运行 `vp install`。开发服务器启动后会在终端打印本地地址；它同时准备本地官方插件市场并支持插件热更新。默认不需要 API 密钥。需要自定义环境变量时，将根目录的 [`.env.example`](.env.example) 复制为 `apps/web/.env.local` 后再修改；该本地文件不会提交到 Git。
+
+遇到运行时或依赖安装问题时，先检查 `vp --version`、`vp toolchain`、`node --version`，再运行 `vp env doctor`。
 
 ### 常用命令
 
-| 命令                                                                     | 用途                               |
-| ------------------------------------------------------------------------ | ---------------------------------- |
-| `vp run dev`                                                             | 启动 Web 开发服务器和本地插件市场  |
-| `vp run check`                                                           | 检查格式、Lint 和类型              |
-| `vp run test`                                                            | 运行全部单元测试                   |
-| `vp run build`                                                           | 按当前环境配置构建应用和插件       |
-| `vp run build:cqut`、`vp run build:cqut-offline`、`vp run build:default` | 使用预设配置构建客户端和服务端插件 |
-| `vp run build:pages`                                                     | 构建 GitHub Pages 静态站点         |
-| `vp run build:official-plugins`                                          | 单独构建官方插件                   |
-| `vp run verify:official-plugins`                                         | 校验已生成的插件文件               |
-| `vp run theme:generate`                                                  | 更新默认主题资源快照和首屏颜色     |
-| `vp run bundle:analyze`                                                  | 构建应用并分析包体积               |
-| `vp run icons:png`                                                       | 从 SVG 生成 PWA 图标               |
+| 命令                                                                     | 用途                                      |
+| ------------------------------------------------------------------------ | ----------------------------------------- |
+| `vp run dev`                                                             | 启动 Web 开发服务器和本地插件市场         |
+| `vp run dev -- --distribution cqut`                                      | 用 CQUT 发行配置启动开发服务器            |
+| `vp run check`                                                           | 检查格式、Lint 和类型                     |
+| `vp run test`                                                            | 构建测试所需的官方插件并运行测试套件      |
+| `vp run check:web`、`vp run test:web`                                    | 单独运行 Web 包检查或测试                 |
+| `vp run build`                                                           | 按默认 target 和发行配置构建应用及插件    |
+| `vp run build:cqut`、`vp run build:cqut-offline`、`vp run build:default` | 构建预设 Web 发行版                       |
+| `vp run build:pages`                                                     | 构建 GitHub Pages 静态站点                |
+| `vp run mobile:build`                                                    | 构建移动端资源并同步 Capacitor 工程       |
+| `vp run mobile:open:android`                                             | 在 Android Studio 中打开 Android 工程     |
+| `vp run --filter @chronos/mobile run:android`                            | 在已配置的设备或模拟器上运行 Android 应用 |
+| `vp run build:official-plugins`、`vp run verify:official-plugins`        | 单独构建或校验官方插件                    |
 
-开发和构建任务应使用 `vp run dev`、`vp run build`。不要使用 `vp dev` 或 `vp build`。任务定义见 [vite.config.ts](vite.config.ts) 和 [package.json](package.json)。
+开发和构建任务应从仓库根目录通过 `vp run` 调用。额外参数放在 `--` 后，例如 `vp run build -- --profile chronos-default`；不要用 `vp dev` 或 `vp build` 代替项目任务。所有任务见 [vite.config.ts](vite.config.ts) 和各 workspace 的 `package.json`。
 
 ### 检查与提交
 
-开发时先运行与改动相关的检查。完成后运行 `vp run check` 和完整的 `vp run test`。修改官方插件时，还要构建插件或对应应用。只修改文档时可以跳过测试，并在结果中说明。
+开发时先运行与改动相关的检查，提交前运行 `vp run check` 和 `vp run test`。只修改文档时可以跳过测试；至少运行 `vp fmt --check <文件>` 和 `git diff --check`。修改官方插件时，还要运行 `vp run build:official-plugins` 或构建对应应用，并验证安装、启用及相关界面行为。
 
-遇到环境问题时，先运行 `vp env doctor`。CI 会检查多个发行配置的构建结果，任务见 [quality.yml](.github/workflows/quality.yml)。
+测试文件与实现放在相应模块附近，使用 `.test.ts` 或 `.spec.ts` 命名。`vp run test` 运行全仓测试并先构建测试依赖的官方插件。CI 还会构建 CQUT、CQUT 离线、默认、Mobile 和 Pages 发行版，见 [quality.yml](.github/workflows/quality.yml)。
 
-提交信息使用 `<emoji> <简洁中文>`，例如 `✨ 新增课表导出功能`。未发布阶段的数据版本和兼容规则见 [AGENTS.md](AGENTS.md#未发布阶段的数据契约)。
+提交信息使用 `<emoji> <简洁中文>`，例如 `✨ 新增课表导出功能`。
+
+开发数据存放在浏览器本地数据库中。当前产品尚未发布，Chronos 自有数据库、结构和线格式版本固定为 `1`；不要新增升级链或旧格式兼容分支。开发数据失效时，手动清空对应站点数据并重新导入，应用不会在启动时自动删除数据。完整约定见 [AGENTS.md](AGENTS.md#未发布阶段的数据契约)。
 
 ### 构建问题排查
 
-构建缓存位于 `dist/plugin-cache`。资源准备、代码编译和市场发布分别使用缓存。日志中的 `resources=hit/built` 和 `compile=hit/built` 表示对应阶段命中缓存或重新生成。输入变化或缓存损坏时，构建会自动重建。要检查无缓存的构建结果，可以手动删除该目录。
+官方插件构建缓存位于 `dist/plugin-cache`。资源准备和代码编译分别缓存；日志中的 `resources=hit/built` 和 `compile=hit/built` 表示缓存命中或重新生成。输入变化或缓存损坏时会自动重建。需要验证无缓存构建时，可在停止相关任务后删除该目录。
 
 开发环境的插件市场由中间件提供，资源写入 `dist/dev-plugins`，不使用生产目录 `static/official-plugins`。热更新（HMR）会跟踪插件源码、共享包、CSS 扫描目录和资源文件。内容未变化时不会重新激活插件。构建失败时会继续使用上一次成功生成的文件。
 
@@ -42,17 +58,58 @@ Chronos 使用 [Vite+](https://viteplus.dev) 管理运行时和开发工具。�
 
 生产构建会合并应用实际打包的依赖和所有发行插件的依赖，并将许可证清单写入发布目录的 `licenses/third-party.json`。开发环境通过中间件提供同一地址，清单可能包含更多依赖。该文件由构建生成，不需要手动修改。
 
+## 架构地图
+
+“宿主”指运行和管理插件的主应用。当前 Web 宿主位于 `apps/web`。找代码时可先按模块职责定位：
+
+| 模块                 | 主要职责                                              | 依赖规则                                                               |
+| -------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------- |
+| `packages/core`      | 领域模型、排课算法、核心引擎、平台接口和插件扩展接口  | 不依赖 DOM、SvelteKit 或特定高校代码                                   |
+| `packages/ui-kit`    | Svelte 组件、响应式控制器、表单 Schema 和插件组件容器 | 依赖 `core`                                                            |
+| `packages/plugins/*` | 数据源、编解码、工具和主题                            | 可以依赖 `core`、`ui-kit` 和通用库；不能引用宿主内部模块或其他业务插件 |
+| `packages/codec-kit` | 字节编解码基础函数                                    | 作为共享库使用，不作为插件加载                                         |
+| `apps/web`           | 页面路由、纯 Web 平台适配、插件安装与主题显示         | 纯 Web 宿主；Vercel/Pages 依赖图不包含 `@capacitor/*` 原生依赖         |
+| `apps/mobile`        | 原生容器工程、移动平台适配器和原生插件集成            | 依赖 Capacitor 原生库；在移动构建时通过配置提供原生平台适配器          |
+| `scripts`            | 插件构建、资源生成和产物校验                          | 具体算法和资源生成逻辑由对应插件实现                                   |
+
+`apps/web` 不直接依赖 `@capacitor/*`。移动能力由 `apps/mobile` 提供，并在 Mobile 静态 SPA 构建时通过配置和别名接入。插件与业务代码应面向 `HostPlatformAdapter` 或 `ChronosEnv` 编程，不要直接导入 Capacitor API。
+
+引擎管理课表等业务状态；`ReactiveChronosController` 将状态提供给界面。宿主通过 `ChronosEnv` 向引擎提供存储、网络等平台能力，插件通过 `ScopedContext` 使用这些能力。插件停用或卸载时，上下文会清理插件注册的资源。
+
+宿主翻译位于 `apps/web/messages/{locale}.json`；插件翻译与插件源码一起维护，通常位于各包的 `src/messages.ts`。宿主界面使用 `hostT`，插件文案使用插件提供的 `t` 或 `pluginText`；修改文案时同时检查 `zh-cn` 和 `en`。
+
 ## 部署指南
 
 Chronos 分别配置客户端预安装的插件、服务端启用的插件和部署平台。
 
-| 变量                    | 作用                                                   | 默认值                                                          |
-| ----------------------- | ------------------------------------------------------ | --------------------------------------------------------------- |
-| `CHRONOS_PROFILE`       | 选择客户端发行配置，包括预安装插件、默认主题和初始偏好 | Pages 使用 `chronos-default`，其他环境使用 `chronos-cqut`       |
-| `CHRONOS_DEPLOYMENT`    | 选择服务端启用的插件                                   | Pages 使用不含服务端插件的 `pages`，其他环境使用 `chronos-cqut` |
-| `CHRONOS_DEPLOY_TARGET` | 选择部署平台和 SvelteKit 适配器                        | 未设置时使用 Vercel；设为 `pages` 时生成纯静态站点              |
+| 变量                    | 作用                                                                   | 默认值                                            |
+| ----------------------- | ---------------------------------------------------------------------- | ------------------------------------------------- |
+| `CHRONOS_DISTRIBUTION`  | 选择 `apps/web/config/distributions.toml` 中的 profile/deployment 组合 | 未指定时按 target 选择默认发行项                  |
+| `CHRONOS_PROFILE`       | 覆盖发行项的客户端 profile                                             | 发行项 profile                                    |
+| `CHRONOS_DEPLOYMENT`    | 覆盖发行项的服务端 deployment                                          | 发行项 deployment                                 |
+| `CHRONOS_DEPLOY_TARGET` | 选择部署平台、适配器和 PWA 构建行为                                    | 未设置时使用 Vercel；也可设为 `pages` 或 `mobile` |
 
-`CHRONOS_PROFILE` 只控制客户端配置，不会改变服务端插件。常用的 `build:*` 任务已设置客户端和服务端配置。自定义组合时，需要分别设置这两项。配置定义见 [profile-definitions.ts](apps/web/src/lib/profile-codegen/profile-definitions.ts) 和 [deployment-definitions.ts](apps/web/src/lib/profile-codegen/deployment-definitions.ts)。
+发行项把 profile 与 deployment 配成一组；deploy target 仍独立选择。Profile 选择客户端预装内容，deployment 选择服务端插件，target 选择平台适配器、SvelteKit 适配器和 PWA 行为。解析优先级为：target 决定默认发行项；`CHRONOS_DISTRIBUTION` / `--distribution` 选择发行项；profile/deployment 环境变量覆盖发行项；对应 CLI 参数优先级最高。常用 `build:*` 任务会显式选择发行项。
+
+需要可复用的自定义组合时，在 `apps/web/config/distributions.toml` 添加发行项：
+
+```toml
+[distributions.my-offline]
+profile = "chronos-cqut-offline"
+deployment = "chronos-default"
+```
+
+然后使用 `CHRONOS_DISTRIBUTION=my-offline vp run build`。临时组合可直接覆盖字段，例如 `vp run build -- --profile chronos-default --deployment chronos-cqut`；也可以使用对应的 `CHRONOS_PROFILE`、`CHRONOS_DEPLOYMENT` 和 `CHRONOS_DEPLOY_TARGET` 环境变量。构建会检查所选 profile、deployment 和 target 的有效性与兼容性。
+
+| Deploy target | 构建形态                        | PWA  | 默认 deployment        |
+| ------------- | ------------------------------- | ---- | ---------------------- |
+| `vercel`      | Vercel Serverless 和静态资源    | 启用 | `chronos-default`      |
+| `pages`       | 静态站点，路径前缀为 `/Chronos` | 启用 | `pages`，无服务端插件  |
+| `mobile`      | Capacitor 使用的静态 SPA        | 禁用 | `mobile`，无服务端插件 |
+
+`vp run mobile:build` 使用 `mobile` target 和 `mobile` 发行项，然后同步 Capacitor 工程。移动端不运行 Web 服务端处理器；带原生实现的动作通过静态注册表在 APK 内执行，Profile 策略可禁用对应动作。target 定义见 [deploy-targets.ts](apps/web/src/lib/config/deploy-targets.ts)，profile 和 deployment 组合见 [distributions.toml](apps/web/config/distributions.toml)。
+
+Web 的软件更新使用 Service Worker；移动端构建关闭 PWA。Web 在准备完已安装可选官方插件后才授权新 Worker 接管，所有窗口随接管刷新。移动端检查独立的 Android 就绪 feed，匹配实际包名、签名与 Profile 后打开固定 GitHub APK 地址；应用更新后后台恢复可选官方插件。具体约束见 [ADR 0047](.agents/docs/adr/0047-host-update-transactions.md)。
 
 | 构建任务                       | 客户端预安装插件                             | 服务端插件    |
 | ------------------------------ | -------------------------------------------- | ------------- |
@@ -63,23 +120,6 @@ Chronos 分别配置客户端预安装的插件、服务端启用的插件和部
 Vercel 构建会生成 Serverless 函数和静态资源。Pages 的输出目录是 `apps/web/build`。你可以推送 `v*` 标签部署，也可以手动运行工作流。具体步骤见 [pages.yml](.github/workflows/pages.yml)。
 
 统计服务使用 `PUBLIC_POSTHOG_KEY` 和 `PUBLIC_POSTHOG_HOST`。Key 留空时，生产构建不会包含统计功能。新增服务端插件见 [ADR 0044](.agents/docs/adr/0044-server-plugin-definition-and-deployment-assembly.md)。
-
-## 架构地图
-
-“宿主”指运行和管理插件的主应用。当前 Web 宿主位于 `apps/web`。其他模块的职责如下。
-
-| 模块                 | 主要职责                                              | 依赖规则                                                               |
-| -------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------- |
-| `packages/core`      | 领域模型、排课算法、核心引擎、平台接口和插件扩展接口  | 不依赖 DOM、SvelteKit 或特定高校代码                                   |
-| `packages/ui-kit`    | Svelte 组件、响应式控制器、表单 Schema 和插件组件容器 | 依赖 `core`                                                            |
-| `packages/plugins/*` | 数据源、编解码、工具和主题                            | 可以依赖 `core`、`ui-kit` 和通用库；不能引用宿主内部模块或其他业务插件 |
-| `packages/codec-kit` | 字节编解码基础函数                                    | 作为共享库使用，不作为插件加载                                         |
-| `apps/web`           | 页面路由、平台适配、插件安装、课表导入和主题显示      | 组合并使用其他模块                                                     |
-| `scripts`            | 插件构建、资源生成和产物校验                          | 具体算法和资源生成逻辑由对应插件实现                                   |
-
-引擎管理课表等业务状态。`ReactiveChronosController` 将状态提供给界面，并在状态变化时通知界面。宿主控制器管理页面交互状态。
-
-宿主通过 `ChronosEnv` 向引擎提供存储、网络等平台能力。插件通过 `ScopedContext` 使用这些能力。插件停用或卸载时，上下文会清理插件注册的资源。
 
 ## 插件作者指南
 
@@ -121,20 +161,24 @@ UI 插件在 `bundle/entry.ts` 中导入 `bundle/styles.css`。样式文件需�
 
 插件通过平台接口访问网络、存储等能力。使用可选能力前，先用 `ctx.tryService` 或相应检测方法确认能力可用。
 
-`IHttpService.proxy` 通过 `/api/plugins/{pluginId}/{action}` 调用服务端。调用前，使用 `supportsPluginServer` 检查服务端是否支持对应操作。`bypassCors` 只在支持该功能的原生宿主中生效。
+`IHttpService.proxy` 通过 `/api/plugins/{pluginId}/{action}` 调用服务端。调用前，使用 `supportsPluginServer` 检查当前部署是否支持对应操作。`bypassCors` 在 Web 宿主中需要构建包含服务端插件代理；移动宿主可提供自己的网络实现，不要假定所有部署都支持它。
+
+官方插件 Manifest 的 `optionalServerCapabilities` 表示插件可使用的服务端能力。已声明的能力若在当前部署不可用，插件列表会显示提示，但仍允许安装。当前构建只会把已启用的服务端插件写入该字段，因此未启用的可选能力可能没有提示；插件仍须用 `supportsPluginServer` 检查后再注册相关入口。项目尚无通用的网络依赖声明。联网导入可用 `importKind: 'online'` 标记；其他联网功能应检查请求失败后的行为，并在界面说明限制或降级结果。
 
 服务端插件通过 `./server` 导出请求处理函数，通过 `./server/definition` 导出插件 ID、代理操作（action）和域名等定义。导入定义模块时不要执行其他操作。宿主需要将插件包加入构建依赖，并在部署配置中选择启用的插件 ID。域名声明用于校验和审查，不会限制服务端出站请求。
 
-打开宿主页面时使用 `IHostNavigation`。获取公开链接入口时使用 `IHostLinks`。不要自行拼接宿主内部路径。
+需要 Android 原生代理实现的官方插件还可导出 `./mobile` 与 `./mobile/definition`。移动端定义应声明相同的插件 ID 和服务端 action，以及需要在 session 结束时清理 Cookie 的 HTTPS 来源。handler 通过 `MobilePluginServerContext.createHttpSession()` 获取受限 session，返回 `PluginServerResponse`；不要在插件中导入 Capacitor API。构建会校验定义并生成静态注册表。无原生实现的插件无需添加移动端声明。详见 [ADR 0046](.agents/docs/adr/0046-mobile-plugin-server-execution.md)。
+
+打开宿主课程编辑器时使用 `IHostNavigation.openCourseEditor`。获取公开导入链接时使用 `IHostLinks.getImportUrl`。不要自行拼接宿主内部路径。
 
 ## 新增官方插件
 
 1. 在 `packages/plugins/` 下创建插件包。有业务逻辑或自定义界面的插件使用 ESM。只有静态资源的主题可以只提供 JSON。目录结构可以参考现有同类插件。
 2. 在 [official-plugins.config.ts](scripts/official-plugins.config.ts) 中注册构建入口和市场展示信息。市场文案独立于插件内部词条，因此插件安装前也能显示。
-3. 如果某个发行版本需要预安装该插件，将插件 ID 加入对应 Profile。服务端插件还需要加入部署配置和宿主构建依赖。当前 Profile 要求预安装的插件不能禁用或卸载。
+3. 如果某个发行版本需要预安装该插件，将插件 ID 加入对应 Profile。服务端插件还需要加入部署配置和宿主构建依赖。具备 Android 原生代理实现的插件按上文声明 `./mobile`，无需登记移动端路由。当前 Profile 要求预安装的插件不能禁用或卸载。
 4. 运行插件构建或对应的应用构建，检查安装、激活和失败回滚。可选插件还要检查卸载。有界面的插件还要检查语言切换和关闭界面后的资源清理。
 
-Bundle、Manifest 和 Catalog 都由构建生成，不需要提交到版本库。开发环境通过中间件提供插件市场。生产文件输出到 `apps/web/static/official-plugins/`。
+Bundle、Manifest 和 Catalog 都由构建生成，不需要提交到版本库。开发环境通过中间件提供插件市场。全量生产市场输出到 `dist/plugin-market/`，宿主的 `apps/web/static/official-plugins/` 只包含当前 Profile 必需插件。官方在线目录按宿主版本发布到 GitHub Pages；发布步骤和离线行为见 [插件分发与发布](docs/plugin-distribution.md)。
 
 默认主题如何在首屏前加载、如何补装缺少的预安装插件，以及用户配置和离线资源的处理方式，见 [ADR 0042](.agents/docs/adr/0042-unified-plugin-preinstallation.md)。
 
@@ -156,10 +200,11 @@ Bundle、Manifest 和 Catalog 都由构建生成，不需要提交到版本库�
 | ------------------------------------------- | -------------------------------------------------------------------------------- |
 | `IStorageService`                           | 读写课表、偏好和插件 KV，并查询多个课表中的课程。今日插件已使用 `queryCourses`。 |
 | `IHttpService`                              | 发起请求、调用服务端代理和检查服务端能力。                                       |
+| `IHostHttpSessionService`                   | 向原生插件 handler 提供受限来源的 HTTP session 和 Cookie 生命周期管理。          |
 | `IRuntimeService`                           | 提供平台标识和 SHA-256 计算。                                                    |
 | `IVaultService`                             | 可选的凭据加密存储。Web 端未实现。                                               |
 | `IAnalyticsService`、`IErrorCaptureService` | 提供可选的产品统计和错误捕获。                                                   |
-| `IHostNavigation`、`IHostLinks`             | 提供可选的宿主页面导航和公开链接查询。                                           |
+| `IHostNavigation`、`IHostLinks`             | 提供可选的宿主课程编辑器导航和公开导入链接查询。                                 |
 | `ICoursePresentationService`                | 查询课程调色板，以及按课表获取课程颜色。                                         |
 
 插件 KV 支持 JSON 和二进制数据。二进制数据可以写入 `Blob` 或 `Uint8Array`，读取时统一返回 `Blob`。同一个键只能保存一种数据。写入 JSON 会替换原有二进制数据，反之亦然。详情见 [ADR 0036](.agents/docs/adr/0036-plugin-kv-binary-storage.md)。

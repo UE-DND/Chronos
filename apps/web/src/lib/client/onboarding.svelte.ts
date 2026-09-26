@@ -1,4 +1,5 @@
 import { isShellRoute } from '$lib/navigation/routes';
+import { getHostPlatform } from '$lib/platform/host-platform';
 
 const SEEN_KEY = 'chronos:onboarding-seen';
 
@@ -39,15 +40,22 @@ export class OnboardingController {
 
 	private hasChecked = false;
 
+	private get steps(): OnboardingStepId[] {
+		return getHostPlatform().shouldShowInstallGuide
+			? (ONBOARDING_STEPS as unknown as OnboardingStepId[])
+			: ONBOARDING_STEPS.filter((step) => step !== 'install');
+	}
+
 	get state(): OnboardingState {
-		const stepIndex = ONBOARDING_STEPS.indexOf(this.currentStepId);
+		const steps = this.steps;
+		const stepIndex = steps.indexOf(this.currentStepId);
 		return {
 			open: this.isOpen,
 			currentStepId: this.currentStepId,
-			stepIndex,
-			stepCount: ONBOARDING_STEPS.length,
+			stepIndex: stepIndex >= 0 ? stepIndex : 0,
+			stepCount: steps.length,
 			canGoBack: stepIndex > 0,
-			isLastStep: stepIndex === ONBOARDING_STEPS.length - 1
+			isLastStep: stepIndex === steps.length - 1
 		};
 	}
 
@@ -84,14 +92,16 @@ export class OnboardingController {
 	}
 
 	next() {
-		const stepIndex = ONBOARDING_STEPS.indexOf(this.currentStepId);
-		const nextStepId = ONBOARDING_STEPS[stepIndex + 1];
+		const steps = this.steps;
+		const stepIndex = steps.indexOf(this.currentStepId);
+		const nextStepId = steps[stepIndex + 1];
 		if (nextStepId) this.currentStepId = nextStepId;
 	}
 
 	back() {
-		const stepIndex = ONBOARDING_STEPS.indexOf(this.currentStepId);
-		const previousStepId = ONBOARDING_STEPS[stepIndex - 1];
+		const steps = this.steps;
+		const stepIndex = steps.indexOf(this.currentStepId);
+		const previousStepId = steps[stepIndex - 1];
 		if (previousStepId) this.currentStepId = previousStepId;
 	}
 

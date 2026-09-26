@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const snackbarKey = vi.fn();
+vi.mock('./pwa-sw', () => ({ probeSwUpdate: vi.fn(), onSwUpdateAvailable: vi.fn() }));
 
 vi.mock('$lib/components/ui/snackbar-state.svelte', () => ({
 	snackbarKey: (...args: unknown[]) => snackbarKey(...args)
@@ -21,7 +22,7 @@ describe('initPwaUpdateUx', () => {
 		storage.clear();
 		snackbarKey.mockClear();
 		vi.resetModules();
-		vi.stubGlobal('window', { location: { assign: vi.fn() } });
+		vi.stubGlobal('window', { location: { assign: vi.fn() }, addEventListener: vi.fn() });
 		vi.stubGlobal('sessionStorage', {
 			getItem: (key: string) => storage.get(key) ?? null,
 			setItem: (key: string, value: string) => {

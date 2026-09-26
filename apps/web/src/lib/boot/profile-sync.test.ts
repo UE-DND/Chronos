@@ -45,7 +45,7 @@ describe('profile and deployment boundaries', () => {
 	it('rejects unknown explicit choices and retains the deployment default', () => {
 		expect(() => resolveProfile('typo')).toThrow('Unknown profile');
 		expect(() => resolveDeployment({ CHRONOS_DEPLOYMENT: 'typo' })).toThrow('Unknown deployment');
-		expect(resolveProfileId({})).toBe('chronos-cqut');
+		expect(resolveProfileId({})).toBe('chronos-default');
 		expect(resolveProfileId({ CHRONOS_DEPLOY_TARGET: 'pages' })).toBe('chronos-default');
 	});
 });

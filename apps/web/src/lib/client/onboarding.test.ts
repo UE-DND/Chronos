@@ -181,4 +181,26 @@ describe('OnboardingController', () => {
 			expect(controller.isActive('/')).toBe(false);
 		});
 	});
+
+	describe('native platform', () => {
+		it('omits the install step when in native platform', async () => {
+			const { setHostPlatform, resetHostPlatform } = await import('$lib/platform/host-platform');
+			setHostPlatform({
+				id: 'mobile',
+				platformType: 'android',
+				isNative: true,
+				supportsPwaInstall: false,
+				shouldShowInstallGuide: false
+			});
+			const nativeController = new OnboardingController();
+
+			expect(nativeController.state.stepCount).toBe(ONBOARDING_STEPS.length - 1);
+			nativeController.openAt('highlights');
+			nativeController.next();
+			expect(nativeController.state.currentStepId).toBe('layout');
+			nativeController.back();
+			expect(nativeController.state.currentStepId).toBe('highlights');
+			resetHostPlatform();
+		});
+	});
 });

@@ -164,7 +164,8 @@ export class DexieStorageProvider implements IStorageService {
 			if (typeof sessionStorage !== 'undefined') {
 				clearKeysWithPrefix(sessionStorage, 'chronos');
 			}
-			await clearAppCaches(this.cacheStore);
+			// Installed PWA code and bundled required plugins play the same role as APK assets.
+			await clearAppCaches(this.cacheStore, { keepHostAssets: true });
 			this.notifyChange({ type: 'preferences', key: 'clearAllData' });
 			this.notifyChange({ type: 'timetable', key: 'clearAllData' });
 		} catch (err) {

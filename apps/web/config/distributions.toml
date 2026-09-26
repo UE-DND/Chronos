@@ -1,0 +1,24 @@
+[defaults]
+vercel = "default"
+pages = "pages"
+mobile = "mobile"
+
+[distributions.default]
+profile = "chronos-default"
+deployment = "chronos-default"
+
+[distributions.cqut]
+profile = "chronos-cqut"
+deployment = "chronos-cqut"
+
+[distributions.cqut-offline]
+profile = "chronos-cqut-offline"
+deployment = "chronos-cqut-offline"
+
+[distributions.pages]
+profile = "chronos-default"
+deployment = "pages"
+
+[distributions.mobile]
+profile = "chronos-default"
+deployment = "mobile"

@@ -47,6 +47,6 @@ export function resolveShellIcon(ref: unknown): ResolvedShellIcon | undefined {
 	return undefined;
 }
 
-export function shellIconSizeClass(size: ShellIconDescriptor['size'] | undefined): string {
+export function shellIconSizeClass(size?: ShellIconDescriptor['size']): string {
 	return size === 'large' ? 'size-8 sm:size-9' : 'size-[22px] sm:size-6';
 }

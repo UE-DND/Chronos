@@ -19,6 +19,12 @@ export default defineConfig({
 		alias: [
 			{ find: '$lib', replacement: fileURLToPath(new URL('./apps/web/src/lib', import.meta.url)) },
 			{
+				find: '$chronos-platform-adapter',
+				replacement: fileURLToPath(
+					new URL('./apps/web/src/lib/platform/web-platform-adapter.ts', import.meta.url)
+				)
+			},
+			{
 				find: '$app/environment',
 				replacement: fileURLToPath(
 					new URL(
@@ -42,7 +48,7 @@ export default defineConfig({
 			{
 				find: '$app/navigation',
 				replacement: fileURLToPath(
-					new URL('./node_modules/@sveltejs/kit/src/runtime/app/navigation.js', import.meta.url)
+					new URL('./apps/web/src/test-mocks/app-navigation.ts', import.meta.url)
 				)
 			},
 			{
@@ -75,7 +81,7 @@ export default defineConfig({
 	},
 	define: {
 		__BUILD_TIME__: JSON.stringify(new Date().toISOString()),
-		__CHRONOS_PROFILE__: JSON.stringify('chronos-cqut'),
+		__CHRONOS_PROFILE__: JSON.stringify(process.env.CHRONOS_PROFILE ?? 'chronos-default'),
 		__ANALYTICS_ENABLED__: JSON.stringify(true),
 		__SVELTEKIT_APP_VERSION__: JSON.stringify(appVersion),
 		__SVELTEKIT_DEV__: JSON.stringify(false),
@@ -97,27 +103,45 @@ export default defineConfig({
 			},
 			'build:cqut': {
 				command:
-					'CHRONOS_DEPLOYMENT=chronos-cqut CHRONOS_PROFILE=chronos-cqut node --experimental-strip-types apps/web/scripts/run-host.ts build',
+					'CHRONOS_DISTRIBUTION=cqut node --experimental-strip-types apps/web/scripts/run-host.ts build',
 				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 			},
 			'build:cqut-offline': {
 				command:
-					'CHRONOS_DEPLOYMENT=chronos-cqut-offline CHRONOS_PROFILE=chronos-cqut-offline node --experimental-strip-types apps/web/scripts/run-host.ts build',
+					'CHRONOS_DISTRIBUTION=cqut-offline node --experimental-strip-types apps/web/scripts/run-host.ts build',
 				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 			},
 			'build:default': {
 				command:
-					'CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-host.ts build',
+					'CHRONOS_DISTRIBUTION=default node --experimental-strip-types apps/web/scripts/run-host.ts build',
 				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 			},
 			'build:pages': {
 				command:
-					'CHRONOS_DEPLOY_TARGET=pages CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-host.ts build && cp apps/web/build/404.html apps/web/build/index.html',
+					'CHRONOS_DEPLOY_TARGET=pages CHRONOS_DISTRIBUTION=pages node --experimental-strip-types apps/web/scripts/run-host.ts build && cp apps/web/build/404.html apps/web/build/index.html',
 				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
+			},
+			'build:mobile': {
+				command:
+					'CHRONOS_DEPLOY_TARGET=mobile CHRONOS_DISTRIBUTION=mobile node --experimental-strip-types apps/web/scripts/run-host.ts build',
+				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'SOURCE_DATE_EPOCH']
+			},
+			'mobile:build': {
+				command:
+					'CHRONOS_DEPLOY_TARGET=mobile CHRONOS_DISTRIBUTION=mobile node --experimental-strip-types apps/web/scripts/run-host.ts build && vp run --filter @chronos/mobile sync',
+				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'SOURCE_DATE_EPOCH']
+			},
+			'mobile:sync': {
+				command: 'vp run --filter @chronos/mobile sync',
+				cache: false
+			},
+			'mobile:open:android': {
+				command: 'vp run --filter @chronos/mobile open:android',
+				cache: false
 			},
 			'bundle:analyze': {
 				command:
-					'ANALYZE=true CHRONOS_DEPLOYMENT=chronos-default CHRONOS_PROFILE=chronos-default node --experimental-strip-types apps/web/scripts/run-host.ts build',
+					'ANALYZE=true CHRONOS_DISTRIBUTION=default node --experimental-strip-types apps/web/scripts/run-host.ts build',
 				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 			},
 			check:
@@ -132,7 +156,8 @@ export default defineConfig({
 			test: {
 				// App-engine integration tests load the published plugin catalog and bundles.
 				dependsOn: ['build:official-plugins'],
-				command: 'vp test -- --run',
+				command:
+					'node --experimental-strip-types scripts/emit-profile-artifacts.ts && vp test -- --run',
 				cwd: 'apps/web'
 			},
 			'theme:generate': {
@@ -146,7 +171,7 @@ export default defineConfig({
 			},
 			'build:official-plugins': {
 				command: 'node --experimental-strip-types scripts/build-official-plugins.ts',
-				env: ['PUBLIC_*', 'VITE_*', 'NODE_ENV', 'SOURCE_DATE_EPOCH']
+				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'SOURCE_DATE_EPOCH']
 			},
 			'fetch:holiday-cn-fallback':
 				'node --experimental-strip-types scripts/fetch-holiday-cn-fallback.ts',
@@ -159,7 +184,8 @@ export default defineConfig({
 			'apps/web/static/official-plugins/bundles/**',
 			'**/*.bundle.js',
 			'dist/**',
-			'.svelte-kit/'
+			'.svelte-kit/',
+			'apps/mobile/android/**'
 		],
 		options: {
 			typeAware: true,
@@ -186,7 +212,8 @@ export default defineConfig({
 			'**/.svelte-kit/',
 			'**/node_modules/',
 			'/drizzle/',
-			'**/*.generated.ts'
+			'**/*.generated.ts',
+			'apps/mobile/android/**'
 		]
 	},
 	plugins: [
@@ -199,11 +226,18 @@ export default defineConfig({
 	test: {
 		expect: { requireAssertions: true },
 		environment: 'node',
-		include: ['apps/web/src/**/*.{test,spec}.{js,ts}', 'packages/**/*.{test,spec}.{js,ts}'],
+		include: [
+			'apps/web/src/**/*.{test,spec}.{js,ts}',
+			'apps/web/scripts/**/*.{test,spec}.{js,ts}',
+			'apps/mobile/**/*.{test,spec}.{js,ts}',
+			'packages/**/*.{test,spec}.{js,ts}',
+			'scripts/**/*.{test,spec}.{js,ts}'
+		],
 		exclude: [
 			'apps/web/src/**/*.svelte.{test,spec}.{js,ts}',
 			'**/node_modules/**',
-			'packages/**/node_modules/**'
+			'packages/**/node_modules/**',
+			'apps/mobile/**/node_modules/**'
 		],
 		server: {
 			deps: {

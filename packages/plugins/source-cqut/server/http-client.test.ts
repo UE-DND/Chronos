@@ -13,7 +13,19 @@ vi.mock('./config', async (importOriginal) => {
 	};
 });
 
-const { requestStep } = await import('./http-client');
+vi.mock('../src/online/config', async (importOriginal) => {
+	const original = await importOriginal<typeof import('../src/online/config')>();
+	return {
+		...original,
+		CONNECT_TIMEOUT_MS: 100,
+		REQUEST_TIMEOUT_MS: 100,
+		HTTP_RETRY_DELAY_MS: 0,
+		NETWORK_RETRY_COUNT: 2
+	};
+});
+
+const { requestStep } = await import('../src/online/http-client');
+const { NodeCqutSession } = await import('./node-cqut-session');
 
 let server: Server | null = null;
 
@@ -44,7 +56,7 @@ describe('requestStep', () => {
 		})}/hang`;
 
 		const result = await requestStep(
-			new CookieJar(),
+			new NodeCqutSession(new CookieJar()),
 			url,
 			{ method: 'GET' },
 			{},
@@ -70,7 +82,13 @@ describe('requestStep', () => {
 			res.end('ok');
 		})}/flaky`;
 
-		const result = await requestStep(new CookieJar(), url, { method: 'GET' }, {}, '获取课表');
+		const result = await requestStep(
+			new NodeCqutSession(new CookieJar()),
+			url,
+			{ method: 'GET' },
+			{},
+			'获取课表'
+		);
 
 		expect(result.ok).toBe(true);
 		expect(attempts).toBe(2);
@@ -90,7 +108,7 @@ describe('requestStep', () => {
 		})}/retry-500`;
 
 		const result = await requestStep(
-			new CookieJar(),
+			new NodeCqutSession(new CookieJar()),
 			url,
 			{ method: 'GET' },
 			{ retryOnServerError: true },

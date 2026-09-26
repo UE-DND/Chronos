@@ -1,0 +1,13 @@
+# Capacitor web assets (synced from apps/web/build)
+android/app/src/main/assets/public
+android/app/src/main/assets/capacitor.config.json
+
+# Android build outputs & caches
+android/.gradle
+android/build
+android/app/build
+android/.idea
+android/*.iml
+android/app/*.iml
+android/local.properties
+android/.cxx

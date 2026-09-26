@@ -1,10 +1,12 @@
-import { describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { getHostPlatform, resetHostPlatform, setHostPlatform } from '$lib/platform/host-platform';
 import {
 	createSecondaryTransitionGate,
 	getNavigationDirection,
 	hasUAVisualTransition,
 	isActiveNavDirectionTransition,
 	nextNavDirectionTransitionGeneration,
+	shouldUseViewTransition,
 	resolveNavigationDirection,
 	shouldUseViewTransitionWhenSupported,
 	type ViewTransitionNavigation
@@ -13,6 +15,11 @@ import {
 function nav(overrides: Partial<ViewTransitionNavigation> = {}): ViewTransitionNavigation {
 	return { type: 'link', ...overrides };
 }
+
+afterEach(() => {
+	resetHostPlatform();
+	vi.unstubAllGlobals();
+});
 
 describe('getNavigationDirection', () => {
 	it('returns forward when entering secondary routes from the shell', () => {
@@ -73,6 +80,13 @@ describe('resolveNavigationDirection', () => {
 });
 
 describe('view transition support and classification', () => {
+	it('skips snapshot transitions on native Android', () => {
+		setHostPlatform({ ...getHostPlatform(), isNative: true, platformType: 'android' });
+		vi.stubGlobal('document', { startViewTransition: vi.fn() });
+
+		expect(shouldUseViewTransition('forward', nav())).toBe(false);
+	});
+
 	it('returns true for popstate with hasUAVisualTransition', () => {
 		expect(
 			hasUAVisualTransition({

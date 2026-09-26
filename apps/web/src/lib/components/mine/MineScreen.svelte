@@ -35,10 +35,7 @@
 		items: SettingItem[];
 	};
 
-	function resolveIcon(
-		icon: string | undefined,
-		itemId: string
-	): Component<{ class?: string }> | undefined {
+	function resolveIcon(icon: unknown, itemId: string): Component<{ class?: string }> | undefined {
 		const resolved = resolveShellIcon(icon);
 		if (resolved?.kind === 'component') {
 			return resolved.component;
@@ -117,7 +114,9 @@
 	});
 </script>
 
-<div class="mx-auto flex w-full max-w-lg flex-col gap-5 p-4 pt-3 pb-7 text-on-surface">
+<div
+	class="mx-auto flex w-full max-w-lg flex-col gap-5 p-4 pt-[calc(var(--topbar-safe)+0.75rem)] pb-7 text-on-surface"
+>
 	<div class="flex flex-col gap-3">
 		<h1 class="text-page-title text-headline-medium font-medium">
 			{hostT('mine.title')}

@@ -4,8 +4,12 @@ import { ReactiveChronosController } from '@chronos/ui-kit';
 import { getOverlayHistoryPort } from '$lib/navigation/overlay-history-port';
 import { resolveActiveProfile } from '$lib/boot/profile-registry';
 import { registerHostShell } from '$lib/boot/core-shell';
+import { getHostPlatform } from '$lib/platform/host-platform';
 
-import { OfficialPluginService } from '$lib/services/official-plugins/official-plugin-service';
+import {
+	createOfficialPluginService,
+	type OfficialPluginService
+} from '$lib/services/official-plugins/official-plugin-service';
 import { snackbar } from '$lib/components/ui/snackbar-state.svelte';
 import { bindAnalyticsPort, trackEvent } from '$lib/client/analytics';
 import { deploymentHasServerPlugins } from '$lib/boot/plugin-proxy-meta.generated';
@@ -45,8 +49,11 @@ function createEngine(options?: WebProviderOptions): ChronosEngine {
 		return engineRef.current;
 	});
 
+	const hostPlatform = getHostPlatform();
 	const env = createWebChronosEnv({
 		...options,
+		platform: options?.platform ?? hostPlatform.platformType,
+		wrapHttpService: options?.wrapHttpService ?? hostPlatform.wrapHttpService?.bind(hostPlatform),
 		enablePluginProxy: deploymentHasServerPlugins(),
 		coursePresentation,
 		navigation: {
@@ -71,6 +78,7 @@ function createEngine(options?: WebProviderOptions): ChronosEngine {
 	});
 	sharedEngine = engine;
 	engineRef.current = engine;
+	sharedOfficialPlugins = createOfficialPluginService(engine, options?.database);
 	return engine;
 }
 
@@ -82,7 +90,7 @@ async function applyThemeFromPreferences(engine: ChronosEngine): Promise<void> {
 
 async function bootstrapEnginePhase1(engine: ChronosEngine): Promise<void> {
 	registerHostShell(engine);
-	sharedOfficialPlugins ??= new OfficialPluginService(engine);
+	sharedOfficialPlugins ??= createOfficialPluginService(engine);
 	await sharedOfficialPlugins.prepareProfile(resolveActiveProfile());
 	await applyThemeFromPreferences(engine);
 }
@@ -183,7 +191,7 @@ export function getAppController(options?: WebProviderOptions): ReactiveChronosC
 export function getOfficialPluginService(options?: WebProviderOptions): OfficialPluginService {
 	if (!sharedOfficialPlugins) {
 		const engine = getAppEngine(options);
-		sharedOfficialPlugins = new OfficialPluginService(engine);
+		sharedOfficialPlugins = createOfficialPluginService(engine, options?.database);
 	}
 	return sharedOfficialPlugins;
 }

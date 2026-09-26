@@ -126,6 +126,7 @@ export class OfficialPluginAssetPipeline {
 		const url = resolveManifestAssetUrl(colorsUrl, asset.url);
 		const response = await this.engine.http.request(withIntegrityBust(url, asset.sha256), {
 			method: 'GET',
+			timeoutMs: 20_000,
 			signal
 		});
 		if (!response.ok) throw new Error('Failed to download theme wallpaper');
@@ -183,6 +184,7 @@ export class OfficialPluginAssetPipeline {
 		signal?.throwIfAborted?.();
 		const response = await this.engine.http.request(requestUrl, {
 			method: 'GET',
+			timeoutMs: 20_000,
 			signal
 		});
 		if (!response.ok) {

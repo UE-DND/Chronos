@@ -1,21 +1,26 @@
 /// <reference types="node" />
+import { finalizeWorkerArtifacts } from './build-config/worker-artifacts.ts';
+import { createHostIdentity } from './build-config/host-identity.ts';
 import { runCommand, CommandError } from './run-command.ts';
 import { rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { loadEnv } from 'vite';
+import { verifyHostPlugins } from '../../../scripts/verify-host-plugins.ts';
+import { bundlePreinstall } from '../../../scripts/official-plugin-build/bundle-preinstall.ts';
 import { buildAllOfficialPlugins } from '../../../scripts/official-plugin-build/build-all.ts';
 import { buildAllOfficialPluginsDev } from '../../../scripts/official-plugin-build/build-all-dev.ts';
 import { writeHostBuildContext } from '../../../scripts/official-plugin-build/host-context.ts';
-import { resolveProfileId } from '../src/lib/profile-codegen/profile-definitions.ts';
-import { resolveDeployment } from '../src/lib/profile-codegen/deployment-definitions.ts';
+import { parseBuildCliArgs, resolveAndValidateBuildContext } from './build-config/build-context.ts';
 
 const webRoot = fileURLToPath(new URL('..', import.meta.url));
 const root = resolve(webRoot, '../..');
 const command = process.argv[2];
 if (command !== 'build' && command !== 'dev') throw new Error('Expected build or dev');
-const args = process.argv.slice(process.argv[3] === '--' ? 4 : 3);
+const rawArgs = process.argv.slice(process.argv[3] === '--' ? 4 : 3);
+const { options: cliOptions, remainingArgs: args } = parseBuildCliArgs(rawArgs);
 const modeArg = args.findIndex((arg) => arg === '--mode' || arg === '-m');
+
 const mode =
 	(modeArg >= 0 ? args[modeArg + 1] : args.find((arg) => arg.startsWith('--mode='))?.slice(7)) ??
 	(command === 'dev' ? 'development' : 'production');
@@ -24,12 +29,19 @@ const loaded = loadEnv(mode, webRoot, '');
 for (const [key, value] of Object.entries(loaded))
 	if (/^(CHRONOS_|PUBLIC_|VITE_)/.test(key) && process.env[key] === undefined)
 		process.env[key] = value;
-const profileId = resolveProfileId();
-const deployment =
-	process.env.CHRONOS_DEPLOYMENT ??
-	(process.env.CHRONOS_DEPLOY_TARGET === 'pages' ? 'pages' : 'chronos-cqut');
-resolveDeployment();
-process.env.CHRONOS_PROFILE = profileId;
+
+const buildContext = await resolveAndValidateBuildContext({
+	cli: cliOptions,
+	root,
+	command,
+	mode
+});
+
+process.env.CHRONOS_DEPLOY_TARGET = buildContext.target;
+process.env.CHRONOS_DEPLOYMENT = buildContext.deploymentId;
+process.env.CHRONOS_PROFILE = buildContext.profileId;
+process.env.CHRONOS_DISTRIBUTION = buildContext.distributionId;
+
 const environment = Object.fromEntries(
 	Object.entries(process.env).filter(
 		(entry): entry is [string, string] =>
@@ -48,14 +60,20 @@ async function prepareAndRunHost(command: 'build' | 'dev') {
 		command === 'dev'
 			? await buildAllOfficialPluginsDev({ root, environment })
 			: await buildAllOfficialPlugins({ root, environment });
+	if (command === 'build')
+		bundlePreinstall(
+			resolve(root, 'dist/plugin-market'),
+			resolve(webRoot, 'static/official-plugins'),
+			buildContext.profile.preinstall.map((plugin) => plugin.id)
+		);
 	writeHostBuildContext(
 		root,
 		{
 			command,
 			mode,
-			profileId,
-			deployment,
-			base: process.env.CHRONOS_DEPLOY_TARGET === 'pages' ? '/Chronos' : '',
+			profileId: buildContext.profileId,
+			deployment: buildContext.deploymentId,
+			base: buildContext.targetDef.basePath,
 			environment
 		},
 		results
@@ -64,11 +82,22 @@ async function prepareAndRunHost(command: 'build' | 'dev') {
 		root,
 		'dist/host-context',
 		command,
-		profileId,
+		buildContext.profileId,
 		'context.json'
 	);
 	rmSync(resolve(webRoot, 'static/licenses/third-party.json'), { force: true });
 	await runCommand('vp', [command, resolve(webRoot), ...args], webRoot);
+	if (command === 'build') {
+		finalizeWorkerArtifacts(
+			resolve(webRoot, buildContext.target === 'vercel' ? '.vercel/output/static' : 'build'),
+			createHostIdentity(root, buildContext),
+			buildContext.targetDef.basePath
+		);
+		verifyHostPlugins(
+			resolve(webRoot, buildContext.target === 'vercel' ? '.vercel/output/static' : 'build'),
+			buildContext.profileId
+		);
+	}
 }
 try {
 	await prepareAndRunHost(command);

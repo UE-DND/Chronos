@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+vi.mock('hyperellipse', () => ({ registerHyperellipse: vi.fn() }));
 
 const mocks = vi.hoisted(() => ({
 	connectivityInit: vi.fn(),
@@ -28,6 +29,8 @@ vi.mock('$lib/client/pwa-install.svelte', () => ({
 		tryScheduleInstallDialog: mocks.tryScheduleInstallDialog
 	}
 }));
+
+vi.mock('$lib/client/web-host-update', () => ({ recoverInterruptedWebUpdate: vi.fn() }));
 
 vi.mock('$lib/client/analytics', () => ({
 	initAnalytics: mocks.initAnalytics
@@ -84,7 +87,12 @@ describe('createPlatformBootstrap', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.onboardingState.open = false;
-		vi.stubGlobal('window', { __chronosHideBootFallback: vi.fn() });
+		vi.stubGlobal('document', { addEventListener: vi.fn(), removeEventListener: vi.fn() });
+		vi.stubGlobal('window', {
+			__chronosHideBootFallback: vi.fn(),
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn()
+		});
 	});
 
 	afterEach(() => {
@@ -122,5 +130,38 @@ describe('createPlatformBootstrap', () => {
 		platform.init();
 
 		expect(mocks.connectivityInit).toHaveBeenCalledTimes(1);
+	});
+
+	it('hides splash screen on boot failure so error UI is shown', async () => {
+		const { ensureEngineReady } = await import('$lib/services/app-engine');
+		vi.mocked(ensureEngineReady).mockRejectedValueOnce(new Error('Profile boot error'));
+		const hideBootSplash = vi.fn();
+		const showBootFailure = vi.fn();
+		vi.stubGlobal('window', {
+			__chronosHideBootFallback: vi.fn(),
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+			__chronosShowBootFailure: showBootFailure
+		});
+
+		const { setHostPlatform, resetHostPlatform } = await import('./host-platform');
+		setHostPlatform({
+			id: 'mobile',
+			isNative: true,
+			platformType: 'android',
+			supportsPwaInstall: false,
+			shouldShowInstallGuide: false,
+			hideBootSplash
+		});
+
+		const platform = createPlatformBootstrap(deps);
+		platform.init();
+
+		await vi.waitFor(() => {
+			expect(hideBootSplash).toHaveBeenCalled();
+			expect(showBootFailure).toHaveBeenCalled();
+		});
+
+		resetHostPlatform();
 	});
 });

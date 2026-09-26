@@ -37,6 +37,40 @@ export interface HttpResponse {
 	bytes(): Promise<Uint8Array>;
 }
 
+/** Request options for a short-lived, cookie-backed upstream session. */
+export interface HttpSessionRequestOptions {
+	method?: string;
+	headers?: Record<string, string>;
+	body?: string;
+	disableRedirects?: boolean;
+	connectTimeoutMs?: number;
+	readTimeoutMs?: number;
+	signal?: AbortSignal;
+}
+
+export interface HttpSessionResponse {
+	readonly status: number;
+	readonly headers: Record<string, string | string[]>;
+	readonly url: string;
+	text(): Promise<string>;
+	json<T = unknown>(): Promise<T>;
+}
+
+export interface IHostHttpSession {
+	request(url: string, options?: HttpSessionRequestOptions): Promise<HttpSessionResponse>;
+	hasCookie(url: string, name: string): Promise<boolean>;
+	dispose(): Promise<void>;
+}
+
+export interface IHostHttpSessionService {
+	createSession(options: {
+		allowedDomains: readonly string[];
+		cookieOrigins: readonly string[];
+	}): IHostHttpSession | Promise<IHostHttpSession>;
+}
+export const IHostHttpSessionService =
+	createServiceIdentifier<IHostHttpSessionService>('hostHttpSession');
+
 export interface IHttpService {
 	supportsPluginServer?(pluginId: string, action: string): boolean;
 	request(url: string, options?: HttpRequestOptions): Promise<HttpResponse>;

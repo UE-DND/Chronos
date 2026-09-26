@@ -16,6 +16,11 @@
 			"import": "./src/week-merge.ts",
 			"default": "./src/week-merge.ts"
 		},
+		"./online": {
+			"types": "./src/online/index.ts",
+			"import": "./src/online/index.ts",
+			"default": "./src/online/index.ts"
+		},
 		"./server/config": {
 			"types": "./server/config.ts",
 			"import": "./server/config.ts",
@@ -30,6 +35,16 @@
 			"types": "./server/definition.ts",
 			"import": "./server/definition.ts",
 			"default": "./server/definition.ts"
+		},
+		"./mobile": {
+			"types": "./src/mobile/index.ts",
+			"import": "./src/mobile/index.ts",
+			"default": "./src/mobile/index.ts"
+		},
+		"./mobile/definition": {
+			"types": "./src/mobile/definition.ts",
+			"import": "./src/mobile/definition.ts",
+			"default": "./src/mobile/definition.ts"
 		},
 		"./CqutOnlineImportTab": {
 			"types": "./src/CqutOnlineImportTab.svelte",

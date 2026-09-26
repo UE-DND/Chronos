@@ -1,3 +1,5 @@
+import { HOST_BUILD } from '$lib/config/app-meta';
+import { resolveActiveProfile } from '$lib/boot/profile-registry';
 import { json } from '@sveltejs/kit';
 import type { PluginHttpMethod, PluginServerManifest } from '@chronos/core';
 import { pluginServerError } from '@chronos/core';
@@ -9,18 +11,25 @@ export interface PluginDispatcherOptions {
 	activePluginIds?: readonly string[];
 	loadManifest?: (pluginId: string) => Promise<PluginServerManifest | null>;
 	rateLimiter?: PluginRateLimiter;
+	hostIdentity?: { version: string; profileId: string };
+	deniedActions?: { pluginId: string; action: string }[];
 }
 
 export class PluginDispatcher {
 	private readonly activePluginIds: readonly string[];
 	private readonly loadManifest: (pluginId: string) => Promise<PluginServerManifest | null>;
 	private readonly rateLimiter: PluginRateLimiter;
+	private readonly hostIdentity: { version: string; profileId: string };
+	private readonly deniedActions: { pluginId: string; action: string }[];
 	private readonly manifestCache = new Map<string, PluginServerManifest>();
 
 	constructor(options: PluginDispatcherOptions = {}) {
 		this.activePluginIds = options.activePluginIds ?? ACTIVE_SERVER_PLUGIN_IDS;
 		this.loadManifest = options.loadManifest ?? loadServerManifest;
 		this.rateLimiter = options.rateLimiter ?? defaultPluginRateLimiter;
+		this.hostIdentity = options.hostIdentity ?? HOST_BUILD;
+		this.deniedActions =
+			options.deniedActions ?? resolveActiveProfile().deniedPluginServerActions ?? [];
 	}
 
 	private async getManifest(pluginId: string): Promise<PluginServerManifest | null> {
@@ -43,6 +52,18 @@ export class PluginDispatcher {
 			return json(pluginServerError('NotFound', 'Not found'), { status: 404 });
 		}
 
+		if (this.deniedActions.some((entry) => entry.pluginId === pluginId && entry.action === action))
+			return json(pluginServerError('NotFound', 'Action unavailable in this profile'), {
+				status: 404
+			});
+		if (
+			event.request.headers.get('X-Chronos-Version') !== this.hostIdentity.version ||
+			event.request.headers.get('X-Chronos-Profile') !== this.hostIdentity.profileId
+		)
+			return json(
+				pluginServerError('UpdateRequired', 'Update the application before using this action'),
+				{ status: 426 }
+			);
 		const manifest = await this.getManifest(pluginId);
 		const handler = manifest?.handlers[action]?.[method];
 		if (!handler) {

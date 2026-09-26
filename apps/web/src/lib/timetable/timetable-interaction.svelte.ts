@@ -72,6 +72,7 @@ export function createTimetableInteraction(options: TimetableInteractionOptions 
 
 	function enterEditFromLongPress(_event: PointerEvent) {
 		enterEdit();
+		options.onLongPressFeedback?.();
 	}
 
 	function exitEdit() {

@@ -22,6 +22,16 @@
 			"types": "./src/timetable-preview/day-labels.ts",
 			"import": "./src/timetable-preview/day-labels.ts",
 			"default": "./src/timetable-preview/day-labels.ts"
+		},
+		"./timetable/capsule-corners": {
+			"types": "./src/timetable/capsule-corners.ts",
+			"import": "./src/timetable/capsule-corners.ts",
+			"default": "./src/timetable/capsule-corners.ts"
+		},
+		"./utils/fit-width-font.svelte": {
+			"types": "./src/utils/fit-width-font.svelte.ts",
+			"import": "./src/utils/fit-width-font.svelte.ts",
+			"default": "./src/utils/fit-width-font.svelte.ts"
 		}
 	},
 	"dependencies": {

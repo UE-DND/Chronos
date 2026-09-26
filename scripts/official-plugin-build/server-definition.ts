@@ -6,7 +6,7 @@ import type { PluginServerDefinition } from '../../packages/core/src/types/plugi
 import type { OfficialPluginDef } from '../official-plugins.config.ts';
 import { OFFICIAL_PLUGINS } from '../official-plugins.config.ts';
 
-type PluginLocation = Pick<OfficialPluginDef, 'id' | 'sourceDir'>;
+export type PluginLocation = Pick<OfficialPluginDef, 'id' | 'sourceDir'>;
 
 export interface ResolvedServerPlugin {
 	id: string;

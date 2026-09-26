@@ -99,5 +99,8 @@ export {
 export type { PreviewPaintReadySource } from './timetable-preview/preview-paint-ready';
 export * from './timetable-preview/timetable-grid-chrome';
 export * from './timetable-preview/day-labels';
+export * from './platform/clipboard';
 export * from './haptic/haptic';
 export * from './motion/motion';
+export * from './timetable/capsule-corners';
+export * from './utils/fit-width-font.svelte';

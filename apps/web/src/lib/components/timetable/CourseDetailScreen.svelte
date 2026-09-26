@@ -149,7 +149,7 @@
 			<div class="flex flex-wrap gap-2">
 				{#each courseActions as action (action.id)}
 					<Button
-						variant="tonal"
+						variant="outlined"
 						onclick={() => {
 							const ctx = controller.getPluginContextForSlot('course.detail.action', action.id);
 							void action.onExecute(course, ctx);
@@ -162,7 +162,7 @@
 		</section>
 	{/if}
 
-	{#if course.remark.trim()}
+	{#if course.remark?.trim()}
 		<section class="mt-4 rounded-2xl bg-surface-variant/40 p-4">
 			<button
 				type="button"

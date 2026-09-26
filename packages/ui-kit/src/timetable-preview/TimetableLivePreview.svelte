@@ -3,7 +3,8 @@
 	import {
 		AcademicCalendarService,
 		computeTimetableWeekLayout,
-		COURSE_PALETTE_ENTRIES
+		COURSE_PALETTE_ENTRIES,
+		type CoursePaletteEntry
 	} from '@chronos/core';
 	import TimetablePreviewGrid from './TimetablePreviewGrid.svelte';
 	import TimetableWallpaperLayer from './TimetableWallpaperLayer.svelte';

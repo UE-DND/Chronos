@@ -1,9 +1,14 @@
 import type { ExportResult } from '@chronos/core';
+import { writeClipboardText } from '@chronos/ui-kit';
+import { getHostPlatform } from './host-platform';
 
-export function downloadExportResult(
-	result: ExportResult,
-	fallbackFilename = 'timetable-export'
-): void {
+export type ExportDeliveryResult =
+	| { status: 'downloaded'; filename: string }
+	| { status: 'shared'; filename: string }
+	| { status: 'canceled' }
+	| { status: 'failed'; error?: unknown };
+
+function browserDownload(result: ExportResult, fallbackFilename: string): void {
 	const part: BlobPart =
 		typeof result.content === 'string' ? result.content : new Uint8Array(result.content);
 	const blob = new Blob([part], { type: result.mimeType });
@@ -17,25 +22,35 @@ export function downloadExportResult(
 	URL.revokeObjectURL(url);
 }
 
-export async function copyTextWithFallback(text: string): Promise<boolean> {
-	try {
-		await navigator.clipboard.writeText(text);
-		return true;
-	} catch {
+export async function downloadExportResult(
+	result: ExportResult,
+	fallbackFilename = 'timetable-export'
+): Promise<ExportDeliveryResult> {
+	const filename = result.filename ?? fallbackFilename;
+	const platform = getHostPlatform();
+
+	if (platform.isNative && platform.shareFile) {
+		const shareResult = await platform.shareFile(filename, result.content, result.mimeType);
+		if (shareResult.status === 'shared') {
+			return { status: 'shared', filename };
+		}
+		if (shareResult.status === 'canceled') {
+			return { status: 'canceled' };
+		}
 		try {
-			const textarea = document.createElement('textarea');
-			textarea.value = text;
-			textarea.style.position = 'fixed';
-			textarea.style.opacity = '0';
-			document.body.appendChild(textarea);
-			textarea.select();
-			const ok = document.execCommand('copy');
-			document.body.removeChild(textarea);
-			return ok;
-		} catch {
-			return false;
+			browserDownload(result, fallbackFilename);
+			return { status: 'downloaded', filename };
+		} catch (error) {
+			return { status: 'failed', error: shareResult.error ?? error };
 		}
 	}
+
+	browserDownload(result, fallbackFilename);
+	return { status: 'downloaded', filename };
+}
+
+export async function copyTextWithFallback(text: string): Promise<boolean> {
+	return writeClipboardText(text);
 }
 
 export function withTimeout<T>(

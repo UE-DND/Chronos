@@ -34,6 +34,7 @@ const CQUT_OFFLINE_PROFILE: ChronosProfile = {
 	description: 'HTML 课表导入与分享口令，不含知行理工在线同步',
 	defaultTheme: { pluginId: 'theme-m3', themeId: 'm3-default' },
 	defaultImportSlot: 'edu-html',
+	deniedPluginServerActions: [{ pluginId: 'source-cqut', action: 'preview' }],
 	preinstall: [
 		{ id: 'theme-m3', enabled: true },
 		{ id: 'source-cqut', enabled: true },
@@ -47,6 +48,8 @@ export const CHRONOS_PROFILES: Record<string, ChronosProfile> = {
 	'chronos-cqut-offline': CQUT_OFFLINE_PROFILE
 };
 
+import { resolveDeployTarget, getDeployTargetDefinition } from '../config/deploy-targets.ts';
+
 export type ProfileResolveEnv = {
 	CHRONOS_PROFILE?: string;
 	CHRONOS_DEPLOY_TARGET?: string;
@@ -54,7 +57,9 @@ export type ProfileResolveEnv = {
 
 export function resolveProfileId(env: ProfileResolveEnv = process.env): string {
 	if (env.CHRONOS_PROFILE) return env.CHRONOS_PROFILE;
-	return env.CHRONOS_DEPLOY_TARGET === 'pages' ? 'chronos-default' : 'chronos-cqut';
+	const target = resolveDeployTarget(env);
+	const targetDef = getDeployTargetDefinition(target);
+	return targetDef.defaultProfile;
 }
 
 export function resolveProfile(profileId: string): ChronosProfile {

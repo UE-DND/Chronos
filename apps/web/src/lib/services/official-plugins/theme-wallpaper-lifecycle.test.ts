@@ -17,21 +17,29 @@ const manifest = {
 } as PluginManifest;
 
 async function setup() {
-	const persist = vi.fn().mockResolvedValue(undefined);
+	let state: unknown = null;
+	const persist = vi.fn(async (_pluginId: string, _key: string, value: unknown) => {
+		state = structuredClone(value);
+	});
 	const engine = {
-		storage: { setPluginData: persist, clearPluginData: vi.fn() },
+		storage: {
+			getPluginData: async () => structuredClone(state),
+			setPluginData: persist,
+			clearPluginData: vi.fn()
+		},
 		notify: vi.fn(),
 		assertPluginRemovable: vi.fn()
 	} as unknown as ChronosEngine;
 	const store = new OfficialPluginInstalledStore(engine);
-	const previous = {
+	const initial = {
 		manifest,
 		enabled: true,
 		origin: { kind: 'user' as const },
 		installedAt: 1,
 		wallpaperAssetId: 'old-image'
 	};
-	await store.upsert(previous);
+	await store.upsert(initial);
+	const previous = store.find(manifest.id)!;
 	const blobs = new Map<string, Blob>([
 		['old-image', new Blob(['old'])],
 		['custom-wallpaper', new Blob(['user'])]

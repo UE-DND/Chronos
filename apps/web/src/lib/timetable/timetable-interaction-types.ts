@@ -61,6 +61,7 @@ export interface TimetableInteractionOptions {
 	longPressDelayMs?: number;
 	thresholdPx?: number;
 	clickGuardMs?: number;
+	onLongPressFeedback?: () => void;
 }
 
 export interface TimetableInteractionCore {

@@ -118,3 +118,90 @@ describe('buildCatalogManifestMap', () => {
 		});
 	});
 });
+
+describe('release-specific sync', () => {
+	it('updates required plugins from local assets and optional plugins from Pages, leaving external installs alone', async () => {
+		const { vi } = await import('vite-plus/test');
+		const { syncInstalledPluginsWithHost } = await import('./sync-installed-plugins');
+		const remote = 'https://ue-dnd.github.io/Chronos/plugins/releases/';
+		const url = (version: string, id: string) =>
+			`${remote}${version}/manifests/rev/${id}.manifest.json`;
+		const records = [
+			record({
+				manifest: { ...BASE_MANIFEST, id: 'required' },
+				manifestUrl: url('0.4.0', 'required')
+			}),
+			record({
+				manifest: { ...BASE_MANIFEST, id: 'optional' },
+				manifestUrl: url('0.4.0', 'optional')
+			}),
+			record({
+				manifest: { ...BASE_MANIFEST, id: 'external' },
+				manifestUrl: 'https://external.example/manifest.json'
+			})
+		];
+		const install = vi.fn(async () => {});
+		const fetchCatalog = vi.fn(async (catalog: string) => ({
+			version: 1,
+			updatedAt: 0,
+			manifests: catalog.startsWith('/')
+				? ['/official-plugins/manifests/rev/required.manifest.json']
+				: [url('0.4.1', 'optional')]
+		}));
+		const fetchManifest = vi.fn(async (path: string) => ({
+			...BASE_MANIFEST,
+			id: path.includes('required') ? 'required' : 'optional',
+			version: '0.4.1'
+		}));
+		vi.stubEnv('DEV', false);
+		try {
+			await syncInstalledPluginsWithHost({
+				hostVersion: '0.4.1',
+				preinstallIds: ['required'],
+				getInstalledRecords: () => records,
+				install,
+				catalogClient: { fetchCatalog, fetchManifest } as never
+			});
+			expect(fetchCatalog.mock.calls.map(([path]) => path)).toEqual([
+				'/official-plugins/catalog.json',
+				`${remote}0.4.1/catalog.json`
+			]);
+			expect(install.mock.calls).toHaveLength(2);
+		} finally {
+			vi.unstubAllEnvs();
+		}
+	});
+	it('keeps stale cache when the remote catalog is unavailable or has the wrong version', async () => {
+		const { vi } = await import('vite-plus/test');
+		const { syncInstalledPluginsWithHost } = await import('./sync-installed-plugins');
+		const url =
+			'https://ue-dnd.github.io/Chronos/plugins/releases/0.4.1/manifests/rev/test-plugin.manifest.json';
+		const install = vi.fn(async () => {});
+		const cached = record({
+			manifest: BASE_MANIFEST,
+			code: 'cached',
+			manifestUrl: url.replace('0.4.1', '0.4.0')
+		});
+		vi.stubEnv('DEV', false);
+		try {
+			for (const fail of [true, false]) {
+				await syncInstalledPluginsWithHost({
+					hostVersion: '0.4.1',
+					getInstalledRecords: () => [cached],
+					install,
+					catalogClient: {
+						fetchCatalog: async () => {
+							if (fail) throw new Error('offline');
+							return { version: 1, manifests: [url] };
+						},
+						fetchManifest: async () => BASE_MANIFEST
+					} as never
+				});
+			}
+			expect(install).not.toHaveBeenCalled();
+			expect(cached.code).toBe('cached');
+		} finally {
+			vi.unstubAllEnvs();
+		}
+	});
+});

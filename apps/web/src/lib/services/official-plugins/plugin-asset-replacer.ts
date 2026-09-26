@@ -86,7 +86,7 @@ export async function replacePluginAssets(
 
 		if (deps.isDisposed()) throw new DOMException('Aborted', 'AbortError');
 		deps.validate?.();
-		await deps.installedStore.upsert(record);
+		await deps.installedStore.upsert(record, existing?.revision ?? -1);
 		runtimeTouched = false;
 		return record;
 	} catch (err: unknown) {

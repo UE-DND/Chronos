@@ -56,6 +56,18 @@ publishedAt: 2026-08-18
 		expect(result.body).toBe('- 更新内容');
 	});
 
+	it('accepts only HTTPS Android update URLs', () => {
+		expect(
+			parseFrontmatter('---\nandroidUpdateUrl: https://example.com/app\n---\n内容').platforms
+		).toEqual({ android: { updateUrl: 'https://example.com/app' } });
+		expect(
+			parseFrontmatter('---\nandroidUpdateUrl: market://details?id=chronos\n---\n内容').platforms
+		).toBeUndefined();
+		expect(
+			parseFrontmatter('---\nandroidUpdateUrl: javascript:alert(1)\n---\n内容').platforms
+		).toBeUndefined();
+	});
+
 	it('returns trimmed body when frontmatter is missing', () => {
 		const result = parseFrontmatter('纯正文文本');
 		expect(result.name).toBeUndefined();

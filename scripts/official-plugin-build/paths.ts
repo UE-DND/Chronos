@@ -18,8 +18,8 @@ export function createOfficialPluginBuildPaths(
 	root: string,
 	options?: { devPluginsRoot?: string }
 ): OfficialPluginBuildPaths {
-	const staticBundleDir = resolve(root, 'apps/web/static/official-plugins/bundles');
-	const manifestDir = resolve(root, 'apps/web/static/official-plugins/manifests');
+	const staticBundleDir = resolve(root, 'dist/plugin-market/bundles');
+	const manifestDir = resolve(root, 'dist/plugin-market/manifests');
 	const devPluginsRoot = options?.devPluginsRoot ?? resolve(root, 'dist/dev-plugins');
 
 	return {
@@ -27,7 +27,7 @@ export function createOfficialPluginBuildPaths(
 		compileDistDir: resolve(root, 'dist/official-plugins'),
 		staticBundleDir,
 		manifestDir,
-		catalogPath: resolve(root, 'apps/web/static/official-plugins/catalog.json'),
+		catalogPath: resolve(root, 'dist/plugin-market/catalog.json'),
 		devPluginsRoot,
 		devOutDir: (pluginId) => resolve(devPluginsRoot, pluginId),
 		devRevDir: (pluginId, rev) => resolve(devPluginsRoot, pluginId, rev),

@@ -1,6 +1,6 @@
+import { applyPreparedWebUpdate } from '$lib/client/web-host-update';
 import {
 	probeSwUpdate,
-	applyUpdateAndReload,
 	isSwUpdatePending,
 	type ApplyUpdateOptions,
 	type SwUpdateProgress
@@ -30,7 +30,7 @@ export function createDefaultServiceWorkerAdapter(): ServiceWorkerAdapter {
 			return probeSwUpdate();
 		},
 		async applyUpdateAndReload(options?: ApplyUpdateOptions) {
-			return applyUpdateAndReload(options);
+			return applyPreparedWebUpdate(options);
 		}
 	};
 }

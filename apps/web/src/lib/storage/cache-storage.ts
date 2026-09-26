@@ -5,13 +5,11 @@
  * source shared by "clear all data" and the storage-usage estimate.
  */
 
-/** Runtime cache for navigation documents; cleared when a new SW activates. */
-export const PAGES_CACHE_NAME = 'pages-cache';
-
-/** Caches created by this app (SW precache + workbox runtime caches). */
+/** App caches use an owned namespace; generic Workbox or other sites' caches are untouched. */
 const APP_CACHE_PATTERNS: RegExp[] = [
-	/^workbox-precache/,
-	new RegExp(`^(${PAGES_CACHE_NAME}|official-plugins|pwa-manifest|static-legal-licenses)$`)
+	/^chronos-shell:/,
+	/^chronos-.*-precache/,
+	/^chronos-(?:legal|manifest):/
 ];
 
 function isAppCache(cacheName: string): boolean {
@@ -19,13 +17,19 @@ function isAppCache(cacheName: string): boolean {
 }
 
 /** Deletes app-owned caches, keeping third-party entries untouched. */
-export async function clearAppCaches(cacheStorage: CacheStorage | null): Promise<void> {
+export async function clearAppCaches(
+	cacheStorage: CacheStorage | null,
+	options?: { keepHostAssets?: boolean }
+): Promise<void> {
 	if (!cacheStorage) return;
 	try {
 		const names = await cacheStorage.keys();
 		await Promise.all(
 			names
 				.filter((name) => isAppCache(name))
+				.filter(
+					(name) => !options?.keepHostAssets || !/^chronos-shell:|^chronos-.*-precache/.test(name)
+				)
 				.map((name) => cacheStorage.delete(name).catch(() => false))
 		);
 	} catch (err) {

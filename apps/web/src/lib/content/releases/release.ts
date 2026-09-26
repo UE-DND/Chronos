@@ -1,8 +1,26 @@
+export interface AndroidReleaseInfo {
+	updateUrl: string;
+}
+
 export interface Release {
+	hostUpdate?: import('@chronos/core').WebHostUpdate;
 	tagName: string;
 	name: string;
 	publishedAt: string;
 	body: string;
+	platforms?: {
+		android?: AndroidReleaseInfo;
+	};
+}
+
+export function parseAndroidUpdateUrl(value?: string): string | undefined {
+	if (!value?.trim()) return undefined;
+	try {
+		const url = new URL(value.trim());
+		return url.protocol === 'https:' ? url.toString() : undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 export function normalizeReleaseTag(versionName: string): string {
@@ -31,6 +49,7 @@ export function compareReleaseVersions(a: string, b: string): number {
 export function parseFrontmatter(raw: string): {
 	name?: string;
 	publishedAt?: string;
+	platforms?: Release['platforms'];
 	body: string;
 } {
 	const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
@@ -42,9 +61,14 @@ export function parseFrontmatter(raw: string): {
 		const head = line.match(/^([A-Za-z0-9]+)\s*:\s*(.*)$/);
 		if (head) fields[head[1]] = head[2].trim();
 	}
+	const platforms: Release['platforms'] = {};
+	const androidUpdateUrl = parseAndroidUpdateUrl(fields['androidUpdateUrl']);
+	if (androidUpdateUrl) platforms.android = { updateUrl: androidUpdateUrl };
+
 	return {
 		name: fields['name'],
 		publishedAt: fields['publishedAt'],
+		platforms: Object.keys(platforms).length > 0 ? platforms : undefined,
 		body: match[2].trim()
 	};
 }

@@ -4,8 +4,11 @@ import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import tailwindcss from '@tailwindcss/vite';
 import { functionsMixins } from 'vite-plugin-functions-mixins';
 import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus';
-import adapter from '@sveltejs/adapter-vercel';
-import adapterStatic from '@sveltejs/adapter-static';
+import {
+	resolveDeployTarget,
+	getDeployTargetDefinition,
+	createDeployTargetAdapter
+} from './scripts/build-config/deploy-targets.ts';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import { chronosBundleAnalyzer } from './src/lib/profile-codegen/chronos-bundle-analyzer.ts';
@@ -24,27 +27,27 @@ import { chronosLicensePlugin } from './src/lib/legal/chronos-license-plugin';
 import { chronosProfilePlugin } from './src/lib/profile-codegen/chronos-profile-plugin';
 import { resolveProfile, resolveProfileId } from './src/lib/profile-codegen/profile-definitions';
 import { chronosPluginHmrPlugin } from './src/lib/dev/chronos-plugin-hmr-vite.ts';
-import { PAGES_CACHE_NAME } from './src/lib/storage/cache-storage';
+import { createHostIdentity } from './scripts/build-config/host-identity';
 
 const webRoot = fileURLToPath(new URL('.', import.meta.url));
 const monorepoRoot = fileURLToPath(new URL('../..', import.meta.url));
 
-function chronosVersionPlugin() {
+function chronosVersionPlugin(host: ReturnType<typeof createHostIdentity>) {
 	return {
 		name: 'chronos-version',
 		configureServer() {
-			writeGeneratedVersionJson();
+			writeGeneratedVersionJson(host);
 		},
 		buildStart() {
-			writeGeneratedVersionJson();
+			writeGeneratedVersionJson(host);
 		}
 	};
 }
 
-const isPagesBuild = process.env.CHRONOS_DEPLOY_TARGET === 'pages';
+const deployTarget = resolveDeployTarget();
+const targetDef = getDeployTargetDefinition(deployTarget);
 const shouldAnalyze = process.env.ANALYZE === 'true';
-const pagesBase = '/Chronos';
-const basePath = isPagesBuild ? pagesBase : '';
+const basePath = targetDef.basePath;
 
 function resolveManualChunk(id: string): string | undefined {
 	if (!id.includes('node_modules')) return undefined;
@@ -57,21 +60,46 @@ function resolveManualChunk(id: string): string | undefined {
 export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd(), 'PUBLIC_');
 	const bootColors = readHostBuildContext();
+	const host = createHostIdentity(monorepoRoot);
 
 	return {
 		resolve: {
-			alias: createChronosAlias(monorepoRoot),
+			alias: [
+				...createChronosAlias(monorepoRoot),
+				{
+					find: '$chronos-platform-adapter',
+					replacement: targetDef.isMobile
+						? fileURLToPath(
+								new URL('../../apps/mobile/src/mobile-platform-adapter.ts', import.meta.url)
+							)
+						: fileURLToPath(new URL('./src/lib/platform/web-platform-adapter.ts', import.meta.url))
+				}
+			],
 			dedupe: ['svelte']
 		},
 		optimizeDeps: {
 			exclude: ['@material-symbols-svg/svelte']
 		},
 		define: {
-			__BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+			__BUILD_TIME__: JSON.stringify(
+				new Date(Number(process.env.SOURCE_DATE_EPOCH ?? 0) * 1000).toISOString()
+			),
+			__HOST_BUILD__: JSON.stringify(host),
+			__OFFICIAL_PLUGIN_IDS__: JSON.stringify(OFFICIAL_PLUGINS.map((plugin) => plugin.id)),
+			__ANDROID_SIGNING_CERTIFICATE__: JSON.stringify(
+				process.env.PUBLIC_ANDROID_SIGNING_CERT_SHA256 ?? ''
+			),
 			__CHRONOS_PROFILE__: JSON.stringify(resolveProfileId()),
+			__CHRONOS_PLUGIN_MARKET_BASE_URL__: JSON.stringify(
+				process.env.CHRONOS_PLUGIN_MARKET_BASE_URL ?? env.CHRONOS_PLUGIN_MARKET_BASE_URL ?? ''
+			),
+			__ANDROID_RELEASE_FEED_URL__: JSON.stringify(
+				env.PUBLIC_ANDROID_RELEASE_FEED_URL?.trim() ?? ''
+			),
 			__ANALYTICS_ENABLED__: JSON.stringify(
 				mode === 'test' || Boolean(env.PUBLIC_POSTHOG_KEY?.trim())
-			)
+			),
+			__CHRONOS_PLATFORM_TARGET__: JSON.stringify(targetDef.target)
 		},
 		build: {
 			rolldownOptions: {
@@ -118,7 +146,7 @@ export default defineConfig(({ mode }) => {
 			materialSymbolsWeightPlugin(),
 			chronosProfilePlugin(webRoot),
 			preinstallPrecachePlugin(webRoot, resolveProfile(resolveProfileId()), basePath),
-			chronosVersionPlugin(),
+			chronosVersionPlugin(host),
 
 			chronosPluginHmrPlugin({
 				monorepoRoot,
@@ -136,11 +164,10 @@ export default defineConfig(({ mode }) => {
 				paths: {
 					base: basePath
 				},
-				adapter: isPagesBuild
-					? adapterStatic({ fallback: '404.html' })
-					: adapter({ maxDuration: 60, regions: ['sin1'] })
+				adapter: createDeployTargetAdapter(targetDef, host.buildId)
 			}),
 			SvelteKitPWA({
+				disable: targetDef.disablePwa,
 				registerType: 'prompt',
 				manifest: {
 					name: 'Chronos',
@@ -202,44 +229,13 @@ export default defineConfig(({ mode }) => {
 				},
 				workbox: {
 					clientsClaim: true,
-					// Drop stale navigation HTML whenever this SW becomes active
-					// (skipWaiting or last client closed), not only on the in-app install path.
-					importScripts: ['sw-pages-cache-cleanup.js'],
+					// The imported gate pins navigation and environment assets to this host build.
+					importScripts: [`sw-host-gate-${host.buildId}.js`],
+					cacheId: `chronos-${host.profileId}-${host.target}`,
 					globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}'],
-					globIgnores: ['**/official-plugins/**'],
+					globIgnores: ['**/official-plugins/**', '**/plugins/releases/**'],
 					navigateFallback: null,
 					runtimeCaching: [
-						{
-							// SvelteKit emits this bootstrap module after SW generation. Keep it
-							// with the navigation document; SW activate and install clear pages-cache.
-							urlPattern: /\/_app\/env\.js$/,
-							handler: 'CacheFirst',
-							options: {
-								cacheName: PAGES_CACHE_NAME,
-								expiration: { maxEntries: 32, maxAgeSeconds: 2_592_000 }
-							}
-						},
-						{
-							// ADR 0035: document must match the controlling SW.
-							urlPattern: ({ request }: { request: Request }) => request.mode === 'navigate',
-							handler: 'CacheFirst',
-							options: {
-								cacheName: PAGES_CACHE_NAME,
-								expiration: { maxEntries: 32, maxAgeSeconds: 2_592_000 }
-							}
-						},
-						{
-							// Plugin assets ship stable URLs with changing content+sha per
-							// release: CacheFirst would pin stale bytes (and stale sha in
-							// catalog/manifests) for up to 30d and break boot-time sync.
-							urlPattern: /\/official-plugins\//i,
-							handler: 'NetworkFirst',
-							options: {
-								cacheName: 'official-plugins',
-								networkTimeoutSeconds: 5,
-								expiration: { maxEntries: 64, maxAgeSeconds: 2_592_000 }
-							}
-						},
 						{
 							urlPattern: /\/version\.json$/i,
 							handler: 'NetworkOnly'
@@ -248,7 +244,7 @@ export default defineConfig(({ mode }) => {
 							urlPattern: /\/legal\/.*\.md$|\/licenses\/.*$/i,
 							handler: 'CacheFirst',
 							options: {
-								cacheName: 'static-legal-licenses',
+								cacheName: `chronos-legal:${basePath}`,
 								expiration: { maxEntries: 16, maxAgeSeconds: 2_592_000 }
 							}
 						},
@@ -256,7 +252,7 @@ export default defineConfig(({ mode }) => {
 							urlPattern: /\/manifest\.webmanifest$/i,
 							handler: 'NetworkFirst',
 							options: {
-								cacheName: 'pwa-manifest',
+								cacheName: `chronos-manifest:${basePath}`,
 								networkTimeoutSeconds: 5,
 								expiration: { maxEntries: 1, maxAgeSeconds: 86_400 }
 							}
@@ -277,6 +273,7 @@ export default defineConfig(({ mode }) => {
 			setupFiles: ['src/test-setup.ts'],
 			include: [
 				'src/**/*.{test,spec}.{js,ts}',
+				'scripts/**/*.{test,spec}.{js,ts}',
 				'../../packages/**/*.{test,spec}.{js,ts}',
 				'../../scripts/**/*.{test,spec}.{js,ts}'
 			],

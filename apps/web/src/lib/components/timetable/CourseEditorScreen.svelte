@@ -21,7 +21,9 @@
 						label: hostT('course.editor.delete'),
 						icon: DeleteFill,
 						variant: 'danger' as const,
-						onClick: () => (deleteDialogOpen = true)
+						onClick: () => {
+							deleteDialogOpen = true;
+						}
 					}
 				]
 			: []),
@@ -30,7 +32,7 @@
 			label: hostT('course.editor.save'),
 			icon: Check,
 			disabled: !editor.canSave,
-			onClick: editor.save
+			onClick: () => void editor.save()
 		}
 	]);
 

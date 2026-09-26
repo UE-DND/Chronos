@@ -1,0 +1,106 @@
+apply plugin: 'com.android.application'
+
+def appPackageJson = rootProject.file('../../web/package.json')
+if (!appPackageJson.isFile()) {
+    throw new GradleException("Chronos app package.json not found: ${appPackageJson}")
+}
+
+def appVersion = new groovy.json.JsonSlurper().parse(appPackageJson).version
+def versionMatcher = (appVersion =~ /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/)
+if (!versionMatcher.matches()) {
+    throw new GradleException("Expected a stable SemVer app version in apps/web/package.json, got: ${appVersion}")
+}
+
+def versionMajor = versionMatcher[0][1].toInteger()
+def versionMinor = versionMatcher[0][2].toInteger()
+def versionPatch = versionMatcher[0][3].toInteger()
+if (versionMinor >= 1000 || versionPatch >= 1000) {
+    throw new GradleException("Android versionCode encoding requires minor and patch versions below 1000, got: ${appVersion}")
+}
+
+// Keep Android's monotonically increasing versionCode derived from the canonical app SemVer.
+def appVersionCode = versionMajor * 1_000_000 + versionMinor * 1_000 + versionPatch
+if (appVersionCode < 1 || appVersionCode > 2_100_000_000) {
+    throw new GradleException("App version is outside the supported Android versionCode range: ${appVersion}")
+}
+
+def releaseSigning = [
+    storeFile: System.getenv('ANDROID_KEYSTORE_PATH'),
+    storePassword: System.getenv('ANDROID_KEYSTORE_PASSWORD'),
+    keyAlias: System.getenv('ANDROID_KEY_ALIAS'),
+    keyPassword: System.getenv('ANDROID_KEY_PASSWORD')
+]
+def configuredReleaseSigning = releaseSigning.values().any { it }
+if (configuredReleaseSigning && releaseSigning.values().any { !it }) {
+    throw new GradleException('Android release signing requires all ANDROID_KEYSTORE_* and ANDROID_KEY_* values')
+}
+
+gradle.taskGraph.whenReady { graph ->
+    if (graph.allTasks.any { it.name.toLowerCase().contains('release') } && !configuredReleaseSigning) {
+        throw new GradleException('Release APK requires the official signing key; debug signing is not allowed')
+    }
+}
+
+android {
+    namespace = "org.uednd.chronos"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "org.uednd.chronos"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode appVersionCode
+        versionName appVersion
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    if (configuredReleaseSigning) {
+        signingConfigs {
+            release {
+                storeFile file(releaseSigning.storeFile)
+                storePassword releaseSigning.storePassword
+                keyAlias releaseSigning.keyAlias
+                keyPassword releaseSigning.keyPassword
+            }
+        }
+    }
+    buildTypes {
+        release {
+            if (configuredReleaseSigning) signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

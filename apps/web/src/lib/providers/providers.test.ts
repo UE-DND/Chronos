@@ -18,10 +18,13 @@ import type {
 } from '$lib/storage/db';
 
 const hostBase = vi.hoisted(() => ({ value: '' }));
+const publicEnv = vi.hoisted(() => ({ PUBLIC_CHRONOS_SHARE_IMPORT_URL: '' }));
 vi.mock('$app/paths', () => ({ base: '', resolve: (path: string) => hostBase.value + path }));
+vi.mock('$env/dynamic/public', () => ({ env: publicEnv }));
 afterEach(() => {
 	vi.unstubAllGlobals();
 	hostBase.value = '';
+	publicEnv.PUBLIC_CHRONOS_SHARE_IMPORT_URL = '';
 });
 
 vi.mock('$lib/boot/plugin-proxy-meta.generated', () => ({
@@ -472,9 +475,15 @@ describe('Web Providers', () => {
 		expect(providers.http).not.toBeInstanceOf(PluginProxyHttpAdapter);
 	});
 
-	it('clearAllData purges app-owned caches and keeps third-party ones', async () => {
+	it('clearAllData keeps the installed host while purging user resources and runtime caches', async () => {
 		const clearImages = vi.spyOn(db.images, 'clear');
-		const remaining = new Set(['pages-cache', 'official-plugins', 'other-cache']);
+		const remaining = new Set([
+			'chronos-shell:/scope:build',
+			'chronos-default-pages-precache-v2',
+			'chronos-legal:/scope',
+			'pages-cache',
+			'other-cache'
+		]);
 		const deleted: string[] = [];
 		const fakeCaches = {
 			keys: async () => [...remaining],
@@ -493,8 +502,13 @@ describe('Web Providers', () => {
 		await storage.clearAllData();
 
 		expect(clearImages).toHaveBeenCalledOnce();
-		expect(deleted.sort()).toEqual(['official-plugins', 'pages-cache']);
-		expect([...remaining]).toEqual(['other-cache']);
+		expect(deleted).toEqual(['chronos-legal:/scope']);
+		expect([...remaining]).toEqual([
+			'chronos-shell:/scope:build',
+			'chronos-default-pages-precache-v2',
+			'pages-cache',
+			'other-cache'
+		]);
 	});
 
 	it('dispose removes cross-tab storage listener', () => {
@@ -530,4 +544,44 @@ it('host links are unavailable during SSR', () => {
 	vi.stubGlobal('window', undefined);
 	const env = createWebChronosEnv({ database: createMockDb(), localStorage: new MockStorage() });
 	expect(env.hostLinks.getImportUrl()).toBeNull();
+});
+
+it('native host links use a configured public import URL instead of the WebView origin', () => {
+	publicEnv.PUBLIC_CHRONOS_SHARE_IMPORT_URL = 'https://share.example/Chronos/s';
+	vi.stubGlobal('window', {
+		addEventListener: vi.fn(),
+		removeEventListener: vi.fn(),
+		location: { origin: 'https://localhost' }
+	});
+	const env = createWebChronosEnv({
+		database: createMockDb(),
+		localStorage: new MockStorage(),
+		platform: 'android'
+	});
+	expect(env.hostLinks.getImportUrl()).toBe('https://share.example/Chronos/s');
+
+	publicEnv.PUBLIC_CHRONOS_SHARE_IMPORT_URL = '';
+	expect(env.hostLinks.getImportUrl()).toBeNull();
+});
+
+it('reports web platform by default and allows overriding to ios or android', () => {
+	const defaultEnv = createWebChronosEnv({
+		database: createMockDb(),
+		localStorage: new MockStorage()
+	});
+	expect(defaultEnv.platform).toBe('web');
+
+	const iosEnv = createWebChronosEnv({
+		database: createMockDb(),
+		localStorage: new MockStorage(),
+		platform: 'ios'
+	});
+	expect(iosEnv.platform).toBe('ios');
+
+	const androidEnv = createWebChronosEnv({
+		database: createMockDb(),
+		localStorage: new MockStorage(),
+		platform: 'android'
+	});
+	expect(androidEnv.platform).toBe('android');
 });

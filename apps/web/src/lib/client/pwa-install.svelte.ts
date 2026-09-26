@@ -1,5 +1,6 @@
 import { trackEvent } from '$lib/client/analytics';
 import { snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
+import { getHostPlatform } from '$lib/platform/host-platform';
 const INSTALLED_DISPLAY_MODES = ['standalone', 'fullscreen', 'minimal-ui'] as const;
 
 export function isPwaStandalone(): boolean {
@@ -184,6 +185,14 @@ export class PWAInstallController {
 	checkEnvironment() {
 		if (typeof window === 'undefined') return;
 
+		if (!getHostPlatform().supportsPwaInstall) {
+			this.isStandalone = true;
+			this.isInstalledLocally = true;
+			this.isIOS = false;
+			this.isMacSafari = false;
+			return;
+		}
+
 		const flags = readPwaEnvironmentFromWindow(window);
 		this.isStandalone = flags.isStandalone;
 		this.isIOS = flags.isIOS;
@@ -294,6 +303,7 @@ export class PWAInstallController {
 
 	/** Whether the current browser can show a meaningful install entry. */
 	canShowInstallEntry(): boolean {
+		if (!getHostPlatform().supportsPwaInstall) return false;
 		return this.canPrompt || this.isIOS || this.isMacSafari || this.isInstalledLocally;
 	}
 

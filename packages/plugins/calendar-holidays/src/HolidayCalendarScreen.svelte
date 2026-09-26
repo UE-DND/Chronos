@@ -4,7 +4,8 @@
 	import {
 		filterHolidaysInTermRange,
 		formatCompactDate,
-		type CalendarHoliday
+		type CalendarHoliday,
+		type HolidayDataSource
 	} from '@chronos/core';
 	import { HOLIDAY_MESSAGES } from './messages';
 	import { HOLIDAY_PLUGIN_ID } from './constants';
@@ -29,6 +30,12 @@
 	);
 	const groupedHolidays = $derived(groupByMonth(termHolidays));
 	const hasSyncedBefore = $derived(Boolean(holidayCalendar?.syncedAt));
+	const sourceNotes = $derived(formatSourceNotes(holidayCalendar?.sourceByYear));
+	const SOURCE_MESSAGE_KEYS = {
+		bundled: 'screen.sync.source.bundled',
+		cached: 'screen.sync.source.cached',
+		unavailable: 'screen.sync.source.unavailable'
+	} as const;
 
 	function pt(key: keyof (typeof HOLIDAY_MESSAGES)['zh-cn']) {
 		return pluginText(controller, HOLIDAY_PLUGIN_ID, HOLIDAY_MESSAGES, key);
@@ -71,6 +78,21 @@
 		return pt('screen.sync.last').replace('{time}', `${compactDate} ${hour}:${minute}`);
 	}
 
+	function formatSourceNotes(sourceByYear?: Record<number, HolidayDataSource>): string[] {
+		if (!sourceByYear) return [];
+		const notes: string[] = [];
+		for (const source of ['bundled', 'cached', 'unavailable'] as const) {
+			const years = Object.entries(sourceByYear)
+				.filter(([, value]) => value === source)
+				.map(([year]) => year)
+				.sort();
+			if (years.length > 0) {
+				notes.push(pt(SOURCE_MESSAGE_KEYS[source]).replace('{years}', years.join('、')));
+			}
+		}
+		return notes;
+	}
+
 	async function onSync() {
 		if (!timetable) {
 			errorMessage = pt('screen.error.noTimetable');
@@ -110,6 +132,9 @@
 								? pt('screen.sync.resync')
 								: pt('screen.sync.action')}
 					</button>
+					{#each sourceNotes as note (note)}
+						<p class="text-body-small text-amber-700 dark:text-amber-300">{note}</p>
+					{/each}
 					<div class="flex items-center justify-between gap-3">
 						<a
 							class="text-body-small shrink-0 text-primary"

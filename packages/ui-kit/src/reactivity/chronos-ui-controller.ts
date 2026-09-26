@@ -29,7 +29,7 @@ export type ChronosUiSnapshot = {
 	coursePaletteRevision: number;
 };
 
-export interface ChronosUiController extends Disposable {
+export interface ChronosUiController extends Disposable, Readonly<ChronosUiSnapshot> {
 	readonly snapshot: Readable<ChronosUiSnapshot>;
 	readonly overlayHistoryPort?: OverlayHistoryPort;
 	getPluginContext(pluginId: string): ChronosContext;

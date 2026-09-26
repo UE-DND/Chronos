@@ -1,5 +1,5 @@
+import { HOST_BUILD } from '$lib/config/app-meta';
 import { registerSW } from 'virtual:pwa-register';
-import { PAGES_CACHE_NAME } from '$lib/storage/cache-storage';
 
 let registered = false;
 let needRefresh = false;
@@ -8,7 +8,6 @@ let updateServiceWorker: ((reloadPage?: boolean) => Promise<void>) | undefined;
 const updateAvailableListeners = new Set<() => void>();
 
 const CONTROLLER_CHANGE_TIMEOUT_MS = 3000;
-const SW_PROBE_TIMEOUT_MS = 15_000;
 const SW_DOWNLOAD_TIMEOUT_MS = 120_000;
 const SW_WAIT_POLL_MS = 250;
 const SW_UPDATEFOUND_GRACE_MS = 2_000;
@@ -17,7 +16,8 @@ export type SwUpdatePhase = 'downloading' | 'installing' | 'restarting';
 
 export interface SwUpdateProgress {
 	phase: SwUpdatePhase;
-	percent: number;
+	/** Service Worker APIs expose lifecycle states, not byte-level download progress. */
+	percent: number | null;
 }
 
 export type SwUpdateErrorCode =
@@ -45,6 +45,7 @@ export class SwUpdateError extends Error {
 
 export interface ApplyUpdateOptions {
 	onProgress?: (progress: SwUpdateProgress) => void;
+	targetBuildId?: string;
 }
 
 export function isSwUpdatePending(): boolean {
@@ -81,6 +82,12 @@ export function ensurePwaSwRegistered() {
 	// Register immediately: installability requires an active SW with a
 	// fetch handler, idle-deferral delays beforeinstallprompt eligibility.
 	registerServiceWorker();
+	navigator.serviceWorker.addEventListener('controllerchange', () => {
+		void checkControllerIdentity();
+	});
+	document.addEventListener('visibilitychange', () => {
+		if (document.visibilityState === 'visible') void checkControllerIdentity();
+	});
 }
 
 function markUpdatePending(): boolean {
@@ -95,66 +102,6 @@ function reportProgress(
 	onProgress?.(progress);
 }
 
-function waitForInstallingWorker(
-	registration: ServiceWorkerRegistration,
-	timeoutMs = SW_PROBE_TIMEOUT_MS
-): Promise<boolean> {
-	return new Promise((resolve) => {
-		const worker = registration.installing;
-		if (!worker) {
-			resolve(false);
-			return;
-		}
-
-		let settled = false;
-		let timeoutId: ReturnType<typeof setTimeout> | undefined;
-		let pollId: ReturnType<typeof setInterval> | undefined;
-
-		const cleanup = () => {
-			worker.removeEventListener('statechange', onStateChange);
-			if (pollId) clearInterval(pollId);
-			if (timeoutId) clearTimeout(timeoutId);
-		};
-
-		const finish = (value: boolean) => {
-			if (settled) return;
-			settled = true;
-			cleanup();
-			resolve(value);
-		};
-
-		const tryFinishReady = (): boolean => {
-			if (!registration.waiting) return false;
-			finish(markUpdatePending());
-			return true;
-		};
-
-		const onStateChange = () => {
-			if (worker.state === 'installed') {
-				if (tryFinishReady()) return;
-				queueMicrotask(() => {
-					tryFinishReady();
-				});
-			}
-			if (worker.state === 'redundant') {
-				finish(false);
-			}
-		};
-
-		worker.addEventListener('statechange', onStateChange);
-		onStateChange();
-		if (settled) return;
-
-		pollId = setInterval(() => {
-			tryFinishReady();
-		}, SW_WAIT_POLL_MS);
-
-		timeoutId = setTimeout(() => {
-			finish(registration.waiting ? markUpdatePending() : false);
-		}, timeoutMs);
-	});
-}
-
 export async function waitForWaitingWorker(
 	registration: ServiceWorkerRegistration,
 	options?: { onProgress?: (progress: SwUpdateProgress) => void; timeoutMs?: number }
@@ -163,12 +110,12 @@ export async function waitForWaitingWorker(
 	const timeoutMs = options?.timeoutMs ?? SW_DOWNLOAD_TIMEOUT_MS;
 
 	if (registration.waiting) {
-		reportProgress(onProgress, { phase: 'installing', percent: 80 });
+		reportProgress(onProgress, { phase: 'installing', percent: null });
 		markUpdatePending();
 		return 'ready';
 	}
 
-	reportProgress(onProgress, { phase: 'downloading', percent: 5 });
+	reportProgress(onProgress, { phase: 'downloading', percent: null });
 
 	try {
 		await registration.update();
@@ -177,7 +124,7 @@ export async function waitForWaitingWorker(
 	}
 
 	if (registration.waiting) {
-		reportProgress(onProgress, { phase: 'installing', percent: 80 });
+		reportProgress(onProgress, { phase: 'installing', percent: null });
 		markUpdatePending();
 		return 'ready';
 	}
@@ -216,7 +163,7 @@ export async function waitForWaitingWorker(
 
 		const tryFinishReady = (): boolean => {
 			if (!registration.waiting) return false;
-			reportProgress(onProgress, { phase: 'installing', percent: 80 });
+			reportProgress(onProgress, { phase: 'installing', percent: null });
 			markUpdatePending();
 			finish('ready');
 			return true;
@@ -228,7 +175,7 @@ export async function waitForWaitingWorker(
 			}
 			sawInstalling = true;
 			attachedWorker = worker;
-			reportProgress(onProgress, { phase: 'downloading', percent: 25 });
+			reportProgress(onProgress, { phase: 'downloading', percent: null });
 
 			stateChangeListener = () => {
 				if (worker.state === 'installed') {
@@ -283,37 +230,48 @@ function mapWaitingWorkerResultToError(result: WaitForWaitingWorkerResult): SwUp
 
 export async function probeSwUpdate(): Promise<boolean> {
 	if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return false;
-	if (needRefresh) return true;
-
 	try {
-		const registration = await navigator.serviceWorker.getRegistration();
-		if (!registration) return false;
-
-		if (registration.waiting) {
-			return markUpdatePending();
+		const { fetchLatestProjectRelease } =
+			await import('$lib/content/releases/release-feed-adapter');
+		const result = await fetchLatestProjectRelease();
+		if (result.ok) {
+			if (result.value.hostUpdate?.host.buildId !== HOST_BUILD.buildId) return markUpdatePending();
+			needRefresh = Boolean((await navigator.serviceWorker.getRegistration())?.waiting);
 		}
-
-		await registration.update();
-		if (registration.waiting) {
-			return markUpdatePending();
-		}
-
-		if (registration.installing) {
-			return (await waitForInstallingWorker(registration)) || needRefresh;
-		}
-
-		return false;
+		return needRefresh;
 	} catch {
 		return needRefresh;
 	}
 }
-
-async function deletePagesRuntimeCache(): Promise<void> {
-	if (typeof window === 'undefined' || !('caches' in window)) return;
+export function readWorkerIdentity(
+	worker: ServiceWorker
+): Promise<import('@chronos/core').HostBuildIdentity> {
+	return new Promise((resolve, reject) => {
+		const channel = new MessageChannel();
+		const timeout = setTimeout(() => {
+			channel.port1.close();
+			reject(new SwUpdateError('download_failed'));
+		}, 3000);
+		channel.port1.onmessage = (event) => {
+			clearTimeout(timeout);
+			channel.port1.close();
+			resolve(event.data);
+		};
+		worker.postMessage({ type: 'CHRONOS_HOST_IDENTITY' }, [channel.port2]);
+	});
+}
+let reloading = false;
+async function checkControllerIdentity() {
+	if (reloading || !navigator.serviceWorker.controller) return;
 	try {
-		await caches.delete(PAGES_CACHE_NAME);
-	} catch {
-		// ignore cache deletion errors
+		const host = await readWorkerIdentity(navigator.serviceWorker.controller);
+		if (host.buildId === HOST_BUILD.buildId) return;
+		reloading = true;
+		const { disposeAppEngine } = await import('$lib/services/app-engine');
+		disposeAppEngine();
+		window.location.reload();
+	} catch (error) {
+		console.error('[host-generation]', error);
 	}
 }
 
@@ -384,10 +342,9 @@ export async function applyUpdateAndReload(options?: ApplyUpdateOptions): Promis
 
 	if (!registration.waiting) {
 		const result = await waitForWaitingWorker(registration, { onProgress });
-		if (result === 'idle') {
-			reportProgress(onProgress, { phase: 'restarting', percent: 92 });
-			await deletePagesRuntimeCache();
-			reportProgress(onProgress, { phase: 'restarting', percent: 100 });
+		if (result === 'idle' && !options?.targetBuildId) {
+			reportProgress(onProgress, { phase: 'restarting', percent: null });
+			reportProgress(onProgress, { phase: 'restarting', percent: null });
 			reloadPage();
 			return;
 		}
@@ -395,7 +352,7 @@ export async function applyUpdateAndReload(options?: ApplyUpdateOptions): Promis
 			throw mapWaitingWorkerResultToError(result);
 		}
 	} else {
-		reportProgress(onProgress, { phase: 'installing', percent: 80 });
+		reportProgress(onProgress, { phase: 'installing', percent: null });
 		markUpdatePending();
 	}
 
@@ -403,13 +360,17 @@ export async function applyUpdateAndReload(options?: ApplyUpdateOptions): Promis
 		throw new SwUpdateError('download_failed');
 	}
 
-	reportProgress(onProgress, { phase: 'restarting', percent: 92 });
+	if (
+		options?.targetBuildId &&
+		(await readWorkerIdentity(registration.waiting)).buildId !== options.targetBuildId
+	)
+		throw new SwUpdateError('download_failed');
+	reportProgress(onProgress, { phase: 'restarting', percent: null });
 
 	await waitForSwActivationAndReload(
 		() => Promise.resolve(registration),
 		async () => {
-			await deletePagesRuntimeCache();
-			reportProgress(onProgress, { phase: 'restarting', percent: 100 });
+			reportProgress(onProgress, { phase: 'restarting', percent: null });
 			reloadPage();
 		}
 	);

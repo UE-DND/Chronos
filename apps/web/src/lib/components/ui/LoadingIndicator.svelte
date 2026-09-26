@@ -1,7 +1,19 @@
 <script lang="ts">
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
 
-	let { class: className = '' }: { class?: string } = $props();
+	let {
+		size = 'medium',
+		class: className = ''
+	}: {
+		size?: 'small' | 'medium' | 'large';
+		class?: string;
+	} = $props();
+
+	const sizeClasses = {
+		small: 'size-5',
+		medium: 'size-8',
+		large: 'size-12'
+	};
 </script>
 
 <div
@@ -10,7 +22,7 @@
 	aria-label={hostT('ui.loading.aria')}
 >
 	<svg
-		class="size-8 animate-spin text-brand"
+		class="{sizeClasses[size]} animate-spin text-brand"
 		xmlns="http://www.w3.org/2000/svg"
 		fill="none"
 		viewBox="0 0 24 24"

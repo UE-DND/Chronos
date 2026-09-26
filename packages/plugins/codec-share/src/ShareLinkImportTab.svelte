@@ -1,5 +1,10 @@
 <script lang="ts">
-	import { pluginText, previewAndNotify, type ImportTabComponentProps } from '@chronos/ui-kit';
+	import {
+		pluginText,
+		previewAndNotify,
+		readClipboardText,
+		type ImportTabComponentProps
+	} from '@chronos/ui-kit';
 	import { SHARE_CODEC_MESSAGES } from './messages';
 
 	const SHARE_CODEC_PLUGIN_ID = 'codec-share';
@@ -24,7 +29,7 @@
 	async function handleClipboardPreview() {
 		loading = true;
 		try {
-			const content = await navigator.clipboard.readText();
+			const content = await readClipboardText();
 			const ok = await previewAndNotify(
 				transfer,
 				'share-link',

@@ -8,6 +8,7 @@
 	let {
 		manifest,
 		installed = false,
+		needsUpdate = false,
 		task,
 		onInstall,
 		onCancel,
@@ -15,6 +16,7 @@
 	}: {
 		manifest: PluginManifest;
 		installed?: boolean;
+		needsUpdate?: boolean;
 		task?: PluginInstallTask;
 		onInstall: () => void;
 		onCancel: () => void;
@@ -126,6 +128,8 @@
 				{hostT('plugins.action.retry')}
 			</Button>
 		</div>
+	{:else if installed && needsUpdate}
+		<Button variant="outlined" onclick={onInstall}>{hostT('plugins.action.update')}</Button>
 	{:else if installed}
 		<span
 			class="inline-flex items-center gap-1 rounded-full bg-primary-container/50 px-2.5 py-1 text-xs font-medium text-primary"

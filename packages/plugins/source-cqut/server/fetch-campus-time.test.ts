@@ -1,7 +1,8 @@
 import { createServer, type Server } from 'node:http';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
-import { fetchCampusTimeInfo, fetchUserCampusName } from './fetch-campus-time';
+import { fetchCampusTimeInfo, fetchUserCampusName } from '../src/online/fetch-campus-time';
 import { CookieJar } from './cookie-jar';
+import { NodeCqutSession } from './node-cqut-session';
 
 let server: Server | null = null;
 let baseUrl = '';
@@ -67,7 +68,8 @@ describe('fetch-campus-time', () => {
 		});
 
 		const jar = new CookieJar();
-		const result = await fetchUserCampusName(jar, undefined, {
+		const session = new NodeCqutSession(jar);
+		const result = await fetchUserCampusName(session, undefined, {
 			getUserInfoUrl: `${baseUrl}/api/courseSchedule/getUserInfo`
 		});
 		expect(result.ok).toBe(true);
@@ -97,7 +99,8 @@ describe('fetch-campus-time', () => {
 		});
 
 		const jar = new CookieJar();
-		const result = await fetchCampusTimeInfo(jar, 'liangjiang', undefined, {
+		const session = new NodeCqutSession(jar);
+		const result = await fetchCampusTimeInfo(session, 'liangjiang', undefined, {
 			getCampusTimeInfoUrl: `${baseUrl}/api/courseSchedule/getCampusTimeInfo`
 		});
 		expect(result.ok).toBe(true);

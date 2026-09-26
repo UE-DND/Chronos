@@ -109,6 +109,40 @@ export function navigateBack(
 			intent = undefined;
 		});
 }
+
+/**
+ * Dispatch system-level back intention (e.g. Android hardware back, keyboard ESC, or system gesture).
+ * Returns 'consumed' if an overlay was dismissed or a secondary route was popped.
+ * Returns 'exit' if already on a root shell view.
+ */
+export function dispatchSystemBack(): 'consumed' | 'exit' {
+	if (!deps || !ready) return 'exit';
+	if (backPending || intent) return 'consumed';
+
+	const snapshot = getNavigationSnapshot();
+	const current = getTopFrame();
+	if (!current) return 'exit';
+
+	const fallback = fallbackRegistration?.fallback ?? ({ kind: 'shell' } as BackFallback);
+	const plan = resolveBack(snapshot, fallback);
+
+	if (plan.type === 'traverse') {
+		navigateBack(fallback);
+		return 'consumed';
+	}
+
+	const pathname = deps.getPage().url.pathname;
+	const isAtRootShell =
+		isShellRoute(pathname) && current.kind === 'route' && current.entry !== 'deeplink';
+
+	if (!isAtRootShell) {
+		navigateBack(fallback);
+		return 'consumed';
+	}
+
+	return 'exit';
+}
+
 export function stageShellTabDeparture(tabId: string): void {
 	departureTab = tabId;
 }
