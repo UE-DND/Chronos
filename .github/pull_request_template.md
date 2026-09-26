@@ -12,5 +12,5 @@
 版本号、发布日期、上一版本。
 核对 apps/web/package.json 与 apps/web/src/lib/content/releases/entries/vX.Y.Z.md。
 发布 vX.Y.Z tag 会触发 GitHub Pages 部署。
-发布 PR 目标分支为 master，使用 Squash merge，提交标题为 X.Y.Z，说明使用更新摘要。
+发布 PR 目标分支为 master，提交标题为 X.Y.Z，说明使用更新摘要。
 -->

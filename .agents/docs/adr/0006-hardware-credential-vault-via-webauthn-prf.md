@@ -1,6 +1,5 @@
-# ADR 0006：WebAuthn 凭据保险箱（已废弃）
+# ADR 0006：WebAuthn 凭据保险箱
 
-- 状态：Superseded（Web 实现由 ADR 0017 取代）
 - 日期：2026-08-20
 
 ## 历史决策
