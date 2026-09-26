@@ -40,7 +40,10 @@ function href(url: URL): string {
 	return url.pathname + url.search + url.hash;
 }
 function writeMarker(frame: NavFrame): void {
-	if (deps) deps.replaceState('', { ...deps.getPage().state, chronosNavigation: markerFor(frame) });
+	if (deps) {
+		const page = deps.getPage();
+		deps.replaceState(href(page.url), { ...page.state, chronosNavigation: markerFor(frame) });
+	}
 }
 export function configureNavigationCoordinator(next: NavigationCoordinatorDeps): void {
 	ready = false;

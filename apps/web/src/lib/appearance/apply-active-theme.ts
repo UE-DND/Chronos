@@ -1,6 +1,6 @@
 import type { ChronosEngine } from '@chronos/core';
 import { resolveThemeWorkbenchColors } from '@chronos/core';
-import { applyWorkbenchColors } from '@chronos/core';
+import { applyWorkbenchColors } from './apply-workbench-colors';
 
 let previouslyAppliedThemeClass: string | null = null;
 let previouslyAppliedCustomVarKeys: string[] = [];
