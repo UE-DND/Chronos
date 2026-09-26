@@ -18,11 +18,11 @@ PWA 预缓存必需插件。APK 第一次断网启动仍可补装内置插件；
 
 ## 正式发布
 
-1. 更新应用版本和发布说明，提交后创建 `vX.Y.Z` 标签。迁移首次发布必须使用新版本，不能重新发布旧标签。手动触发 Pages CI 同样必须填写正式标签。
-2. CI 验证标签与 `apps/web/package.json` 版本一致，在该提交运行质量检查和构建。全量市场包含所有官方插件；Pages 网站仍采用 default Profile。
-3. CI 将市场快照保存到同仓库 `codex/plugin-dist` 分支的 `releases/X.Y.Z/`，附带 `release.json` 中的源码提交和文件摘要。该分支只由发布流程写入；不手动修改或强制推送。
+1. 更新应用版本和发布说明，提交后创建 `vX.Y.Z` 标签。迁移首次发布必须使用新版本，不能重新发布旧标签。手动触发 Release CI 同样必须填写正式标签。
+2. CI 验证标签指向的提交已合入 `master`，并确认标签版本与 `apps/web/package.json` 一致；随后在该提交运行质量检查和构建。全量市场包含所有官方插件；Pages 网站仍采用 default Profile。
+3. CI 将市场快照保存到同仓库 `chronos/plugin-dist` 分支的 `releases/X.Y.Z/`，附带 `release.json` 中的源码提交和文件摘要。该分支只由发布流程写入；不手动修改或强制推送。
 4. Pages 部署包含当前网站和全部历史 `plugins/releases/X.Y.Z/`。同版本只允许同提交、同字节重试，冲突必须以新版本发布。部署失败后从同一标签重试即可；保存历史产物成功不等于网站已上线。
-5. 上线检查读取当前及一个历史版本的 Catalog、所有 Manifest 和一个资源，并校验摘要。通过后发布 Vercel CQUT 版本。APK 发布前确认对应 Pages job 成功，再验证 Android WebView 下载可选插件；项目尚无 APK Release CI。
+5. 上线检查读取当前及一个历史版本的 Catalog、所有 Manifest 和一个资源，并校验摘要。通过后发布 Vercel CQUT 版本。Release CI 为 `chronos-default`、`chronos-cqut`、`chronos-cqut-offline` 分别构建签名 APK，并将三个安装包附加到对应 GitHub Release。首次发布前需配置 `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD` 四个 Actions Secrets，并安全备份 keystore。
 
 工作流仅在更新产物分支的 job 使用 `contents: write`，Pages 发布使用 `pages: write` 和 `id-token: write`。仓库必须允许 GitHub Actions 更新产物分支；分支规则如有保护，需要为发布流程配置写入权限。依赖版本、官方目录及产物构建规则来自标签提交。
 
