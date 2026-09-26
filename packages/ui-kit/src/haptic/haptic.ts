@@ -1,33 +1,16 @@
 import { PREFERENCE_STORAGE_KEYS } from '@chronos/core';
+import { CHRONOS_NATIVE_BRIDGE_KEY, getNativeBridge } from '../platform/native-bridge';
 
 const HAPTIC_STORAGE_KEY = PREFERENCE_STORAGE_KEYS.hapticFeedbackEnabled;
 
-/** Narrow injection point used by Chronos native shells (WKWebView / Android WebView). */
-export const CHRONOS_NATIVE_BRIDGE_KEY = '__CHRONOS_NATIVE__' as const;
-
-type NativeBridgeLike = {
-	callNative(capability: string, method: string, params?: unknown): Promise<unknown>;
-};
-
-type ChronosWindow = Window & {
-	[CHRONOS_NATIVE_BRIDGE_KEY]?: unknown;
-};
+export { CHRONOS_NATIVE_BRIDGE_KEY };
 
 /**
  * Detect a host-injected native bridge without touching other globals.
  * Accepts `window.__CHRONOS_NATIVE__` when it exposes `callNative` (NativeHostBridge shape).
  */
-export function getNativeHapticBridge(): NativeBridgeLike | null {
-	if (typeof window === 'undefined') return null;
-	const candidate = (window as ChronosWindow)[CHRONOS_NATIVE_BRIDGE_KEY];
-	if (
-		candidate != null &&
-		typeof candidate === 'object' &&
-		typeof (candidate as NativeBridgeLike).callNative === 'function'
-	) {
-		return candidate as NativeBridgeLike;
-	}
-	return null;
+export function getNativeHapticBridge() {
+	return getNativeBridge();
 }
 
 function hasNavigatorVibrate(): boolean {

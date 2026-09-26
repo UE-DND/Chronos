@@ -43,10 +43,19 @@ const mockFilesystem = vi.hoisted(() => ({
 	writeFile: vi.fn().mockResolvedValue({ uri: 'file:///cache/test.txt' })
 }));
 
+const mockClipboard = vi.hoisted(() => ({
+	read: vi.fn().mockResolvedValue({ value: 'mocked clipboard text' }),
+	write: vi.fn().mockResolvedValue(undefined)
+}));
+
 const capacitorState = vi.hoisted(() => ({
 	isNative: false,
 	platform: 'web',
 	isPluginAvailable: (_name: string) => true
+}));
+
+vi.mock('@capacitor/clipboard', () => ({
+	Clipboard: mockClipboard
 }));
 
 vi.mock('@capacitor/core', () => ({
@@ -152,6 +161,23 @@ describe('mobile-platform-adapter', () => {
 			await expect(bridge.callNative('storage', 'getTimetable', {})).rejects.toThrow(
 				'Unsupported native capability: "storage"'
 			);
+		});
+
+		it('maps readText clipboard calls to Capacitor Clipboard.read', async () => {
+			capacitorState.isNative = true;
+			const bridge = createCapacitorNativeBridge();
+
+			const text = await bridge.callNative('clipboard', 'readText');
+			expect(mockClipboard.read).toHaveBeenCalled();
+			expect(text).toBe('mocked clipboard text');
+		});
+
+		it('maps writeText clipboard calls to Capacitor Clipboard.write', async () => {
+			capacitorState.isNative = true;
+			const bridge = createCapacitorNativeBridge();
+
+			await bridge.callNative('clipboard', 'writeText', { text: 'new text' });
+			expect(mockClipboard.write).toHaveBeenCalledWith({ string: 'new text' });
 		});
 
 		it('rejects unsupported haptic method explicitly', async () => {

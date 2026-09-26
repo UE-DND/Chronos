@@ -6,6 +6,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import { Share } from '@capacitor/share';
 import { AppLauncher } from '@capacitor/app-launcher';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Clipboard } from '@capacitor/clipboard';
 import type { PluginListenerHandle } from '@capacitor/core';
 import type {
 	NativeHostBridge,
@@ -65,6 +66,23 @@ async function handleHapticCall(method: string, params?: unknown): Promise<void>
 	}
 }
 
+async function handleClipboardCall(method: string, params?: unknown): Promise<unknown> {
+	if (!Capacitor.isPluginAvailable('Clipboard')) {
+		throw new Error('Clipboard plugin not available');
+	}
+
+	if (method === 'readText') {
+		const result = await Clipboard.read();
+		return result.value ?? '';
+	}
+	if (method === 'writeText') {
+		const text = (params as { text?: string })?.text ?? '';
+		await Clipboard.write({ string: text });
+		return undefined;
+	}
+	throw new Error(`Unsupported clipboard method: "${method}"`);
+}
+
 export function createCapacitorNativeBridge(): NativeHostBridge {
 	return {
 		async callNative<T = unknown, R = unknown>(
@@ -75,6 +93,9 @@ export function createCapacitorNativeBridge(): NativeHostBridge {
 			if (capability === 'haptic') {
 				await handleHapticCall(method, params);
 				return undefined as R;
+			}
+			if (capability === 'clipboard') {
+				return (await handleClipboardCall(method, params)) as R;
 			}
 			throw new Error(`Unsupported native capability: "${capability}" (method: "${method}")`);
 		}

@@ -12,7 +12,8 @@ export type NativeHostCapability =
 	| 'vault'
 	| 'runtime'
 	| 'notification'
-	| 'haptic';
+	| 'haptic'
+	| 'clipboard';
 
 export interface NativeBridgeRequest<T = unknown> {
 	readonly id: string;
@@ -55,6 +56,12 @@ export interface NativeHapticNotificationParams {
 
 /** Optional empty params for selection-changed ticks (iOS UISelectionFeedbackGenerator). */
 export type NativeHapticSelectionParams = Record<string, never> | undefined;
+
+export interface NativeClipboardWriteParams {
+	readonly text: string;
+}
+
+export type NativeClipboardMethod = 'readText' | 'writeText';
 
 /**
  * Haptic capability methods on a native host bridge.

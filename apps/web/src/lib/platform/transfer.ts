@@ -1,4 +1,5 @@
 import type { ExportResult } from '@chronos/core';
+import { writeClipboardText } from '@chronos/ui-kit';
 import { getHostPlatform } from './host-platform';
 
 export type ExportDeliveryResult =
@@ -49,24 +50,7 @@ export async function downloadExportResult(
 }
 
 export async function copyTextWithFallback(text: string): Promise<boolean> {
-	try {
-		await navigator.clipboard.writeText(text);
-		return true;
-	} catch {
-		try {
-			const textarea = document.createElement('textarea');
-			textarea.value = text;
-			textarea.style.position = 'fixed';
-			textarea.style.opacity = '0';
-			document.body.appendChild(textarea);
-			textarea.select();
-			const ok = document.execCommand('copy');
-			document.body.removeChild(textarea);
-			return ok;
-		} catch {
-			return false;
-		}
-	}
+	return writeClipboardText(text);
 }
 
 export function withTimeout<T>(
