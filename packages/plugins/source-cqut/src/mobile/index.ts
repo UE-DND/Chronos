@@ -43,8 +43,8 @@ async function createCqutSession(context: MobilePluginServerContext): Promise<Cq
 export const mobilePluginServerModule: MobilePluginServerModule = {
 	createHandlers(context) {
 		return {
-			preview(payload) {
-				return executeCqutPreview(payload, () => createCqutSession(context));
+			preview(payload, options) {
+				return executeCqutPreview(payload, () => createCqutSession(context), undefined, options);
 			}
 		};
 	}

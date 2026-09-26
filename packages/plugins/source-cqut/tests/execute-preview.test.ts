@@ -100,4 +100,38 @@ describe('executeCqutPreview', () => {
 		});
 		expect(disposeMock).toHaveBeenCalledTimes(1);
 	});
+
+	it('forwards signal and timeoutMs to fetchSchedule and disposes session on error', async () => {
+		const disposeMock = vi.fn().mockResolvedValue(undefined);
+		const mockSession: CqutSession = {
+			request: vi.fn(),
+			createCasCookieJar: vi.fn(),
+			hasCookie: vi.fn(),
+			dispose: disposeMock
+		};
+		const sessionFactory = vi.fn().mockResolvedValue(mockSession);
+		const mockFetch = vi
+			.fn()
+			.mockResolvedValue(failure(AppError.network('Request cancelled by user')));
+		const controller = new AbortController();
+
+		const result = await executeCqutPreview(
+			{ account: '20210001', password: 'secret-password' },
+			sessionFactory,
+			mockFetch,
+			{ signal: controller.signal, timeoutMs: 3000 }
+		);
+
+		expect(mockFetch).toHaveBeenCalledWith(mockSession, {
+			account: '20210001',
+			password: 'secret-password',
+			signal: controller.signal,
+			timeoutMs: 3000
+		});
+		expect(result).toEqual({
+			ok: false,
+			error: { kind: 'Network', message: 'Request cancelled by user' }
+		});
+		expect(disposeMock).toHaveBeenCalledTimes(1);
+	});
 });

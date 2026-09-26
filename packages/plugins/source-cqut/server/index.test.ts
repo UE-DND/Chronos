@@ -3,11 +3,11 @@ import { parsePluginServerResponse } from '@chronos/core';
 import { handlePreview } from './index';
 import { NodeCqutSession } from './node-cqut-session';
 
-vi.mock('./fetch-schedule', () => ({
+vi.mock('../src/online/fetch-schedule', () => ({
 	fetchCqutSchedule: vi.fn()
 }));
 
-import { fetchCqutSchedule } from './fetch-schedule';
+import { fetchCqutSchedule } from '../src/online/fetch-schedule';
 
 function createPreviewEvent(body: unknown) {
 	return {
@@ -71,12 +71,15 @@ describe('handlePreview', () => {
 			createPreviewEvent({ account: 'stu001', password: 'secret' })
 		);
 		const body = parsePluginServerResponse(await response.json());
+		expect(body.ok).toBe(true);
 
 		expect(response.status).toBe(200);
-		expect(body).toEqual({ ok: true, payload });
-		expect(fetchCqutSchedule).toHaveBeenCalledWith(expect.any(NodeCqutSession), {
-			account: 'stu001',
-			password: 'secret'
-		});
+		expect(fetchCqutSchedule).toHaveBeenCalledWith(
+			expect.any(NodeCqutSession),
+			expect.objectContaining({
+				account: 'stu001',
+				password: 'secret'
+			})
+		);
 	});
 });

@@ -1,8 +1,9 @@
 import { createServer, type Server } from 'node:http';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import { CAS_APPLICATION_CODE, TIMETABLE_SESSION_COOKIE } from './config';
-import { loginCas } from './cas-auth';
+import { CAS_APPLICATION_CODE, TIMETABLE_SESSION_COOKIE } from '../src/online/config';
+import { loginCas } from '../src/online/cas-auth';
 import { CookieJar } from './cookie-jar';
+import { NodeCqutSession } from './node-cqut-session';
 
 vi.mock('./config', async (importOriginal) => {
 	const original = await importOriginal<typeof import('./config')>();
@@ -110,8 +111,9 @@ describe('loginCas', () => {
 	it('completes ticket exchange and stores timetable session cookie', async () => {
 		const upstream = await startMockUpstream();
 		const jar = new CookieJar();
+		const session = new NodeCqutSession(jar);
 
-		const result = await loginCas(jar, TEST_ACCOUNT, TEST_PASSWORD, undefined, overrides());
+		const result = await loginCas(session, TEST_ACCOUNT, TEST_PASSWORD, undefined, overrides());
 		expect(result.ok).toBe(true);
 		expect(jar.hasCookie('127.0.0.1', TIMETABLE_SESSION_COOKIE)).toBe(true);
 		expect(upstream.requests.map((item) => `${item.method} ${item.path.split('?')[0]}`)).toEqual([
@@ -145,7 +147,8 @@ describe('loginCas', () => {
 		baseUrl = `http://127.0.0.1:${address.port}`;
 
 		const jar = new CookieJar();
-		const result = await loginCas(jar, TEST_ACCOUNT, TEST_PASSWORD, undefined, overrides());
+		const session = new NodeCqutSession(jar);
+		const result = await loginCas(session, TEST_ACCOUNT, TEST_PASSWORD, undefined, overrides());
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
 			expect(result.error.kind).toBe('Auth');
@@ -178,7 +181,8 @@ describe('loginCas', () => {
 		baseUrl = `http://127.0.0.1:${address.port}`;
 
 		const jar = new CookieJar();
-		const result = await loginCas(jar, TEST_ACCOUNT, TEST_PASSWORD, undefined, {
+		const session = new NodeCqutSession(jar);
+		const result = await loginCas(session, TEST_ACCOUNT, TEST_PASSWORD, undefined, {
 			uisBaseUrl: baseUrl,
 			timetableBaseUrl: baseUrl,
 			timetableHost: '127.0.0.1'
@@ -242,7 +246,8 @@ describe('loginCas', () => {
 		baseUrl = `http://127.0.0.1:${address.port}`;
 
 		const jar = new CookieJar();
-		const result = await loginCas(jar, TEST_ACCOUNT, TEST_PASSWORD, undefined, overrides());
+		const session = new NodeCqutSession(jar);
+		const result = await loginCas(session, TEST_ACCOUNT, TEST_PASSWORD, undefined, overrides());
 		expect(result.ok).toBe(true);
 		expect(casLoginAttempts).toBeGreaterThanOrEqual(2);
 		expect(jar.hasCookie('127.0.0.1', TIMETABLE_SESSION_COOKIE)).toBe(true);

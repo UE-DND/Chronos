@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { mapWithConcurrency } from './concurrency';
+import { mapWithConcurrency } from '../src/online/concurrency';
 
 describe('mapWithConcurrency', () => {
 	it('preserves result order with limited concurrency', async () => {

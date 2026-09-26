@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import { toUpstreamNetworkError } from './upstream-error';
+import { toUpstreamNetworkError } from '../src/online/upstream-error';
 
 afterEach(() => {
 	vi.restoreAllMocks();

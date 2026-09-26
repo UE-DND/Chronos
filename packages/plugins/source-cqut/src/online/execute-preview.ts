@@ -22,13 +22,19 @@ export interface PreviewRequestBody {
 	password?: string;
 }
 
+export interface ExecutePreviewOptions {
+	signal?: AbortSignal;
+	timeoutMs?: number;
+}
+
 export async function executeCqutPreview(
 	payload: unknown,
 	sessionFactory: () => CqutSession | Promise<CqutSession>,
 	fetchSchedule: (
 		session: CqutSession,
 		input: FetchCqutScheduleInput
-	) => Promise<import('@chronos/core').AppResult<FetchCqutScheduleResult>> = fetchCqutSchedule
+	) => Promise<import('@chronos/core').AppResult<FetchCqutScheduleResult>> = fetchCqutSchedule,
+	options?: ExecutePreviewOptions
 ): Promise<PluginServerResponse<FetchCqutScheduleResult>> {
 	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
 		return pluginServerError('DataFormat', '请求格式错误');
@@ -49,7 +55,12 @@ export async function executeCqutPreview(
 
 	const session = await sessionFactory();
 	try {
-		const result = await fetchSchedule(session, { account, password });
+		const result = await fetchSchedule(session, {
+			account,
+			password,
+			signal: options?.signal,
+			timeoutMs: options?.timeoutMs
+		});
 		if (result.ok) {
 			return pluginServerSuccess(result.value);
 		}

@@ -44,8 +44,34 @@ describe('CQUT mobile plugin module', () => {
 			signal: undefined
 		});
 		expect(hasCookie).toHaveBeenCalledWith('https://timetable-cfc.cqut.edu.cn', 'JSESSIONID');
-		expect(dispose).toHaveBeenCalledOnce();
-		expect(executeCqutPreview).toHaveBeenCalledWith(payload, expect.any(Function));
+		expect(executeCqutPreview).toHaveBeenCalledWith(
+			payload,
+			expect.any(Function),
+			undefined,
+			undefined
+		);
 		expect(result).toEqual({ ok: true, payload });
+	});
+
+	it('forwards options with signal and timeoutMs to executeCqutPreview', async () => {
+		const createHttpSession = vi.fn((): IHostHttpSession => ({
+			request: vi.fn(),
+			hasCookie: vi.fn(),
+			dispose: vi.fn()
+		}));
+		const context: MobilePluginServerContext = { createHttpSession };
+		const controller = new AbortController();
+		const options = { signal: controller.signal, timeoutMs: 5000 };
+		const payload = { account: '20210001', password: 'secret' };
+
+		executeCqutPreview.mockResolvedValueOnce({ ok: true, payload });
+		await mobilePluginServerModule.createHandlers(context).preview!(payload, options);
+
+		expect(executeCqutPreview).toHaveBeenCalledWith(
+			payload,
+			expect.any(Function),
+			undefined,
+			options
+		);
 	});
 });

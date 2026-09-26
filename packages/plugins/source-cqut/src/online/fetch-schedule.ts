@@ -20,6 +20,8 @@ export interface FetchCqutScheduleInput {
 	password: string;
 	weekNum?: string | null;
 	yearTerm?: string | null;
+	signal?: AbortSignal;
+	timeoutMs?: number;
 }
 
 export interface FetchCqutScheduleResult {
@@ -32,7 +34,8 @@ export async function fetchCqutSchedule(
 	session: CqutSession,
 	input: FetchCqutScheduleInput
 ): Promise<AppResult<FetchCqutScheduleResult>> {
-	const signal = AbortSignal.timeout(TOTAL_FETCH_TIMEOUT_MS);
+	const timeoutSignal = AbortSignal.timeout(input.timeoutMs ?? TOTAL_FETCH_TIMEOUT_MS);
+	const signal = input.signal ? AbortSignal.any([input.signal, timeoutSignal]) : timeoutSignal;
 	const password = input.password;
 
 	try {
