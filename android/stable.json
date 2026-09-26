@@ -1,0 +1,56 @@
+{
+	"formatVersion": 1,
+	"release": {
+		"tagName": "v1.1.0",
+		"name": "Chronos 1.1.0",
+		"body": "## 新增\n\n- 支持 Android 原生移动端应用，提供触觉反馈、安全区边距沉浸式适配与原生剪贴板能力。\n- 接入 Android 原生应用内更新通道，支持检测最新版本并一键拉起系统安装器。\n- 官方插件支持按宿主版本远程目录按需下载与离线持久化缓存，有效精简安装包体积。\n\n## 优化\n\n- 完善 PWA 离线资源与页面版本门禁机制，避免应用更新时的跨版本资源错配。\n- 引入官方插件生命周期时序协调器，彻底消除安装、卸载与热重载交错时的并发竞态。\n- 全面规范 Svelte 5 组件与运行库类型约束，提升界面交互流畅度与稳定性。",
+		"publishedAt": "2026-09-26"
+	},
+	"packageId": "org.uednd.chronos",
+	"versionCode": 1001000,
+	"signingCertificateSha256": "5cda4a196759e80ce99f77bd18d8f662a82054ae8d9e56b8be9b491f7f4e649e",
+	"profiles": {
+		"chronos-default": {
+			"host": {
+				"version": "1.1.0",
+				"buildId": "ec8ee8fc4f97ea1718b65f4e7eb58458981eaed00257d55b3704dd8c798f5bc4",
+				"sourceCommit": "966bb76fcd0ea45ce574d6e593d8a4061c1b8bed",
+				"profileId": "chronos-default",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.1.0/Chronos-chronos-default-1.1.0.apk",
+			"sha256": "b7b46e2ef31c7472008e52ebb6c878b7ca9bf4e7179ae8c34441082555abc94c",
+			"sizeBytes": 3919624,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.1.0/catalog.json"
+		},
+		"chronos-cqut": {
+			"host": {
+				"version": "1.1.0",
+				"buildId": "d3b9597d6973975bb0bdf237947c00fbd9ddbf121ef0d356fe197a6e85561a95",
+				"sourceCommit": "966bb76fcd0ea45ce574d6e593d8a4061c1b8bed",
+				"profileId": "chronos-cqut",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.1.0/Chronos-chronos-cqut-1.1.0.apk",
+			"sha256": "38c7c953267ab61889ac6ccf16daf4d5adf871d96605e11667707ae0470157fc",
+			"sizeBytes": 3950877,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.1.0/catalog.json"
+		},
+		"chronos-cqut-offline": {
+			"host": {
+				"version": "1.1.0",
+				"buildId": "873c2136edcf1ffdfd90de5bf0827f1c2b87f815ea21d78fca1eccfddb7cbd14",
+				"sourceCommit": "966bb76fcd0ea45ce574d6e593d8a4061c1b8bed",
+				"profileId": "chronos-cqut-offline",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.1.0/Chronos-chronos-cqut-offline-1.1.0.apk",
+			"sha256": "ef931ce5b26d5b944d9dafdefa69d95bb02b561a6acc73a4f9ff222962424949",
+			"sizeBytes": 3916361,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.1.0/catalog.json"
+		}
+	}
+}
