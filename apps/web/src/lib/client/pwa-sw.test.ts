@@ -139,7 +139,7 @@ describe('waitForWaitingWorker', () => {
 			'ready'
 		);
 
-		expect(onProgress).toHaveBeenCalledWith({ phase: 'installing', percent: 80 });
+		expect(onProgress).toHaveBeenCalledWith({ phase: 'installing', percent: null });
 		expect(registration.update).not.toHaveBeenCalled();
 	});
 
@@ -162,15 +162,14 @@ describe('waitForWaitingWorker', () => {
 		});
 		await Promise.resolve();
 
-		expect(onProgress).toHaveBeenCalledWith({ phase: 'downloading', percent: 5 });
-		expect(onProgress).toHaveBeenCalledWith({ phase: 'downloading', percent: 25 });
+		expect(onProgress).toHaveBeenCalledWith({ phase: 'downloading', percent: null });
 
 		Object.defineProperty(registration, 'waiting', { value: {}, configurable: true });
 		worker.state = 'installed';
 		stateChangeListener?.();
 
 		await expect(pending).resolves.toBe('ready');
-		expect(onProgress).toHaveBeenCalledWith({ phase: 'installing', percent: 80 });
+		expect(onProgress).toHaveBeenCalledWith({ phase: 'installing', percent: null });
 	});
 
 	it('returns update_failed when registration.update throws', async () => {
@@ -225,7 +224,7 @@ describe('waitForWaitingWorker', () => {
 		});
 		await Promise.resolve();
 
-		expect(onProgress).toHaveBeenCalledWith({ phase: 'downloading', percent: 25 });
+		expect(onProgress).toHaveBeenCalledWith({ phase: 'downloading', percent: null });
 
 		worker.state = 'installed';
 		Object.defineProperty(registration, 'installing', { value: undefined, configurable: true });
@@ -234,7 +233,7 @@ describe('waitForWaitingWorker', () => {
 		Object.defineProperty(registration, 'waiting', { value: worker, configurable: true });
 		await vi.advanceTimersByTimeAsync(2000);
 
-		expect(onProgress).toHaveBeenCalledWith({ phase: 'installing', percent: 80 });
+		expect(onProgress).toHaveBeenCalledWith({ phase: 'installing', percent: null });
 		await expect(pending).resolves.toBe('ready');
 	});
 
@@ -257,13 +256,13 @@ describe('waitForWaitingWorker', () => {
 		});
 		await Promise.resolve();
 
-		expect(onProgress).toHaveBeenCalledWith({ phase: 'downloading', percent: 25 });
+		expect(onProgress).toHaveBeenCalledWith({ phase: 'downloading', percent: null });
 		expect(stateChangeListener).toBeDefined();
 
 		Object.defineProperty(registration, 'waiting', { value: worker, configurable: true });
 		await vi.advanceTimersByTimeAsync(2000);
 
-		expect(onProgress).toHaveBeenCalledWith({ phase: 'installing', percent: 80 });
+		expect(onProgress).toHaveBeenCalledWith({ phase: 'installing', percent: null });
 		await expect(pending).resolves.toBe('ready');
 	});
 
@@ -447,15 +446,14 @@ describe('applyUpdateAndReload', () => {
 		const pending = applyUpdateAndReload({ onProgress });
 		await vi.waitFor(() => expect(postMessage).toHaveBeenCalled());
 
-		expect(onProgress).toHaveBeenCalledWith({ phase: 'installing', percent: 80 });
+		expect(onProgress).toHaveBeenCalledWith({ phase: 'installing', percent: null });
 		expect(cachesDelete).not.toHaveBeenCalled();
 		expect(postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
 
 		controllerListener?.();
 		await pending;
 
-		expect(onProgress).toHaveBeenCalledWith({ phase: 'restarting', percent: 92 });
-		expect(onProgress).toHaveBeenCalledWith({ phase: 'restarting', percent: 100 });
+		expect(onProgress).toHaveBeenCalledWith({ phase: 'restarting', percent: null });
 		expect(cachesDelete).toHaveBeenCalledWith('pages-cache');
 		expect(reload).toHaveBeenCalledOnce();
 	});
@@ -529,8 +527,8 @@ describe('applyUpdateAndReload', () => {
 		controllerListener?.();
 		await pending;
 
-		expect(onProgress).toHaveBeenCalledWith({ phase: 'downloading', percent: 5 });
-		expect(onProgress).toHaveBeenCalledWith({ phase: 'installing', percent: 80 });
+		expect(onProgress).toHaveBeenCalledWith({ phase: 'downloading', percent: null });
+		expect(onProgress).toHaveBeenCalledWith({ phase: 'installing', percent: null });
 		expect(cachesDelete).toHaveBeenCalledWith('pages-cache');
 		expect(reload).toHaveBeenCalledOnce();
 		vi.useRealTimers();

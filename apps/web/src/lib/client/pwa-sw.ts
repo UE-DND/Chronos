@@ -17,7 +17,8 @@ export type SwUpdatePhase = 'downloading' | 'installing' | 'restarting';
 
 export interface SwUpdateProgress {
 	phase: SwUpdatePhase;
-	percent: number;
+	/** Service Worker APIs expose lifecycle states, not byte-level download progress. */
+	percent: number | null;
 }
 
 export type SwUpdateErrorCode =
@@ -163,12 +164,12 @@ export async function waitForWaitingWorker(
 	const timeoutMs = options?.timeoutMs ?? SW_DOWNLOAD_TIMEOUT_MS;
 
 	if (registration.waiting) {
-		reportProgress(onProgress, { phase: 'installing', percent: 80 });
+		reportProgress(onProgress, { phase: 'installing', percent: null });
 		markUpdatePending();
 		return 'ready';
 	}
 
-	reportProgress(onProgress, { phase: 'downloading', percent: 5 });
+	reportProgress(onProgress, { phase: 'downloading', percent: null });
 
 	try {
 		await registration.update();
@@ -177,7 +178,7 @@ export async function waitForWaitingWorker(
 	}
 
 	if (registration.waiting) {
-		reportProgress(onProgress, { phase: 'installing', percent: 80 });
+		reportProgress(onProgress, { phase: 'installing', percent: null });
 		markUpdatePending();
 		return 'ready';
 	}
@@ -216,7 +217,7 @@ export async function waitForWaitingWorker(
 
 		const tryFinishReady = (): boolean => {
 			if (!registration.waiting) return false;
-			reportProgress(onProgress, { phase: 'installing', percent: 80 });
+			reportProgress(onProgress, { phase: 'installing', percent: null });
 			markUpdatePending();
 			finish('ready');
 			return true;
@@ -228,7 +229,7 @@ export async function waitForWaitingWorker(
 			}
 			sawInstalling = true;
 			attachedWorker = worker;
-			reportProgress(onProgress, { phase: 'downloading', percent: 25 });
+			reportProgress(onProgress, { phase: 'downloading', percent: null });
 
 			stateChangeListener = () => {
 				if (worker.state === 'installed') {
@@ -385,9 +386,9 @@ export async function applyUpdateAndReload(options?: ApplyUpdateOptions): Promis
 	if (!registration.waiting) {
 		const result = await waitForWaitingWorker(registration, { onProgress });
 		if (result === 'idle') {
-			reportProgress(onProgress, { phase: 'restarting', percent: 92 });
+			reportProgress(onProgress, { phase: 'restarting', percent: null });
 			await deletePagesRuntimeCache();
-			reportProgress(onProgress, { phase: 'restarting', percent: 100 });
+			reportProgress(onProgress, { phase: 'restarting', percent: null });
 			reloadPage();
 			return;
 		}
@@ -395,7 +396,7 @@ export async function applyUpdateAndReload(options?: ApplyUpdateOptions): Promis
 			throw mapWaitingWorkerResultToError(result);
 		}
 	} else {
-		reportProgress(onProgress, { phase: 'installing', percent: 80 });
+		reportProgress(onProgress, { phase: 'installing', percent: null });
 		markUpdatePending();
 	}
 
@@ -403,13 +404,13 @@ export async function applyUpdateAndReload(options?: ApplyUpdateOptions): Promis
 		throw new SwUpdateError('download_failed');
 	}
 
-	reportProgress(onProgress, { phase: 'restarting', percent: 92 });
+	reportProgress(onProgress, { phase: 'restarting', percent: null });
 
 	await waitForSwActivationAndReload(
 		() => Promise.resolve(registration),
 		async () => {
 			await deletePagesRuntimeCache();
-			reportProgress(onProgress, { phase: 'restarting', percent: 100 });
+			reportProgress(onProgress, { phase: 'restarting', percent: null });
 			reloadPage();
 		}
 	);

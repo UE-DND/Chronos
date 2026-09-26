@@ -298,11 +298,11 @@ describe('createUpdateState', () => {
 	it('updates install progress from applyUpdate callbacks', async () => {
 		let resolveInstall!: () => void;
 		const applyUpdateMock = vi.fn().mockImplementation(
-			(options?: { onProgress?: (p: { phase: string; percent: number }) => void }) =>
+			(options?: { onProgress?: (p: { phase: string; percent: number | null }) => void }) =>
 				new Promise<void>((resolve) => {
 					resolveInstall = resolve;
-					options?.onProgress?.({ phase: 'downloading', percent: 25 });
-					options?.onProgress?.({ phase: 'installing', percent: 80 });
+					options?.onProgress?.({ phase: 'downloading', percent: null });
+					options?.onProgress?.({ phase: 'installing', percent: null });
 				})
 		);
 		const updateState = createUpdateState({
@@ -314,7 +314,7 @@ describe('createUpdateState', () => {
 
 		expect(updateState.state.updating).toBe(true);
 		expect(updateState.state.installPhase).toBe('installing');
-		expect(updateState.state.installPercent).toBe(80);
+		expect(updateState.state.installPercent).toBeNull();
 
 		resolveInstall();
 		await installPromise;
@@ -389,9 +389,9 @@ describe('createUpdateState', () => {
 			.fn()
 			.mockImplementation(
 				async (options?: {
-					onProgress?: (progress: { phase: string; percent: number }) => void;
+					onProgress?: (progress: { phase: string; percent: number | null }) => void;
 				}) => {
-					options?.onProgress?.({ phase: 'installing', percent: 80 });
+					options?.onProgress?.({ phase: 'installing', percent: null });
 				}
 			);
 		vi.spyOn(serviceWorkerAdapter, 'createDefaultServiceWorkerAdapter').mockReturnValue({

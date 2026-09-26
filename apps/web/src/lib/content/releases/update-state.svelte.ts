@@ -21,7 +21,7 @@ interface SoftwareUpdateState {
 	checking: boolean;
 	updating: boolean;
 	installPhase: InstallPhase | null;
-	installPercent: number;
+	installPercent: number | null;
 	hasUpdate: boolean;
 	hasNewerVersion: boolean;
 	updateSource: UpdateSource;
@@ -75,7 +75,7 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 	let checking = $state(true);
 	let updating = $state(false);
 	let installPhase = $state<InstallPhase | null>(null);
-	let installPercent = $state(0);
+	let installPercent = $state<number | null>(null);
 	let hasUpdate = $state(false);
 	let hasNewerVersion = $state(false);
 	let updateSource = $state<UpdateSource>('none');
@@ -232,7 +232,7 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 		}
 
 		installPhase = 'downloading';
-		installPercent = 5;
+		installPercent = null;
 		trackEvent('pwa_update_apply');
 		try {
 			if (platformUpdateAction) {
