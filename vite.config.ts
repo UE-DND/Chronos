@@ -156,7 +156,8 @@ export default defineConfig({
 			test: {
 				// App-engine integration tests load the published plugin catalog and bundles.
 				dependsOn: ['build:official-plugins'],
-				command: 'vp test -- --run',
+				command:
+					'node --experimental-strip-types scripts/emit-profile-artifacts.ts && vp test -- --run',
 				cwd: 'apps/web'
 			},
 			'theme:generate': {
