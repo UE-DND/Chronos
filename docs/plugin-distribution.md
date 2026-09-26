@@ -9,7 +9,7 @@
 `vp run verify:official-plugins` 校验全量市场的资源摘要、体积和 CSS。构建后的宿主资源校验由构建脚本自动执行，也可使用：
 
 ```sh
-vp exec node --experimental-strip-types scripts/verify-host-plugins.ts apps/web/build chronos-default
+vp exec node --experimental-strip-types scripts/official-plugin-build/verify-host-plugins.ts apps/web/build chronos-default
 ```
 
 开发模式继续通过本地中间件提供全量市场并支持 HMR。正式构建只携带必需插件，预览未发布版本时，其远程可选目录可能尚未存在；需要验证可选插件时使用开发模式，或将构建变量 `CHRONOS_PLUGIN_MARKET_BASE_URL` 指向按同样版本目录组织的 HTTPS 测试站点。该变量配置发行目录根地址，不包含具体版本。

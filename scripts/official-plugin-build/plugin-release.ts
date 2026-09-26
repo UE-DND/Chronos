@@ -15,7 +15,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { marketFiles, resolveMarketFile, listMarketFiles } from './market-files.ts';
 import { OFFICIAL_PLUGINS } from '../official-plugins.config.ts';
-import { verifyOfficialPlugins } from '../verify-official-plugins.ts';
+import { verifyOfficialPlugins } from './verify-official-plugins.ts';
 
 const versionPattern = /^\d+\.\d+\.\d+$/;
 const sha = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');

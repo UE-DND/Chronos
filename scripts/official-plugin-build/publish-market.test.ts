@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import * as cache from './cache.ts';
 import { publishOfficialPluginMarket } from './publish-market.ts';
 import { buildManifestForPlugin } from './build-manifest.ts';
-import { verifyOfficialPlugins } from '../verify-official-plugins.ts';
+import { verifyOfficialPlugins } from './verify-official-plugins.ts';
 let root = '';
 afterEach(() => {
 	vi.restoreAllMocks();

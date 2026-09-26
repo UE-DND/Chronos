@@ -91,7 +91,7 @@ export default defineConfig({
 	staged: {
 		// Plain .js is excluded: the only tracked .js files are the generated
 		// official-plugin bundles, which must never be reformatted after the
-		// build computed their manifest sha256 (see scripts/verify-official-plugins.ts).
+		// build computed their manifest sha256 (see scripts/official-plugin-build/verify-official-plugins.ts).
 		'*.{ts,tsx,vue,svelte,json,css,html}': 'vp check --fix'
 	},
 	run: {
@@ -170,13 +170,14 @@ export default defineConfig({
 				cache: false
 			},
 			'build:official-plugins': {
-				command: 'node --experimental-strip-types scripts/build-official-plugins.ts',
+				command:
+					'node --experimental-strip-types scripts/official-plugin-build/build-official-plugins.ts',
 				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'SOURCE_DATE_EPOCH']
 			},
 			'fetch:holiday-cn-fallback':
 				'node --experimental-strip-types scripts/fetch-holiday-cn-fallback.ts',
 			'verify:official-plugins':
-				'node --experimental-strip-types scripts/verify-official-plugins.ts'
+				'node --experimental-strip-types scripts/official-plugin-build/verify-official-plugins.ts'
 		}
 	},
 	lint: {
