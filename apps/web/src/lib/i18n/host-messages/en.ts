@@ -475,6 +475,8 @@ export const en = {
 	'about.easterEgg.hint': '{remaining} more taps to open the developer page',
 	'about.clear.success': 'All data cleared',
 	'about.clear.failed': 'Clear failed. Please try again.',
+	'about.clear.recoveryFailed':
+		'Your data was cleared, but the app could not finish restoring its initial state. Restart the app to try again.',
 	'about.clear.title': 'Clear all data?',
 	'about.clear.desc':
 		'This deletes all timetables, courses, wallpapers, theme preferences, and saved school credentials on this device. This cannot be undone.',

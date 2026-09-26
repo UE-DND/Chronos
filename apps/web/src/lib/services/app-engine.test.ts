@@ -9,7 +9,8 @@ import {
 	disposeAppEngine,
 	ensureEngineReady,
 	ensureEngineFullyReady,
-	getOfficialPluginService
+	getOfficialPluginService,
+	resetAppToInitialState
 } from './app-engine';
 import type { ChronosDB } from '$lib/storage/db';
 import {
@@ -42,14 +43,18 @@ class MockLocalStorage implements Storage {
 
 function createMockDb(): ChronosDB {
 	const pluginRows = new Map<string, unknown>();
+	const binaryRows = new Map<string, unknown>();
+	const imageRows = new Map<string, unknown>();
 	return {
 		timetables: {
 			get: vi.fn(async () => undefined),
 			put: vi.fn(async () => 'id'),
 			delete: vi.fn(async () => {}),
+			clear: vi.fn(async () => {}),
 			orderBy: vi.fn(() => ({ reverse: () => ({ toArray: async () => [] }) }))
 		},
 		courses: {
+			clear: vi.fn(async () => {}),
 			where: vi.fn(() => ({
 				equals: () => ({
 					toArray: async () => [],
@@ -61,9 +66,16 @@ function createMockDb(): ChronosDB {
 			bulkDelete: vi.fn(async () => {})
 		},
 		pluginBinary: {
-			get: vi.fn(async () => undefined),
-			delete: vi.fn(async () => {}),
-			put: vi.fn(async () => {})
+			get: vi.fn(async (id: string) => binaryRows.get(id)),
+			delete: vi.fn(async (id: string) => {
+				binaryRows.delete(id);
+			}),
+			put: vi.fn(async (row: { id: string }) => {
+				binaryRows.set(row.id, row);
+				return row.id;
+			}),
+			clear: vi.fn(async () => binaryRows.clear()),
+			toArray: vi.fn(async () => [...binaryRows.values()])
 		},
 		pluginData: {
 			get: vi.fn(async (id: string) => pluginRows.get(id)),
@@ -73,7 +85,21 @@ function createMockDb(): ChronosDB {
 			}),
 			delete: vi.fn(async (id: string) => {
 				pluginRows.delete(id);
-			})
+			}),
+			clear: vi.fn(async () => pluginRows.clear()),
+			toArray: vi.fn(async () => [...pluginRows.values()])
+		},
+		images: {
+			get: vi.fn(async (id: string) => imageRows.get(id)),
+			put: vi.fn(async (row: { id: string }) => {
+				imageRows.set(row.id, row);
+				return row.id;
+			}),
+			delete: vi.fn(async (id: string) => {
+				imageRows.delete(id);
+			}),
+			clear: vi.fn(async () => imageRows.clear()),
+			toArray: vi.fn(async () => [...imageRows.values()])
 		},
 		transaction: vi.fn(async (_mode: string, ...args: unknown[]) => {
 			const fn = args[args.length - 1] as () => Promise<void>;
@@ -242,6 +268,51 @@ describe('app-engine bootstrap', () => {
 		} finally {
 			vi.unstubAllGlobals();
 		}
+	});
+
+	it('retries profile restoration once after clearing data', async () => {
+		const mockDb = createMockDb();
+		const mockStore = new MockLocalStorage();
+		await ensureEngineFullyReady({ database: mockDb, localStorage: mockStore });
+		const service = getOfficialPluginService();
+		const prepareProfile = vi
+			.spyOn(service, 'prepareProfile')
+			.mockRejectedValueOnce(new Error('temporary preinstall failure'));
+
+		const result = await resetAppToInitialState();
+
+		expect(result).toEqual({ status: 'complete' });
+		expect(prepareProfile).toHaveBeenCalledTimes(2);
+		expect(service.listInstalled().map((record) => record.manifest.id)).toEqual(
+			expect.arrayContaining(['theme-m3', 'codec-share'])
+		);
+	});
+
+	it('reports recovery failure after the data has already been cleared', async () => {
+		const mockDb = createMockDb();
+		const mockStore = new MockLocalStorage();
+		await ensureEngineFullyReady({ database: mockDb, localStorage: mockStore });
+		const service = getOfficialPluginService();
+		vi.spyOn(service, 'prepareProfile').mockRejectedValue(new Error('preinstall unavailable'));
+		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		try {
+			const result = await resetAppToInitialState();
+
+			expect(result).toEqual({ status: 'recovery-failed' });
+			expect(service.listInstalled()).toEqual([]);
+		} finally {
+			log.mockRestore();
+		}
+	});
+
+	it('still rejects when the storage clearing phase fails', async () => {
+		const mockDb = createMockDb();
+		const mockStore = new MockLocalStorage();
+		await ensureEngineFullyReady({ database: mockDb, localStorage: mockStore });
+		vi.spyOn(mockDb.timetables, 'clear').mockRejectedValueOnce(new Error('storage unavailable'));
+
+		await expect(resetAppToInitialState()).rejects.toThrow('storage unavailable');
 	});
 });
 

@@ -459,6 +459,7 @@ export const zhCn = {
 	'about.easterEgg.hint': '再按 {remaining} 次进入开发者页面',
 	'about.clear.success': '已清除所有数据',
 	'about.clear.failed': '清除失败，请重试',
+	'about.clear.recoveryFailed': '数据已清除，但应用未能完全恢复初始状态。重启应用后会再次尝试。',
 	'about.clear.title': '清除所有数据？',
 	'about.clear.desc':
 		'将删除本设备上的所有课表、课程、壁纸、主题偏好与已保存的教务凭据。此操作不可恢复。',
