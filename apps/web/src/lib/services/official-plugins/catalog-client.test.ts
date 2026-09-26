@@ -94,4 +94,37 @@ describe('OfficialPluginCatalogClient', () => {
 		const catalog = await client.fetchCatalog();
 		expect(catalog.manifests).toEqual(['/m.json']);
 	});
+	it('resolves relative manifests at a remote release directory', async () => {
+		httpRequest.mockResolvedValueOnce(
+			httpResponse({
+				json: async <T>() =>
+					({ version: 1, manifests: ['./manifests/rev/tool-clock.manifest.json'] }) as T
+			})
+		);
+		const result = await client.fetchCatalog(
+			'https://ue-dnd.github.io/Chronos/plugins/releases/1.2.3/catalog.json'
+		);
+		expect(result.manifests).toEqual([
+			'https://ue-dnd.github.io/Chronos/plugins/releases/1.2.3/manifests/rev/tool-clock.manifest.json'
+		]);
+	});
+	it('resolves local relative manifests beneath the deployment base, preserving external URLs', async () => {
+		httpRequest.mockResolvedValueOnce(
+			httpResponse({
+				json: async <T>() =>
+					({
+						version: 1,
+						manifests: [
+							'./manifests/rev/theme-m3.manifest.json',
+							'https://external.example/plugin.json'
+						]
+					}) as T
+			})
+		);
+		const result = await client.fetchCatalog('/Chronos/official-plugins/catalog.json');
+		expect(result.manifests).toEqual([
+			'/Chronos/official-plugins/manifests/rev/theme-m3.manifest.json',
+			'https://external.example/plugin.json'
+		]);
+	});
 });

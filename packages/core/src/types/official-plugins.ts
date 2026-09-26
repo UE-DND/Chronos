@@ -41,6 +41,6 @@ export interface PluginManifest {
 export interface OfficialPluginCatalog {
 	version: number;
 	updatedAt: number;
-	/** Official plugin manifest URLs (same-origin or GitHub raw). */
+	/** Manifest URLs, resolved relative to the catalog URL by the host. */
 	manifests: string[];
 }

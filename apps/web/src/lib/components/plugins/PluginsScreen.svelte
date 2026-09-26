@@ -34,8 +34,6 @@
 	import PluginInstallAction from './PluginInstallAction.svelte';
 	import { CheckCircleFill, DownloadFill, TuneFill } from '$lib/icons';
 
-	const BUILTIN_CATALOG_URL = '/official-plugins/catalog.json';
-
 	const officialPlugins = getOfficialPluginService();
 	const appController = getAppController();
 
@@ -130,7 +128,7 @@
 		loadingCatalog = true;
 		catalogError = null;
 		try {
-			const catalog = await officialPlugins.fetchCatalog(BUILTIN_CATALOG_URL);
+			const catalog = await officialPlugins.fetchCatalog();
 			const entries = await Promise.all(
 				catalog.manifests.map(async (url) => {
 					try {

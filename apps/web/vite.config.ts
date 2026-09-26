@@ -82,6 +82,9 @@ export default defineConfig(({ mode }) => {
 		define: {
 			__BUILD_TIME__: JSON.stringify(new Date().toISOString()),
 			__CHRONOS_PROFILE__: JSON.stringify(resolveProfileId()),
+			__CHRONOS_PLUGIN_MARKET_BASE_URL__: JSON.stringify(
+				process.env.CHRONOS_PLUGIN_MARKET_BASE_URL ?? env.CHRONOS_PLUGIN_MARKET_BASE_URL ?? ''
+			),
 			__ANDROID_RELEASE_FEED_URL__: JSON.stringify(
 				env.PUBLIC_ANDROID_RELEASE_FEED_URL?.trim() ?? ''
 			),
@@ -222,7 +225,7 @@ export default defineConfig(({ mode }) => {
 					// (skipWaiting or last client closed), not only on the in-app install path.
 					importScripts: ['sw-pages-cache-cleanup.js'],
 					globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}'],
-					globIgnores: ['**/official-plugins/**'],
+					globIgnores: ['**/official-plugins/**', '**/plugins/releases/**'],
 					navigateFallback: null,
 					runtimeCaching: [
 						{
@@ -242,18 +245,6 @@ export default defineConfig(({ mode }) => {
 							options: {
 								cacheName: PAGES_CACHE_NAME,
 								expiration: { maxEntries: 32, maxAgeSeconds: 2_592_000 }
-							}
-						},
-						{
-							// Plugin assets ship stable URLs with changing content+sha per
-							// release: CacheFirst would pin stale bytes (and stale sha in
-							// catalog/manifests) for up to 30d and break boot-time sync.
-							urlPattern: /\/official-plugins\//i,
-							handler: 'NetworkFirst',
-							options: {
-								cacheName: 'official-plugins',
-								networkTimeoutSeconds: 5,
-								expiration: { maxEntries: 64, maxAgeSeconds: 2_592_000 }
 							}
 						},
 						{

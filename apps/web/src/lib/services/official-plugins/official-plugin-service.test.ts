@@ -398,6 +398,39 @@ describe('OfficialPluginService', () => {
 		);
 	});
 
+	it('installs a version-pinned remote plugin, then restores it offline from the same store', async () => {
+		const url =
+			'https://ue-dnd.github.io/Chronos/plugins/releases/0.4.1/manifests/revision/test-plugin.manifest.json';
+		const hash = await engine.env.runtime.sha256(SAMPLE_BUNDLE);
+		const manifest: PluginManifest = {
+			id: 'test-plugin',
+			name: {},
+			description: {},
+			author: 'Chronos',
+			type: 'tool',
+			toolGroup: 'utility',
+			bundleFormat: 'esm',
+			version: '0.4.1',
+			bundleUrl: '../../bundles/test-plugin/revision/bundle.js',
+			sha256: hash
+		};
+		httpRequest.mockImplementation(async (path) =>
+			path === url
+				? httpResponse({ json: async <T>() => manifest as T })
+				: httpResponse({ text: async () => SAMPLE_BUNDLE })
+		);
+		await service.installFromManifestUrl(url);
+		expect(service.getInstalled('test-plugin')?.code).toBe(SAMPLE_BUNDLE);
+		service.dispose();
+		const restoredEngine = new ChronosEngine({ env: engine.env, onNotification: vi.fn() });
+		await restoredEngine.init();
+		const restored = createService(restoredEngine);
+		httpRequest.mockRejectedValue(new Error('offline'));
+		await restored.init();
+		expect(restoredEngine.isPluginLoaded('test-plugin')).toBe(true);
+		expect(restored.getInstalled('test-plugin')?.manifestUrl).toBe(url);
+		restored.dispose();
+	});
 	it('rejects invalid manifest install URLs', async () => {
 		await expect(service.installFromManifestUrl('javascript:alert(1)')).rejects.toThrow(
 			/http or https/

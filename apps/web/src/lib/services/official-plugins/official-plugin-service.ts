@@ -21,10 +21,13 @@ import {
 	type PluginInstallTask,
 	type PluginInstallProgress
 } from './install-queue';
+import { syncInstalledPluginsWithHost } from './sync-installed-plugins';
 import {
-	DEFAULT_OFFICIAL_CATALOG_URL,
-	syncInstalledPluginsWithHost
-} from './sync-installed-plugins';
+	BUNDLED_CATALOG_URL,
+	officialCatalogUrl,
+	isOfficialCatalogManifestUrl,
+	assertOfficialManifestVersion
+} from './market-config';
 
 export type { InstalledOfficialPluginRecord } from './official-plugin-types';
 export type {
@@ -106,7 +109,7 @@ export class OfficialPluginService implements Disposable {
 	private async installPreinstall(id: string): Promise<void> {
 		const entry = this.profile?.preinstall.find((p) => p.id === id);
 		if (!entry || !this.profile) throw new Error(`Unknown preinstall: ${id}`);
-		const catalog = await this.fetchCatalog(DEFAULT_OFFICIAL_CATALOG_URL);
+		const catalog = await this.fetchCatalog(BUNDLED_CATALOG_URL);
 		const url = catalog.manifests.find((url) => url.endsWith(`/${id}.manifest.json`));
 		if (!url) throw new Error(`Preinstall missing from official catalog: ${id}`);
 		const manifest = await this.fetchManifest(url);
@@ -213,6 +216,7 @@ export class OfficialPluginService implements Disposable {
 	private async syncWithHostCatalog(): Promise<void> {
 		await syncInstalledPluginsWithHost({
 			hostVersion: this.hostVersion,
+			preinstallIds: this.profile?.preinstall.map((plugin) => plugin.id) ?? [],
 			catalogClient: this.catalogClient,
 			getInstalledRecords: () => this.installedStore.getCache(),
 			install: (manifest, manifestUrl, options) =>
@@ -252,12 +256,28 @@ export class OfficialPluginService implements Disposable {
 		return this.installedStore.onChanged(listener);
 	}
 
-	async fetchCatalog(catalogUrl?: string) {
-		return this.catalogClient.fetchCatalog(catalogUrl);
+	async fetchCatalog(catalogUrl = officialCatalogUrl(this.hostVersion)) {
+		const catalog = await this.catalogClient.fetchCatalog(catalogUrl);
+		if (catalogUrl === officialCatalogUrl(this.hostVersion) || catalogUrl === BUNDLED_CATALOG_URL) {
+			const remoteDirectory = catalogUrl.startsWith('https:')
+				? new URL('./manifests/', catalogUrl).href
+				: undefined;
+			if (
+				catalog.manifests.some(
+					(url) =>
+						!isOfficialCatalogManifestUrl(url) ||
+						(remoteDirectory && !url.startsWith(remoteDirectory))
+				)
+			)
+				throw new Error('Invalid official catalog manifest source');
+		}
+		return catalog;
 	}
 
 	async fetchManifest(manifestUrl: string) {
-		return this.catalogClient.fetchManifest(manifestUrl);
+		const manifest = await this.catalogClient.fetchManifest(manifestUrl);
+		assertOfficialManifestVersion(manifest, manifestUrl, this.hostVersion);
+		return manifest;
 	}
 
 	async installFromManifestUrl(manifestUrl: string): Promise<void> {
@@ -413,6 +433,7 @@ export class OfficialPluginService implements Disposable {
 			: this.lifecycle.signal;
 		signal?.throwIfAborted?.();
 		validatePluginManifest(manifest);
+		assertOfficialManifestVersion(manifest, manifestUrl, this.hostVersion);
 		if (!options?.system) this.assertUserRemoval(manifest.id);
 
 		const existingSnapshot = this.installedStore.find(manifest.id);
