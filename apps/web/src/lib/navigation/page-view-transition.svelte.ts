@@ -3,6 +3,7 @@ import { getPendingTraversal } from './nav-coordinator';
 import type { OnNavigate } from '@sveltejs/kit';
 import { flushSync } from 'svelte';
 import { isSecondaryRoute, toAppPathname } from './routes';
+import { getHostPlatform } from '$lib/platform/host-platform';
 
 export type NavigationDirection = 'forward' | 'back' | 'none';
 export type SecondaryTransitionDirection = 'forward' | 'back';
@@ -104,6 +105,8 @@ export function shouldUseViewTransition(
 	direction: NavigationDirection,
 	navigation: ViewTransitionNavigation
 ): boolean {
+	const platform = getHostPlatform();
+	if (platform.isNative && platform.platformType === 'android') return false;
 	if (!hasViewTransitionSupport()) return false;
 	return shouldUseViewTransitionWhenSupported(direction, navigation);
 }
