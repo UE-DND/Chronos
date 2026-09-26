@@ -1,3 +1,5 @@
+import { HOST_BUILD } from '$lib/config/app-meta';
+import { base } from '$app/paths';
 import { PLUGIN_PROXY_ENTRIES } from '$lib/boot/plugin-proxy-meta.generated';
 import type { HttpResponse, IHttpService } from '@chronos/core';
 import { mergeAbortSignals } from '$lib/utils/abort-signal';
@@ -72,13 +74,18 @@ export class PluginProxyHttpAdapter implements IHttpService {
 		const signal = abortSignals.length > 0 ? mergeAbortSignals(abortSignals) : undefined;
 
 		try {
-			const proxyRes = await fetch(`/api/plugins/${pluginId}/${action}`, {
+			const proxyRes = await fetch(`${base}/api/plugins/${pluginId}/${action}`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: {
+					'Content-Type': 'application/json',
+					'X-Chronos-Version': HOST_BUILD.version,
+					'X-Chronos-Profile': HOST_BUILD.profileId
+				},
 				body: JSON.stringify(payload),
 				signal
 			});
 
+			if (proxyRes.status === 426) window.dispatchEvent(new CustomEvent('chronos-update-required'));
 			const raw = await proxyRes.json();
 			const proxyData = parsePluginServerResponse(raw);
 

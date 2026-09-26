@@ -122,6 +122,13 @@ export const en = {
 	'plugins.builtin.defaultEnabled': 'Enabled by default',
 	'plugins.action.install': 'Install',
 	'plugins.action.installing': 'Installing…',
+	'plugins.action.update': 'Update',
+	'plugins.update.pending': 'Waiting for a matching version',
+	'plugins.update.downloading': 'Downloading update',
+	'plugins.update.confirmation-required':
+		'Paused after host update; enable to confirm compatibility',
+	'plugins.update.ready': 'Ready',
+	'plugins.update.failed': 'Update failed; retry',
 	'plugins.action.retry': 'Retry',
 	'plugins.action.cancel': 'Cancel',
 	'plugins.status.queued': 'Queued',

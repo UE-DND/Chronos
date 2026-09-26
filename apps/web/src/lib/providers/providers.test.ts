@@ -475,9 +475,15 @@ describe('Web Providers', () => {
 		expect(providers.http).not.toBeInstanceOf(PluginProxyHttpAdapter);
 	});
 
-	it('clearAllData purges app-owned caches and keeps third-party ones', async () => {
+	it('clearAllData keeps the installed host while purging user resources and runtime caches', async () => {
 		const clearImages = vi.spyOn(db.images, 'clear');
-		const remaining = new Set(['pages-cache', 'official-plugins', 'other-cache']);
+		const remaining = new Set([
+			'chronos-shell:/scope:build',
+			'chronos-default-pages-precache-v2',
+			'chronos-legal:/scope',
+			'pages-cache',
+			'other-cache'
+		]);
 		const deleted: string[] = [];
 		const fakeCaches = {
 			keys: async () => [...remaining],
@@ -496,8 +502,13 @@ describe('Web Providers', () => {
 		await storage.clearAllData();
 
 		expect(clearImages).toHaveBeenCalledOnce();
-		expect(deleted.sort()).toEqual(['official-plugins', 'pages-cache']);
-		expect([...remaining]).toEqual(['other-cache']);
+		expect(deleted).toEqual(['chronos-legal:/scope']);
+		expect([...remaining]).toEqual([
+			'chronos-shell:/scope:build',
+			'chronos-default-pages-precache-v2',
+			'pages-cache',
+			'other-cache'
+		]);
 	});
 
 	it('dispose removes cross-tab storage listener', () => {

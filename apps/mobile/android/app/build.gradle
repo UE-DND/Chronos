@@ -35,6 +35,12 @@ if (configuredReleaseSigning && releaseSigning.values().any { !it }) {
     throw new GradleException('Android release signing requires all ANDROID_KEYSTORE_* and ANDROID_KEY_* values')
 }
 
+gradle.taskGraph.whenReady { graph ->
+    if (graph.allTasks.any { it.name.toLowerCase().contains('release') } && !configuredReleaseSigning) {
+        throw new GradleException('Release APK requires the official signing key; debug signing is not allowed')
+    }
+}
+
 android {
     namespace = "org.uednd.chronos"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -63,7 +69,7 @@ android {
     }
     buildTypes {
         release {
-            signingConfig configuredReleaseSigning ? signingConfigs.release : signingConfigs.debug
+            if (configuredReleaseSigning) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

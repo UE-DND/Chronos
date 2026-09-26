@@ -1,3 +1,5 @@
+import type { HostBuildIdentity } from '@chronos/core';
+import { resolveProfile } from '../../profile-codegen/profile-definitions.ts';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -52,6 +54,7 @@ export function getLatestReleaseFromEntries(entriesDir: string): Release | null 
 }
 
 export function writeGeneratedVersionJson(
+	host: HostBuildIdentity,
 	entriesDir?: string,
 	outputJsonPath?: string,
 	packageVersion?: string
@@ -75,7 +78,29 @@ export function writeGeneratedVersionJson(
 		);
 	}
 
-	const json = JSON.stringify(latest, null, '\t') + '\n';
+	if (host.version !== resolvedPackageVersion)
+		throw new Error('Host build and package version differ');
+	const json =
+		JSON.stringify(
+			{
+				formatVersion: 1,
+				host,
+				release: {
+					tagName: latest.tagName,
+					name: latest.name,
+					body: latest.body,
+					publishedAt: latest.publishedAt
+				},
+				requiredPluginIds: resolveProfile(host.profileId).preinstall.map((p) => p.id),
+				pluginCatalogUrl: new URL(
+					`${host.version}/catalog.json`,
+					process.env.CHRONOS_PLUGIN_MARKET_BASE_URL ??
+						'https://ue-dnd.github.io/Chronos/plugins/releases/'
+				).href
+			},
+			null,
+			'\t'
+		) + '\n';
 	try {
 		if (existsSync(defaultOutputPath)) {
 			const existing = readFileSync(defaultOutputPath, 'utf8');

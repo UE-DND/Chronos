@@ -27,6 +27,12 @@ export interface HostPlatformInitCallbacks {
 }
 
 export interface HostPlatformAdapter {
+	getAndroidInstallationIdentity?: () => Promise<{
+		packageId: string;
+		version: string;
+		versionCode: number;
+		signingCertificateSha256: string;
+	}>;
 	readonly id: 'web' | 'mobile';
 	readonly isNative: boolean;
 	readonly platformType: PlatformType;

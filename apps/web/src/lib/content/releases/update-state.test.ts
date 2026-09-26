@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 import { createUpdateState } from './update-state.svelte';
 import { createReleaseFeedAdapter, fetchLatestProjectRelease } from './release-feed-adapter';
 import * as serviceWorkerAdapter from './service-worker-adapter';
+import { HOST_BUILD } from '$lib/config/app-meta';
 import { AppError, failure, success } from '@chronos/core';
 
 describe('fetchLatestProjectRelease', () => {
@@ -10,10 +11,16 @@ describe('fetchLatestProjectRelease', () => {
 			ok: true,
 			status: 200,
 			json: async () => ({
-				tagName: 'v0.2.0',
-				name: 'Chronos 0.2.0',
-				publishedAt: '2026-08-18',
-				body: '### 新增\n- 软件更新页面'
+				formatVersion: 1,
+				host: { ...HOST_BUILD, version: '0.2.0' },
+				requiredPluginIds: [],
+				pluginCatalogUrl: 'https://ue-dnd.github.io/Chronos/plugins/releases/0.2.0/catalog.json',
+				release: {
+					tagName: 'v0.2.0',
+					name: 'Chronos 0.2.0',
+					publishedAt: '2026-08-18',
+					body: '### 新增\n- 软件更新页面'
+				}
 			})
 		});
 
@@ -44,7 +51,7 @@ describe('fetchLatestProjectRelease', () => {
 		expect(errorResult.ok).toBe(false);
 	});
 
-	it('keeps only a valid HTTPS Android update URL from the remote feed', async () => {
+	it('rejects an obsolete release feed instead of treating it as an Android artifact', async () => {
 		const fetchFn = vi.fn().mockResolvedValue({
 			ok: true,
 			status: 200,
@@ -57,8 +64,7 @@ describe('fetchLatestProjectRelease', () => {
 			fetchFn as unknown as typeof fetch,
 			'/version.json'
 		);
-		expect(result.ok).toBe(true);
-		if (result.ok) expect(result.value.platforms).toBeUndefined();
+		expect(result.ok).toBe(false);
 	});
 });
 

@@ -100,6 +100,8 @@ export function stagePluginRelease(
 	const output = resolve(site, 'plugins/releases');
 	rmSync(output, { recursive: true, force: true });
 	cpSync(releases, output, { recursive: true });
+	if (existsSync(resolve(history, 'android')))
+		cpSync(resolve(history, 'android'), resolve(site, 'android'), { recursive: true });
 	return versions.filter((item) => item !== version).at(-1) ?? '';
 }
 

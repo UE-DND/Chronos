@@ -97,3 +97,5 @@ export {
 	isPluginBinaryWireFormat,
 	serializePluginDataForNative
 } from './storage/plugin-data-value';
+
+export * from './types/host-update';

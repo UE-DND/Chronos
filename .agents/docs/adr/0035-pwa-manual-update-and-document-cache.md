@@ -1,6 +1,6 @@
 # ADR 0035：PWA 更新与导航文档缓存
 
-- 状态：Accepted
+- 状态：Superseded by [ADR 0047](0047-host-update-transactions.md)
 - 日期：2026-09-07
 
 ## 决策与原因

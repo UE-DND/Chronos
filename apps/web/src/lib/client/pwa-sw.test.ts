@@ -41,87 +41,33 @@ describe('probeSwUpdate', () => {
 		vi.unstubAllGlobals();
 		vi.useRealTimers();
 	});
-
-	it('returns false immediately when update check finds no waiting or installing worker', async () => {
+	it('detects a remote build without installing a worker before authorization', async () => {
+		const { HOST_BUILD } = await import('$lib/config/app-meta');
 		const registration = createRegistrationStub();
 		vi.stubGlobal('window', {});
 		vi.stubGlobal('navigator', {
-			serviceWorker: {
-				getRegistration: vi.fn().mockResolvedValue(registration)
-			}
+			serviceWorker: { getRegistration: vi.fn().mockResolvedValue(registration) }
 		});
-
-		await expect(probeSwUpdate()).resolves.toBe(false);
-		expect(registration.update).toHaveBeenCalledOnce();
-	});
-
-	it('marks update pending when a waiting worker already exists', async () => {
-		const registration = createRegistrationStub({ waiting: {} });
-		vi.stubGlobal('window', {});
-		vi.stubGlobal('navigator', {
-			serviceWorker: {
-				getRegistration: vi.fn().mockResolvedValue(registration)
-			}
-		});
-
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () =>
+				Response.json({
+					formatVersion: 1,
+					host: { ...HOST_BUILD, buildId: 'f'.repeat(64) },
+					release: { tagName: `v${HOST_BUILD.version}`, name: '', body: '', publishedAt: '' },
+					requiredPluginIds: [],
+					pluginCatalogUrl: `https://ue-dnd.github.io/Chronos/plugins/releases/${HOST_BUILD.version}/catalog.json`
+				})
+			)
+		);
 		await expect(probeSwUpdate()).resolves.toBe(true);
 		expect(registration.update).not.toHaveBeenCalled();
 	});
-
-	it('waits for installing worker but not the full probe timeout when no update is found', async () => {
-		vi.useFakeTimers();
-		let stateChangeListener: (() => void) | undefined;
-		const registration = createRegistrationStub({
-			installing: {
-				state: 'installing',
-				addEventListener: vi.fn((event, listener) => {
-					if (event === 'statechange') stateChangeListener = listener;
-				}),
-				removeEventListener: vi.fn()
-			}
-		});
-
+	it('keeps the application running when the deployment feed is unavailable', async () => {
 		vi.stubGlobal('window', {});
-		vi.stubGlobal('navigator', {
-			serviceWorker: {
-				getRegistration: vi.fn().mockResolvedValue(registration)
-			}
-		});
-
-		const pending = probeSwUpdate();
-		await vi.advanceTimersByTimeAsync(15_000);
-		stateChangeListener?.();
-		await expect(pending).resolves.toBe(false);
-	});
-
-	it('marks update pending when waiting is assigned after installed without another statechange', async () => {
-		vi.useFakeTimers();
-		let stateChangeListener: (() => void) | undefined;
-		const worker = {
-			state: 'installing',
-			addEventListener: vi.fn((event: string, listener: () => void) => {
-				if (event === 'statechange') stateChangeListener = listener;
-			}),
-			removeEventListener: vi.fn()
-		};
-		const registration = createRegistrationStub({ installing: worker });
-
-		vi.stubGlobal('window', {});
-		vi.stubGlobal('navigator', {
-			serviceWorker: {
-				getRegistration: vi.fn().mockResolvedValue(registration)
-			}
-		});
-
-		const pending = probeSwUpdate();
-		await Promise.resolve();
-
-		worker.state = 'installed';
-		stateChangeListener?.();
-		Object.defineProperty(registration, 'waiting', { value: worker, configurable: true });
-		await vi.advanceTimersByTimeAsync(250);
-
-		await expect(pending).resolves.toBe(true);
+		vi.stubGlobal('navigator', { serviceWorker: {} });
+		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+		await expect(probeSwUpdate()).resolves.toBe(false);
 	});
 });
 
@@ -399,7 +345,7 @@ describe('applyUpdateAndReload', () => {
 		await expect(applyUpdateAndReload()).rejects.toMatchObject({ code: 'download_failed' });
 	});
 
-	it('drops pages-cache and reloads when no worker update is found', async () => {
+	it('reloads without deleting caches owned by other applications when no worker update is found', async () => {
 		vi.useFakeTimers();
 		const reload = vi.fn();
 		const cachesDelete = vi.fn().mockResolvedValue(true);
@@ -418,11 +364,11 @@ describe('applyUpdateAndReload', () => {
 		await vi.advanceTimersByTimeAsync(2_000);
 		await pending;
 
-		expect(cachesDelete).toHaveBeenCalledWith('pages-cache');
+		expect(cachesDelete).not.toHaveBeenCalled();
 		expect(reload).toHaveBeenCalledOnce();
 	});
 
-	it('drops pages-cache and reports progress when activating a waiting worker', async () => {
+	it('reports activation progress and preserves unrelated caches', async () => {
 		const reload = vi.fn();
 		const cachesDelete = vi.fn().mockResolvedValue(true);
 		const postMessage = vi.fn();
@@ -454,7 +400,7 @@ describe('applyUpdateAndReload', () => {
 		await pending;
 
 		expect(onProgress).toHaveBeenCalledWith({ phase: 'restarting', percent: null });
-		expect(cachesDelete).toHaveBeenCalledWith('pages-cache');
+		expect(cachesDelete).not.toHaveBeenCalled();
 		expect(reload).toHaveBeenCalledOnce();
 	});
 
@@ -529,7 +475,7 @@ describe('applyUpdateAndReload', () => {
 
 		expect(onProgress).toHaveBeenCalledWith({ phase: 'downloading', percent: null });
 		expect(onProgress).toHaveBeenCalledWith({ phase: 'installing', percent: null });
-		expect(cachesDelete).toHaveBeenCalledWith('pages-cache');
+		expect(cachesDelete).not.toHaveBeenCalled();
 		expect(reload).toHaveBeenCalledOnce();
 		vi.useRealTimers();
 	});

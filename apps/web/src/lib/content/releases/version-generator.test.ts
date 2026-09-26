@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
@@ -7,6 +7,15 @@ import {
 	getLatestReleaseFromEntries,
 	writeGeneratedVersionJson
 } from './version-generator';
+
+const host = {
+	version: '2.0.0',
+	buildId: 'a'.repeat(64),
+	sourceCommit: 'b'.repeat(40),
+	profileId: 'chronos-default',
+	deploymentId: 'pages',
+	target: 'pages' as const
+};
 
 describe('version-generator', () => {
 	let entriesDir: string;
@@ -82,8 +91,16 @@ publishedAt: 2026-01-15
 		const outputDir = mkdtempSync(join(tmpdir(), 'chronos-version-json-'));
 		const outputPath = join(outputDir, 'version.json');
 		try {
-			const result = writeGeneratedVersionJson(entriesDir, outputPath, '2.0.0');
+			const result = writeGeneratedVersionJson(host, entriesDir, outputPath, '2.0.0');
 			expect(result).toBe(outputPath);
+			const descriptor = JSON.parse(readFileSync(outputPath, 'utf8'));
+			expect(descriptor).toMatchObject({
+				formatVersion: 1,
+				host,
+				release: { tagName: 'v2.0.0' },
+				requiredPluginIds: ['theme-m3', 'codec-share']
+			});
+			expect(descriptor.release.platforms).toBeUndefined();
 		} finally {
 			rmSync(outputDir, { recursive: true, force: true });
 		}
@@ -93,7 +110,7 @@ publishedAt: 2026-01-15
 		const outputDir = mkdtempSync(join(tmpdir(), 'chronos-version-json-mismatch-'));
 		const outputPath = join(outputDir, 'version.json');
 		try {
-			expect(() => writeGeneratedVersionJson(entriesDir, outputPath, '1.0.0')).toThrow(
+			expect(() => writeGeneratedVersionJson(host, entriesDir, outputPath, '1.0.0')).toThrow(
 				/does not match package\.json version/
 			);
 		} finally {

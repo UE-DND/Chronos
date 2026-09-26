@@ -107,9 +107,9 @@ deployment = "chronos-default"
 | `pages`       | 静态站点，路径前缀为 `/Chronos` | 启用 | `pages`，无服务端插件  |
 | `mobile`      | Capacitor 使用的静态 SPA        | 禁用 | `mobile`，无服务端插件 |
 
-`vp run mobile:build` 使用 `mobile` target 和 `mobile` 发行项，然后同步 Capacitor 工程。移动端不包含服务端插件，需要服务端代理的插件功能不会注册。target 定义见 [deploy-targets.ts](apps/web/src/lib/config/deploy-targets.ts)，profile 和 deployment 组合见 [distributions.toml](apps/web/config/distributions.toml)。
+`vp run mobile:build` 使用 `mobile` target 和 `mobile` 发行项，然后同步 Capacitor 工程。移动端不运行 Web 服务端处理器；带原生实现的动作通过静态注册表在 APK 内执行，Profile 策略可禁用对应动作。target 定义见 [deploy-targets.ts](apps/web/src/lib/config/deploy-targets.ts)，profile 和 deployment 组合见 [distributions.toml](apps/web/config/distributions.toml)。
 
-Web 的软件更新使用 Service Worker；移动端构建关闭 PWA。移动端通过原生平台适配器打开外部应用商店或 GitHub 发布下载链接进行更新。
+Web 的软件更新使用 Service Worker；移动端构建关闭 PWA。Web 在准备完已安装可选官方插件后才授权新 Worker 接管，所有窗口随接管刷新。移动端检查独立的 Android 就绪 feed，匹配实际包名、签名与 Profile 后打开固定 GitHub APK 地址；应用更新后后台恢复可选官方插件。具体约束见 [ADR 0047](.agents/docs/adr/0047-host-update-transactions.md)。
 
 | 构建任务                       | 客户端预安装插件                             | 服务端插件    |
 | ------------------------------ | -------------------------------------------- | ------------- |

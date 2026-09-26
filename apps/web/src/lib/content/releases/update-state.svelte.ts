@@ -1,5 +1,5 @@
 import { SvelteDate } from 'svelte/reactivity';
-import { APP_VERSION } from '$lib/config/app-meta';
+import { APP_VERSION, HOST_BUILD } from '$lib/config/app-meta';
 import { trackEvent } from '$lib/client/analytics';
 import type { AppResult } from '@chronos/core';
 import type { ReleaseCatalog } from './catalog';
@@ -58,7 +58,10 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 		createReleaseFeedAdapter({
 			fetchLatestRelease: options.fetchLatestRelease,
 			localCatalog: options.localCatalog,
-			versionUrl: isExternalUpdatePlatform ? __ANDROID_RELEASE_FEED_URL__ : undefined,
+			versionUrl:
+				isExternalUpdatePlatform && typeof __ANDROID_RELEASE_FEED_URL__ === 'string'
+					? __ANDROID_RELEASE_FEED_URL__
+					: undefined,
 			allowLocalFallback: !isExternalUpdatePlatform,
 			requireVersionUrl: isExternalUpdatePlatform
 		});
@@ -132,7 +135,11 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 				const release = result.value;
 				latestRelease = release;
 				const newerVersion = compareReleaseVersions(release.tagName, currentVersion) > 0;
-				applyUpdateSignals(newerVersion, swHasUpdate);
+				applyUpdateSignals(
+					newerVersion,
+					swHasUpdate ||
+						Boolean(release.hostUpdate && release.hostUpdate.host.buildId !== HOST_BUILD.buildId)
+				);
 				commitCheckSnapshot();
 				trackEvent('update_check_success', {
 					has_update: hasUpdate,

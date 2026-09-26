@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+vi.mock('hyperellipse', () => ({ registerHyperellipse: vi.fn() }));
 
 const mocks = vi.hoisted(() => ({
 	connectivityInit: vi.fn(),
@@ -28,6 +29,8 @@ vi.mock('$lib/client/pwa-install.svelte', () => ({
 		tryScheduleInstallDialog: mocks.tryScheduleInstallDialog
 	}
 }));
+
+vi.mock('$lib/client/web-host-update', () => ({ recoverInterruptedWebUpdate: vi.fn() }));
 
 vi.mock('$lib/client/analytics', () => ({
 	initAnalytics: mocks.initAnalytics
@@ -84,7 +87,12 @@ describe('createPlatformBootstrap', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.onboardingState.open = false;
-		vi.stubGlobal('window', { __chronosHideBootFallback: vi.fn() });
+		vi.stubGlobal('document', { addEventListener: vi.fn(), removeEventListener: vi.fn() });
+		vi.stubGlobal('window', {
+			__chronosHideBootFallback: vi.fn(),
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn()
+		});
 	});
 
 	afterEach(() => {
@@ -131,6 +139,8 @@ describe('createPlatformBootstrap', () => {
 		const showBootFailure = vi.fn();
 		vi.stubGlobal('window', {
 			__chronosHideBootFallback: vi.fn(),
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
 			__chronosShowBootFailure: showBootFailure
 		});
 

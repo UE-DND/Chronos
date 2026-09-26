@@ -1,4 +1,4 @@
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { App } from '@capacitor/app';
@@ -26,6 +26,18 @@ import type {
 	NativeShareResult,
 	PlatformUpdateAction
 } from '../../web/src/lib/platform/host-platform';
+
+export async function readAndroidInstallationIdentity() {
+	const installation = registerPlugin<{
+		getIdentity(): Promise<{
+			packageId: string;
+			version: string;
+			versionCode: number;
+			signingCertificateSha256: string;
+		}>;
+	}>('ChronosInstallation');
+	return installation.getIdentity();
+}
 
 export function isCapacitorNative(): boolean {
 	if (typeof window === 'undefined') return false;
@@ -291,6 +303,8 @@ export function createMobilePlatformAdapter(): HostPlatformAdapter {
 					}
 				}
 			: {}),
+		getAndroidInstallationIdentity:
+			isNative && platformType === 'android' ? readAndroidInstallationIdentity : undefined,
 		getUpdateAction(): PlatformUpdateAction {
 			return {
 				mode: 'external-link',

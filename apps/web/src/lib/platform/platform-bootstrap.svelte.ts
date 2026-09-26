@@ -5,7 +5,7 @@ import { pwaInstallController } from '$lib/client/pwa-install.svelte';
 import { initAnalytics } from '$lib/client/analytics';
 
 import { attachOfflineUx } from '$lib/platform/offline-ux.svelte';
-import { ensureEngineReady } from '$lib/services/app-engine';
+import { ensureEngineReady, getOfficialPluginService } from '$lib/services/app-engine';
 import { configureHostI18n } from '$lib/i18n/host-i18n.svelte';
 import { getHostPlatform } from '$lib/platform/host-platform';
 import { dispatchSystemBack } from '$lib/navigation/nav-coordinator';
@@ -46,18 +46,33 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 				onAppResume: () => {
 					void ensureEngineReady().then((engine) => {
 						engine.refreshSystemTime();
+						void getOfficialPluginService().retryPendingUpdates();
 					});
 				}
 			}) ?? null;
 
 		registerHyperellipse();
 		connectivity.init();
+		const retry = () => {
+			if (navigator.onLine) void getOfficialPluginService().retryPendingUpdates();
+			void import('$lib/client/web-host-update')
+				.then((module) => module.recoverInterruptedWebUpdate())
+				.catch(console.error);
+		};
+		const resume = () => {
+			if (document.visibilityState === 'visible') retry();
+		};
+		window.addEventListener('online', retry);
+		document.addEventListener('visibilitychange', resume);
 
 		void ensureEngineReady()
 			.then((engine) => {
 				configureHostI18n({
 					onLocaleChanged: (handler) => engine.events.on('i18n:localeChanged', handler)
 				});
+				void import('$lib/client/web-host-update')
+					.then((module) => module.recoverInterruptedWebUpdate())
+					.catch(console.error);
 				deps.shell.init();
 				deps.timetableScreen.init(deps.shell);
 				// Gate first so the async install init cannot auto-popup behind onboarding.
@@ -101,6 +116,8 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 			});
 
 		return () => {
+			window.removeEventListener('online', retry);
+			document.removeEventListener('visibilitychange', resume);
 			disposeEffects?.();
 			disposeEffects = null;
 			deps.shell.appearance.destroy();

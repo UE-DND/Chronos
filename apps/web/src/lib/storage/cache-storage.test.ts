@@ -42,18 +42,28 @@ function createFakeCacheStorage(initial: Record<string, number[]> = {}) {
 describe('clearAppCaches', () => {
 	it('deletes only app-owned caches and tolerates missing storage', async () => {
 		const caches = createFakeCacheStorage({
-			'pages-cache': [10],
-			'official-plugins': [20],
-			'workbox-precache-v2': [30],
-			'third-party-cache': [40]
+			'chronos-shell:example:build': [10],
+			'chronos-legal:/Chronos': [20],
+			'chronos-default-pages-precache-v2': [30],
+			'third-party-cache': [40],
+			'workbox-precache-v2': [50],
+			'pages-cache': [60]
 		});
 
 		await clearAppCaches(caches as unknown as CacheStorage);
 
 		expect(caches.deleted.sort()).toEqual(
-			['official-plugins', 'pages-cache', 'workbox-precache-v2'].sort()
+			[
+				'chronos-legal:/Chronos',
+				'chronos-shell:example:build',
+				'chronos-default-pages-precache-v2'
+			].sort()
 		);
-		expect(await caches.keys()).toEqual(['third-party-cache']);
+		expect(await caches.keys()).toEqual([
+			'third-party-cache',
+			'workbox-precache-v2',
+			'pages-cache'
+		]);
 		await expect(clearAppCaches(null)).resolves.toBeUndefined();
 	});
 });
@@ -61,8 +71,8 @@ describe('clearAppCaches', () => {
 describe('estimateCacheStorageBytes', () => {
 	it('sums cached response sizes and returns 0 without storage', async () => {
 		const caches = createFakeCacheStorage({
-			'pages-cache': [100, 200],
-			'official-plugins': [50]
+			'chronos-shell:example:build': [100, 200],
+			'chronos-legal:/Chronos': [50]
 		});
 
 		await expect(estimateCacheStorageBytes(caches as unknown as CacheStorage)).resolves.toBe(350);
@@ -70,7 +80,7 @@ describe('estimateCacheStorageBytes', () => {
 	});
 
 	it('ignores unreadable entries', async () => {
-		const caches = createFakeCacheStorage({ 'pages-cache': [10] });
+		const caches = createFakeCacheStorage({ 'chronos-shell:example:build': [10] });
 		vi.spyOn(caches, 'open').mockRejectedValueOnce(new Error('denied'));
 
 		await expect(estimateCacheStorageBytes(caches as unknown as CacheStorage)).resolves.toBe(0);

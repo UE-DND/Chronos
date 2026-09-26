@@ -1,8 +1,17 @@
+import { getHostPlatform } from '$lib/platform/host-platform';
 import { base } from '$app/paths';
-import { AppError, failure, success, type AppResult } from '@chronos/core';
+import {
+	AppError,
+	failure,
+	success,
+	validateWebUpdate,
+	selectAndroidUpdate,
+	type AppResult
+} from '@chronos/core';
 import { createLocalReleaseCatalog } from './local-catalog';
 import type { ReleaseCatalog } from './catalog';
-import { parseAndroidUpdateUrl, type Release } from './release';
+import { HOST_BUILD, ANDROID_SIGNING_CERTIFICATE } from '$lib/config/app-meta';
+import { type Release } from './release';
 
 /**
  * Seam for fetching remote or local release changelog feed.
@@ -13,7 +22,8 @@ export interface ReleaseFeedAdapter {
 
 export async function fetchLatestProjectRelease(
 	fetchFn: typeof fetch = fetch,
-	versionUrl = `${base}/version.json`
+	versionUrl = `${base}/version.json`,
+	android = false
 ): Promise<AppResult<Release>> {
 	try {
 		const targetUrl = `${versionUrl}?t=${Date.now()}`;
@@ -32,26 +42,26 @@ export async function fetchLatestProjectRelease(
 			return failure(AppError.network(`检查更新失败 (HTTP ${response.status})`));
 		}
 
-		const data = (await response.json()) as {
-			tagName?: string;
-			name?: string;
-			publishedAt?: string;
-			platforms?: { android?: { updateUrl?: string } };
-			body?: string;
-		};
-
-		if (!data?.tagName?.trim()) {
-			return failure(AppError.dataFormat('版本发布数据格式无效'));
+		const data: unknown = await response.json();
+		if (android) {
+			const readIdentity = getHostPlatform().getAndroidInstallationIdentity;
+			if (!readIdentity) throw new Error('Android installation identity unavailable');
+			const installed = await readIdentity();
+			if (
+				installed.version !== HOST_BUILD.version ||
+				installed.signingCertificateSha256 !== ANDROID_SIGNING_CERTIFICATE
+			)
+				throw new Error('Installed Android identity does not match this build');
+			const entry = selectAndroidUpdate(
+				data,
+				HOST_BUILD.profileId,
+				installed.packageId,
+				installed.signingCertificateSha256
+			);
+			return success({ ...entry.release, platforms: { android: { updateUrl: entry.apkUrl } } });
 		}
-
-		const androidUpdateUrl = parseAndroidUpdateUrl(data.platforms?.android?.updateUrl);
-		return success({
-			tagName: data.tagName,
-			name: data.name || data.tagName,
-			publishedAt: data.publishedAt || '',
-			platforms: androidUpdateUrl ? { android: { updateUrl: androidUpdateUrl } } : undefined,
-			body: data.body || ''
-		});
+		const update = validateWebUpdate(data, HOST_BUILD);
+		return success({ ...update.release, hostUpdate: update });
 	} catch (error) {
 		const message =
 			error instanceof Error && error.name === 'AbortError'
@@ -98,7 +108,7 @@ export function createReleaseFeedAdapter(
 			}
 			const remoteResult = customFetchRelease
 				? await customFetchRelease()
-				: await fetchLatestProjectRelease(fetchFn, versionUrl);
+				: await fetchLatestProjectRelease(fetchFn, versionUrl, requireVersionUrl);
 			if (remoteResult.ok) {
 				return remoteResult;
 			}

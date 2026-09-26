@@ -1,7 +1,7 @@
 import { resolve } from '$app/paths';
 import { hostT } from '$lib/i18n/host-i18n.svelte';
 import { snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
-import { onSwUpdateAvailable } from '$lib/client/pwa-sw';
+import { probeSwUpdate, onSwUpdateAvailable } from '$lib/client/pwa-sw';
 
 const UPDATE_PROMPT_SESSION_KEY = 'chronos:pwa-update-prompt-shown';
 
@@ -27,8 +27,8 @@ export function initPwaUpdateUx(listenUpdate = onSwUpdateAvailable) {
 	if (initialized || typeof window === 'undefined') return;
 	initialized = true;
 
-	listenUpdate(() => {
-		if (hasShownUpdatePromptThisSession()) return;
+	const showPrompt = (required = false) => {
+		if (!required && hasShownUpdatePromptThisSession()) return;
 		markUpdatePromptShownThisSession();
 
 		snackbarKey(
@@ -42,5 +42,8 @@ export function initPwaUpdateUx(listenUpdate = onSwUpdateAvailable) {
 			},
 			8000
 		);
-	});
+	};
+	listenUpdate(() => showPrompt());
+	window.addEventListener('chronos-update-required', () => showPrompt(true));
+	void probeSwUpdate();
 }
