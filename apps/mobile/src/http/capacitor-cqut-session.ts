@@ -30,6 +30,7 @@ class NativeCasCookieJar implements ICookieJar {
 export class CapacitorCqutSession implements CqutSession {
 	private initialized = false;
 	private disposed = false;
+	private readonly responseCookies = new Map<string, Set<string>>();
 
 	private async ensureInitialized(): Promise<void> {
 		if (!this.initialized) {
@@ -43,9 +44,11 @@ export class CapacitorCqutSession implements CqutSession {
 	}
 
 	async hasCookie(url: string, name: string): Promise<boolean> {
-		const targetUrl = url.startsWith('http') ? url : `https://${url}/`;
-		const cookies = await CapacitorCookies.getCookies({ url: targetUrl });
-		return typeof cookies[name] === 'string' && cookies[name].length > 0;
+		const hostname = new URL(url.startsWith('http') ? url : `https://${url}/`).hostname;
+		return [...this.responseCookies].some(
+			([domain, names]) =>
+				(hostname === domain || hostname.endsWith(`.${domain}`)) && names.has(name)
+		);
 	}
 
 	async request(input: CqutRequest): Promise<CqutResponse> {
@@ -102,6 +105,7 @@ export class CapacitorCqutSession implements CqutSession {
 					responseHeaders[key] = String(value);
 				}
 			}
+			this.storeResponseCookies(responseHeaders, res.url || input.url);
 
 			return {
 				status: res.status,
@@ -127,7 +131,32 @@ export class CapacitorCqutSession implements CqutSession {
 
 	async dispose(): Promise<void> {
 		this.disposed = true;
+		this.responseCookies.clear();
 		await this.clearCookies();
+	}
+
+	private storeResponseCookies(
+		headers: Record<string, string | string[]>,
+		responseUrl: string
+	): void {
+		const setCookie = headers['set-cookie'];
+		if (!setCookie) return;
+
+		const cookieHeaders = Array.isArray(setCookie) ? setCookie : [setCookie];
+		const responseHost = new URL(responseUrl).hostname.toLowerCase();
+		for (const header of cookieHeaders) {
+			for (const match of header.matchAll(/(?:^|,\s*)([^=;,\s]+)=([^;,\s]*)/g)) {
+				const name = match[1];
+				const cookieValue = match[2];
+				if (!name || cookieValue === undefined) continue;
+
+				const names = this.responseCookies.get(responseHost) ?? new Set<string>();
+				if (cookieValue.length > 0) names.add(name);
+				else names.delete(name);
+				if (names.size > 0) this.responseCookies.set(responseHost, names);
+				else this.responseCookies.delete(responseHost);
+			}
+		}
 	}
 
 	private async clearCookies(): Promise<void> {

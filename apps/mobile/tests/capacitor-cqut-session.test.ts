@@ -81,21 +81,24 @@ describe('CapacitorCqutSession', () => {
 		expect(await response.text()).toBe('{"code":200,"msg":"ok"}');
 	});
 
-	it('checks cookies via CapacitorCookies.getCookies', async () => {
-		mockGetCookies.mockResolvedValue({
-			JSESSIONID: 'session-xyz'
+	it('checks response cookies without reading WebView document.cookie', async () => {
+		mockRequest.mockResolvedValue({
+			status: 302,
+			headers: {
+				'set-cookie': 'JSESSIONID=session-xyz; Path=/; HttpOnly, theme=dark; Path=/'
+			},
+			url: 'https://timetable-cfc.cqut.edu.cn/api/auth/casLogin',
+			data: ''
 		});
 
 		const session = new CapacitorCqutSession();
+		await session.request({ url: 'https://timetable-cfc.cqut.edu.cn/api/auth/casLogin' });
 		const hasSession = await session.hasCookie('https://timetable-cfc.cqut.edu.cn', 'JSESSIONID');
 
 		expect(hasSession).toBe(true);
-		expect(mockGetCookies).toHaveBeenCalledWith({
-			url: 'https://timetable-cfc.cqut.edu.cn'
-		});
-
 		const hasOther = await session.hasCookie('https://timetable-cfc.cqut.edu.cn', 'OTHER');
 		expect(hasOther).toBe(false);
+		expect(mockGetCookies).not.toHaveBeenCalled();
 	});
 
 	it('cleans up CQUT domain cookies on dispose', async () => {
