@@ -20,7 +20,7 @@
 	let mountHandle = $state.raw<ChronosMountHandle | undefined>();
 
 	$effect(() => {
-		if (!containerEl || !mountable) {
+		if (!containerEl || !isChronosMountable(component)) {
 			mountHandle = undefined;
 			return;
 		}

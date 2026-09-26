@@ -17,11 +17,11 @@
 		{@const resolved = resolveShellIcon(icon)}
 		{#if resolved?.kind === 'component'}
 			{@const Icon = resolved.component}
-			<Icon class="size-6" aria-hidden="true" />
+			<Icon class="size-6" />
 		{/if}
 	{:else}
 		{@const Icon = icon}
-		<Icon class="size-6" aria-hidden="true" />
+		<Icon class="size-6" />
 	{/if}
 {/snippet}
 

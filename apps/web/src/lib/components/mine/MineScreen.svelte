@@ -35,10 +35,7 @@
 		items: SettingItem[];
 	};
 
-	function resolveIcon(
-		icon: string | undefined,
-		itemId: string
-	): Component<{ class?: string }> | undefined {
+	function resolveIcon(icon: unknown, itemId: string): Component<{ class?: string }> | undefined {
 		const resolved = resolveShellIcon(icon);
 		if (resolved?.kind === 'component') {
 			return resolved.component;

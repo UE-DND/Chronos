@@ -51,6 +51,7 @@
 	let PluginScreenContainer = $state<Component<{
 		controller: ReturnType<typeof getAppController>;
 		pluginId: string;
+		active?: boolean;
 	}> | null>(null);
 
 	$effect(() => {

@@ -1,4 +1,5 @@
 import { hostT } from '$lib/i18n/host-i18n.svelte';
+import type { HostMessageKey } from '$lib/i18n/host-messages';
 import { createSessionPreviewPersistence } from '$lib/client/preview-persistence';
 import type { Timetable } from '$lib/models/timetable';
 import { ImportMode } from '$lib/domain/import-mode';
@@ -271,7 +272,7 @@ export function resolveSlotTitle(slotId: string | null): string {
 	return slotId;
 }
 
-export function shareImportErrorSnackbarKey(kind: ImportSlotErrorKind): string {
+export function shareImportErrorSnackbarKey(kind: ImportSlotErrorKind): HostMessageKey {
 	switch (kind) {
 		case 'no-data':
 			return 'share.error.noData';

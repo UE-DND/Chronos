@@ -1,5 +1,7 @@
 <script lang="ts">
+	import type { AppLocale } from '@chronos/core';
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import type { HostMessageKey } from '$lib/i18n/host-messages';
 	import { appLocaleToBcp47 } from '$lib/i18n/locale-sync';
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
@@ -40,7 +42,7 @@
 	} = $props();
 
 	const controller = getAppController();
-	const activeLocale = $derived(appLocaleToBcp47(controller.currentLocale));
+	const activeLocale = $derived(appLocaleToBcp47(controller.currentLocale as AppLocale));
 	const androidUpdateUrl = $derived(updateState.state.latestRelease?.platforms?.android?.updateUrl);
 
 	onMount(() => {
@@ -87,7 +89,7 @@
 
 	function formatErrorMessage(message: string | null): string {
 		if (!message) return '';
-		return message.startsWith('about.') ? hostT(message) : message;
+		return message.startsWith('about.') ? hostT(message as HostMessageKey) : message;
 	}
 </script>
 
@@ -165,7 +167,10 @@
 							{:else}
 								<DownloadFill class="size-5" />
 							{/if}
-							{hostT(updateState.updateAction?.actionLabelKey ?? 'about.update.install')}
+							{hostT(
+								(updateState.updateAction?.actionLabelKey ??
+									'about.update.install') as HostMessageKey
+							)}
 						</Button>
 					{/if}
 				{/if}

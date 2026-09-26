@@ -32,7 +32,9 @@
 						icon: DeleteFill,
 						variant: 'danger',
 						disabled: !currentTimetableId,
-						onClick: () => (deleteDialogOpen = true)
+						onClick: () => {
+							deleteDialogOpen = true;
+						}
 					}
 				]
 			: []

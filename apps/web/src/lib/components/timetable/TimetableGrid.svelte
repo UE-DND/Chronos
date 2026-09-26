@@ -558,20 +558,21 @@
 
 	$effect(() => {
 		if (!settling) return;
+		const currentSettling = settling;
 
 		const matched = placements.some((item) => {
 			if (item.kind === 'course') {
 				return (
-					item.course.dayOfWeek === settling.targetDayOfWeek &&
-					item.course.startPeriod === settling.targetStartPeriod &&
-					item.course.name === settling.course.name
+					item.course.dayOfWeek === currentSettling.targetDayOfWeek &&
+					item.course.startPeriod === currentSettling.targetStartPeriod &&
+					item.course.name === currentSettling.course.name
 				);
 			}
 			if (item.kind === 'overlap-placeholder') {
 				return (
-					item.key.startsWith(`${settling.targetDayOfWeek}:`) &&
-					item.geometry.startPeriod <= settling.targetStartPeriod &&
-					settling.targetStartPeriod <= item.geometry.endPeriod
+					item.key.startsWith(`${currentSettling.targetDayOfWeek}:`) &&
+					item.geometry.startPeriod <= currentSettling.targetStartPeriod &&
+					currentSettling.targetStartPeriod <= item.geometry.endPeriod
 				);
 			}
 			return false;
