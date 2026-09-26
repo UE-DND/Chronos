@@ -101,6 +101,12 @@ export default defineConfig({
 				command: 'vp -C apps/web preview',
 				cache: false
 			},
+			'build:browser': { command: 'tsx scripts/e2e/build.ts', cache: false },
+			'test:browser': {
+				dependsOn: ['build:browser'],
+				command: 'playwright test',
+				cache: false
+			},
 			'build:cqut': {
 				command:
 					'CHRONOS_DISTRIBUTION=cqut node --experimental-strip-types apps/web/scripts/run-host.ts build',

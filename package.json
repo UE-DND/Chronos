@@ -10,6 +10,7 @@
 		"prepare": "vp config && node --experimental-strip-types apps/web/scripts/emit-profile-artifacts.ts"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.63.0",
 		"@resvg/resvg-js": "^2.6.2",
 		"@sveltejs/kit": "^2.70.3",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
