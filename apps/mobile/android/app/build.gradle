@@ -1,5 +1,40 @@
 apply plugin: 'com.android.application'
 
+def appPackageJson = rootProject.file('../../web/package.json')
+if (!appPackageJson.isFile()) {
+    throw new GradleException("Chronos app package.json not found: ${appPackageJson}")
+}
+
+def appVersion = new groovy.json.JsonSlurper().parse(appPackageJson).version
+def versionMatcher = (appVersion =~ /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/)
+if (!versionMatcher.matches()) {
+    throw new GradleException("Expected a stable SemVer app version in apps/web/package.json, got: ${appVersion}")
+}
+
+def versionMajor = versionMatcher[0][1].toInteger()
+def versionMinor = versionMatcher[0][2].toInteger()
+def versionPatch = versionMatcher[0][3].toInteger()
+if (versionMinor >= 1000 || versionPatch >= 1000) {
+    throw new GradleException("Android versionCode encoding requires minor and patch versions below 1000, got: ${appVersion}")
+}
+
+// Keep Android's monotonically increasing versionCode derived from the canonical app SemVer.
+def appVersionCode = versionMajor * 1_000_000 + versionMinor * 1_000 + versionPatch
+if (appVersionCode < 1 || appVersionCode > 2_100_000_000) {
+    throw new GradleException("App version is outside the supported Android versionCode range: ${appVersion}")
+}
+
+def releaseSigning = [
+    storeFile: System.getenv('ANDROID_KEYSTORE_PATH'),
+    storePassword: System.getenv('ANDROID_KEYSTORE_PASSWORD'),
+    keyAlias: System.getenv('ANDROID_KEY_ALIAS'),
+    keyPassword: System.getenv('ANDROID_KEY_PASSWORD')
+]
+def configuredReleaseSigning = releaseSigning.values().any { it }
+if (configuredReleaseSigning && releaseSigning.values().any { !it }) {
+    throw new GradleException('Android release signing requires all ANDROID_KEYSTORE_* and ANDROID_KEY_* values')
+}
+
 android {
     namespace = "org.uednd.chronos"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +42,8 @@ android {
         applicationId "org.uednd.chronos"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +51,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    if (configuredReleaseSigning) {
+        signingConfigs {
+            release {
+                storeFile file(releaseSigning.storeFile)
+                storePassword releaseSigning.storePassword
+                keyAlias releaseSigning.keyAlias
+                keyPassword releaseSigning.keyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            if (configuredReleaseSigning) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
