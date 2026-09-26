@@ -125,6 +125,7 @@ export function selectAndroidUpdate(
 	assertRelease(update.release, entry.host.version);
 	assertCatalog(entry.pluginCatalogUrl, entry.host.version);
 	const apk = new URL(entry.apkUrl);
+	const profileFlavor = profileId.replace(/^chronos-/, '');
 	if (
 		entry.host.target !== 'mobile' ||
 		entry.host.profileId !== profileId ||
@@ -139,7 +140,7 @@ export function selectAndroidUpdate(
 		apk.search ||
 		apk.hash ||
 		!apk.pathname.includes(`/releases/download/${update.release.tagName}/`) ||
-		!apk.pathname.endsWith(`-${profileId}-${entry.host.version}.apk`)
+		!apk.pathname.endsWith(`-${profileFlavor}-${entry.host.version}.apk`)
 	)
 		throw new Error('Invalid pinned Android artifact');
 	return { ...entry, release: update.release, versionCode: update.versionCode };

@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import {
 	ANDROID_PROFILES,
+	androidArtifactBaseName,
 	collectAndroidRelease,
 	publishAndroidRelease,
 	stageAndroidRelease,
@@ -28,7 +29,7 @@ function artifacts(): string {
 		const entry = value.profiles[id];
 		entry.sha256 = createHash('sha256').update(bytes).digest('hex');
 		entry.sizeBytes = bytes.length;
-		const name = `Chronos-${id}-1.0.3`;
+		const name = androidArtifactBaseName(id, '1.0.3');
 		writeFileSync(resolve(directory, `${name}.apk`), bytes);
 		writeFileSync(
 			resolve(directory, `${name}.json`),
@@ -57,7 +58,7 @@ function release(version: string): AndroidStableUpdate {
 						target: 'mobile',
 						deploymentId: 'mobile'
 					},
-					apkUrl: `https://github.com/UE-DND/Chronos/releases/download/${tagName}/Chronos-${profileId}-${version}.apk`,
+					apkUrl: `https://github.com/UE-DND/Chronos/releases/download/${tagName}/${androidArtifactBaseName(profileId, version)}.apk`,
 					sha256: 'd'.repeat(64),
 					sizeBytes: 100,
 					pluginCatalogUrl: `https://ue-dnd.github.io/Chronos/plugins/releases/${version}/catalog.json`
@@ -70,7 +71,7 @@ describe('ready Android publishing', () => {
 	it('collects CQUT and CQUT offline independently and rejects corrupted APK bytes', () => {
 		const directory = artifacts();
 		expect(Object.keys(collectAndroidRelease(directory).profiles)).toEqual([...ANDROID_PROFILES]);
-		writeFileSync(resolve(directory, 'Chronos-chronos-cqut-offline-1.0.3.apk'), 'corrupt');
+		writeFileSync(resolve(directory, 'Chronos-cqut-offline-1.0.3.apk'), 'corrupt');
 		expect(() => collectAndroidRelease(directory)).toThrow('APK integrity mismatch');
 	});
 	it('keeps a release draft when an upload fails and never publishes a partial set', () => {
