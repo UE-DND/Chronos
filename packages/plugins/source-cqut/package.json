@@ -66,7 +66,7 @@
 		"@chronos/core": "workspace:*",
 		"@chronos/ui-kit": "workspace:*",
 		"@cqut-openproject/cas-sdk": "github:CQUT-OpenProject/CAS-SDK#v2.0.0",
-		"undici": "^8.10.2",
+		"undici": "^8.11.0",
 		"zod": "^4.5.4"
 	},
 	"devDependencies": {
