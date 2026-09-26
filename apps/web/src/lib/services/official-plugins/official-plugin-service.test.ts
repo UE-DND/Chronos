@@ -1064,6 +1064,19 @@ describe('profile preinstallation lifecycle', () => {
 		await service.prepareProfile(profile);
 		return { engine, env, httpRequest, profile, service, theme, tool, colors };
 	}
+	it('retries a previously failed preinstall when recovery is requested again', async () => {
+		const { httpRequest, service, tool } = await setupProfile();
+		httpRequest.mockRejectedValueOnce(new Error('temporary catalog failure'));
+
+		await service.retryPreinstall();
+		expect(service.listFailures().has(tool.id)).toBe(true);
+
+		await service.retryPreinstall();
+
+		expect(service.listFailures().has(tool.id)).toBe(false);
+		expect(service.getInstalled(tool.id)).toBeDefined();
+	});
+
 	it('keeps the default theme selected throughout asset replacement', async () => {
 		const { engine, service, theme } = await setupProfile();
 		const changes: (string | null)[] = [];

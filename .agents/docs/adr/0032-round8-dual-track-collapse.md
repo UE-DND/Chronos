@@ -1,6 +1,5 @@
 # ADR 0032：Profile、宿主面板与导入错误
 
-- 状态：Accepted（ProfileManager 已由 ADR 0042 取代）
 - 日期：2026-09-01
 
 ## 决策

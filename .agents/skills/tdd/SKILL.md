@@ -5,7 +5,7 @@ description: Develop complex Chronos domain logic, codecs, parsers, layout algor
 
 # Test-Driven Development (TDD)
 
-Follow the Red → Green → Refactor loop for complex domain logic, binary codecs, parsers, layout algorithms, and state transitions. For reported bugs that cannot be reproduced in the current environment, use the evidence fallback in [diagnosing-bugs](../diagnosing-bugs/SKILL.md).
+Follow the Red → Green → Refactor loop for complex domain logic, binary codecs, parsers, layout algorithms, and state transitions when the expected behavior can be stated as a meaningful public contract. If the contract or correct design is still unclear, first do a bounded exploration or prototype to learn the behavior; once it is stable, capture the important rules in public-contract tests and use the TDD loop for further changes. Exploration is not a reason to leave stable, important behavior untested. For reported bugs that cannot be reproduced in the current environment, use the evidence fallback in [diagnosing-bugs](../diagnosing-bugs/SKILL.md).
 
 ## Testing Boundaries (Seams Only)
 

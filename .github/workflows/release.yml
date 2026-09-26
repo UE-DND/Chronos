@@ -15,11 +15,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages
+  group: release
   cancel-in-progress: false
 
 jobs:
   version:
+    name: Validate release version
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.validate.outputs.tag }}
@@ -27,17 +28,20 @@ jobs:
       version: ${{ steps.source.outputs.version }}
       epoch: ${{ steps.source.outputs.epoch }}
     steps:
-      - id: validate
+      - name: Validate tag SemVer format
+        id: validate
         env:
           TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Expected a release tag vX.Y.Z'; exit 1; }
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: refs/tags/${{ steps.validate.outputs.tag }}
           fetch-depth: 0
-      - id: source
+      - name: Verify commit is merged into master and matches version
+        id: source
         env:
           TAG: ${{ steps.validate.outputs.tag }}
         run: |
@@ -53,12 +57,14 @@ jobs:
           echo "epoch=$(git show -s --format=%ct HEAD)" >> "$GITHUB_OUTPUT"
 
   quality:
+    name: Quality & test verification
     needs: version
     uses: ./.github/workflows/quality.yml
     with:
       ref: ${{ needs.version.outputs.commit }}
 
   android-apk:
+    name: Build Android APK (${{ matrix.name }})
     env:
       CHRONOS_DEPLOY_TARGET: mobile
       CHRONOS_DEPLOYMENT: mobile
@@ -71,21 +77,31 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [chronos-default, chronos-cqut, chronos-cqut-offline]
+        include:
+          - profile: chronos-default
+            name: Default
+          - profile: chronos-cqut
+            name: CQUT
+          - profile: chronos-cqut-offline
+            name: CQUT offline
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout source code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.version.outputs.commit }}
-      - uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
         with:
           node-version: '24'
           cache: true
           run-install: false
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - name: Setup Java 21
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - name: Install dependencies
@@ -109,8 +125,8 @@ jobs:
           echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
           CERTIFICATE="$(keytool -exportcert -keystore "$RUNNER_TEMP/chronos-release.jks" -alias "$ANDROID_KEY_ALIAS" -storepass:env ANDROID_KEYSTORE_PASSWORD | sha256sum | cut -d ' ' -f 1)"
           echo "PUBLIC_ANDROID_SIGNING_CERT_SHA256=$CERTIFICATE" >> "$GITHUB_ENV"
-      - id: reuse
-        name: Reuse immutable Android artifacts on retry
+      - name: Reuse immutable Android artifacts on retry
+        id: reuse
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.version.outputs.tag }}
@@ -118,7 +134,7 @@ jobs:
           COMMIT: ${{ needs.version.outputs.commit }}
           REPOSITORY: ${{ github.repository }}
         run: node --experimental-strip-types scripts/official-plugin-build/android-release.ts reuse release-apks "$REPOSITORY" "$TAG" "$PROFILE" "$COMMIT" "$PUBLIC_ANDROID_SIGNING_CERT_SHA256"
-      - name: Build Android APK for ${{ matrix.profile }}
+      - name: Build Android APK for ${{ matrix.name }}
         if: steps.reuse.outputs.reused != 'true'
         env:
           CHRONOS_DEPLOY_TARGET: mobile
@@ -134,19 +150,26 @@ jobs:
           ./gradlew --no-daemon assembleRelease
           APK="app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK" > "$RUNNER_TEMP/apk-signature.txt"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --min-sdk-version 21 --print-certs "$APK" > "$RUNNER_TEMP/apk-signature.txt"
+          grep -q 'Verified using v1 scheme (JAR signing): true' "$RUNNER_TEMP/apk-signature.txt"
+          grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' "$RUNNER_TEMP/apk-signature.txt"
           ACTUAL_CERTIFICATE="$(awk '/Signer #1 certificate SHA-256 digest:/ {print $NF}' "$RUNNER_TEMP/apk-signature.txt")"
           [[ "$ACTUAL_CERTIFICATE" == "$PUBLIC_ANDROID_SIGNING_CERT_SHA256" ]] || { echo 'APK signing certificate mismatch'; exit 1; }
+          FLAVOR="${CHRONOS_PROFILE#chronos-}"
+          BASE_NAME="Chronos-${FLAVOR}-${{ needs.version.outputs.version }}"
           mkdir -p "$GITHUB_WORKSPACE/release-apks"
-          cp "$APK" "$GITHUB_WORKSPACE/release-apks/Chronos-${CHRONOS_PROFILE}-${{ needs.version.outputs.version }}.apk"
+          cp "$APK" "$GITHUB_WORKSPACE/release-apks/${BASE_NAME}.apk"
           cd "$GITHUB_WORKSPACE"
-          node --experimental-strip-types scripts/official-plugin-build/android-release.ts inspect "release-apks/Chronos-${CHRONOS_PROFILE}-${{ needs.version.outputs.version }}.apk" apps/web/build/version.json "$ACTUAL_CERTIFICATE"
+          node --experimental-strip-types scripts/official-plugin-build/android-release.ts inspect "release-apks/${BASE_NAME}.apk" apps/web/build/version.json "$ACTUAL_CERTIFICATE"
       - name: Verify reused APK signature
         if: steps.reuse.outputs.reused == 'true'
         run: |
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs release-apks/*.apk > "$RUNNER_TEMP/apk-signature.txt"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --min-sdk-version 21 --print-certs release-apks/*.apk > "$RUNNER_TEMP/apk-signature.txt"
+          grep -q 'Verified using v1 scheme (JAR signing): true' "$RUNNER_TEMP/apk-signature.txt"
+          grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' "$RUNNER_TEMP/apk-signature.txt"
           [[ "$(awk '/Signer #1 certificate SHA-256 digest:/ {print $NF}' "$RUNNER_TEMP/apk-signature.txt")" == "$PUBLIC_ANDROID_SIGNING_CERT_SHA256" ]]
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Upload Android APK artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: android-apk-${{ matrix.profile }}
           path: release-apks/*
@@ -154,6 +177,7 @@ jobs:
           retention-days: 7
 
   build:
+    name: Build Pages site & plugin market
     needs: [version, quality]
     runs-on: ubuntu-latest
     permissions:
@@ -165,16 +189,20 @@ jobs:
       CHRONOS_DISTRIBUTION: pages
       SOURCE_DATE_EPOCH: ${{ needs.version.outputs.epoch }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout source code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.version.outputs.commit }}
-      - uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
         with:
           node-version: '24'
           cache: true
           run-install: false
-      - run: vp install --frozen-lockfile
-      - run: vp run build:pages
+      - name: Install dependencies
+        run: vp install --frozen-lockfile
+      - name: Build GitHub Pages distribution
+        run: vp run build:pages
       - name: Load immutable plugin history
         run: |
           set +e
@@ -190,8 +218,8 @@ jobs:
           else
             exit "$RESULT"
           fi
-      - id: market
-        name: Validate and assemble all published plugin versions
+      - name: Validate and assemble all published plugin versions
+        id: market
         env:
           VERSION: ${{ needs.version.outputs.version }}
           COMMIT: ${{ needs.version.outputs.commit }}
@@ -203,18 +231,21 @@ jobs:
             git -C dist/plugin-history -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '📦 保存官方插件发布产物'
             git -C dist/plugin-history push origin HEAD:refs/heads/chronos/plugin-dist
           fi
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Upload published website artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: published-site
           path: apps/web/build
           include-hidden-files: true
           retention-days: 7
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+      - name: Upload GitHub Pages deployment artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: apps/web/build
           include-hidden-files: true
 
   deploy:
+    name: Deploy initial Pages site
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -224,26 +255,31 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - id: deployment
+      - name: Deploy Pages site
+        id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
   verify:
+    name: Smoke test plugin market
     needs: [version, build, deploy]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout source code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.version.outputs.commit }}
-      - uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
         with:
           node-version: '24'
-          run-install: false
-      - env:
+      - name: Run plugin release smoke tests
+        env:
           VERSION: ${{ needs.version.outputs.version }}
           PREVIOUS: ${{ needs.build.outputs.previous }}
         run: node --experimental-strip-types scripts/official-plugin-build/plugin-release.ts smoke https://ue-dnd.github.io/Chronos/plugins/releases/ "$VERSION" "$PREVIOUS"
 
   vercel:
+    name: Deploy Vercel production
     needs: [version, verify]
     uses: ./.github/workflows/vercel-production.yml
     with:
@@ -251,19 +287,22 @@ jobs:
     secrets: inherit
 
   publish-release:
+    name: Publish GitHub release & APKs
     needs: [version, verify, android-apk]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout source code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.version.outputs.commit }}
-      - uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
         with:
           node-version: '24'
-          run-install: false
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - name: Download built APK artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: android-apk-*
           path: release-apks
@@ -273,29 +312,34 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
         run: node --experimental-strip-types scripts/official-plugin-build/android-release.ts publish release-apks "$REPOSITORY" android-release.json
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Upload Android release record
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: android-release-record
           path: android-release.json
 
   android-feed:
+    name: Stage Android update feed
     needs: [version, publish-release]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout source code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.version.outputs.commit }}
-      - uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
         with:
           node-version: '24'
-          run-install: false
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - name: Download published website
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: published-site
           path: site
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - name: Download Android release record
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: android-release-record
           path: records
@@ -309,38 +353,50 @@ jobs:
             git -C history -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '📦 保存 Android 就绪发布记录'
             git -C history push origin HEAD:refs/heads/chronos/plugin-dist
           fi
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+      - name: Upload updated Pages deployment artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           name: github-pages-android
           path: site
           include-hidden-files: true
 
   deploy-android-feed:
+    name: Deploy Pages with Android feed
     needs: [version, android-feed]
     runs-on: ubuntu-latest
     permissions:
       pages: write
       id-token: write
+      contents: write
     environment:
       name: github-pages
     steps:
-      - uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+      - name: Deploy updated Pages artifact with Android feed
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
         with:
           artifact_name: github-pages-android
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout source code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.version.outputs.commit }}
-      - uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
         with:
           node-version: '24'
-          run-install: false
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - name: Download original website for identity verification
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: published-site
           path: original-site
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - name: Download Android release record
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: android-release-record
           path: records
       - name: Verify published Android feed and unchanged website identity
         run: node --experimental-strip-types scripts/official-plugin-build/android-release.ts smoke https://ue-dnd.github.io/Chronos/ records/android-release.json original-site/version.json
+      - name: Mark GitHub release as latest after all verifications pass
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: gh release edit "$TAG" --latest --repo "$GITHUB_REPOSITORY"

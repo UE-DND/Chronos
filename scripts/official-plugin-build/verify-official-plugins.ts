@@ -2,9 +2,9 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveMarketFile, marketFiles } from './official-plugin-build/market-files.ts';
+import { resolveMarketFile, marketFiles } from './market-files.ts';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const defaultWebPublicDir = resolve(root, 'dist/plugin-market');
 
 const ASSET_FIELDS: ReadonlyArray<readonly [urlField: string, hashField: string]> = [
@@ -14,7 +14,7 @@ const ASSET_FIELDS: ReadonlyArray<readonly [urlField: string, hashField: string]
 	['iconThemeUrl', 'iconThemeSha256']
 ];
 
-import { OFFICIAL_PLUGINS } from './official-plugins.config.ts';
+import { OFFICIAL_PLUGINS } from '../official-plugins.config.ts';
 
 function pluginRequiresTailwindSource(pluginId: string): boolean {
 	const plugin = OFFICIAL_PLUGINS.find((entry) => entry.id === pluginId);

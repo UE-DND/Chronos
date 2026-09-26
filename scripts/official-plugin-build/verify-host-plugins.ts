@@ -1,8 +1,8 @@
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { marketFiles, listMarketFiles } from './official-plugin-build/market-files.ts';
+import { marketFiles, listMarketFiles } from './market-files.ts';
 import { verifyOfficialPlugins } from './verify-official-plugins.ts';
-import { resolveProfile } from '../apps/web/src/lib/profile-codegen/profile-definitions.ts';
+import { resolveProfile } from '../../apps/web/src/lib/profile-codegen/profile-definitions.ts';
 
 export function verifyHostPlugins(publicRoot: string, profileId: string): void {
 	const market = resolve(publicRoot, 'official-plugins');

@@ -27,6 +27,12 @@ export const ANDROID_PROFILES = [
 	'chronos-cqut',
 	'chronos-cqut-offline'
 ] as const;
+
+export function androidArtifactBaseName(profileId: string, version: string): string {
+	const flavor = profileId.replace(/^chronos-/, '');
+	return `Chronos-${flavor}-${version}`;
+}
+
 const digest = (file: string) => createHash('sha256').update(readFileSync(file)).digest('hex');
 export function inspectAndroidArtifact(
 	apk: string,
@@ -41,9 +47,10 @@ export function inspectAndroidArtifact(
 	const profileId = descriptor.host.profileId;
 	const version = descriptor.host.version;
 	validateCertificate(certificate);
+	const baseName = androidArtifactBaseName(profileId, version);
 	return {
 		host: descriptor.host,
-		apkUrl: `https://github.com/UE-DND/Chronos/releases/download/v${version}/Chronos-${profileId}-${version}.apk`,
+		apkUrl: `https://github.com/UE-DND/Chronos/releases/download/v${version}/${baseName}.apk`,
 		sha256: digest(apk),
 		sizeBytes: readFileSync(apk).byteLength,
 		pluginCatalogUrl: descriptor.pluginCatalogUrl
@@ -73,8 +80,9 @@ export function validateAndroidRelease(release: AndroidStableUpdate): void {
 }
 export function collectAndroidRelease(directory: string): AndroidStableUpdate {
 	const artifacts = ANDROID_PROFILES.map((id) => {
+		const flavor = id.replace(/^chronos-/, '');
 		const files = readdirSync(directory).filter((file) =>
-			new RegExp(`^Chronos-${id}-\\d+\\.\\d+\\.\\d+\\.json$`).test(file)
+			new RegExp(`^Chronos-${flavor}-\\d+\\.\\d+\\.\\d+\\.json$`).test(file)
 		);
 		if (files.length !== 1) throw new Error(`Expected one artifact record for ${id}`);
 		const metadata = JSON.parse(readFileSync(resolve(directory, files[0]), 'utf8')) as {
@@ -184,8 +192,9 @@ export function reuseAndroidArtifact(
 		if (String((error as { stderr?: unknown }).stderr).includes('release not found')) return false;
 		throw error;
 	}
-	const apkName = `Chronos-${profileId}-${tag.slice(1)}.apk`;
-	const metadataName = apkName.replace(/\.apk$/, '.json');
+	const baseName = androidArtifactBaseName(profileId, tag.slice(1));
+	const apkName = `${baseName}.apk`;
+	const metadataName = `${baseName}.json`;
 	const hasApk = release.assets.some((asset) => asset.name === apkName);
 	const hasMetadata = release.assets.some((asset) => asset.name === metadataName);
 	if (!hasApk && !hasMetadata) return false;

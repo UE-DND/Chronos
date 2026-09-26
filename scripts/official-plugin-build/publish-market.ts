@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { verifyOfficialPlugins } from '../verify-official-plugins.ts';
+import { verifyOfficialPlugins } from './verify-official-plugins.ts';
 import { publishProductionPlugin, type OfficialPluginBuildResult } from './build-plugin.ts';
 import { createOfficialPluginBuildPaths } from './paths.ts';
 import { digest, writeChanged } from './cache.ts';

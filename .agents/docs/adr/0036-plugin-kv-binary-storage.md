@@ -1,13 +1,12 @@
 # ADR 0036：插件 KV 支持二进制数据
 
-- 状态：Accepted
 - 日期：2026-09-13
 
 ## 决策
 
 插件 KV 在同一个 `pluginId:key` 下支持 JSON 或二进制数据。写入一种数据时，会删除另一种。写入 `Blob` 时保留 MIME 类型；写入 `Uint8Array` 时使用 `application/octet-stream`。读取二进制数据时统一返回 `Blob`。
 
-Web 的 `PluginKvRepository` 将 JSON 和二进制分别存入 `pluginData` 和 `pluginBinary`。`pluginBinary` 保存 `ArrayBuffer` 和 MIME 类型。数据变化仍通过 `pluginData` 事件通知。Native 桥使用 `{ __binary: true, mimeType, base64 }` 传输二进制，并在边界处恢复为 Blob。
+Web 的 `PluginKvRepository` 将 JSON 和二进制分别存入 `pluginData` 和 `pluginBinary`。`pluginBinary` 保存 `ArrayBuffer` 和 MIME 类型。数据变化仍通过 `pluginData` 事件通知。`core` 提供原生线格式转换函数，使用 `{ __binary: true, mimeType, base64 }` 表示二进制。当前 Capacitor 宿主仍复用 Web 的 Dexie 存储；该转换契约不代表已经接入原生存储后端。
 
 ## 取舍与演进
 
