@@ -2,6 +2,9 @@ import { APP_VERSION } from '$lib/config/app-meta';
 import { staticPath } from '$lib/config/static-path';
 
 declare const __CHRONOS_PLUGIN_MARKET_BASE_URL__: string;
+declare const __OFFICIAL_PLUGIN_IDS__: string[];
+export const RESERVED_OFFICIAL_PLUGIN_IDS =
+	typeof __OFFICIAL_PLUGIN_IDS__ !== 'undefined' ? __OFFICIAL_PLUGIN_IDS__ : [];
 export const DEFAULT_PLUGIN_MARKET_BASE_URL = 'https://ue-dnd.github.io/Chronos/plugins/releases/';
 
 export function resolvePluginMarketBase(value = DEFAULT_PLUGIN_MARKET_BASE_URL): string {
@@ -68,8 +71,8 @@ export function assertOfficialManifestVersion(
 		typeof window === 'undefined' ? 'http://localhost' : window.location.origin
 	).href;
 	if (
-		normalizedUrl.startsWith(marketBase) &&
-		(manifest.version !== version ||
+		manifest.version !== version ||
+		(normalizedUrl.startsWith(marketBase) &&
 			!normalizedUrl.startsWith(new URL(`${version}/`, marketBase).href))
 	)
 		throw new Error(`Official plugin version must match host ${version}`);

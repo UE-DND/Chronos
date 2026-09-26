@@ -73,13 +73,14 @@ describe('theme wallpaper assets', () => {
 		const dispose = vi.fn();
 		const registerTheme = vi.fn(() => ({ dispose }));
 		const engine = {
+			runtime: { sha256: vi.fn().mockResolvedValue(hash) },
 			isPluginLoaded: () => false,
 			themes: { registerTheme }
 		} as unknown as ChronosEngine;
 		const images = { get: vi.fn().mockResolvedValue(wallpaper) } as unknown as ImageRepository;
 		const activator = new OfficialPluginRuntimeActivator(engine, () => true, images);
 		await activator.activate({
-			manifest: { id: 'theme-owner' } as never,
+			manifest: { id: 'theme-owner', colorsUrl: '/colors.json', colorsSha256: hash } as never,
 			colorsJson: colors,
 			wallpaperAssetId: 'cached-image',
 			enabled: true,

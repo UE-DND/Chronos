@@ -30,6 +30,37 @@ export class OfficialPluginRuntimeActivator {
 
 	async activate(record: InstalledOfficialPluginRecord): Promise<Disposable> {
 		const manifest = record.manifest;
+		for (const [url, expected, content] of [
+			[manifest.bundleUrl, manifest.sha256, record.code],
+			[manifest.colorsUrl, manifest.colorsSha256, record.colorsJson],
+			[manifest.iconThemeUrl, manifest.iconThemeSha256, record.iconThemeJson],
+			[manifest.cssUrl, manifest.cssSha256, record.cssCode]
+		]) {
+			if (!url && content == null) continue;
+			if (
+				!url ||
+				!content ||
+				!expected ||
+				(await this.engine.runtime.sha256(content)).toLowerCase() !== expected.toLowerCase()
+			)
+				throw new Error('Cached plugin integrity mismatch');
+		}
+		const wallpaper = record.colorsJson
+			? parseColorThemeJson(JSON.parse(record.colorsJson)).wallpaper
+			: undefined;
+		if (record.wallpaperAssetId || wallpaper) {
+			const blob = record.wallpaperAssetId
+				? await this.images.get(record.wallpaperAssetId)
+				: undefined;
+			if (
+				!blob ||
+				!wallpaper ||
+				(
+					await this.engine.runtime.sha256(new Uint8Array(await blob.arrayBuffer()))
+				).toLowerCase() !== wallpaper.sha256.toLowerCase()
+			)
+				throw new Error('Cached wallpaper integrity mismatch');
+		}
 		await this.deactivate(manifest.id);
 
 		if (record.cssCode) this.cssInjector.inject(manifest.id, record.cssCode);

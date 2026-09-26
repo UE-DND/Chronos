@@ -77,6 +77,26 @@ describe('OfficialPluginRuntimeActivator', () => {
 	afterEach(() => {
 		vi.unstubAllGlobals();
 	});
+	it.each(['digest', 'missing-url'])(
+		'rejects an unverified cached bundle before loading plugin code (%s)',
+		async (invalid) => {
+			const load = vi.spyOn(engine, 'loadPlugin');
+			await expect(
+				activator.activate({
+					manifest: {
+						id: 'test-plugin',
+						bundleUrl: invalid === 'missing-url' ? undefined : '/bundle.js',
+						sha256: 'different-hash'
+					} as never,
+					code: SAMPLE_BUNDLE,
+					enabled: true,
+					origin: { kind: 'user' },
+					installedAt: 1
+				})
+			).rejects.toThrow('Cached plugin integrity mismatch');
+			expect(load).not.toHaveBeenCalled();
+		}
+	);
 
 	it.each([false, true])(
 		'ESM owns the theme and validates static resource consistency (mismatch=%s)',
@@ -95,6 +115,8 @@ describe('OfficialPluginRuntimeActivator', () => {
 					type: 'theme' as const,
 					bundleFormat: 'esm' as const,
 					themeId: 'hybrid-theme',
+					bundleUrl: '/hybrid.js',
+					sha256: 'hash',
 					colorsUrl: '/colors.json',
 					colorsSha256: 'hash'
 				},
@@ -133,7 +155,7 @@ describe('OfficialPluginRuntimeActivator', () => {
 				type: 'theme',
 				bundleFormat: 'esm',
 				colorsUrl: '/c.json',
-				colorsSha256: 'x'
+				colorsSha256: 'hash'
 			},
 			colorsJson: THEME_COLORS_JSON,
 			enabled: true,
@@ -157,7 +179,7 @@ describe('OfficialPluginRuntimeActivator', () => {
 					type: 'tool',
 					bundleFormat: 'esm',
 					bundleUrl: '/b.js',
-					sha256: 'x'
+					sha256: 'hash'
 				},
 				code: SAMPLE_BUNDLE,
 				enabled: true,
@@ -213,7 +235,9 @@ describe('OfficialPluginRuntimeActivator', () => {
 					type: 'tool',
 					bundleFormat: 'esm',
 					bundleUrl: '/b.js',
-					sha256: 'x'
+					sha256: 'hash',
+					cssUrl: '/style.css',
+					cssSha256: 'hash'
 				},
 				code: SAMPLE_BUNDLE,
 				cssCode: '.x{color:red}',
@@ -281,7 +305,9 @@ describe('OfficialPluginRuntimeActivator', () => {
 				type: 'tool',
 				bundleFormat: 'esm',
 				bundleUrl: '/b.js',
-				sha256: 'x'
+				sha256: 'hash',
+				cssUrl: '/style.css',
+				cssSha256: 'hash'
 			},
 			code: SAMPLE_BUNDLE,
 			cssCode: '.x{color:red}',
@@ -306,7 +332,7 @@ describe('OfficialPluginRuntimeActivator', () => {
 				type: 'tool',
 				bundleFormat: 'esm',
 				bundleUrl: '/b.js',
-				sha256: 'x'
+				sha256: 'hash'
 			},
 			code: SAMPLE_BUNDLE,
 			enabled: true,
@@ -333,7 +359,7 @@ describe('OfficialPluginRuntimeActivator', () => {
 				type: 'tool',
 				bundleFormat: 'esm',
 				bundleUrl: '/b.js',
-				sha256: 'x'
+				sha256: 'hash'
 			},
 			code: SAMPLE_BUNDLE,
 			enabled: true,
@@ -362,9 +388,9 @@ describe('OfficialPluginRuntimeActivator', () => {
 					type: 'theme',
 					bundleFormat: 'esm',
 					colorsUrl: '/c.json',
-					colorsSha256: 'x',
+					colorsSha256: 'hash',
 					iconThemeUrl: '/i.json',
-					iconThemeSha256: 'y'
+					iconThemeSha256: 'hash'
 				},
 				colorsJson: THEME_COLORS_JSON,
 				iconThemeJson: '{"id":"icon-test","icons":{}}',
@@ -392,7 +418,7 @@ describe('OfficialPluginRuntimeActivator', () => {
 				type: 'tool',
 				bundleFormat: 'esm',
 				bundleUrl: '/b.js',
-				sha256: 'x'
+				sha256: 'hash'
 			},
 			code: SAMPLE_BUNDLE,
 			enabled: true,

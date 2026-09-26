@@ -311,6 +311,7 @@ describe('OfficialPluginService', () => {
 			records: [
 				{
 					manifest,
+					acceptedHostVersion: '0.4.1',
 					code: SAMPLE_BUNDLE,
 					enabled: true,
 					origin: { kind: 'user' as const },
@@ -318,6 +319,8 @@ describe('OfficialPluginService', () => {
 				}
 			],
 			removed: [],
+			revision: 0,
+			generation: '',
 			seeded: true
 		});
 
@@ -437,7 +440,7 @@ describe('OfficialPluginService', () => {
 		);
 	});
 
-	it('activates cached plugins before awaiting catalog sync', async () => {
+	it('starts cached compatible plugins without waiting for catalog sync', async () => {
 		const hash = await engine.env.runtime.sha256(SAMPLE_BUNDLE);
 		const completeManifest: PluginManifest = {
 			id: 'test-plugin',
@@ -449,6 +452,8 @@ describe('OfficialPluginService', () => {
 			toolGroup: 'utility',
 			bundleFormat: 'esm',
 			bundleUrl: '/test.bundle.js',
+			cssUrl: '/style.css',
+			cssSha256: await engine.runtime.sha256('.x{color:red}'),
 			sha256: hash
 		};
 
@@ -465,6 +470,8 @@ describe('OfficialPluginService', () => {
 				}
 			],
 			removed: [],
+			revision: 0,
+			generation: '',
 			seeded: true
 		});
 
@@ -480,12 +487,7 @@ describe('OfficialPluginService', () => {
 			await vi.waitFor(() => {
 				expect(engine.isPluginLoaded('test-plugin')).toBe(true);
 			});
-			await expect(
-				Promise.race([
-					initPromise,
-					new Promise((_, reject) => setTimeout(() => reject(new Error('still pending')), 50))
-				])
-			).rejects.toThrow('still pending');
+			await expect(initPromise).resolves.toBeUndefined();
 		} finally {
 			syncSpy.mockRestore();
 		}
@@ -522,6 +524,8 @@ describe('OfficialPluginService', () => {
 				}
 			],
 			removed: [],
+			revision: 0,
+			generation: '',
 			seeded: true
 		});
 
@@ -549,6 +553,7 @@ describe('OfficialPluginService', () => {
 		});
 
 		await service.init();
+		await service.retryPendingUpdates();
 
 		expect(service.getInstalled('test-plugin')?.manifest.version).toBe('0.4.1');
 		expect(onNotification).not.toHaveBeenCalled();
@@ -582,6 +587,8 @@ describe('OfficialPluginService', () => {
 				}
 			],
 			removed: [],
+			revision: 0,
+			generation: '',
 			seeded: true
 		});
 
@@ -589,9 +596,14 @@ describe('OfficialPluginService', () => {
 
 		expect(service.getInstalled('test-plugin')?.manifest.version).toBe('0.4.0');
 		expect(httpRequest).not.toHaveBeenCalled();
+		expect(engine.isPluginLoaded('test-plugin')).toBe(false);
+		expect(service.getUpdateStatus('test-plugin')?.status).toBe('confirmation-required');
+		await service.enable('test-plugin');
+		expect(engine.isPluginLoaded('test-plugin')).toBe(true);
+		expect(service.getInstalled('test-plugin')?.acceptedHostVersion).toBe('0.4.1');
 	});
 
-	it('keeps cached official plugins when catalog sync fails during init', async () => {
+	it('retains incompatible official plugins without executing them when offline', async () => {
 		const hash = await engine.env.runtime.sha256(SAMPLE_BUNDLE);
 		const staleManifest: PluginManifest = {
 			id: 'test-plugin',
@@ -618,6 +630,8 @@ describe('OfficialPluginService', () => {
 				}
 			],
 			removed: [],
+			revision: 0,
+			generation: '',
 			seeded: true
 		});
 
@@ -625,6 +639,7 @@ describe('OfficialPluginService', () => {
 
 		await expect(service.init()).resolves.toBeUndefined();
 		expect(service.getInstalled('test-plugin')?.manifest.version).toBe('0.4.0');
+		expect(engine.isPluginLoaded('test-plugin')).toBe(false);
 	});
 
 	it('preserves plugin config when syncing stale official plugins during init', async () => {
@@ -658,6 +673,8 @@ describe('OfficialPluginService', () => {
 				}
 			],
 			removed: [],
+			revision: 0,
+			generation: '',
 			seeded: true
 		});
 		await engine.storage.setPluginData('test-plugin', PLUGIN_CONFIG_STORAGE_KEY, {
@@ -688,11 +705,128 @@ describe('OfficialPluginService', () => {
 		});
 
 		await service.init();
+		await service.retryPendingUpdates();
 
 		expect(service.getInstalled('test-plugin')?.manifest.version).toBe('0.4.1');
 		expect(await service.getPluginConfig<{ enabled: boolean }>('test-plugin')).toEqual({
 			enabled: true
 		});
+	});
+
+	it('does not resurrect cleared optional plugins when an old catalog request completes', async () => {
+		const manifest: PluginManifest = {
+			id: 'test-plugin',
+			name: { en: 'Test' },
+			description: {},
+			author: 'Chronos',
+			version: '0.4.0',
+			type: 'tool',
+			toolGroup: 'utility',
+			bundleFormat: 'esm',
+			bundleUrl: '/test.bundle.js',
+			sha256: await engine.runtime.sha256(SAMPLE_BUNDLE)
+		};
+		await service.installationStore.upsert({
+			manifest,
+			manifestUrl: OFFICIAL_MANIFEST_URL,
+			code: SAMPLE_BUNDLE,
+			enabled: true,
+			origin: { kind: 'user' },
+			installedAt: 1
+		});
+		let finishCatalog!: (value: HttpResponse) => void;
+		httpRequest.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					finishCatalog = resolve;
+				})
+		);
+		httpRequest.mockImplementation(async (url) =>
+			url === OFFICIAL_MANIFEST_URL
+				? httpResponse({ json: async <T>() => ({ ...manifest, version: '0.4.1' }) as T })
+				: httpResponse({ text: async () => SAMPLE_BUNDLE })
+		);
+		await service.init();
+		const oldSync = service.retryPendingUpdates();
+		await engine.storage.deletePluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY);
+		await service.resetAfterFactoryClear();
+		await service.init();
+		finishCatalog(
+			httpResponse({
+				json: async <T>() => ({ version: 1, manifests: [OFFICIAL_MANIFEST_URL] }) as T
+			})
+		);
+		await oldSync;
+		expect(service.listInstalled()).toEqual([]);
+		expect(engine.isPluginLoaded('test-plugin')).toBe(false);
+		service.dispose();
+	});
+
+	it('prepares disabled official plugins for the next Web host without executing their code', async () => {
+		const hash = await engine.runtime.sha256(SAMPLE_BUNDLE);
+		const manifest: PluginManifest = {
+			id: 'test-plugin',
+			name: { en: 'Test' },
+			description: { en: '' },
+			author: 'Chronos',
+			version: '0.4.1',
+			type: 'tool',
+			toolGroup: 'utility',
+			bundleFormat: 'esm',
+			bundleUrl: 'https://ue-dnd.github.io/Chronos/plugins/releases/0.4.2/bundles/test.bundle.js',
+			sha256: hash
+		};
+		await engine.storage.setPluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY, {
+			records: [
+				{
+					manifest,
+					code: SAMPLE_BUNDLE,
+					enabled: false,
+					origin: { kind: 'user' },
+					installedAt: 1,
+					manifestUrl: OFFICIAL_MANIFEST_URL
+				}
+			],
+			removed: [],
+			seeded: true,
+			revision: 0,
+			generation: ''
+		});
+		const url =
+			'https://ue-dnd.github.io/Chronos/plugins/releases/0.4.2/manifests/abc/test-plugin.manifest.json';
+		httpRequest.mockImplementation(async (path) => {
+			if (path.endsWith('/catalog.json'))
+				return httpResponse({
+					json: async <T>() => ({ version: 1, updatedAt: 1, manifests: [url] }) as T
+				});
+			if (path === url)
+				return httpResponse({ json: async <T>() => ({ ...manifest, version: '0.4.2' }) as T });
+			return httpResponse({ text: async () => SAMPLE_BUNDLE });
+		});
+		const load = vi.spyOn(engine, 'loadPlugin');
+		const target = {
+			version: '0.4.2',
+			buildId: 'a'.repeat(64),
+			sourceCommit: 'b'.repeat(40),
+			profileId: 'chronos-default',
+			deploymentId: 'pages',
+			target: 'pages' as const
+		};
+		await service.prepareHostUpdate({
+			formatVersion: 1,
+			host: target,
+			release: { tagName: 'v0.4.2', name: '', body: '', publishedAt: '' },
+			requiredPluginIds: [],
+			pluginCatalogUrl: 'https://ue-dnd.github.io/Chronos/plugins/releases/0.4.2/catalog.json'
+		});
+		expect(load).not.toHaveBeenCalled();
+		expect(service.getInstalled('test-plugin')?.manifest.version).toBe('0.4.1');
+		expect(service.installationStore.prepared?.records[0].enabled).toBe(false);
+		await expect(service.enable('test-plugin')).rejects.toThrow('Application update in progress');
+		expect(load).not.toHaveBeenCalled();
+		await service.installationStore.startHost(target);
+		expect(service.getInstalled('test-plugin')?.manifest.version).toBe('0.4.2');
+		expect(service.getInstalled('test-plugin')?.enabled).toBe(false);
 	});
 
 	it('installs plugin through installQueue with progress and state transitions', async () => {
@@ -957,7 +1091,14 @@ describe('profile preinstallation lifecycle', () => {
 				})}
 			}); }
 		};`;
-		const update = { id: theme.id, code, colorsJson: colors, cssCode: null, iconThemeJson: null };
+		const update = {
+			id: theme.id,
+			manifest: { ...theme, bundleUrl: '/hot-theme.js' },
+			code,
+			colorsJson: colors,
+			cssCode: null,
+			iconThemeJson: null
+		};
 		const original = service.getInstalled(theme.id);
 		const selections: (string | null)[] = [];
 		engine.on('theme:changed', ({ themeId }) => {
@@ -1097,42 +1238,27 @@ describe('profile preinstallation lifecycle', () => {
 		third.dispose();
 		engine.dispose();
 	});
-	it('activates verified stale default cache offline and rolls back an invalid replacement', async () => {
+	it('rejects stale default cache and preserves it when the bundled replacement is unavailable', async () => {
 		const { engine, service, profile, httpRequest, theme } = await setupProfile();
 		const original = service.getInstalled(theme.id);
 		service.dispose();
 		httpRequest.mockRejectedValue(new Error('offline'));
 		const restarted = createService(engine, '0.4.2');
-		await restarted.prepareProfile(profile);
-		expect(engine.defaultThemeId).toBe('custom-default');
-		await restarted.init();
-		expect(engine.themes.isSelectable('custom-default')).toBe(true);
-		const wrong = JSON.stringify({
-			id: 'wrong',
-			name: 'Wrong',
-			variants: { light: { colors: {} }, dark: { colors: {} } }
-		});
-		await expect(
-			restarted.applyHotUpdate({
-				id: theme.id,
-				code: null,
-				cssCode: null,
-				colorsJson: wrong,
-				iconThemeJson: null
-			})
-		).rejects.toThrow('Invalid default theme');
+		await expect(restarted.prepareProfile(profile)).rejects.toThrow('offline');
+		expect(restarted.isPluginActive(theme.id)).toBe(false);
 		expect(restarted.getInstalled(theme.id)).toEqual(original);
-		expect(engine.defaultThemeId).toBe('custom-default');
-		expect(engine.themes.isSelectable('wrong')).toBe(false);
 		restarted.dispose();
 		engine.dispose();
 	});
+
 	it('overrides an old user removal for a newly required default provider', async () => {
 		const { engine, service, profile, theme } = await setupProfile();
 		service.dispose();
 		await engine.storage.setPluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY, {
 			records: [],
 			removed: [theme.id],
+			revision: 0,
+			generation: '',
 			seeded: true
 		});
 		const next = createService(engine);

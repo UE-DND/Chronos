@@ -99,4 +99,73 @@ describe('OfficialPluginInstalledStore', () => {
 		expect(store.getRemoved()).toEqual([]);
 		expect(store.getCache()).toHaveLength(1);
 	});
+	it('merges independent windows and rejects a late download after uninstall', async () => {
+		const other = new OfficialPluginInstalledStore(engine);
+		await Promise.all([store.load(), other.load()]);
+		const record = (id: string) => ({
+			manifest: { id } as never,
+			origin: { kind: 'user' as const },
+			enabled: false,
+			installedAt: 1
+		});
+		await Promise.all([store.upsert(record('a')), other.upsert(record('b'))]);
+		await store.load();
+		expect(
+			store
+				.getCache()
+				.map((record) => record.manifest.id)
+				.sort()
+		).toEqual(['a', 'b']);
+		const revision = store.find('a')!.revision;
+		await other.remove('a');
+		await expect(store.upsert(record('a'), revision)).rejects.toThrow('Plugin changed');
+		await store.load();
+		expect(store.has('a')).toBe(false);
+	});
+	it('freezes writes only for a complete snapshot and prevents old host writes after takeover', async () => {
+		const host = {
+			version: '1.0.2',
+			buildId: 'a'.repeat(64),
+			sourceCommit: 'b'.repeat(40),
+			profileId: 'chronos-default',
+			deploymentId: 'pages',
+			target: 'pages' as const
+		};
+		await store.startHost(host);
+		await store.upsert({
+			manifest: { id: 'a' } as never,
+			origin: { kind: 'user' },
+			enabled: false,
+			installedAt: 1
+		});
+		const other = new OfficialPluginInstalledStore(engine);
+		await other.startHost(host);
+		await other.setEnabled('a', true);
+		const target = { ...host, buildId: 'c'.repeat(64) };
+		await expect(
+			store.prepare({
+				target,
+				revision: store.revision,
+				records: [],
+				token: 'stale',
+				until: Date.now() + 10000
+			})
+		).rejects.toThrow('Installed plugins changed');
+		await store.load();
+		await store.prepare({
+			target,
+			revision: store.revision,
+			records: [],
+			token: 'ready',
+			until: Date.now() + 10000
+		});
+		await expect(other.setEnabled('a', false)).rejects.toThrow('Application update in progress');
+		const updated = new OfficialPluginInstalledStore(engine);
+		await updated.startHost(target);
+		await expect(store.startHost(host, host.buildId)).rejects.toThrow('Host generation changed');
+		await other.startHost(target, host.buildId);
+		expect(other.prepared).toBeUndefined();
+		await expect(store.remove('a')).rejects.toThrow('Application update in progress');
+		expect(updated.find('a')?.enabled).toBe(true);
+	});
 });

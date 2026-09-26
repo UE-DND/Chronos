@@ -54,7 +54,9 @@ export async function buildCatalogManifestMap(
 
 export interface SyncInstalledPluginsOptions {
 	hostVersion: string;
+	onStatus?: (id: string, status: 'downloading' | 'failed' | 'ready', error?: string) => void;
 	preinstallIds?: string[];
+	retryIds?: string[];
 	catalogClient: OfficialPluginCatalogClient;
 	getInstalledRecords: () => ReadonlyArray<InstalledOfficialPluginRecord>;
 	install: (
@@ -73,7 +75,12 @@ export async function syncInstalledPluginsWithHost(
 ): Promise<void> {
 	const stale = options
 		.getInstalledRecords()
-		.filter((record) => shouldSyncInstalledPlugin(record, options.hostVersion));
+		.filter(
+			(record) =>
+				isOfficialCatalogManifestUrl(record.manifestUrl, record.manifest.id) &&
+				(shouldSyncInstalledPlugin(record, options.hostVersion) ||
+					options.retryIds?.includes(record.manifest.id))
+		);
 	if (stale.length === 0) return;
 
 	const groups = new Map<string, InstalledOfficialPluginRecord[]>();
@@ -111,14 +118,20 @@ export async function syncInstalledPluginsWithHost(
 			);
 			for (const record of records) {
 				const entry = map.get(record.manifest.id);
-				if (!entry) continue;
+				if (!entry) {
+					options.onStatus?.(record.manifest.id, 'failed', 'Target plugin unavailable');
+					continue;
+				}
 				try {
+					options.onStatus?.(record.manifest.id, 'downloading');
 					await options.install(entry.manifest, entry.manifestUrl, { silent: true });
 				} catch (error) {
+					options.onStatus?.(record.manifest.id, 'failed', String(error));
 					console.error('[sync-installed-plugins] Failed to sync plugin:', error);
 				}
 			}
 		} catch (error) {
+			for (const record of records) options.onStatus?.(record.manifest.id, 'failed', String(error));
 			console.error('[sync-installed-plugins] Failed to fetch catalog:', error);
 		}
 	}

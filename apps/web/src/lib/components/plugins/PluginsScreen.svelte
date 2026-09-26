@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { PLUGIN_PROXY_ENTRIES } from '$lib/boot/plugin-proxy-meta.generated';
+	import { getAppEngine } from '$lib/services/app-engine';
 	import { formatBytes } from '$lib/utils/format-bytes';
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
 	import { onMount } from 'svelte';
@@ -52,6 +52,9 @@
 			: []
 	);
 
+	let updateStatuses = $state.raw<
+		Record<string, ReturnType<typeof officialPlugins.getUpdateStatus>>
+	>({});
 	let preinstallFailures = $state.raw<[string, string][]>([]);
 	let installedRecords = $state.raw<InstalledOfficialPluginRecord[]>([]);
 	let catalogManifests = $state.raw<Array<{ url: string; manifest: PluginManifest }>>([]);
@@ -93,6 +96,12 @@
 
 	function refreshInstalled() {
 		installedRecords = [...officialPlugins.listInstalled()];
+		updateStatuses = Object.fromEntries(
+			installedRecords.map((record) => [
+				record.manifest.id,
+				officialPlugins.getUpdateStatus(record.manifest.id)
+			])
+		);
 		preinstallFailures = [...officialPlugins.listFailures()];
 	}
 
@@ -375,6 +384,7 @@
 						{@const desc = resolveManifestText(record.manifest.description)}
 						{@const meta = getPluginCategoryMeta(resolvePluginCatalogCategory(record.manifest))}
 						{@const isBusy = operatingPluginId === record.manifest.id}
+						{@const update = updateStatuses[record.manifest.id]}
 						<div
 							class={[
 								'flex flex-col gap-2 p-3 transition-colors hover:bg-surface-variant/30',
@@ -412,6 +422,23 @@
 								{/if}
 							</div>
 
+							{#if update && update.status !== 'ready'}
+								<p class="text-body-small text-on-surface-variant" title={update.error}>
+									{hostT(`plugins.update.${update.status}`)}
+								</p>
+								{#if update.status === 'confirmation-required'}
+									<Button
+										variant="outlined"
+										disabled={isBusy}
+										onclick={() => handleToggleEnabled(record.manifest.id, true)}
+										>{hostT('plugins.action.enable')}</Button
+									>
+								{:else if update.status !== 'downloading'}
+									<Button variant="outlined" onclick={() => officialPlugins.retryPendingUpdates()}
+										>{hostT('plugins.action.retry')}</Button
+									>
+								{/if}
+							{/if}
 							<div class="flex items-center justify-between gap-2">
 								{#if !officialPlugins.isPreinstalledPlugin(record.manifest.id)}
 									<Button
@@ -444,7 +471,7 @@
 										</span>
 										<Switch
 											size="sm"
-											checked={record.enabled}
+											checked={record.enabled && update?.status !== 'confirmation-required'}
 											disabled={isBusy}
 											onCheckedChange={(checked) =>
 												handleToggleEnabled(record.manifest.id, checked === true)}
@@ -519,7 +546,7 @@
 													{desc}
 												</p>
 											{/if}
-											{#if manifest.optionalServerCapabilities?.some((cap) => !PLUGIN_PROXY_ENTRIES.some((entry) => entry.pluginId === cap.pluginId && entry.action === cap.action))}
+											{#if manifest.optionalServerCapabilities?.some((cap) => !getAppEngine().http.supportsPluginServer?.(cap.pluginId, cap.action))}
 												<p class="text-body-small mt-1 text-on-surface-variant">
 													{hostT('plugins.online.unavailable')}
 												</p>
@@ -546,6 +573,11 @@
 											<PluginInstallAction
 												{manifest}
 												{installed}
+												needsUpdate={installedRecords.some(
+													(record) =>
+														record.manifest.id === manifest.id &&
+														record.manifest.version !== manifest.version
+												)}
 												task={taskMap.get(manifest.id)}
 												onInstall={() => handleInstall(manifest, entry.url)}
 												onCancel={() => handleCancel(manifest.id)}

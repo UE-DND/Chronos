@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { APP_VERSION } from '$lib/config/app-meta';
 import { readFile } from 'node:fs/promises';
 import { afterAll } from 'vite-plus/test';
 import { describe, it, expect, beforeEach, vi } from 'vite-plus/test';
@@ -39,6 +41,7 @@ class MockLocalStorage implements Storage {
 }
 
 function createMockDb(): ChronosDB {
+	const pluginRows = new Map<string, unknown>();
 	return {
 		timetables: {
 			get: vi.fn(async () => undefined),
@@ -63,9 +66,14 @@ function createMockDb(): ChronosDB {
 			put: vi.fn(async () => {})
 		},
 		pluginData: {
-			get: vi.fn(async () => undefined),
-			put: vi.fn(async () => 'id'),
-			delete: vi.fn(async () => {})
+			get: vi.fn(async (id: string) => pluginRows.get(id)),
+			put: vi.fn(async (row: { id: string }) => {
+				pluginRows.set(row.id, row);
+				return row.id;
+			}),
+			delete: vi.fn(async (id: string) => {
+				pluginRows.delete(id);
+			})
 		},
 		transaction: vi.fn(async (_mode: string, ...args: unknown[]) => {
 			const fn = args[args.length - 1] as () => Promise<void>;
@@ -150,8 +158,9 @@ describe('app-engine bootstrap', () => {
 				bundleFormat: 'esm',
 				themeId: 'yumemita',
 				colorsUrl: '/theme-yumemita.colors.json',
-				colorsSha256: 'x'
+				colorsSha256: createHash('sha256').update(themeColorsJson).digest('hex')
 			},
+			acceptedHostVersion: APP_VERSION,
 			colorsJson: themeColorsJson,
 			manifestUrl: 'https://example.com/theme-yumemita.manifest.json',
 			enabled: true,
@@ -164,12 +173,21 @@ describe('app-engine bootstrap', () => {
 			id: installedPluginDataId,
 			pluginId: OFFICIAL_PLUGINS_PLUGIN_ID,
 			key: INSTALLED_STORAGE_KEY,
-			valueJson: JSON.stringify({ records: [installedThemePlugin], removed: [], seeded: true }),
+			valueJson: JSON.stringify({
+				records: [installedThemePlugin],
+				removed: [],
+				revision: 0,
+				generation: '',
+				seeded: true
+			}),
 			updatedAt: 1
 		};
 		const mockDb = createMockDb();
-		const getPluginData = vi.fn(async (id: string) =>
-			id === installedPluginDataId ? installedPluginDataRow : undefined
+		const readPluginRow = mockDb.pluginData.get.bind(mockDb.pluginData);
+		const getPluginData = vi.fn(
+			async (id: string) =>
+				(await readPluginRow(id)) ??
+				(id === installedPluginDataId ? installedPluginDataRow : undefined)
 		);
 		Object.defineProperty(mockDb.pluginData, 'get', { value: getPluginData });
 
@@ -270,11 +288,22 @@ describe('theme preferences during deferred boot', () => {
 			installedAt: 1
 		};
 		const key = `${OFFICIAL_PLUGINS_PLUGIN_ID}:${INSTALLED_STORAGE_KEY}`;
+		const readPluginRow = db.pluginData.get.bind(db.pluginData);
 		Object.defineProperty(db.pluginData, 'get', {
-			value: vi.fn(async (id: string) =>
-				id === key
-					? { valueJson: JSON.stringify({ records: [record], removed: [], seeded: true }) }
-					: undefined
+			value: vi.fn(
+				async (id: string) =>
+					(await readPluginRow(id)) ??
+					(id === key
+						? {
+								valueJson: JSON.stringify({
+									records: [record],
+									removed: [],
+									revision: 0,
+									generation: '',
+									seeded: true
+								})
+							}
+						: undefined)
 			)
 		});
 		const store = new MockLocalStorage();

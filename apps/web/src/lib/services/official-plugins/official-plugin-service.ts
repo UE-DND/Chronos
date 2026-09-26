@@ -4,8 +4,13 @@ import { resolveManifestForDownload } from './manifest-url';
 import { hostT } from '$lib/i18n/host-i18n.svelte';
 import type { ChronosEngine, ChronosProfile, Disposable, PluginManifest } from '@chronos/core';
 import { PLUGIN_CONFIG_STORAGE_KEY, validateProfile } from '@chronos/core';
-import { APP_VERSION } from '$lib/config/app-meta';
-import { isAbortError, swallowAbortRejection } from './abort-utils';
+import { db, type ChronosDB } from '$lib/storage/db';
+import { createPluginInstallationRepository } from '$lib/storage/plugin-installation-repository';
+import type { HostBuildIdentity, WebHostUpdate } from '@chronos/core';
+import { APP_VERSION, HOST_BUILD } from '$lib/config/app-meta';
+import { isAbortError } from './abort-utils';
+import { mergeAbortSignals } from '$lib/utils/abort-signal';
+import { PluginOperationCoordinator } from './plugin-operation-coordinator';
 import { OfficialPluginAssetPipeline } from './asset-pipeline';
 import { OfficialPluginCatalogClient } from './catalog-client';
 import { OfficialPluginInstalledStore } from './installed-store';
@@ -23,6 +28,7 @@ import {
 } from './install-queue';
 import { syncInstalledPluginsWithHost } from './sync-installed-plugins';
 import {
+	RESERVED_OFFICIAL_PLUGIN_IDS,
 	BUNDLED_CATALOG_URL,
 	officialCatalogUrl,
 	isOfficialCatalogManifestUrl,
@@ -45,20 +51,35 @@ export interface OfficialPluginServiceDeps {
 	runtimeActivator: OfficialPluginRuntimeActivator;
 	installQueue?: OfficialPluginInstallQueue;
 	hostVersion?: string;
+	hostBuild?: HostBuildIdentity;
 	images?: ImageRepository;
 }
 
-function createOfficialPluginServiceDeps(engine: ChronosEngine): OfficialPluginServiceDeps {
-	const installedStore = new OfficialPluginInstalledStore(engine);
-	const runtimeActivator = new OfficialPluginRuntimeActivator(engine, (pluginId) =>
-		installedStore.has(pluginId)
+function createOfficialPluginServiceDeps(
+	engine: ChronosEngine,
+	database: ChronosDB = db
+): OfficialPluginServiceDeps {
+	const installedStore = new OfficialPluginInstalledStore(
+		engine,
+		createPluginInstallationRepository(database)
+	);
+	const runtimeActivator = new OfficialPluginRuntimeActivator(
+		engine,
+		(pluginId) => installedStore.has(pluginId),
+		new ImageRepository(database)
 	);
 	return {
+		hostBuild: HOST_BUILD,
+		images: new ImageRepository(database),
 		catalogClient: new OfficialPluginCatalogClient(engine),
 		assetPipeline: new OfficialPluginAssetPipeline(engine),
 		installedStore,
 		runtimeActivator
 	};
+}
+
+export function createOfficialPluginService(engine: ChronosEngine, database?: ChronosDB) {
+	return new OfficialPluginService(engine, createOfficialPluginServiceDeps(engine, database));
 }
 
 export class OfficialPluginService implements Disposable {
@@ -69,7 +90,18 @@ export class OfficialPluginService implements Disposable {
 	private initialized = false;
 	private initPromise?: Promise<void>;
 	private lifecycle = new AbortController();
-	private installs = new Map<string, Promise<void>>();
+	private readonly operations = new PluginOperationCoordinator();
+	private syncPromise?: Promise<void>;
+	private hostBuild?: HostBuildIdentity;
+	private updateStatuses = new Map<
+		string,
+		{
+			status: 'pending' | 'downloading' | 'failed' | 'ready' | 'confirmation-required';
+			error?: string;
+		}
+	>();
+	private storeSubscription?: Disposable;
+	private reconciling?: Promise<void>;
 
 	isPreinstalledPlugin(id: string): boolean {
 		return this.profile?.preinstall.some((entry) => entry.id === id) ?? false;
@@ -92,7 +124,7 @@ export class OfficialPluginService implements Disposable {
 		}
 		const id = profile.defaultTheme.pluginId;
 		const cached = this.installedStore.find(id);
-		if (cached) {
+		if (cached && this.isCompatible(cached)) {
 			try {
 				await this.runtimeActivator.activate({ ...cached, enabled: true });
 				this.engine.validateDefaultTheme(profile.defaultTheme);
@@ -129,14 +161,20 @@ export class OfficialPluginService implements Disposable {
 		if (!this.profile) return;
 		const pending = planPreinstall(
 			this.profile,
-			this.listInstalled().filter((record) => !this.failures.has(record.manifest.id))
+			this.listInstalled().filter(
+				(record) => this.isCompatible(record) && !this.failures.has(record.manifest.id)
+			)
 		);
 		for (const entry of pending) {
 			try {
 				const cached = this.installedStore.find(entry.id);
-				if (cached) {
-					await this.runtimeActivator.activate({ ...cached, enabled: true });
-					await this.installedStore.setEnabled(entry.id, true);
+				if (cached && this.isCompatible(cached)) {
+					try {
+						await this.runtimeActivator.activate({ ...cached, enabled: true });
+						await this.installedStore.setEnabled(entry.id, true);
+					} catch {
+						await this.installPreinstall(entry.id);
+					}
 				} else await this.installPreinstall(entry.id);
 				this.failures.delete(entry.id);
 			} catch (error) {
@@ -151,10 +189,6 @@ export class OfficialPluginService implements Disposable {
 		this.installedStore.notify();
 	}
 	private disposed = false;
-	private readonly hotUpdates = new Map<
-		string,
-		{ controller: AbortController; settled: Promise<InstalledOfficialPluginRecord> }
-	>();
 	private readonly catalogClient: OfficialPluginCatalogClient;
 	private readonly assetPipeline: OfficialPluginAssetPipeline;
 	private readonly installedStore: OfficialPluginInstalledStore;
@@ -174,6 +208,7 @@ export class OfficialPluginService implements Disposable {
 		this.installedStore = resolved.installedStore;
 		this.runtimeActivator = resolved.runtimeActivator;
 		this.hostVersion = resolved.hostVersion ?? APP_VERSION;
+		this.hostBuild = resolved.hostBuild;
 		this.installQueue =
 			resolved.installQueue ??
 			new OfficialPluginInstallQueue({
@@ -202,26 +237,207 @@ export class OfficialPluginService implements Disposable {
 		await this.activateInstalledFromCache();
 		this.initialized = true;
 		this.installedStore.notify();
-		await this.syncWithHostCatalog();
-		this.installedStore.notify();
+		void this.retryPendingUpdates();
+		this.storeSubscription = this.installedStore.onChanged(() => {
+			if (this.installedStore.hostChanged) {
+				this.dispose();
+				if (typeof window !== 'undefined') window.location.reload();
+				return;
+			}
+			if (!this.reconciling)
+				this.reconciling = this.reconcileRuntime()
+					.catch((error) => console.error('[plugin-reconcile]', error))
+					.finally(() => {
+						this.reconciling = undefined;
+					});
+		});
 		this.setupDevHmr();
 	}
 
 	private async loadInstalledStore(): Promise<void> {
 		if (this.loaded) return;
 		await this.installedStore.load();
+		const generation = this.installedStore.hostGeneration;
+		if (this.hostBuild) {
+			if (
+				this.hostBuild.target !== 'mobile' &&
+				typeof navigator !== 'undefined' &&
+				navigator.serviceWorker?.controller
+			) {
+				const { readWorkerIdentity } = await import('$lib/client/pwa-sw');
+				const controlling = await readWorkerIdentity(navigator.serviceWorker.controller);
+				if (controlling.buildId !== this.hostBuild.buildId) {
+					window.location.reload();
+					throw new Error('Host controller changed; reloading');
+				}
+			}
+			const previous = this.installedStore
+				.getCache()
+				.flatMap((record) => (record.wallpaperAssetId ? [record.wallpaperAssetId] : []));
+			this.lifecycle.signal.throwIfAborted();
+			await this.installedStore.startHost(this.hostBuild, generation);
+			const retained = new Set(
+				this.installedStore.getCache().map((record) => record.wallpaperAssetId)
+			);
+			await Promise.all(
+				previous.filter((id) => !retained.has(id)).map((id) => this.images.delete(id))
+			);
+		}
 		this.loaded = true;
 	}
 
 	private async syncWithHostCatalog(): Promise<void> {
+		const signal = this.lifecycle.signal;
 		await syncInstalledPluginsWithHost({
 			hostVersion: this.hostVersion,
 			preinstallIds: this.profile?.preinstall.map((plugin) => plugin.id) ?? [],
 			catalogClient: this.catalogClient,
 			getInstalledRecords: () => this.installedStore.getCache(),
-			install: (manifest, manifestUrl, options) =>
-				this.install(manifest, manifestUrl, { ...options, system: true })
+			retryIds: [...this.failures.keys()],
+			onStatus: (id, status, error) => {
+				if (signal.aborted) return;
+				this.updateStatuses.set(id, { status, error });
+				this.installedStore.notify();
+			},
+			install: (manifest, manifestUrl, options) => {
+				signal.throwIfAborted();
+				return this.install(manifest, manifestUrl, { ...options, system: true, signal });
+			}
 		});
+	}
+
+	private isCompatible(record: InstalledOfficialPluginRecord): boolean {
+		return isOfficialCatalogManifestUrl(record.manifestUrl, record.manifest.id)
+			? record.manifest.version === this.hostVersion
+			: record.acceptedHostVersion === this.hostVersion;
+	}
+	getUpdateStatus(id: string) {
+		return this.updateStatuses.get(id);
+	}
+	get installationStore() {
+		return this.installedStore;
+	}
+	async retryPendingUpdates(): Promise<void> {
+		if (this.disposed) return;
+		if (this.syncPromise) return this.syncPromise;
+		const signal = this.lifecycle.signal;
+		const operation: Promise<void> = this.syncWithHostCatalog()
+			.catch((error) => console.error('[plugin-update]', error))
+			.then(() => {
+				if (this.disposed || signal.aborted) return;
+				const preferred = this.engine.state.userPreferences.visualThemeId;
+				if (preferred && this.engine.themes.isSelectable(preferred))
+					this.engine.setTheme(preferred);
+				this.installedStore.notify();
+			})
+			.finally(() => {
+				if (this.syncPromise === operation) this.syncPromise = undefined;
+			});
+		this.syncPromise = operation;
+		return operation;
+	}
+	private async reconcileRuntime(): Promise<void> {
+		for (const id of this.activeVersions.keys()) {
+			if (this.operations.isBusy(id)) continue;
+			const record = this.installedStore.find(id);
+			if (
+				!record?.enabled ||
+				!this.isCompatible(record) ||
+				this.activeVersions.get(id) !== record.revision
+			) {
+				await this.runtimeActivator.deactivate(id, { revertThemes: false });
+				this.activeVersions.delete(id);
+			}
+		}
+		if (!this.installedStore.isFrozen)
+			await this.activateInstalledFromCache({
+				skipIds: new Set(this.operations.getBusyIds())
+			});
+	}
+	private activeVersions = new Map<string, number | undefined>();
+	async prepareHostUpdate(
+		update: WebHostUpdate,
+		progress?: (percent: number) => void
+	): Promise<string> {
+		await this.loadInstalledStore();
+		await this.operations.waitForAllSettled();
+		if (this.syncPromise) await this.syncPromise.catch(() => {});
+		await this.installedStore.load();
+		const revision = this.installedStore.revision;
+		const installed = this.listInstalled().filter(
+			(record) =>
+				isOfficialCatalogManifestUrl(record.manifestUrl, record.manifest.id) &&
+				!update.requiredPluginIds.includes(record.manifest.id)
+		);
+		const prepared: InstalledOfficialPluginRecord[] = [];
+		const wallpaperIds: string[] = [];
+		try {
+			const catalog = installed.length
+				? await this.catalogClient.fetchCatalog(update.pluginCatalogUrl)
+				: undefined;
+			for (const [index, record] of installed.entries()) {
+				const url = catalog?.manifests.find((url) =>
+					url.endsWith(`/${record.manifest.id}.manifest.json`)
+				);
+				if (!url || !url.startsWith(new URL('./manifests/', update.pluginCatalogUrl).href))
+					throw new Error(`Target plugin unavailable: ${record.manifest.id}`);
+				const manifest = await this.catalogClient.fetchManifest(url);
+				assertOfficialManifestVersion(manifest, url, update.host.version);
+				if (manifest.id !== record.manifest.id || manifest.version !== update.host.version)
+					throw new Error('Target plugin identity mismatch');
+				const assets = await this.assetPipeline.download(manifest, url, {
+					signal: this.lifecycle.signal
+				});
+				let wallpaperAssetId: string | undefined;
+				if (assets.wallpaper) {
+					wallpaperAssetId = `theme:${manifest.id}:${crypto.randomUUID()}`;
+					await this.images.put(wallpaperAssetId, assets.wallpaper);
+					wallpaperIds.push(wallpaperAssetId);
+				}
+				prepared.push({
+					...record,
+					code: assets.code ?? null,
+					colorsJson: assets.colorsJson ?? null,
+					iconThemeJson: assets.iconThemeJson ?? null,
+					cssCode: assets.cssCode ?? null,
+					manifest,
+					manifestUrl: url,
+					wallpaperAssetId,
+					acceptedHostVersion: update.host.version
+				});
+				progress?.(Math.round(((index + 1) / installed.length) * 100));
+			}
+			const token = crypto.randomUUID();
+			await this.installedStore.prepare({
+				target: update.host,
+				revision,
+				records: prepared,
+				token,
+				until: Date.now() + 180_000
+			});
+			return token;
+		} catch (error) {
+			await Promise.all(wallpaperIds.map((id) => this.images.delete(id)));
+			throw error;
+		}
+	}
+
+	async cancelHostPreparation(token: string): Promise<void> {
+		await this.installedStore.load();
+		const prepared = this.installedStore.prepared;
+		await this.installedStore.cancelPreparation(token);
+		if (prepared?.token === token) {
+			const retained = new Set(
+				this.installedStore.getCache().map((record) => record.wallpaperAssetId)
+			);
+			await Promise.all(
+				prepared.records.flatMap((record) =>
+					record.wallpaperAssetId && !retained.has(record.wallpaperAssetId)
+						? [this.images.delete(record.wallpaperAssetId)]
+						: []
+				)
+			);
+		}
 	}
 
 	private setupDevHmr(): void {
@@ -236,13 +452,22 @@ export class OfficialPluginService implements Disposable {
 	private async activateInstalledFromCache(options?: { skipIds?: Set<string> }): Promise<void> {
 		for (const record of this.installedStore.getCache()) {
 			if (options?.skipIds?.has(record.manifest.id)) continue;
+			if (!this.isCompatible(record)) {
+				this.updateStatuses.set(record.manifest.id, {
+					status: isOfficialCatalogManifestUrl(record.manifestUrl, record.manifest.id)
+						? 'pending'
+						: 'confirmation-required'
+				});
+				continue;
+			}
 			if (record.enabled && !this.runtimeActivator.isActive(record.manifest.id)) {
 				try {
 					await this.runtimeActivator.activate(record);
 					this.failures.delete(record.manifest.id);
+					this.activeVersions.set(record.manifest.id, record.revision);
 				} catch (err) {
-					if (this.isPreinstalledPlugin(record.manifest.id))
-						this.failures.set(record.manifest.id, String(err));
+					this.failures.set(record.manifest.id, String(err));
+					this.updateStatuses.set(record.manifest.id, { status: 'failed', error: String(err) });
 					console.error(
 						`[OfficialPluginService] Failed to load plugin ${record.manifest.id}:`,
 						err
@@ -298,55 +523,72 @@ export class OfficialPluginService implements Disposable {
 		},
 		options?: { signal?: AbortSignal }
 	): Promise<InstalledOfficialPluginRecord> {
-		const existing = this.installedStore.find(data.id);
-		if (!existing) {
-			throw new Error(`Plugin not installed: ${data.id}`);
-		}
-
-		const isTheme = data.type === 'theme' || existing.manifest.type === 'theme';
-		const nextManifest = data.manifest
-			? { ...existing.manifest, ...data.manifest, id: existing.manifest.id }
-			: existing.manifest;
-
-		const candidate: InstalledOfficialPluginRecord = {
-			...existing,
-			manifest: nextManifest as InstalledOfficialPluginRecord['manifest'],
-			code: data.code,
-			cssCode: data.cssCode,
-			colorsJson: isTheme ? data.colorsJson : null,
-			iconThemeJson: isTheme ? data.iconThemeJson : null
-		};
-
 		if (this.disposed) throw new DOMException('Aborted', 'AbortError');
-		const controller = new AbortController();
-		const signal = options?.signal
-			? AbortSignal.any([options.signal, controller.signal])
-			: controller.signal;
-		const resolvedManifest = resolveManifestForDownload(candidate.manifest, candidate.manifestUrl);
-		const settled = (async () => {
-			const wallpaper =
-				candidate.colorsJson && JSON.parse(candidate.colorsJson).wallpaper
-					? await this.assetPipeline.downloadThemeWallpaper(
-							candidate.colorsJson,
-							resolvedManifest.colorsUrl,
-							signal
-						)
-					: undefined;
-			signal.throwIfAborted();
-			return this.replacePluginAssets(candidate, {
-				wallpaper,
-				preserveInstalledAt: true,
-				signal,
-				revertThemesOnDeactivate: false
-			});
-		})();
-		const update = { controller, settled };
-		this.hotUpdates.set(data.id, update);
-		try {
-			return await settled;
-		} finally {
-			if (this.hotUpdates.get(data.id) === update) this.hotUpdates.delete(data.id);
-		}
+		return this.operations.run(
+			data.id,
+			async ({ signal }) => {
+				const existing = this.installedStore.find(data.id);
+				if (!existing) {
+					throw new Error(`Plugin not installed: ${data.id}`);
+				}
+
+				const isTheme = data.type === 'theme' || existing.manifest.type === 'theme';
+				const nextManifest = data.manifest
+					? { ...existing.manifest, ...data.manifest, id: existing.manifest.id }
+					: existing.manifest;
+
+				const candidate: InstalledOfficialPluginRecord = {
+					...existing,
+					manifest: nextManifest as InstalledOfficialPluginRecord['manifest'],
+					code: data.code,
+					cssCode: data.cssCode,
+					colorsJson: isTheme ? data.colorsJson : null,
+					iconThemeJson: isTheme ? data.iconThemeJson : null
+				};
+
+				for (const [urlField, hashField, content] of [
+					['bundleUrl', 'sha256', candidate.code],
+					['colorsUrl', 'colorsSha256', candidate.colorsJson],
+					['iconThemeUrl', 'iconThemeSha256', candidate.iconThemeJson],
+					['cssUrl', 'cssSha256', candidate.cssCode]
+				] as const) {
+					signal.throwIfAborted();
+					if (content)
+						candidate.manifest = {
+							...candidate.manifest,
+							[hashField]: await this.engine.runtime.sha256(content)
+						};
+					else {
+						candidate.manifest = { ...candidate.manifest };
+						delete candidate.manifest[urlField];
+						delete candidate.manifest[hashField];
+					}
+				}
+
+				signal.throwIfAborted();
+				assertOfficialManifestVersion(candidate.manifest, candidate.manifestUrl, this.hostVersion);
+				const resolvedManifest = resolveManifestForDownload(
+					candidate.manifest,
+					candidate.manifestUrl
+				);
+				const wallpaper =
+					candidate.colorsJson && JSON.parse(candidate.colorsJson).wallpaper
+						? await this.assetPipeline.downloadThemeWallpaper(
+								candidate.colorsJson,
+								resolvedManifest.colorsUrl,
+								signal
+							)
+						: undefined;
+				signal.throwIfAborted();
+				return this.replacePluginAssets(candidate, {
+					wallpaper,
+					preserveInstalledAt: true,
+					signal,
+					revertThemesOnDeactivate: false
+				});
+			},
+			{ cancelExisting: true, signal: options?.signal }
+		);
 	}
 
 	private async replacePluginAssets(
@@ -394,6 +636,13 @@ export class OfficialPluginService implements Disposable {
 		if (previous?.wallpaperAssetId && previous.wallpaperAssetId !== id) {
 			await this.images.delete(previous.wallpaperAssetId).catch(console.error);
 		}
+		if (result.enabled)
+			this.activeVersions.set(
+				result.manifest.id,
+				this.installedStore.find(result.manifest.id)?.revision
+			);
+		this.updateStatuses.set(result.manifest.id, { status: 'ready' });
+		this.failures.delete(result.manifest.id);
 		return result;
 	}
 
@@ -403,15 +652,18 @@ export class OfficialPluginService implements Disposable {
 		options?: Parameters<OfficialPluginService['performInstall']>[2]
 	): Promise<void> {
 		if (this.disposed) throw new DOMException('Aborted', 'AbortError');
-		const pending = this.installs.get(manifest.id);
-		if (pending) return pending;
-		const operation = this.performInstall(manifest, manifestUrl, options);
-		this.installs.set(manifest.id, operation);
-		try {
-			await operation;
-		} finally {
-			if (this.installs.get(manifest.id) === operation) this.installs.delete(manifest.id);
-		}
+		return this.operations.run(
+			manifest.id,
+			async ({ signal }) => {
+				await this.performInstall(manifest, manifestUrl, {
+					...options,
+					signal
+				});
+				if (!this.disposed) await this.installedStore.load();
+				this.installedStore.notify();
+			},
+			{ signal: options?.signal }
+		);
 	}
 	private async performInstall(
 		manifest: PluginManifest,
@@ -429,14 +681,28 @@ export class OfficialPluginService implements Disposable {
 		}
 	): Promise<void> {
 		const signal = options?.signal
-			? AbortSignal.any([options.signal, this.lifecycle.signal])
+			? mergeAbortSignals([options.signal, this.lifecycle.signal])
 			: this.lifecycle.signal;
 		signal?.throwIfAborted?.();
 		validatePluginManifest(manifest);
-		assertOfficialManifestVersion(manifest, manifestUrl, this.hostVersion);
+		const sourceUrl =
+			manifestUrl ??
+			(options?.system ? this.installedStore.find(manifest.id)?.manifestUrl : undefined);
+		if (
+			(RESERVED_OFFICIAL_PLUGIN_IDS.includes(manifest.id) ||
+				isOfficialCatalogManifestUrl(
+					this.installedStore.find(manifest.id)?.manifestUrl,
+					manifest.id
+				)) &&
+			!isOfficialCatalogManifestUrl(sourceUrl, manifest.id)
+		)
+			throw new Error('Official plugin IDs cannot be installed from external sources');
+		assertOfficialManifestVersion(manifest, sourceUrl, this.hostVersion);
 		if (!options?.system) this.assertUserRemoval(manifest.id);
 
+		await this.installedStore.load();
 		const existingSnapshot = this.installedStore.find(manifest.id);
+		const expectedRevision = existingSnapshot?.revision ?? -1;
 
 		try {
 			const assets = await this.assetPipeline.download(manifest, manifestUrl, {
@@ -445,10 +711,14 @@ export class OfficialPluginService implements Disposable {
 			});
 
 			signal?.throwIfAborted?.();
+			await this.installedStore.load();
+			if ((this.installedStore.find(manifest.id)?.revision ?? -1) !== expectedRevision)
+				throw new Error('Plugin changed during download; retry');
 			options?.onProgress?.({ stage: 'installing', percent: 88 });
 
 			const record: InstalledOfficialPluginRecord = {
 				manifest,
+				acceptedHostVersion: this.hostVersion,
 				origin:
 					existingSnapshot?.origin ??
 					(options?.preinstall
@@ -489,53 +759,83 @@ export class OfficialPluginService implements Disposable {
 		}
 	}
 
-	private async cancelHotUpdate(pluginId: string): Promise<void> {
-		const update = this.hotUpdates.get(pluginId);
-		if (!update) return;
-		update.controller.abort();
-		await swallowAbortRejection(update.settled);
-	}
-
 	async uninstall(pluginId: string): Promise<void> {
 		this.assertUserRemoval(pluginId);
-		await this.cancelHotUpdate(pluginId);
-		await this.runtimeActivator.deactivate(pluginId, { revertThemes: true });
-		const record = this.installedStore.find(pluginId);
-		await this.installedStore.remove(pluginId);
-		if (record?.wallpaperAssetId) await this.images.delete(record.wallpaperAssetId);
-		await this.engine.storage.clearPluginData?.(pluginId);
-		this.installQueue.clearFinished(pluginId);
-		this.engine.notify(hostT('plugins.notify.uninstalled', { pluginId }), 'info');
+		return this.operations.run(
+			pluginId,
+			async ({ signal }) => {
+				await this.installedStore.load();
+				if (this.installedStore.isFrozen || this.installedStore.hostChanged)
+					throw new Error('Application update in progress; reload before changing plugins');
+				signal.throwIfAborted();
+				await this.runtimeActivator.deactivate(pluginId, { revertThemes: true });
+				const record = this.installedStore.find(pluginId);
+				await this.installedStore.remove(pluginId);
+				if (record?.wallpaperAssetId) await this.images.delete(record.wallpaperAssetId);
+				await this.engine.storage.clearPluginData?.(pluginId);
+				this.installQueue.clearFinished(pluginId);
+				this.engine.notify(hostT('plugins.notify.uninstalled', { pluginId }), 'info');
+			},
+			{ cancelExisting: true }
+		);
 	}
 
 	async enable(pluginId: string): Promise<void> {
-		await this.cancelHotUpdate(pluginId);
-		const record = this.installedStore.find(pluginId);
-		if (!record) {
-			throw new Error(`Plugin not installed: ${pluginId}`);
-		}
-		if (record.enabled && this.runtimeActivator.isActive(pluginId)) return;
+		return this.operations.run(pluginId, async ({ signal }) => {
+			await this.installedStore.load();
+			this.lifecycle.signal.throwIfAborted();
+			signal.throwIfAborted();
+			if (this.installedStore.isFrozen || this.installedStore.hostChanged)
+				throw new Error('Application update in progress; reload before changing plugins');
+			const record = this.installedStore.find(pluginId);
+			if (!record) {
+				throw new Error(`Plugin not installed: ${pluginId}`);
+			}
+			if (record.enabled && this.runtimeActivator.isActive(pluginId)) return;
 
-		await this.runtimeActivator.activate({ ...record, enabled: true });
-		try {
-			await this.installedStore.setEnabled(pluginId, true);
-		} catch (error) {
-			await this.runtimeActivator.deactivate(pluginId, { revertThemes: true });
-			throw error;
-		}
-		this.engine.notify(hostT('plugins.notify.enabled', { pluginId }), 'info');
+			if (
+				isOfficialCatalogManifestUrl(record.manifestUrl, pluginId) &&
+				record.manifest.version !== this.hostVersion
+			) {
+				await this.installedStore.setEnabled(pluginId, true, this.hostVersion);
+				await this.retryPendingUpdates();
+				return;
+			}
+			await this.runtimeActivator.activate({ ...record, enabled: true });
+			try {
+				this.lifecycle.signal.throwIfAborted();
+				signal.throwIfAborted();
+				await this.installedStore.upsert(
+					{ ...record, enabled: true, acceptedHostVersion: this.hostVersion },
+					record.revision ?? -1
+				);
+				this.activeVersions.set(pluginId, this.installedStore.find(pluginId)?.revision);
+				this.updateStatuses.set(pluginId, { status: 'ready' });
+				this.installedStore.notify();
+			} catch (error) {
+				await this.runtimeActivator.deactivate(pluginId, { revertThemes: true });
+				throw error;
+			}
+			this.engine.notify(hostT('plugins.notify.enabled', { pluginId }), 'info');
+		});
 	}
 
 	async disable(pluginId: string): Promise<void> {
 		this.assertUserRemoval(pluginId);
-		await this.cancelHotUpdate(pluginId);
-		const record = this.installedStore.find(pluginId);
-		if (!record) {
-			throw new Error(`Plugin not installed: ${pluginId}`);
-		}
-		await this.installedStore.setEnabled(pluginId, false);
-		await this.runtimeActivator.deactivate(pluginId, { revertThemes: true });
-		this.engine.notify(hostT('plugins.notify.disabled', { pluginId }), 'info');
+		return this.operations.run(
+			pluginId,
+			async ({ signal }) => {
+				const record = this.installedStore.find(pluginId);
+				if (!record) {
+					throw new Error(`Plugin not installed: ${pluginId}`);
+				}
+				signal.throwIfAborted();
+				await this.installedStore.setEnabled(pluginId, false);
+				await this.runtimeActivator.deactivate(pluginId, { revertThemes: true });
+				this.engine.notify(hostT('plugins.notify.disabled', { pluginId }), 'info');
+			},
+			{ cancelExisting: true }
+		);
 	}
 
 	async getPluginConfig<T extends Record<string, unknown>>(pluginId: string): Promise<T | null> {
@@ -556,18 +856,20 @@ export class OfficialPluginService implements Disposable {
 
 	async resetAfterFactoryClear(): Promise<void> {
 		this.lifecycle.abort();
-		for (const update of this.hotUpdates.values()) update.controller.abort();
-		await Promise.allSettled([
-			...this.installs.values(),
-			...[...this.hotUpdates.values()].map((update) => update.settled)
-		]);
+		this.storeSubscription?.dispose();
+		this.storeSubscription = undefined;
+		await this.operations.waitForAllSettled();
+		this.operations.dispose();
 		this.lifecycle = new AbortController();
+		this.syncPromise = undefined;
 		this.initPromise = undefined;
 		this.installQueue.cancelAll();
 		this.engine.clearDefaultTheme();
 		this.runtimeActivator.disposeAll();
 		this.installedStore.clear();
 		this.failures.clear();
+		this.activeVersions.clear();
+		this.updateStatuses.clear();
 		this.initialized = false;
 		this.loaded = false;
 	}
@@ -576,7 +878,9 @@ export class OfficialPluginService implements Disposable {
 		this.disposed = true;
 		this.lifecycle.abort();
 		this.engine.clearDefaultTheme();
-		for (const update of this.hotUpdates.values()) update.controller.abort();
+		this.operations.dispose();
+		this.storeSubscription?.dispose();
+		this.installedStore.dispose();
 		this.hmrDisposable?.dispose();
 		this.installQueue.dispose();
 		this.runtimeActivator.disposeAll();
