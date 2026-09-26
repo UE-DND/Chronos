@@ -182,6 +182,24 @@ describe('navigation and overlay browser contract', () => {
 		browser.complete();
 		expect(getTopFrame()?.href).toBe('/');
 	});
+	it('preserves the initial share fragment when writing the navigation marker', () => {
+		const page = { url: new URL('https://app/s?source=share#1.payload'), state: {} };
+		const replaceState = vi.fn((url: string) => {
+			page.url = new URL(url, page.url);
+		});
+		configureNavigationCoordinator({
+			goto: vi.fn(),
+			historyGo: vi.fn(),
+			pushState: vi.fn(),
+			replaceState,
+			setActiveTab: vi.fn(),
+			getPage: () => page
+		});
+		onAfterNavigate();
+		expect(page.url.hash).toBe('#1.payload');
+		expect(page.url.search).toBe('?source=share');
+	});
+
 	it('does not use router history APIs before the completed initialization callback', () => {
 		const replaceState = vi.fn();
 		configureNavigationCoordinator({
