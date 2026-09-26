@@ -1,57 +1,31 @@
-import type {
-	PluginServerHandler,
-	PluginServerManifest,
-	PluginServerErrorKind,
-	AppError
-} from '@chronos/core';
-import { pluginServerError, pluginServerSuccess } from '@chronos/core';
+import type { PluginServerHandler, PluginServerManifest } from '@chronos/core';
+import { pluginServerError } from '@chronos/core';
+import { executeCqutPreview } from '../src/online';
 import { serverDefinition } from './definition';
 import { fetchCqutSchedule } from './fetch-schedule';
-
-function toWireErrorKind(kind: AppError['kind']): PluginServerErrorKind {
-	switch (kind) {
-		case 'Security':
-		case 'Unknown':
-			return 'Upstream';
-		default:
-			return kind;
-	}
-}
-
-interface PreviewRequestBody {
-	account?: string;
-	password?: string;
-}
+import { NodeCqutSession } from './node-cqut-session';
 
 export const handlePreview: PluginServerHandler = async ({ request }) => {
-	let body: PreviewRequestBody;
+	let body: unknown;
 	try {
-		body = (await request.json()) as PreviewRequestBody;
+		body = await request.json();
 	} catch {
 		return Response.json(pluginServerError('DataFormat', '请求格式错误'), { status: 400 });
 	}
 
-	const account = body.account?.trim() ?? '';
-	const password = body.password?.trim() ?? '';
-	if (!account || !password) {
-		return Response.json(pluginServerError('Validation', '账号和密码不能为空'), { status: 400 });
-	}
-
-	const result = await fetchCqutSchedule({
-		account,
-		password
-	});
-
-	if (result.ok) {
-		return Response.json(pluginServerSuccess(result.value));
-	}
-
-	return Response.json(
-		pluginServerError(toWireErrorKind(result.error.kind), result.error.message),
-		{
-			status: 502
-		}
+	const result = await executeCqutPreview(
+		body,
+		() => new NodeCqutSession(),
+		(session, input) => fetchCqutSchedule(session, input)
 	);
+
+	const status = result.ok
+		? 200
+		: result.error.kind === 'Validation' || result.error.kind === 'DataFormat'
+			? 400
+			: 502;
+
+	return Response.json(result, { status });
 };
 
 export const serverManifest: PluginServerManifest = {

@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { toUpstreamNetworkError } from './upstream-error';
+
+afterEach(() => {
+	vi.restoreAllMocks();
+});
 
 describe('toUpstreamNetworkError', () => {
 	it('maps DOMException TimeoutError to step timeout message', () => {
@@ -48,5 +52,17 @@ describe('toUpstreamNetworkError', () => {
 		const result = toUpstreamNetworkError(error, '获取课表系统登录票据');
 		expect(result.kind).toBe('Network');
 		expect(result.message).toBe('获取课表系统登录票据失败，请稍后重试');
+	});
+
+	it('does not log sensitive upstream error messages', () => {
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+		toUpstreamNetworkError(
+			new Error('request failed for ?ticket=ST-sensitive&password=secret'),
+			'建立课表系统会话'
+		);
+
+		const logText = consoleError.mock.calls.flat().join(' ');
+		expect(logText).not.toContain('ST-sensitive');
+		expect(logText).not.toContain('password=secret');
 	});
 });

@@ -13,6 +13,17 @@ vi.mock('./config', async (importOriginal) => {
 	};
 });
 
+vi.mock('../src/online/config', async (importOriginal) => {
+	const original = await importOriginal<typeof import('../src/online/config')>();
+	return {
+		...original,
+		CONNECT_TIMEOUT_MS: 100,
+		REQUEST_TIMEOUT_MS: 100,
+		HTTP_RETRY_DELAY_MS: 0,
+		NETWORK_RETRY_COUNT: 2
+	};
+});
+
 const { requestStep } = await import('./http-client');
 
 let server: Server | null = null;

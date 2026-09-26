@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { parsePluginServerResponse } from '@chronos/core';
 import { handlePreview } from './index';
+import { NodeCqutSession } from './node-cqut-session';
 
 vi.mock('./fetch-schedule', () => ({
 	fetchCqutSchedule: vi.fn()
@@ -73,5 +74,9 @@ describe('handlePreview', () => {
 
 		expect(response.status).toBe(200);
 		expect(body).toEqual({ ok: true, payload });
+		expect(fetchCqutSchedule).toHaveBeenCalledWith(expect.any(NodeCqutSession), {
+			account: 'stu001',
+			password: 'secret'
+		});
 	});
 });

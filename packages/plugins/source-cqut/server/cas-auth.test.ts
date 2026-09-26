@@ -13,6 +13,15 @@ vi.mock('./config', async (importOriginal) => {
 	};
 });
 
+vi.mock('../src/online/config', async (importOriginal) => {
+	const original = await importOriginal<typeof import('../src/online/config')>();
+	return {
+		...original,
+		HTTP_RETRY_DELAY_MS: 0,
+		NETWORK_RETRY_COUNT: 2
+	};
+});
+
 const TEST_ACCOUNT = '20210001';
 const TEST_PASSWORD = 'encrypted-password';
 const TEST_TICKET = 'ST-test-ticket-001';
