@@ -1,4 +1,6 @@
 /// <reference types="node" />
+import { finalizeWorkerArtifacts } from './build-config/worker-artifacts.ts';
+import { createHostIdentity } from './build-config/host-identity.ts';
 import { runCommand, CommandError } from './run-command.ts';
 import { rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -85,11 +87,17 @@ async function prepareAndRunHost(command: 'build' | 'dev') {
 	);
 	rmSync(resolve(webRoot, 'static/licenses/third-party.json'), { force: true });
 	await runCommand('vp', [command, resolve(webRoot), ...args], webRoot);
-	if (command === 'build')
+	if (command === 'build') {
+		finalizeWorkerArtifacts(
+			resolve(webRoot, buildContext.target === 'vercel' ? '.vercel/output/static' : 'build'),
+			createHostIdentity(root, buildContext),
+			buildContext.targetDef.basePath
+		);
 		verifyHostPlugins(
 			resolve(webRoot, buildContext.target === 'vercel' ? '.vercel/output/static' : 'build'),
 			buildContext.profileId
 		);
+	}
 }
 try {
 	await prepareAndRunHost(command);

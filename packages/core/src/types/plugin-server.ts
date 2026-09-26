@@ -55,7 +55,8 @@ export type PluginServerErrorKind =
 	| 'Auth'
 	| 'Network'
 	| 'Upstream'
-	| 'RateLimited';
+	| 'RateLimited'
+	| 'UpdateRequired';
 
 export interface PluginServerError {
 	kind: PluginServerErrorKind;

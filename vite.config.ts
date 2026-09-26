@@ -48,7 +48,7 @@ export default defineConfig({
 			{
 				find: '$app/navigation',
 				replacement: fileURLToPath(
-					new URL('./node_modules/@sveltejs/kit/src/runtime/app/navigation.js', import.meta.url)
+					new URL('./apps/web/src/test-mocks/app-navigation.ts', import.meta.url)
 				)
 			},
 			{
@@ -124,12 +124,12 @@ export default defineConfig({
 			'build:mobile': {
 				command:
 					'CHRONOS_DEPLOY_TARGET=mobile CHRONOS_DISTRIBUTION=mobile node --experimental-strip-types apps/web/scripts/run-host.ts build',
-				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV']
+				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'SOURCE_DATE_EPOCH']
 			},
 			'mobile:build': {
 				command:
 					'CHRONOS_DEPLOY_TARGET=mobile CHRONOS_DISTRIBUTION=mobile node --experimental-strip-types apps/web/scripts/run-host.ts build && vp run --filter @chronos/mobile sync',
-				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV']
+				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'SOURCE_DATE_EPOCH']
 			},
 			'mobile:sync': {
 				command: 'vp run --filter @chronos/mobile sync',

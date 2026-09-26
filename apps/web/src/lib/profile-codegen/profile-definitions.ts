@@ -34,6 +34,7 @@ const CQUT_OFFLINE_PROFILE: ChronosProfile = {
 	description: 'HTML 课表导入与分享口令，不含知行理工在线同步',
 	defaultTheme: { pluginId: 'theme-m3', themeId: 'm3-default' },
 	defaultImportSlot: 'edu-html',
+	deniedPluginServerActions: [{ pluginId: 'source-cqut', action: 'preview' }],
 	preinstall: [
 		{ id: 'theme-m3', enabled: true },
 		{ id: 'source-cqut', enabled: true },

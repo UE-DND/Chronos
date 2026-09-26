@@ -1,4 +1,6 @@
 import { resolve } from '$app/paths';
+import { ProfilePolicyHttpAdapter } from './profile-policy-http';
+import { resolveActiveProfile } from '$lib/boot/profile-registry';
 import type { ChronosDB } from '$lib/storage/db';
 import { DexieStorageProvider } from './dexie-storage';
 import { WebHttpProxyProvider } from './web-http';
@@ -45,6 +47,8 @@ export function createWebProviders(options?: WebProviderOptions) {
 		http = options.wrapHttpService(http);
 	}
 
+	const denied = resolveActiveProfile().deniedPluginServerActions;
+	if (denied?.length) http = new ProfilePolicyHttpAdapter(http, denied);
 	return {
 		storage: new DexieStorageProvider(options?.database, options?.localStorage),
 		http,

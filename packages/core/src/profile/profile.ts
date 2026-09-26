@@ -14,6 +14,7 @@ export interface ChronosProfile {
 	defaultTheme: { pluginId: string; themeId: string };
 	/** Initial import.source.tab slot id when opening the import screen. */
 	defaultImportSlot?: string;
+	deniedPluginServerActions?: { pluginId: string; action: string }[];
 	preferences?: Partial<Omit<UserPreferences, 'visualThemeId'>>;
 }
 

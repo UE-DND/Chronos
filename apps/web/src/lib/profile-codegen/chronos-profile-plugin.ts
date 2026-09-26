@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Plugin, ViteDevServer } from 'vite';
 import { resolveProfile, resolveProfileId } from './profile-definitions.ts';
-import { resolveDeployment } from './deployment-definitions.ts';
+import { DEPLOYMENTS, resolveDeployment } from './deployment-definitions.ts';
 import { OFFICIAL_PLUGINS } from '../../../../../scripts/official-plugins.config.ts';
 import {
 	resolveDeploymentServerPlugins,
@@ -155,20 +155,45 @@ ${registrations}
 	writeChanged(target, source);
 }
 
-export async function emitProfileArtifacts(webRoot: string): Promise<void> {
-	const profileId = resolveProfileId();
+export interface EmitProfileArtifactsOptions {
+	profileId?: string;
+	deploymentId?: string;
+	repositoryRoot?: string;
+}
+
+export async function emitProfileArtifacts(
+	webRoot: string,
+	options?: EmitProfileArtifactsOptions
+): Promise<void> {
+	const profileId = options?.profileId ?? resolveProfileId();
 	const profile = resolveProfile(profileId);
 	for (const entry of profile.preinstall) {
 		if (!OFFICIAL_PLUGINS.some((plugin) => plugin.id === entry.id))
 			throw new Error(`Unknown preinstall plugin: ${entry.id}`);
 	}
+	const deploymentId = options?.deploymentId;
+	const deploymentDef = deploymentId
+		? (DEPLOYMENTS[deploymentId] ?? resolveDeployment({ CHRONOS_DEPLOYMENT: deploymentId }))
+		: resolveDeployment();
+	const repoRoot = options?.repositoryRoot ?? path.resolve(webRoot, '../..');
 	const activeServerPlugins = await resolveDeploymentServerPlugins(
-		resolveDeployment().serverPlugins,
-		path.resolve(webRoot, '../..')
+		deploymentDef.serverPlugins,
+		repoRoot
 	);
-	writeServerArtifacts(webRoot, activeServerPlugins);
-	const mobilePlugins = await resolveOfficialMobilePlugins(path.resolve(webRoot, '../..'));
-	writeMobileServerArtifacts(webRoot, mobilePlugins);
+	const denied = profile.deniedPluginServerActions ?? [];
+	writeServerArtifacts(
+		webRoot,
+		activeServerPlugins.filter(
+			(p) => !denied.some((d) => d.pluginId === p.id && d.action === p.definition.proxy.action)
+		)
+	);
+	const mobilePlugins = await resolveOfficialMobilePlugins(repoRoot);
+	writeMobileServerArtifacts(
+		webRoot,
+		mobilePlugins.filter(
+			(p) => !denied.some((d) => d.pluginId === p.id && p.definition.actions.includes(d.action))
+		)
+	);
 }
 
 export function chronosProfilePlugin(webRoot: string): Plugin {

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
+import { HOST_BUILD } from '$lib/config/app-meta';
 import { pluginServerSuccess, type PluginServerManifest } from '@chronos/core';
 import { PLUGIN_RATE_LIMIT_MAX } from './config';
 import { PluginDispatcher, type PluginProxyRequestEvent } from './dispatch';
@@ -28,6 +29,10 @@ function createEvent(
 		},
 		request: new Request('http://localhost/api/plugins/source-cqut/preview', {
 			method: 'POST',
+			headers: {
+				'X-Chronos-Version': HOST_BUILD.version,
+				'X-Chronos-Profile': HOST_BUILD.profileId
+			},
 			body: JSON.stringify({ account: 'a', password: 'b' })
 		}),
 		getClientAddress: () => overrides.ip ?? '127.0.0.1'
@@ -42,6 +47,22 @@ describe('PluginDispatcher', () => {
 		vi.mocked(loadServerManifest).mockReset();
 		rateLimiter = new PluginRateLimiter();
 		dispatcher = new PluginDispatcher({ rateLimiter });
+	});
+
+	it('rejects older clients before loading a server plugin', async () => {
+		const event = createEvent();
+		event.request.headers.set('X-Chronos-Version', '0.0.1');
+		const response = await dispatcher.dispatch(event, 'POST');
+		expect(response.status).toBe(426);
+		expect((await response.json()).error.kind).toBe('UpdateRequired');
+		expect(loadServerManifest).not.toHaveBeenCalled();
+	});
+	it('rejects direct calls prohibited by the profile', async () => {
+		const offline = new PluginDispatcher({
+			deniedActions: [{ pluginId: 'source-cqut', action: 'preview' }]
+		});
+		expect((await offline.dispatch(createEvent(), 'POST')).status).toBe(404);
+		expect(loadServerManifest).not.toHaveBeenCalled();
 	});
 
 	it('returns NotFound for unknown plugin', async () => {
