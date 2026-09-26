@@ -14,7 +14,7 @@
 		"@chronos/plugin-theme-m3": "workspace:*",
 		"@chronos/ui-kit": "workspace:*",
 		"@material-symbols-svg/svelte": "^0.14.0",
-		"bits-ui": "^2.19.0",
+		"bits-ui": "^2.19.3",
 		"dexie": "^4.4.5",
 		"hyperellipse": "^1.0.5",
 		"marked": "^18.0.11",
