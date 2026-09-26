@@ -84,12 +84,21 @@
 		trackEvent('about_clear_all_data');
 		clearing = true;
 		try {
-			await shell.clearAllData();
+			const result = await shell.clearAllData().catch(() => {
+				snackbarKey('about.clear.failed');
+				return null;
+			});
+			if (!result) return;
 			clearDialogOpen = false;
-			await refreshDataUsage();
-			snackbarKey('about.clear.success');
-		} catch {
-			snackbarKey('about.clear.failed');
+			try {
+				await refreshDataUsage();
+			} catch (error) {
+				dataUsageBytes = null;
+				console.warn('[AboutScreen] Could not refresh data usage after clearing:', error);
+			}
+			snackbarKey(
+				result.status === 'complete' ? 'about.clear.success' : 'about.clear.recoveryFailed'
+			);
 		} finally {
 			clearing = false;
 		}

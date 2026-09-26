@@ -90,7 +90,7 @@ export class OfficialPluginService implements Disposable {
 	private initialized = false;
 	private initPromise?: Promise<void>;
 	private lifecycle = new AbortController();
-	private readonly operations = new PluginOperationCoordinator();
+	private operations = new PluginOperationCoordinator();
 	private syncPromise?: Promise<void>;
 	private hostBuild?: HostBuildIdentity;
 	private updateStatuses = new Map<
@@ -161,9 +161,7 @@ export class OfficialPluginService implements Disposable {
 		if (!this.profile) return;
 		const pending = planPreinstall(
 			this.profile,
-			this.listInstalled().filter(
-				(record) => this.isCompatible(record) && !this.failures.has(record.manifest.id)
-			)
+			this.listInstalled().filter((record) => this.isCompatible(record))
 		);
 		for (const entry of pending) {
 			try {
@@ -860,6 +858,7 @@ export class OfficialPluginService implements Disposable {
 		this.storeSubscription = undefined;
 		await this.operations.waitForAllSettled();
 		this.operations.dispose();
+		this.operations = new PluginOperationCoordinator();
 		this.lifecycle = new AbortController();
 		this.syncPromise = undefined;
 		this.initPromise = undefined;
