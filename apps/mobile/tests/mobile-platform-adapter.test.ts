@@ -48,6 +48,17 @@ const mockClipboard = vi.hoisted(() => ({
 	write: vi.fn().mockResolvedValue(undefined)
 }));
 
+const mockCapacitorHttp = vi.hoisted(() => ({ request: vi.fn() }));
+const mockCapacitorCookies = vi.hoisted(() => ({
+	clearCookies: vi.fn().mockResolvedValue(undefined)
+}));
+const mockGeneratedRegistry = vi.hoisted(() => ({
+	supports: vi.fn(
+		(pluginId: string, action: string) => pluginId === 'source-cqut' && action === 'preview'
+	),
+	execute: vi.fn()
+}));
+
 const capacitorState = vi.hoisted(() => ({
 	isNative: false,
 	platform: 'web',
@@ -59,11 +70,17 @@ vi.mock('@capacitor/clipboard', () => ({
 }));
 
 vi.mock('@capacitor/core', () => ({
+	CapacitorHttp: mockCapacitorHttp,
+	CapacitorCookies: mockCapacitorCookies,
 	Capacitor: {
 		isNativePlatform: () => capacitorState.isNative,
 		getPlatform: () => capacitorState.platform,
 		isPluginAvailable: (name: string) => capacitorState.isPluginAvailable(name)
 	}
+}));
+
+vi.mock('../../web/src/lib/boot/mobile-plugin-server-registry.generated', () => ({
+	createGeneratedMobilePluginServerRegistry: vi.fn(() => mockGeneratedRegistry)
 }));
 
 vi.mock('@capacitor/haptics', () => ({
@@ -201,7 +218,7 @@ describe('mobile-platform-adapter', () => {
 			expect('wrapHttpService' in adapter).toBe(false);
 		});
 
-		it('wraps inner http service in MobilePluginHttpAdapter on native Android', () => {
+		it('wraps inner http service with generated native capabilities on Android', () => {
 			capacitorState.isNative = true;
 			capacitorState.platform = 'android';
 			const adapter = createMobilePlatformAdapter();
@@ -215,6 +232,7 @@ describe('mobile-platform-adapter', () => {
 
 			expect(wrapped.supportsPluginServer?.('source-cqut', 'preview')).toBe(true);
 			expect(wrapped.supportsPluginServer?.('source-cqut', 'other')).toBe(false);
+			expect(mockGeneratedRegistry.supports).toHaveBeenCalledWith('source-cqut', 'preview');
 		});
 	});
 

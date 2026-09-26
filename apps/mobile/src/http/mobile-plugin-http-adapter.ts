@@ -1,22 +1,21 @@
 import type { HttpResponse, IHttpService, PluginServerResponse } from '@chronos/core';
 import { pluginServerErrorMessage } from '@chronos/core';
-import { executeCqutPreview } from '@chronos/plugin-source-cqut/online';
-import { CapacitorCqutSession } from './capacitor-cqut-session';
+import type { MobilePluginServerRegistry } from './mobile-plugin-server-registry';
 
 export class MobilePluginHttpAdapter implements IHttpService {
-	constructor(private readonly inner: IHttpService) {}
+	constructor(
+		private readonly inner: IHttpService,
+		private readonly registry: MobilePluginServerRegistry
+	) {}
 
 	supportsPluginServer(pluginId: string, action: string): boolean {
-		if (pluginId === 'source-cqut' && action === 'preview') {
-			return true;
-		}
-		return this.inner.supportsPluginServer?.(pluginId, action) ?? false;
+		return (
+			this.registry.supports(pluginId, action) ||
+			(this.inner.supportsPluginServer?.(pluginId, action) ?? false)
+		);
 	}
 
-	async request(
-		url: string,
-		options?: Parameters<IHttpService['request']>[1]
-	): Promise<HttpResponse> {
+	request(url: string, options?: Parameters<IHttpService['request']>[1]): Promise<HttpResponse> {
 		return this.inner.request(url, options);
 	}
 
@@ -26,15 +25,13 @@ export class MobilePluginHttpAdapter implements IHttpService {
 		payload: unknown,
 		options?: { timeoutMs?: number; signal?: AbortSignal }
 	): Promise<HttpResponse> {
-		if (pluginId === 'source-cqut' && action === 'preview') {
-			const pluginResponse = await executeCqutPreview(payload, () => new CapacitorCqutSession());
-			return this.buildProxyResponse(pluginResponse);
+		if (this.registry.supports(pluginId, action)) {
+			return this.buildProxyResponse(
+				await this.registry.execute(pluginId, action, payload, options)
+			);
 		}
 
-		if (this.inner.proxy) {
-			return this.inner.proxy(pluginId, action, payload, options);
-		}
-
+		if (this.inner.proxy) return this.inner.proxy(pluginId, action, payload, options);
 		throw new Error(`Unsupported plugin server proxy action: ${pluginId}/${action}`);
 	}
 

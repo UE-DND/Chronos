@@ -1,33 +1,38 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 import type { IHttpService } from '@chronos/core';
+import type { MobilePluginServerRegistry } from '../src/http/mobile-plugin-server-registry';
 import { MobilePluginHttpAdapter } from '../src/http/mobile-plugin-http-adapter';
 
-vi.mock('../src/http/capacitor-cqut-session', () => ({
-	CapacitorCqutSession: vi.fn().mockImplementation(() => ({
-		request: vi.fn(),
-		createCasCookieJar: vi.fn(),
-		hasCookie: vi.fn(),
-		dispose: vi.fn().mockResolvedValue(undefined)
-	}))
-}));
-
-vi.mock('@chronos/plugin-source-cqut/online', () => ({
-	executeCqutPreview: vi.fn()
-}));
-
-import { executeCqutPreview } from '@chronos/plugin-source-cqut/online';
-
 describe('MobilePluginHttpAdapter', () => {
-	it('supports only source-cqut preview action by default', () => {
+	function registry(
+		handlers: Record<string, (payload: unknown) => Promise<unknown>> = {}
+	): MobilePluginServerRegistry {
+		return {
+			supports: vi.fn((pluginId, action) => `${pluginId}/${action}` in handlers),
+			execute: vi.fn((pluginId, action, payload) => {
+				const handler = handlers[`${pluginId}/${action}`];
+				if (!handler)
+					throw new Error(`Unsupported plugin server proxy action: ${pluginId}/${action}`);
+				return handler(payload) as never;
+			})
+		};
+	}
+
+	it('combines registered native capabilities with inner service capabilities', () => {
+		const supportsPluginServer = vi.fn(
+			(pluginId: string, action: string) => pluginId === 'remote' && action === 'sync'
+		);
 		const inner: IHttpService = {
 			request: vi.fn(),
-			supportsPluginServer: vi.fn().mockReturnValue(false)
+			supportsPluginServer
 		};
-		const adapter = new MobilePluginHttpAdapter(inner);
+		const mobileRegistry = registry({ 'source-cqut/preview': vi.fn() });
+		const adapter = new MobilePluginHttpAdapter(inner, mobileRegistry);
 
 		expect(adapter.supportsPluginServer('source-cqut', 'preview')).toBe(true);
+		expect(adapter.supportsPluginServer('remote', 'sync')).toBe(true);
 		expect(adapter.supportsPluginServer('source-cqut', 'other')).toBe(false);
-		expect(adapter.supportsPluginServer('other-plugin', 'preview')).toBe(false);
+		expect(supportsPluginServer).toHaveBeenCalledWith('remote', 'sync');
 	});
 
 	it('delegates request calls to inner http service', async () => {
@@ -41,77 +46,57 @@ describe('MobilePluginHttpAdapter', () => {
 			bytes: vi.fn().mockResolvedValue(new Uint8Array())
 		};
 		const requestSpy = vi.fn().mockResolvedValue(mockResponse);
-		const inner: IHttpService = {
-			request: requestSpy
-		};
-		const adapter = new MobilePluginHttpAdapter(inner);
+		const adapter = new MobilePluginHttpAdapter({ request: requestSpy }, registry());
 
 		const result = await adapter.request('https://example.com/api');
 		expect(requestSpy).toHaveBeenCalledWith('https://example.com/api', undefined);
 		expect(result).toBe(mockResponse);
 	});
 
-	it('handles source-cqut preview proxy success', async () => {
-		const inner: IHttpService = {
-			request: vi.fn()
-		};
-		const adapter = new MobilePluginHttpAdapter(inner);
+	it('dispatches registered handlers and wraps successful responses', async () => {
+		const handler = vi.fn().mockResolvedValue({ ok: true, payload: { yearTerm: '2025-1' } });
+		const adapter = new MobilePluginHttpAdapter(
+			{ request: vi.fn() },
+			registry({ 'source-cqut/preview': handler })
+		);
 
-		const payloadData = {
-			payload: { yearTerm: '2025-1' },
-			campusId: 'huaxi',
-			campusPeriodTimes: { huaxi: [] }
-		};
-		vi.mocked(executeCqutPreview).mockResolvedValue({
-			ok: true,
-			payload: payloadData as any
-		});
-
-		const response = await adapter.proxy('source-cqut', 'preview', {
-			account: '20210001',
-			password: 'secret'
-		});
-
+		const response = await adapter.proxy('source-cqut', 'preview', { account: '20210001' });
+		expect(handler).toHaveBeenCalledWith({ account: '20210001' });
 		expect(response.ok).toBe(true);
 		expect(response.status).toBe(200);
-		const json = await response.json();
-		expect(json).toEqual(payloadData);
+		expect(await response.json()).toEqual({ yearTerm: '2025-1' });
 	});
 
-	it('handles source-cqut preview proxy error with 502 status', async () => {
-		const inner: IHttpService = {
-			request: vi.fn()
-		};
-		const adapter = new MobilePluginHttpAdapter(inner);
-
-		vi.mocked(executeCqutPreview).mockResolvedValue({
+	it('wraps registered handler errors as a 502 response', async () => {
+		const handler = vi.fn().mockResolvedValue({
 			ok: false,
 			error: { kind: 'Auth', message: '统一身份认证登录失败' }
 		});
+		const adapter = new MobilePluginHttpAdapter(
+			{ request: vi.fn() },
+			registry({ 'source-cqut/preview': handler })
+		);
 
-		const response = await adapter.proxy('source-cqut', 'preview', {
-			account: '20210001',
-			password: 'bad'
-		});
-
+		const response = await adapter.proxy('source-cqut', 'preview', {});
 		expect(response.ok).toBe(false);
 		expect(response.status).toBe(502);
 		expect(response.statusText).toBe('统一身份认证登录失败');
-		const json = await response.json();
-		expect(json).toEqual({
+		expect(await response.json()).toEqual({
 			ok: false,
 			error: { kind: 'Auth', message: '统一身份认证登录失败' }
 		});
 	});
 
-	it('rejects unsupported proxy action when inner does not support proxy', async () => {
-		const inner: IHttpService = {
-			request: vi.fn()
-		};
-		const adapter = new MobilePluginHttpAdapter(inner);
+	it('delegates unregistered actions or reports unsupported operations', async () => {
+		const remoteResponse = { status: 200 } as Awaited<ReturnType<IHttpService['request']>>;
+		const proxy = vi.fn().mockResolvedValue(remoteResponse);
+		const adapter = new MobilePluginHttpAdapter({ request: vi.fn(), proxy }, registry());
+		expect(await adapter.proxy('remote', 'sync', { value: 1 })).toBe(remoteResponse);
+		expect(proxy).toHaveBeenCalledWith('remote', 'sync', { value: 1 }, undefined);
 
-		await expect(adapter.proxy('other-plugin', 'preview', {})).rejects.toThrow(
-			'Unsupported plugin server proxy action: other-plugin/preview'
+		const unsupported = new MobilePluginHttpAdapter({ request: vi.fn() }, registry());
+		await expect(unsupported.proxy('remote', 'sync', {})).rejects.toThrow(
+			'Unsupported plugin server proxy action: remote/sync'
 		);
 	});
 });

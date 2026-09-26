@@ -10,6 +10,8 @@ import { Clipboard } from '@capacitor/clipboard';
 import type { PluginListenerHandle } from '@capacitor/core';
 import type { IHttpService } from '@chronos/core';
 import { MobilePluginHttpAdapter } from './http/mobile-plugin-http-adapter';
+import { CapacitorHttpSessionService } from './http/capacitor-http-session';
+import { createGeneratedMobilePluginServerRegistry } from '../../web/src/lib/boot/mobile-plugin-server-registry.generated';
 import type {
 	NativeHostBridge,
 	NativeHostCapability,
@@ -282,7 +284,10 @@ export function createMobilePlatformAdapter(): HostPlatformAdapter {
 		...(isNative && platformType === 'android'
 			? {
 					wrapHttpService(inner: IHttpService): IHttpService {
-						return new MobilePluginHttpAdapter(inner);
+						const registry = createGeneratedMobilePluginServerRegistry(
+							new CapacitorHttpSessionService()
+						);
+						return new MobilePluginHttpAdapter(inner, registry);
 					}
 				}
 			: {}),

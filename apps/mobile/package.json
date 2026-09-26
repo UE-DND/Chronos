@@ -21,7 +21,6 @@
 		"@capacitor/splash-screen": "^8.0.0",
 		"@capacitor/status-bar": "^8.0.0",
 		"@chronos/core": "workspace:*",
-		"@chronos/plugin-source-cqut": "workspace:*",
 		"@chronos/ui-kit": "workspace:*"
 	},
 	"devDependencies": {

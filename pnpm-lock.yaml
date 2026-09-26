@@ -248,9 +248,6 @@ importers:
       '@chronos/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@chronos/plugin-source-cqut':
-        specifier: workspace:*
-        version: link:../../packages/plugins/source-cqut
       '@chronos/ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
