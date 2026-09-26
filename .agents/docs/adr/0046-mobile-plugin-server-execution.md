@@ -1,6 +1,5 @@
 # ADR 0046：插件声明式移动端代理分发
 
-- 状态：Accepted
 - 日期：2026-09-26
 - 修订：ADR 0044 的 Android 原生服务端代理执行边界
 
@@ -8,7 +7,7 @@
 
 官方插件可选导出 `./mobile` 与 `./mobile/definition`。定义声明插件 ID、原生 handler action 和需要清理 Cookie 的 HTTPS origins。构建器从官方插件目录发现这些导出，校验 ID、action、上游域名和 Cookie 来源，并生成静态 handler 注册表。构建产物直接导入所选插件的 handler；重复、缺失或不匹配的声明使构建失败。新增原生代理插件仍需按现有流程加入官方插件目录，不需要修改移动端路由分支。
 
-移动端 handler 返回既有 `PluginServerResponse`，业务逻辑由插件拥有。handler 通过平台无关的 `MobilePluginServerContext` 请求受限的 `IHostHttpSession`。Capacitor 宿主实现该 session，包括 HTTPS 与域名约束、Cookie 存在性查询、请求超时和释放时清理 Cookie。插件 handler 不依赖 Capacitor。移动端 adapter 按静态注册表分发；未注册的代理请求继续交由内层 `IHttpService`。
+移动端 handler 返回既有 `PluginServerResponse`，业务逻辑由插件拥有。handler 通过平台无关的 `MobilePluginServerContext` 请求受限的 `IHostHttpSession`。Capacitor 宿主实现该 session，包括 HTTPS 与域名约束、Cookie 存在性查询、请求超时和释放时清理 Cookie。插件 handler 不依赖 Capacitor。移动端 adapter 按静态注册表分发；Profile 策略先检查 action 是否允许。策略禁止的请求直接拒绝；未注册且未被禁止的请求才交给内层 `IHttpService`。
 
 `IHttpService`、服务端插件线协议与 `HostPlatformAdapter` 保持不变。静态注册表只包含随 APK 构建的原生 handler。在线下载的 ESM 插件不能注册或执行新的原生 handler，也不能获得任意域名网络访问能力。
 

@@ -1,13 +1,13 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { bundlePreinstall } from './official-plugin-build/bundle-preinstall.ts';
+import { bundlePreinstall } from './bundle-preinstall.ts';
 import {
 	resolveProfile,
 	resolveProfileId
-} from '../apps/web/src/lib/profile-codegen/profile-definitions.ts';
-import { buildAllOfficialPlugins } from './official-plugin-build/build-all.ts';
+} from '../../apps/web/src/lib/profile-codegen/profile-definitions.ts';
+import { buildAllOfficialPlugins } from './build-all.ts';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
 await buildAllOfficialPlugins({ root });
 bundlePreinstall(

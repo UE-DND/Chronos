@@ -1,16 +1,15 @@
 # ADR 0035：PWA 更新与导航文档缓存
 
-- 状态：Superseded by [ADR 0047](0047-host-update-transactions.md)
 - 日期：2026-09-07
 
-## 决策与原因
+## 初始方案
 
-宿主 PWA 使用 `prompt` 更新策略。新 Service Worker（SW）会等待用户确认，不能自动调用 `skipWaiting`。导航文档使用 `pages-cache` 的 `CacheFirst`。这样可以避免页面提前获取新 HTML 或 JS，而控制页面的 SW 仍是旧版本。
+PWA 采用 `prompt` 更新策略，等待用户确认后接管。导航文档曾使用 `pages-cache` 的 `CacheFirst` 策略。用户确认后，宿主删除导航缓存，发送 `SKIP_WAITING`，然后重载页面。
 
-只有存在等待中的 SW 时，`applyUpdateAndReload` 才会先删除 `pages-cache`，再发送 `SKIP_WAITING` 并重载页面。这样可以避免新 SW 接管后，旧 HTML 引用了已清除的旧 chunk。当前版本号来自已加载的 JS 中的 `APP_VERSION`。远端 `version.json` 使用 `NetworkOnly`。
+这套方案试图避免新 HTML 与旧 Worker 混用。`_app/env.js` 曾与导航文档同时失效，`version.json` 始终从网络读取。
 
-## 约束与取舍
+## 后续演进
 
-Vercel SSR 的导航 HTML 不进入 precache，`navigateFallback` 设为 `null`。保留旧导航缓存意味着用户安装更新后，新版本才会生效。缓存失效导致的白屏问题应在缓存处理逻辑中修复，不应通过提前更新导航文档来掩盖。
+[ADR 0047](0047-host-update-transactions.md) 改为按构建身份固定页面壳和环境模块。Worker 导航响应来自自身构建的页面壳。更新先准备插件，再授权目标 Worker 安装。接管后，各窗口核对构建身份并重载。
 
-`_app/env.js` 和导航文档同时失效。插件预缓存见 [ADR 0042](0042-unified-plugin-preinstallation.md)。官方插件同步和宿主更新属于不同生命周期，见 [ADR 0030](0030-official-plugin-version-co-shipping-and-host-sync.md)。
+`pages-cache` 和更新前删除导航缓存已退出当前实现。用户确认更新的原则仍然保留。当前实现见 `apps/web/scripts/build-config/worker-artifacts.ts` 和 `apps/web/src/lib/client/pwa-sw.ts`。

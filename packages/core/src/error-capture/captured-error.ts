@@ -39,10 +39,7 @@ function formatConsoleArg(value: unknown): string {
 	}
 }
 
-export function mapErrorEvent(
-	event: ErrorEvent,
-	windowRef: EventTarget = typeof window !== 'undefined' ? window : ({} as EventTarget)
-): CapturedError | null {
+export function mapErrorEvent(event: ErrorEvent, windowRef: EventTarget): CapturedError | null {
 	if (event.error == null && event.target !== windowRef) {
 		return null;
 	}

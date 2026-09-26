@@ -2,7 +2,7 @@ import { cpSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { writeChanged } from './cache.ts';
 import { resolveMarketFile } from './market-files.ts';
-import { verifyOfficialPlugins } from '../verify-official-plugins.ts';
+import { verifyOfficialPlugins } from './verify-official-plugins.ts';
 
 /** Recreate the host's market from the required plugins, never from stale static output. */
 export function bundlePreinstall(market: string, destination: string, ids: string[]): void {

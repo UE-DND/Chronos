@@ -1,6 +1,6 @@
 # 参与贡献
 
-这份文档面向 Chronos 的贡献者和插件作者。你可以在这里查找开发、部署和插件开发说明。架构选择见[架构决策记录](.agents/docs/adr/)；具体行为以源码为准。
+这份文档面向 Chronos 的贡献者和插件作者。你可以在这里查找开发、部署和插件开发说明。架构选择见[架构决策记录](.agents/docs/adr/README.md)；具体行为以源码为准。
 
 ## 开发工作流
 
@@ -26,6 +26,7 @@ vp run dev
 | `vp run dev`                                                             | 启动 Web 开发服务器和本地插件市场         |
 | `vp run dev -- --distribution cqut`                                      | 用 CQUT 发行配置启动开发服务器            |
 | `vp run check`                                                           | 检查格式、Lint 和类型                     |
+| `vp run test:browser`                                                    | 构建两个生产版本并运行 Chromium PWA 回归  |
 | `vp run test`                                                            | 构建测试所需的官方插件并运行测试套件      |
 | `vp run check:web`、`vp run test:web`                                    | 单独运行 Web 包检查或测试                 |
 | `vp run build`                                                           | 按默认 target 和发行配置构建应用及插件    |
@@ -48,6 +49,23 @@ vp run dev
 
 开发数据存放在浏览器本地数据库中。当前产品尚未发布，Chronos 自有数据库、结构和线格式版本固定为 `1`；不要新增升级链或旧格式兼容分支。开发数据失效时，手动清空对应站点数据并重新导入，应用不会在启动时自动删除数据。完整约定见 [AGENTS.md](AGENTS.md#未发布阶段的数据契约)。
 
+### 架构边界和浏览器回归
+
+`vp run check` 检查工作区的运行时依赖、源码导入和 Svelte 脚本。检查同时解析 Web 与 Mobile 平台别名；`core` 可以声明 DOM 契约类型，但不能读取 DOM 全局对象或写入元素样式。生产 Web 构建还检查最终模块图，阻止间接打包 Capacitor。
+
+首次运行浏览器回归时，安装 Chromium：
+
+```sh
+vp exec playwright install chromium
+vp run test:browser
+```
+
+该任务先构建两个 Pages 产物，再在同一源上切换部署。两个产物的应用版本相同，公共环境变量不同，用于验证仅配置变化时的更新。测试使用真实的 Service Worker、IndexedDB 和插件产物，覆盖未授权更新、下载失败重试、多窗口接管、禁用插件和离线重载。官方市场请求转到本地构建产物，避免依赖外网；应用仍执行目录、摘要和插件代码校验。CI 安装 Chromium 及其系统依赖，并将此回归作为必需检查。
+
+领域、HTML 解析、分享往返和浏览器导入共用[课表场景](packages/core/tests/fixtures/README.md)。新增场景时同步维护输入和预期结果，避免各层使用不同的示例。浏览器失败截图、跟踪文件和 HTML 报告写入 `dist/e2e`，不提交到仓库。
+
+文档遵循[中文技术文档写作规范](https://github.com/ruanyf/document-style-guide)。ADR 按编号记录决策演进，不使用状态标签。后续方案改变旧结论时，在旧记录中说明适用范围和后续记录，并同步更新[主题索引](.agents/docs/adr/README.md)。
+
 ### 构建问题排查
 
 官方插件构建缓存位于 `dist/plugin-cache`。资源准备和代码编译分别缓存；日志中的 `resources=hit/built` 和 `compile=hit/built` 表示缓存命中或重新生成。输入变化或缓存损坏时会自动重建。需要验证无缓存构建时，可在停止相关任务后删除该目录。
@@ -64,7 +82,7 @@ vp run dev
 
 | 模块                 | 主要职责                                              | 依赖规则                                                               |
 | -------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------- |
-| `packages/core`      | 领域模型、排课算法、核心引擎、平台接口和插件扩展接口  | 不依赖 DOM、SvelteKit 或特定高校代码                                   |
+| `packages/core`      | 领域模型、排课算法、核心引擎、平台接口和插件扩展接口  | 不访问 DOM 运行时，不依赖 SvelteKit 或特定高校代码                     |
 | `packages/ui-kit`    | Svelte 组件、响应式控制器、表单 Schema 和插件组件容器 | 依赖 `core`                                                            |
 | `packages/plugins/*` | 数据源、编解码、工具和主题                            | 可以依赖 `core`、`ui-kit` 和通用库；不能引用宿主内部模块或其他业务插件 |
 | `packages/codec-kit` | 字节编解码基础函数                                    | 作为共享库使用，不作为插件加载                                         |

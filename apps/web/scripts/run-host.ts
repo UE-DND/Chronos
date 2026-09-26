@@ -6,7 +6,7 @@ import { rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { loadEnv } from 'vite';
-import { verifyHostPlugins } from '../../../scripts/verify-host-plugins.ts';
+import { verifyHostPlugins } from '../../../scripts/official-plugin-build/verify-host-plugins.ts';
 import { bundlePreinstall } from '../../../scripts/official-plugin-build/bundle-preinstall.ts';
 import { buildAllOfficialPlugins } from '../../../scripts/official-plugin-build/build-all.ts';
 import { buildAllOfficialPluginsDev } from '../../../scripts/official-plugin-build/build-all-dev.ts';
