@@ -18,7 +18,7 @@ PWA 预缓存必需插件。APK 第一次断网启动仍可补装内置插件；
 
 ## 正式发布
 
-1. 更新应用版本和发布说明，提交后创建 `vX.Y.Z` 标签。迁移首次发布必须使用新版本，不能重新发布旧标签。手动触发 Release CI 同样必须填写正式标签。
+1. 更新应用版本和发布说明，在 release entry 中保留 Android 更新地址 `https://github.com/UE-DND/Chronos/releases/latest`，提交后创建 `vX.Y.Z` 标签。迁移首次发布必须使用新版本，不能重新发布旧标签。手动触发 Release CI 同样必须填写正式标签。
 2. CI 验证标签指向的提交已合入 `master`，并确认标签版本与 `apps/web/package.json` 一致；随后在该提交运行质量检查和构建。全量市场包含所有官方插件；Pages 网站仍采用 default Profile。
 3. CI 将市场快照保存到同仓库 `chronos/plugin-dist` 分支的 `releases/X.Y.Z/`，附带 `release.json` 中的源码提交和文件摘要。该分支只由发布流程写入；不手动修改或强制推送。
 4. Pages 部署包含当前网站和全部历史 `plugins/releases/X.Y.Z/`。同版本只允许同提交、同字节重试，冲突必须以新版本发布。部署失败后从同一标签重试即可；保存历史产物成功不等于网站已上线。
