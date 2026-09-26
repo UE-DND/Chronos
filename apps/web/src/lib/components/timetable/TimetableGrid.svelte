@@ -47,6 +47,7 @@
 		type TimetableInteraction
 	} from '$lib/timetable/timetable-interaction.svelte';
 	import { haptic } from '$lib/haptic/haptic';
+	import { getHostPlatform } from '$lib/platform/host-platform';
 
 	const SCROLL_ROW_HEIGHT = '5.5rem';
 	const SIDEBAR_WIDTH_REM = 3.25;
@@ -402,11 +403,14 @@
 		}
 
 		if (gridBodyEl) {
-			interaction.updateDragFromPointer(event, {
+			const targetChanged = interaction.updateDragFromPointer(event, {
 				gridRect: gridBodyEl.getBoundingClientRect(),
 				visibleDays: gridModel.visibleDays,
 				displayedPeriodCount: gridModel.displayedPeriodCount
 			});
+			if (targetChanged && getHostPlatform().isNative) {
+				haptic.selection();
+			}
 		}
 
 		if (containerRect) {

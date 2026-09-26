@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vite-plus/test';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { getTimetableScreen } from './timetable-screen.svelte';
 import { createTimetable, createCourse } from '@chronos/core';
 import type { AppShellController } from '$lib/app/app-shell.svelte';
+import { haptic } from '$lib/haptic/haptic';
+import { getHostPlatform, setHostPlatform } from '$lib/platform/host-platform';
 
 describe('TimetableScreenController', () => {
 	const sampleTimetable = createTimetable({
@@ -143,5 +145,32 @@ describe('TimetableScreenController', () => {
 		expect(screen.state.isEditing).toBe(false);
 		expect(screen.interaction.mode).toBe('view');
 		expect(screen.interaction.allowPagerTouch).toBe(true);
+	});
+
+	function mockPointerEvent(init: Partial<PointerEvent> = {}): PointerEvent {
+		return {
+			button: 0,
+			pointerId: 1,
+			clientX: 0,
+			clientY: 0,
+			...init
+		} as unknown as PointerEvent;
+	}
+
+	it('triggers haptic.heavy on enterEditFromLongPress only when isNative is true', () => {
+		const screen = getTimetableScreen();
+		const heavySpy = vi.spyOn(haptic, 'heavy').mockReturnValue(true);
+
+		setHostPlatform({ ...getHostPlatform(), isNative: false });
+		screen.interaction.enterEditFromLongPress(mockPointerEvent());
+		expect(heavySpy).not.toHaveBeenCalled();
+
+		screen.setEditing(false);
+		setHostPlatform({ ...getHostPlatform(), isNative: true });
+		screen.interaction.enterEditFromLongPress(mockPointerEvent());
+		expect(heavySpy).toHaveBeenCalledTimes(1);
+
+		heavySpy.mockRestore();
+		setHostPlatform({ ...getHostPlatform(), isNative: false });
 	});
 });
