@@ -55,7 +55,11 @@ function writeAndroidIcons(): void {
 		const mipmapDir = resolve(androidRes, `mipmap-${density}`);
 		writePng(resolve(mipmapDir, 'ic_launcher.png'), anyIconSvg(), launcherSize);
 		writePng(resolve(mipmapDir, 'ic_launcher_round.png'), anyIconSvg(), launcherSize);
-		writePng(resolve(mipmapDir, 'ic_launcher_foreground.png'), anyIconSvg(), foregroundSize);
+		writePng(
+			resolve(mipmapDir, 'ic_launcher_foreground.png'),
+			paddedIconSvg(foregroundSize, MASKABLE_SAFE_RATIO),
+			foregroundSize
+		);
 	}
 }
 
