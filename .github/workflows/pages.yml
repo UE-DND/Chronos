@@ -106,6 +106,7 @@ jobs:
           CHRONOS_DEPLOYMENT: mobile
           CHRONOS_DISTRIBUTION: mobile
           CHRONOS_PROFILE: ${{ matrix.profile }}
+          PUBLIC_ANDROID_RELEASE_FEED_URL: https://ue-dnd.github.io/Chronos/version.json
         run: |
           set -euo pipefail
           vp run mobile:build
