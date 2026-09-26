@@ -196,20 +196,82 @@ export function getOfficialPluginService(options?: WebProviderOptions): Official
 	return sharedOfficialPlugins;
 }
 
-export async function resetAppToInitialState(): Promise<void> {
+export type ResetAppResult = { status: 'complete' } | { status: 'recovery-failed' };
+
+function getMissingPreinstalls(
+	service: OfficialPluginService,
+	profile: ReturnType<typeof resolveActiveProfile>
+): string[] {
+	const installed = new Map(service.listInstalled().map((record) => [record.manifest.id, record]));
+	return profile.preinstall.flatMap((entry) => {
+		const record = installed.get(entry.id);
+		return record && record.enabled === (entry.enabled !== false) ? [] : [entry.id];
+	});
+}
+
+export async function resetAppToInitialState(): Promise<ResetAppResult> {
 	const engine = await ensureEngineFullyReady();
 	const service = getOfficialPluginService();
 	await service.resetAfterFactoryClear();
 	await engine.clearAllData();
 	const profile = resolveActiveProfile();
-	await service.prepareProfile(profile);
-	await service.init();
-	await engine.updatePreferences({
-		visualThemeId: profile.defaultTheme.themeId,
-		wallpaperColorEnabled: false,
-		wallpaperSource: 'none'
-	});
-	engine.setTheme(profile.defaultTheme.themeId);
+
+	let restoreError: unknown;
+	let recoveryRetried = false;
+	try {
+		await service.prepareProfile(profile);
+		await service.init();
+	} catch (error) {
+		restoreError = error;
+		recoveryRetried = true;
+		try {
+			// Data is already gone. Retry profile assembly once in this session before
+			// reporting a partial reset; a later app launch also runs normal bootstrap.
+			await service.prepareProfile(profile);
+			await service.init();
+			restoreError = undefined;
+		} catch (retryError) {
+			restoreError = retryError;
+		}
+	}
+
+	if (!restoreError) {
+		let missing = getMissingPreinstalls(service, profile);
+		if (missing.length > 0 && !recoveryRetried) {
+			try {
+				// init() records individual preinstall failures instead of rejecting.
+				// Explicit retry must include those failures too.
+				await service.retryPreinstall();
+				missing = getMissingPreinstalls(service, profile);
+			} catch (error) {
+				restoreError = error;
+			}
+			if (!restoreError && missing.length > 0) {
+				restoreError = new Error(`Preinstall recovery incomplete: ${missing.join(', ')}`);
+			}
+		} else if (missing.length > 0) {
+			restoreError = new Error(`Preinstall recovery incomplete: ${missing.join(', ')}`);
+		}
+	}
+
+	if (!restoreError) {
+		try {
+			await engine.updatePreferences({
+				visualThemeId: profile.defaultTheme.themeId,
+				wallpaperColorEnabled: false,
+				wallpaperSource: 'none'
+			});
+			engine.setTheme(profile.defaultTheme.themeId);
+		} catch (error) {
+			restoreError = error;
+		}
+	}
+
+	if (restoreError) {
+		console.error('[app-engine] Data cleared, but profile recovery failed:', restoreError);
+		return { status: 'recovery-failed' };
+	}
+	return { status: 'complete' };
 }
 
 /** Disposes the shared host engine and teardown state. */

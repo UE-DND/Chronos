@@ -11,6 +11,8 @@
 	import LoadingIndicator from '$lib/components/ui/LoadingIndicator.svelte';
 	import { isReducedMotionActive, scrollRubberBand } from '@chronos/ui-kit';
 	import { getAppController } from '$lib/services/app-engine';
+	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import TopAppBar from '$lib/components/TopAppBar.svelte';
 
 	interface Props {
 		ready: boolean;
@@ -149,16 +151,21 @@
 		{/if}
 		{#if mineMounted}
 			<div
-				bind:this={mineScrollEl}
-				use:scrollRubberBand
 				class={[
-					'app-scroll-y absolute inset-0 overflow-y-auto',
+					'absolute inset-0 flex flex-col overflow-hidden',
 					mineSelected ? 'z-10' : 'pointer-events-none z-0 hidden'
 				]}
 				inert={!mineActive}
 				aria-hidden={!mineSelected}
 			>
-				{@render minePanel()}
+				<TopAppBar title={hostT('mine.title')} class="shrink-0" />
+				<div
+					bind:this={mineScrollEl}
+					use:scrollRubberBand
+					class="app-scroll-y min-h-0 flex-1 overflow-y-auto"
+				>
+					{@render minePanel()}
+				</div>
 			</div>
 		{/if}
 		{#each mountedPluginTabs as tab (tab.id)}

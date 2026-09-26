@@ -1,9 +1,6 @@
+import { applyWorkbenchColors } from './apply-workbench-colors';
 import type { CoursePaletteEntry, ThemeContribution } from '@chronos/core';
-import {
-	COURSE_PALETTE_ENTRIES,
-	validateWorkbenchColors,
-	applyWorkbenchColors
-} from '@chronos/core';
+import { COURSE_PALETTE_ENTRIES, validateWorkbenchColors } from '@chronos/core';
 
 export type ApplyAppearanceInput = {
 	wallpaperColorEnabled: boolean;
