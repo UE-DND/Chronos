@@ -16,7 +16,7 @@ Chronos 的核心功能仅为查看、管理与分享课表。另外，您可在
 
 为了方便 iOS 等受限平台使用，Chronos 基于渐进式 Web 技术实现，能够在绝大多数浏览器或支持 WebView 技术的平台运行。本项目也提供基于 SystemWebView 的 Android(Capacitor) 客户端实现，并补充了 Android 端的通知、小组件等平台特有功能。
 
-另外，受 [DeepSeek Hardness](https://github.com/deepseek-ai/deepseek-harness) 启发，Chronos 允许外部能力以插件形式注入，并由内置的轻量运行时框架统一驱动。这一架构使得  Chronos 能够适应不同平台的发行，同时也为定制主题、工具以及不同学校的专用版本带来了极大便利。
+另外，受 [DeepSeek Hardness](https://github.com/deepseek-ai/deepseek-harness) 启发，Chronos 允许外部能力以插件形式注入，并由内置的轻量运行时框架统一驱动。这一架构使得 Chronos 能够适应不同平台的发行，同时也为定制主题、工具以及不同学校的专用版本带来了极大便利。
 
 > [!CAUTION]
 > 从外部链接安装的插件，其代码在您的浏览器中与内置功能同等权限运行（非沙箱）。您需自行承担来源可信性及使用风险，我们不对第三方或外部来源插件的行为、数据处理或造成的损害承担责任。
