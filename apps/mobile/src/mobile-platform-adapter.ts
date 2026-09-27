@@ -17,7 +17,8 @@ import type {
 	NativeHostCapability,
 	NativeHapticImpactStyle,
 	NativeHapticNotificationType,
-	PlatformType
+	PlatformType,
+	TodayWidgetSnapshot
 } from '@chronos/core';
 import { CHRONOS_NATIVE_BRIDGE_KEY } from '@chronos/ui-kit';
 import type {
@@ -37,6 +38,14 @@ export async function readAndroidInstallationIdentity() {
 		}>;
 	}>('ChronosInstallation');
 	return installation.getIdentity();
+}
+
+async function updateAndroidTodayWidgetSnapshot(snapshot: TodayWidgetSnapshot): Promise<void> {
+	if (!isCapacitorNative() || Capacitor.getPlatform() !== 'android') return;
+	const widget = registerPlugin<{
+		updateSnapshot(options: { snapshot: TodayWidgetSnapshot }): Promise<void>;
+	}>('ChronosWidget');
+	await widget.updateSnapshot({ snapshot });
 }
 
 export function isCapacitorNative(): boolean {
@@ -334,6 +343,9 @@ export function createMobilePlatformAdapter(): HostPlatformAdapter {
 		shareFile(filename: string, content: string | Uint8Array, mimeType: string) {
 			return shareFileWithMobile(filename, content, mimeType);
 		},
+		...(isNative && platformType === 'android'
+			? { updateTodayWidgetSnapshot: updateAndroidTodayWidgetSnapshot }
+			: {}),
 		...(isNative && platformType === 'android'
 			? {
 					wrapHttpService(inner: IHttpService): IHttpService {
