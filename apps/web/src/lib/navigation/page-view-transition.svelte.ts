@@ -4,6 +4,10 @@ import type { OnNavigate } from '@sveltejs/kit';
 import { flushSync } from 'svelte';
 import { isSecondaryRoute, toAppPathname } from './routes';
 import { getHostPlatform } from '$lib/platform/host-platform';
+import {
+	routeMotionController,
+	type RouteMotionController
+} from './route-motion-controller.svelte';
 
 export type NavigationDirection = 'forward' | 'back' | 'none';
 export type SecondaryTransitionDirection = 'forward' | 'back';
@@ -17,6 +21,24 @@ export const NAV_DIRECTION_CLASSES = ['nav-forward', 'nav-back'] as const;
 export const NAV_CROSS_SHELL_CLASS = 'vt-cross-shell';
 
 let currentTransitionDirection: NavigationDirection = 'none';
+let suppressedTransitionToken: number | null = null;
+let transitionTokenCounter = 0;
+
+export function requestSuppressNextTransition(): number {
+	suppressedTransitionToken = ++transitionTokenCounter;
+	return suppressedTransitionToken;
+}
+
+export function consumeSuppressedTransition(token?: number): boolean {
+	if (suppressedTransitionToken == null) return false;
+	if (token != null && suppressedTransitionToken !== token) return false;
+	suppressedTransitionToken = null;
+	return true;
+}
+
+export function clearSuppressedTransition(): void {
+	suppressedTransitionToken = null;
+}
 
 export function getTransitionDirection(): NavigationDirection {
 	return currentTransitionDirection;
@@ -187,6 +209,20 @@ export function createSecondaryTransitionGate() {
 		revealForSnapshot = !toSecondary;
 	}
 
+	function beginRealDomTransition(
+		direction: SecondaryTransitionDirection,
+		toSecondary = false
+	): void {
+		transitioning = true;
+		previewPaintReady = false;
+		revealForSnapshot = false;
+		if (direction === 'back') {
+			receded = toSecondary;
+		} else {
+			receded = true;
+		}
+	}
+
 	function finishTransition(toSecondary: boolean): void {
 		transitioning = false;
 		previewPaintReady = true;
@@ -211,6 +247,9 @@ export function createSecondaryTransitionGate() {
 		get receded(): boolean {
 			return receded;
 		},
+		get isReceded(): boolean {
+			return receded && !revealForSnapshot;
+		},
 		get previewPaintReady(): boolean {
 			return previewPaintReady;
 		},
@@ -230,6 +269,7 @@ export function createSecondaryTransitionGate() {
 		settleOnRoute,
 		syncRoute,
 		beginTransition,
+		beginRealDomTransition,
 		finishTransition
 	};
 }
@@ -245,7 +285,8 @@ function toViewTransitionNavigation(navigation: OnNavigate): ViewTransitionNavig
 }
 
 export function setupSecondaryPageViewTransition(
-	gate: SecondaryTransitionGate = secondaryTransitionGate
+	gate: SecondaryTransitionGate = secondaryTransitionGate,
+	motion: RouteMotionController = routeMotionController
 ): void {
 	onNavigate((navigation) => {
 		const toPath = navigation.to?.url.pathname ?? '';
@@ -255,30 +296,80 @@ export function setupSecondaryPageViewTransition(
 		const crossShell = isSecondaryRoute(fromPath) !== toSecondary;
 		const viewNav = toViewTransitionNavigation(navigation);
 
-		if (
-			!shouldUseViewTransition(direction, viewNav) ||
-			(direction !== 'forward' && direction !== 'back')
-		) {
+		if (direction !== 'forward' && direction !== 'back') {
+			clearSuppressedTransition();
 			void navigation.complete.then(() => {
 				gate.syncRoute(toPath);
 			});
 			return;
 		}
 
-		gate.beginTransition(direction, toSecondary);
+		if (consumeSuppressedTransition()) {
+			motion.cancelMotion();
+			void navigation.complete.then(() => {
+				gate.syncRoute(toPath);
+			});
+			return;
+		}
 
+		if (shouldUseViewTransition(direction, viewNav)) {
+			gate.beginTransition(direction, toSecondary);
+
+			return new Promise<void>((resolve) => {
+				const generation = beginNavDirectionTransition(direction, crossShell);
+				void document
+					.startViewTransition(async () => {
+						resolve();
+						await navigation.complete;
+						if (!toSecondary) flushSync();
+					})
+					.finished.finally(() => {
+						endNavDirectionTransition(generation);
+						gate.finishTransition(toSecondary);
+					});
+			});
+		}
+
+		// Real-DOM fallback transition (e.g. Android native or non-ViewTransition browsers)
 		return new Promise<void>((resolve) => {
-			const generation = beginNavDirectionTransition(direction, crossShell);
-			void document
-				.startViewTransition(async () => {
-					resolve();
-					await navigation.complete;
-					if (!toSecondary) flushSync();
-				})
-				.finished.finally(() => {
-					endNavDirectionTransition(generation);
-					gate.finishTransition(toSecondary);
-				});
+			if (direction === 'back') {
+				void motion
+					.animateBackExit(() => {
+						flushSync(() => {
+							gate.beginRealDomTransition('back', toSecondary);
+						});
+					})
+					.then(() => {
+						resolve();
+						return navigation.complete;
+					})
+					.then(() => {
+						if (!toSecondary) flushSync();
+						gate.finishTransition(toSecondary);
+					})
+					.catch(() => {
+						motion.cancelMotion();
+						gate.finishTransition(toSecondary);
+					});
+			} else {
+				// forward enter
+				resolve();
+				void navigation.complete
+					.then(() =>
+						motion.animateForwardEnter(() => {
+							flushSync(() => {
+								gate.beginRealDomTransition('forward', toSecondary);
+							});
+						})
+					)
+					.then(() => {
+						gate.finishTransition(toSecondary);
+					})
+					.catch(() => {
+						motion.cancelMotion();
+						gate.finishTransition(toSecondary);
+					});
+			}
 		});
 	});
 }

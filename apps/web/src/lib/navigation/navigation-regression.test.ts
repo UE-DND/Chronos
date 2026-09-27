@@ -1,6 +1,8 @@
 import { createHistoryOverlaySync } from '@chronos/ui-kit';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import {
+	canSystemBack,
+	backTargetIsShell,
 	configureNavigationCoordinator,
 	dispatchSystemBack,
 	navigateBack,
@@ -412,6 +414,7 @@ describe('navigation and overlay browser contract', () => {
 	describe('dispatchSystemBack', () => {
 		it('returns exit when on root shell without overlays', () => {
 			browserAdapter('/');
+			expect(canSystemBack()).toBe(false);
 			expect(dispatchSystemBack()).toBe('exit');
 		});
 
@@ -421,6 +424,7 @@ describe('navigation and overlay browser contract', () => {
 			openOverlayHistory('bottom-sheet', dismiss);
 			expect(getTopFrame()?.kind).toBe('overlay');
 
+			expect(canSystemBack()).toBe(true);
 			expect(dispatchSystemBack()).toBe('consumed');
 			browser.complete();
 			expect(dismiss).toHaveBeenCalled();
@@ -431,14 +435,39 @@ describe('navigation and overlay browser contract', () => {
 			await navigateForward('/about');
 			expect(browser.renderedHref).toBe('/about');
 
+			expect(canSystemBack()).toBe(true);
 			expect(dispatchSystemBack()).toBe('consumed');
 			expect(browser.historyGo).toHaveBeenCalledWith(-1);
+		});
+
+		it('consumes back across nested secondary routes and preserves canSystemBack', async () => {
+			const browser = browserAdapter('/');
+			await navigateForward('/about');
+			expect(browser.renderedHref).toBe('/about');
+			expect(canSystemBack()).toBe(true);
+
+			await navigateForward('/about/terms');
+			expect(browser.renderedHref).toBe('/about/terms');
+			expect(canSystemBack()).toBe(true);
+			expect(backTargetIsShell()).toBe(false);
+
+			// First back: secondary -> secondary (child to parent)
+			expect(dispatchSystemBack()).toBe('consumed');
+			expect(browser.historyGo).toHaveBeenCalledWith(-1);
+		});
+
+		it('identifies a shell route as the resolved back target', async () => {
+			const browser = browserAdapter('/');
+			await navigateForward('/about');
+			expect(browser.renderedHref).toBe('/about');
+			expect(backTargetIsShell()).toBe(true);
 		});
 
 		it('consumes back and replaces to shell when on a deeplink secondary route', () => {
 			const browser = browserAdapter('/about');
 			expect((getTopFrame() as RouteFrame | undefined)?.entry).toBe('deeplink');
 
+			expect(canSystemBack()).toBe(true);
 			expect(dispatchSystemBack()).toBe('consumed');
 			expect(browser.goto).toHaveBeenCalledWith('/', { replaceState: true });
 		});
@@ -451,6 +480,7 @@ describe('navigation and overlay browser contract', () => {
 				to: { url: new URL('https://app/about') }
 			} as never);
 
+			expect(canSystemBack()).toBe(true);
 			expect(dispatchSystemBack()).toBe('consumed');
 		});
 	});

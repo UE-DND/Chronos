@@ -41,6 +41,7 @@ export interface HostPlatformAdapter {
 	init?(callbacks?: HostPlatformInitCallbacks): () => void;
 	syncTheme?(isDark: boolean): void;
 	hideBootSplash?(): void;
+	updateBackState?(canGoBack: boolean): void;
 	shareFile?(
 		filename: string,
 		content: string | Uint8Array,

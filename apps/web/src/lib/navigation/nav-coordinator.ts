@@ -36,6 +36,7 @@ let backPending = false;
 let correctingFrom: string | undefined;
 let fallbackRegistration: { fallback: BackFallback } | undefined;
 let pendingFallbackTab: string | undefined;
+const navigationCompletionWaiters = new Set<() => void>();
 function href(url: URL): string {
 	return url.pathname + url.search + url.hash;
 }
@@ -86,20 +87,34 @@ export async function navigateForward(
 export function navigateBack(
 	fallback = fallbackRegistration?.fallback ?? ({ kind: 'shell' } as BackFallback)
 ): void {
-	if (!deps || backPending) return;
+	void performNavigateBack(fallback);
+}
+
+/** Navigate back and resolve after SvelteKit commits the destination route. */
+export function navigateBackAndWait(
+	fallback = fallbackRegistration?.fallback ?? ({ kind: 'shell' } as BackFallback)
+): Promise<void> {
+	return performNavigateBack(fallback);
+}
+
+function performNavigateBack(fallback: BackFallback): Promise<void> {
+	if (!deps || backPending) return Promise.resolve();
 	const plan = resolveBack(getNavigationSnapshot(), fallback);
 	backPending = true;
 	if (
 		plan.type === 'traverse' &&
 		findRecord(deps.getPage().state.chronosNavigation)?.id === getTopFrame()?.id
 	) {
+		const completed = new Promise<void>((resolve) => {
+			navigationCompletionWaiters.add(resolve);
+		});
 		deps.historyGo(plan.delta);
-		return;
+		return completed;
 	}
 	const target = plan.type === 'fallback' ? plan.fallback : fallback;
 	pendingFallbackTab = target.kind === 'shell' ? target.tab : undefined;
 	requestedReplace = true;
-	void Promise.resolve(
+	return Promise.resolve(
 		deps.goto(appRouteHref(target.kind === 'shell' ? '/' : target.href), { replaceState: true })
 	)
 		.catch(() => {
@@ -111,6 +126,43 @@ export function navigateBack(
 			pendingFallbackTab = undefined;
 			intent = undefined;
 		});
+}
+
+/** True when the resolved back target is a shell route (edge-swipe preview only). */
+export function backTargetIsShell(): boolean {
+	if (!deps) return false;
+	const fallback = fallbackRegistration?.fallback ?? ({ kind: 'shell' } as BackFallback);
+	const plan = resolveBack(getNavigationSnapshot(), fallback);
+	if (plan.type === 'fallback') return plan.fallback.kind === 'shell';
+	const target = getNavigationSnapshot().records.find((frame) => frame.id === plan.targetId);
+	return target?.kind === 'route' && isShellRoute(target.href.split(/[?#]/)[0]);
+}
+
+/**
+ * Check whether system-level back will be consumed by Chronos.
+ * Returns true if an overlay or secondary route is active, or if navigation is pending.
+ * Returns false if already on a clean root shell view.
+ */
+export function canSystemBack(): boolean {
+	if (!deps || !ready) return false;
+	if (backPending || intent) return true;
+
+	const snapshot = getNavigationSnapshot();
+	const current = getTopFrame();
+	if (!current) return false;
+
+	const fallback = fallbackRegistration?.fallback ?? ({ kind: 'shell' } as BackFallback);
+	const plan = resolveBack(snapshot, fallback);
+
+	if (plan.type === 'traverse') {
+		return true;
+	}
+
+	const pathname = deps.getPage().url.pathname;
+	const isAtRootShell =
+		isShellRoute(pathname) && current.kind === 'route' && current.entry !== 'deeplink';
+
+	return !isAtRootShell;
 }
 
 /**
@@ -263,6 +315,8 @@ export function syncNavigationPage(completed = false): void {
 }
 export function onAfterNavigate(): void {
 	syncNavigationPage(true);
+	for (const resolve of navigationCompletionWaiters) resolve();
+	navigationCompletionWaiters.clear();
 }
 export function openOverlayHistory(
 	overlayId: string,

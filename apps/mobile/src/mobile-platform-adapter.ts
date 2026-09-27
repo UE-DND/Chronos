@@ -118,6 +118,14 @@ export function createCapacitorNativeBridge(): NativeHostBridge {
 	};
 }
 
+let activeSetBackListener: ((enabled: boolean) => void) | null = null;
+
+export function updateMobileBackState(canGoBack: boolean): void {
+	if (typeof window === 'undefined' || !isCapacitorNative() || !Capacitor.isPluginAvailable('App'))
+		return;
+	activeSetBackListener?.(canGoBack);
+}
+
 export function initMobilePlatform(callbacks?: HostPlatformInitCallbacks): () => void {
 	if (typeof window === 'undefined' || !isCapacitorNative()) return () => {};
 
@@ -131,6 +139,8 @@ export function initMobilePlatform(callbacks?: HostPlatformInitCallbacks): () =>
 	}
 
 	let disposed = false;
+	let backRequested = false;
+	let backHandle: PluginListenerHandle | null = null;
 	const activeHandles: PluginListenerHandle[] = [];
 
 	function trackListener(promise: Promise<PluginListenerHandle>): void {
@@ -147,16 +157,42 @@ export function initMobilePlatform(callbacks?: HostPlatformInitCallbacks): () =>
 			});
 	}
 
+	function setBackListener(enabled: boolean): void {
+		if (!Capacitor.isPluginAvailable('App') || disposed) return;
+		backRequested = enabled;
+		if (enabled) {
+			if (!backHandle) {
+				const promise = App.addListener('backButton', () => {
+					const result = callbacks?.onSystemBack ? callbacks.onSystemBack() : 'exit';
+					if (result === 'exit') {
+						void App.exitApp();
+					}
+				});
+				trackListener(promise);
+				void promise.then((handle) => {
+					if (disposed || !backRequested) {
+						void handle.remove();
+					} else {
+						backHandle = handle;
+					}
+				});
+			}
+		} else {
+			if (backHandle) {
+				const handle = backHandle;
+				backHandle = null;
+				const idx = activeHandles.indexOf(handle);
+				if (idx !== -1) activeHandles.splice(idx, 1);
+				void handle.remove();
+			}
+		}
+	}
+
+	activeSetBackListener = setBackListener;
+
 	if (Capacitor.isPluginAvailable('App')) {
-		// Android Back Button listener
-		trackListener(
-			App.addListener('backButton', () => {
-				const result = callbacks?.onSystemBack ? callbacks.onSystemBack() : 'exit';
-				if (result === 'exit') {
-					void App.exitApp();
-				}
-			})
-		);
+		// Initial Android Back Button listener attach
+		setBackListener(true);
 
 		// Deep links listener
 		if (callbacks?.onDeepLink) {
@@ -186,6 +222,8 @@ export function initMobilePlatform(callbacks?: HostPlatformInitCallbacks): () =>
 
 	return () => {
 		disposed = true;
+		activeSetBackListener = null;
+		setBackListener(false);
 		for (const handle of activeHandles) {
 			void handle.remove();
 		}
@@ -289,6 +327,9 @@ export function createMobilePlatformAdapter(): HostPlatformAdapter {
 		},
 		hideBootSplash() {
 			void hideMobileSplashScreen();
+		},
+		updateBackState(canGoBack: boolean) {
+			updateMobileBackState(canGoBack);
 		},
 		shareFile(filename: string, content: string | Uint8Array, mimeType: string) {
 			return shareFileWithMobile(filename, content, mimeType);

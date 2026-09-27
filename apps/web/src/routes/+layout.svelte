@@ -20,8 +20,13 @@
 		configureNavigationCoordinator,
 		stageShellTabDeparture,
 		isShellRoute,
-		isSecondaryRoute
+		isSecondaryRoute,
+		canSystemBack,
+		backTargetIsShell,
+		edgeSwipeBackAction,
+		navigateBackAndWait
 	} from '$lib/navigation';
+	import { getHostPlatform } from '$lib/platform/host-platform';
 	import {
 		onAfterNavigate,
 		onBeforeNavigate,
@@ -90,6 +95,7 @@
 		void page.state;
 		void page.url;
 		syncNavigationPage();
+		getHostPlatform().updateBackState?.(canSystemBack());
 	});
 
 	const blockShell = $derived(onboardingController.isActive(page.url.pathname));
@@ -151,7 +157,7 @@
 	<div
 		class={[
 			'shell-root col-start-1 row-start-1 h-dvh w-full bg-canvas text-ink',
-			gate.receded && gate.skipPaint && 'is-receded'
+			gate.isReceded && 'is-receded'
 		]}
 		class:invisible={blockShell}
 		class:pointer-events-none={blockShell || gate.frozen}
@@ -163,6 +169,12 @@
 		class="secondary-root col-start-1 row-start-1 h-dvh w-full"
 		class:is-blocked={blockShell}
 		class:invisible={blockShell}
+		use:edgeSwipeBackAction={{
+			canSwipeBack: () =>
+				!getHostPlatform().isNative && isSecondaryRoute(page.url.pathname) && canSystemBack(),
+			revealsShell: backTargetIsShell,
+			onBack: () => navigateBackAndWait()
+		}}
 	>
 		{@render children()}
 	</div>
