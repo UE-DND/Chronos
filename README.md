@@ -41,7 +41,7 @@ Chronos 的核心功能仅为查看、管理与分享课表。另外，您可在
 
 ## 数据收集
 
-官方 Vercel 托管版会通过 PostHog 收集去标识化的功能使用统计以改进产品，不包含课表内容与账号凭据等隐私信息。未配置密钥的构建不会启用埋点。
+官方托管生产 Web 版与 GitHub Releases 中的官方 Android APK 会通过 PostHog 收集去标识化的功能使用统计以改进产品，不包含课表内容与账号凭据等隐私信息。事件会标记发行 profile 与运行平台。未配置密钥的构建不会启用埋点。
 
 详见应用内「关于 → 隐私政策」，或 [`privacy-policy.md`](apps/web/static/legal/privacy-policy.md)。
 
