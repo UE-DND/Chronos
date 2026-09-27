@@ -1,4 +1,4 @@
-import type { PlatformType } from '@chronos/core';
+import type { PlatformType, TodayWidgetSnapshot } from '@chronos/core';
 import { getBootPlatformAdapter } from '$chronos-platform-adapter';
 import type { Release } from '../content/releases/release';
 import type { SwUpdateProgress } from '../client/pwa-sw';
@@ -47,6 +47,7 @@ export interface HostPlatformAdapter {
 		content: string | Uint8Array,
 		mimeType: string
 	): Promise<NativeShareResult>;
+	updateTodayWidgetSnapshot?(snapshot: TodayWidgetSnapshot): Promise<void>;
 	getUpdateAction?(): PlatformUpdateAction;
 	wrapHttpService?(
 		inner: import('@chronos/core').IHttpService
