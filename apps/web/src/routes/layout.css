@@ -504,7 +504,6 @@
 
 	.ui-shell-top-bar {
 		@apply flex min-h-[var(--top-bar-height)] shrink-0 items-center px-3 pb-0 sm:px-4;
-		padding-top: var(--topbar-safe);
 		z-index: 10;
 		gap: 0.5rem;
 		background-color: var(
@@ -512,6 +511,14 @@
 			color-mix(in srgb, var(--color-surface) 90%, transparent)
 		);
 		backdrop-filter: blur(8px);
+	}
+
+	.ui-safe-area-top {
+		padding-block-start: var(--topbar-safe);
+	}
+
+	.ui-safe-area-top--comfortable {
+		padding-block-start: calc(var(--topbar-safe) + 1.5rem);
 	}
 
 	.ui-shell-top-bar-leading {
