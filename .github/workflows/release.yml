@@ -125,6 +125,16 @@ jobs:
           echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
           CERTIFICATE="$(keytool -exportcert -keystore "$RUNNER_TEMP/chronos-release.jks" -alias "$ANDROID_KEY_ALIAS" -storepass:env ANDROID_KEYSTORE_PASSWORD | sha256sum | cut -d ' ' -f 1)"
           echo "PUBLIC_ANDROID_SIGNING_CERT_SHA256=$CERTIFICATE" >> "$GITHUB_ENV"
+      - name: Validate Android analytics configuration
+        env:
+          PUBLIC_POSTHOG_KEY: ${{ vars.PUBLIC_POSTHOG_KEY }}
+          PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$PUBLIC_POSTHOG_KEY" || -z "$PUBLIC_POSTHOG_HOST" ]]; then
+            echo 'Configure PUBLIC_POSTHOG_KEY and PUBLIC_POSTHOG_HOST repository variables to enable analytics in official Android releases.' >&2
+            exit 1
+          fi
       - name: Reuse immutable Android artifacts on retry
         id: reuse
         env:
@@ -141,6 +151,8 @@ jobs:
           CHRONOS_DEPLOYMENT: mobile
           CHRONOS_DISTRIBUTION: mobile
           CHRONOS_PROFILE: ${{ matrix.profile }}
+          PUBLIC_POSTHOG_KEY: ${{ vars.PUBLIC_POSTHOG_KEY }}
+          PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}
           PUBLIC_ANDROID_RELEASE_FEED_URL: https://ue-dnd.github.io/Chronos/android/stable.json
           SOURCE_DATE_EPOCH: ${{ needs.version.outputs.epoch }}
         run: |
