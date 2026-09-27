@@ -538,11 +538,6 @@ export const en = {
 - Chronos-Android v1.0.0 was written entirely by gpt-5.4, going from an empty folder to a shippable release in 87 minutes
 - Chronos-PWA was primarily written by composer-2.5 and gemini-3.6-flash, with an improved architecture and user experience over the old Android app
 
-## Why PWA
-
-1. Solves app distribution across the Apple ecosystem
-2. Android developers only do two things every day: wait for Studio to compile and read Gradle errors
-
 ## Feedback & Feature Suggestions
 
 Aside from GitHub Issues, this project has no other public feedback channels
