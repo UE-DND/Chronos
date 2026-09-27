@@ -18,6 +18,7 @@
 /* MD3 secondary page transitions via View Transitions API */
 .secondary-page {
 	view-transition-name: page-root;
+	box-shadow: -6px 0 20px rgb(0 0 0 / 12%);
 }
 
 .shell-root {
@@ -56,26 +57,18 @@
 @keyframes vt-forward-new {
 	from {
 		transform: translateX(100%);
-		border-radius: 24px;
-		box-shadow: -8px 0 24px rgb(0 0 0 / 15%);
 	}
 	to {
 		transform: translateX(0);
-		border-radius: 0;
-		box-shadow: none;
 	}
 }
 
 @keyframes vt-back-old {
 	from {
 		transform: translateX(0);
-		border-radius: 0;
-		box-shadow: none;
 	}
 	to {
 		transform: translateX(100%);
-		border-radius: 24px;
-		box-shadow: -8px 0 24px rgb(0 0 0 / 15%);
 	}
 }
 
@@ -88,6 +81,47 @@
 		transform: translateX(0);
 		opacity: 1;
 	}
+}
+
+/* Native / Real-DOM fallback secondary page transitions */
+@keyframes native-slide-in {
+	from {
+		transform: translateX(100%);
+		opacity: 0.95;
+	}
+	to {
+		transform: translateX(0);
+		opacity: 1;
+	}
+}
+
+@keyframes native-slide-out {
+	from {
+		transform: translateX(0);
+		opacity: 1;
+	}
+	to {
+		transform: translateX(100%);
+		opacity: 0.95;
+	}
+}
+
+.secondary-root.native-slide-enter {
+	animation: 260ms cubic-bezier(0.05, 0.7, 0.1, 1) both native-slide-in;
+	will-change: transform;
+}
+
+.secondary-root.native-slide-exit {
+	animation: 220ms cubic-bezier(0.3, 0, 0.8, 0.15) both native-slide-out;
+	will-change: transform;
+	pointer-events: none;
+}
+
+.shell-root.native-shell-motion {
+	transition:
+		transform var(--native-shell-duration, 260ms) cubic-bezier(0.05, 0.7, 0.1, 1),
+		opacity var(--native-shell-duration, 260ms) cubic-bezier(0.05, 0.7, 0.1, 1);
+	will-change: transform, opacity;
 }
 
 :root.nav-forward::view-transition-group(page-root),
@@ -203,6 +237,15 @@
 		transform: none;
 		opacity: 1;
 	}
+
+	.secondary-root.native-slide-enter,
+	.secondary-root.native-slide-exit {
+		animation: none !important;
+	}
+
+	.shell-root.native-shell-motion {
+		transition: none !important;
+	}
 }
 
 :root.reduce-motion.nav-forward::view-transition-group(page-root),
@@ -221,6 +264,15 @@
 :root.reduce-motion .shell-root.is-receded {
 	transform: none;
 	opacity: 1;
+}
+
+:root.reduce-motion .secondary-root.native-slide-enter,
+:root.reduce-motion .secondary-root.native-slide-exit {
+	animation: none !important;
+}
+
+:root.reduce-motion .shell-root.native-shell-motion {
+	transition: none !important;
 }
 
 @layer components {

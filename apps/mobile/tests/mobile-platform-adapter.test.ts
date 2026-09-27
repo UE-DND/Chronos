@@ -293,6 +293,34 @@ describe('mobile-platform-adapter', () => {
 			expect(mockApp.exitApp).toHaveBeenCalled();
 		});
 
+		it('dynamically attaches and detaches backButton listener via updateMobileBackState', async () => {
+			capacitorState.isNative = true;
+			const handleRemove = vi.fn().mockResolvedValue(undefined);
+			mockApp.addListener.mockImplementation((event: string) => {
+				if (event === 'backButton') return Promise.resolve({ remove: handleRemove });
+				return Promise.resolve({ remove: vi.fn() });
+			});
+
+			const adapter = createMobilePlatformAdapter();
+			const teardown = adapter.init?.({ onSystemBack: vi.fn() });
+
+			// Initial call in init attaches back listener
+			expect(mockApp.addListener).toHaveBeenCalledWith('backButton', expect.any(Function));
+
+			// Disable back handling (e.g. at root shell)
+			adapter.updateBackState?.(false);
+			await vi.waitFor(() => {
+				expect(handleRemove).toHaveBeenCalled();
+			});
+
+			// Enable back handling (e.g. on secondary page)
+			mockApp.addListener.mockClear();
+			adapter.updateBackState?.(true);
+			expect(mockApp.addListener).toHaveBeenCalledWith('backButton', expect.any(Function));
+
+			teardown?.();
+		});
+
 		it('invokes onDeepLink and onAppResume callbacks', async () => {
 			capacitorState.isNative = true;
 			const handlers: Record<string, (ev: unknown) => void> = {};

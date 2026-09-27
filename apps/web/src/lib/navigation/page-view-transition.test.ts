@@ -2,10 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { getHostPlatform, resetHostPlatform, setHostPlatform } from '$lib/platform/host-platform';
 import {
 	createSecondaryTransitionGate,
+	clearSuppressedTransition,
+	consumeSuppressedTransition,
 	getNavigationDirection,
 	hasUAVisualTransition,
 	isActiveNavDirectionTransition,
 	nextNavDirectionTransitionGeneration,
+	requestSuppressNextTransition,
 	shouldUseViewTransition,
 	resolveNavigationDirection,
 	shouldUseViewTransitionWhenSupported,
@@ -136,6 +139,20 @@ describe('view transition support and classification', () => {
 		expect(isActiveNavDirectionTransition(gen2)).toBe(true);
 		expect(isActiveNavDirectionTransition(gen1)).toBe(false);
 	});
+
+	it('suppresses and consumes transition token once', () => {
+		clearSuppressedTransition();
+		expect(consumeSuppressedTransition()).toBe(false);
+
+		const token = requestSuppressNextTransition();
+		expect(token).toBeGreaterThan(0);
+		expect(consumeSuppressedTransition(token)).toBe(true);
+		expect(consumeSuppressedTransition(token)).toBe(false);
+
+		requestSuppressNextTransition();
+		clearSuppressedTransition();
+		expect(consumeSuppressedTransition()).toBe(false);
+	});
 });
 
 describe('createSecondaryTransitionGate', () => {
@@ -245,5 +262,82 @@ describe('createSecondaryTransitionGate', () => {
 
 		expect(gate.shellHostEnabled).toBe(true);
 		expect(gate.frozen).toBe(true);
+	});
+
+	it('handles secondary -> shell back transition in real-DOM gate: un-recedes shell but keeps frozen until finish', () => {
+		const gate = createSecondaryTransitionGate();
+		gate.syncRoute('/');
+		gate.syncRoute('/about');
+
+		// On secondary route, shell is frozen and receded
+		expect(gate.frozen).toBe(true);
+		expect(gate.receded).toBe(true);
+		expect(gate.isReceded).toBe(true);
+		expect(gate.skipPaint).toBe(true);
+
+		// Begin real-DOM back transition to shell (toSecondary = false)
+		gate.beginRealDomTransition('back', false);
+
+		// revealForSnapshot MUST stay false so skipPaint stays true (content-visibility stays hidden)
+		expect(gate.revealForSnapshot).toBe(false);
+		expect(gate.frozen).toBe(true);
+		expect(gate.skipPaint).toBe(true);
+		// isReceded becomes false to animate .shell-root from -25% to 0
+		expect(gate.receded).toBe(false);
+		expect(gate.isReceded).toBe(false);
+
+		// When navigation finishes to shell:
+		gate.finishTransition(false);
+		expect(gate.frozen).toBe(false);
+		expect(gate.receded).toBe(false);
+		expect(gate.isReceded).toBe(false);
+		expect(gate.skipPaint).toBe(false);
+	});
+
+	it('handles secondary -> secondary back transition in real-DOM gate: maintains receded and frozen throughout', () => {
+		const gate = createSecondaryTransitionGate();
+		gate.syncRoute('/');
+		gate.syncRoute('/settings/about');
+
+		// On secondary route, shell is frozen and receded
+		expect(gate.frozen).toBe(true);
+		expect(gate.receded).toBe(true);
+		expect(gate.isReceded).toBe(true);
+		expect(gate.skipPaint).toBe(true);
+
+		// Back navigation from child secondary to parent secondary (toSecondary = true)
+		gate.beginRealDomTransition('back', true);
+
+		// Shell must NOT un-recede because target is still a secondary route
+		expect(gate.revealForSnapshot).toBe(false);
+		expect(gate.receded).toBe(true);
+		expect(gate.isReceded).toBe(true);
+		// Content-visibility stays hidden
+		expect(gate.frozen).toBe(true);
+		expect(gate.skipPaint).toBe(true);
+
+		// When navigation finishes to parent secondary route:
+		gate.finishTransition(true);
+		expect(gate.frozen).toBe(true);
+		expect(gate.receded).toBe(true);
+		expect(gate.isReceded).toBe(true);
+		expect(gate.skipPaint).toBe(true);
+	});
+
+	it('activates isReceded on real-DOM forward transition without early freeze', () => {
+		const gate = createSecondaryTransitionGate();
+		gate.syncRoute('/');
+
+		expect(gate.isReceded).toBe(false);
+		expect(gate.frozen).toBe(false);
+
+		gate.beginRealDomTransition('forward', true);
+		expect(gate.isReceded).toBe(true);
+		expect(gate.revealForSnapshot).toBe(false);
+
+		gate.finishTransition(true);
+		expect(gate.frozen).toBe(true);
+		expect(gate.isReceded).toBe(true);
+		expect(gate.skipPaint).toBe(true);
 	});
 });

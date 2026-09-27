@@ -140,9 +140,10 @@
 		{#if timetableMounted}
 			<div
 				class={[
-					'absolute inset-0 overflow-hidden',
-					timetableSelected ? 'z-10' : 'pointer-events-none z-0 hidden'
+					'shell-tab-panel absolute inset-0 overflow-hidden',
+					timetableSelected ? 'z-10' : 'pointer-events-none z-0'
 				]}
+				hidden={!timetableSelected}
 				inert={!timetableActive}
 				aria-hidden={!timetableSelected}
 			>
@@ -152,9 +153,10 @@
 		{#if mineMounted}
 			<div
 				class={[
-					'absolute inset-0 flex flex-col overflow-hidden',
-					mineSelected ? 'z-10' : 'pointer-events-none z-0 hidden'
+					'shell-tab-panel absolute inset-0 flex flex-col overflow-hidden',
+					mineSelected ? 'z-10' : 'pointer-events-none z-0'
 				]}
+				hidden={!mineSelected}
 				inert={!mineActive}
 				aria-hidden={!mineSelected}
 			>
@@ -174,9 +176,10 @@
 			{@const pluginActive = !frozen && pluginSelected}
 			<div
 				class={[
-					'absolute inset-0 overflow-hidden',
-					pluginSelected ? 'z-10' : 'pointer-events-none z-0 hidden'
+					'shell-tab-panel absolute inset-0 overflow-hidden',
+					pluginSelected ? 'z-10' : 'pointer-events-none z-0'
 				]}
+				hidden={!pluginSelected}
 				inert={!pluginActive}
 				aria-hidden={!pluginSelected}
 			>
@@ -210,3 +213,10 @@
 		{@render loading()}
 	{/if}
 {/snippet}
+
+<style>
+	/* Later plugin utilities must not override the inactive panel's display. */
+	.shell-tab-panel[hidden] {
+		display: none;
+	}
+</style>
