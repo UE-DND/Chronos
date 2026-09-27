@@ -16,7 +16,7 @@
 	} = $props();
 </script>
 
-<header class="ui-shell-top-bar {className}">
+<header class="ui-shell-top-bar ui-safe-area-top {className}">
 	{#if leading}
 		<div class="ui-shell-top-bar-leading">
 			{@render leading()}
