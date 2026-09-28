@@ -9,7 +9,7 @@
 	import TimetableScreen from '$lib/components/timetable/TimetableScreen.svelte';
 	import EmptyTimetableState from '$lib/components/timetable/EmptyTimetableState.svelte';
 	import LoadingIndicator from '$lib/components/ui/LoadingIndicator.svelte';
-	import { isReducedMotionActive, scrollRubberBand } from '@chronos/ui-kit';
+	import { isReducedMotionActive } from '@chronos/ui-kit';
 	import { getAppController } from '$lib/services/app-engine';
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
 	import TopAppBar from '$lib/components/TopAppBar.svelte';
@@ -163,8 +163,7 @@
 				<TopAppBar title={hostT('mine.title')} class="shrink-0" />
 				<div
 					bind:this={mineScrollEl}
-					use:scrollRubberBand
-					class="app-scroll-y min-h-0 flex-1 overflow-y-auto"
+					class="app-scroll-y native-overscroll-y min-h-0 flex-1 overflow-y-auto"
 				>
 					{@render minePanel()}
 				</div>

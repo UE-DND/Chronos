@@ -1,7 +1,7 @@
 import type { AppShellController } from '$lib/app/app-shell.svelte';
 import { connectivity } from '$lib/platform/connectivity.svelte';
 import { onboardingController } from '$lib/client/onboarding.svelte';
-import { pwaInstallController } from '$lib/client/pwa-install.svelte';
+import { isPwaStandalone, pwaInstallController } from '$lib/client/pwa-install.svelte';
 import { initAnalytics } from '$lib/client/analytics';
 
 import { attachOfflineUx } from '$lib/platform/offline-ux.svelte';
@@ -13,6 +13,7 @@ import {
 } from '$lib/services/app-engine';
 import { configureHostI18n } from '$lib/i18n/host-i18n.svelte';
 import { getHostPlatform } from '$lib/platform/host-platform';
+import { installScrollBoundaryFeedback } from '$lib/platform/scroll-boundary-feedback';
 import { dispatchSystemBack } from '$lib/navigation/nav-coordinator';
 import type { TimetableScreenController } from '$lib/timetable/timetable-screen.svelte';
 import type { ShellTabController } from '$lib/shell/shell-tab.svelte';
@@ -34,6 +35,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 	let disposeEffects: (() => void) | null = null;
 	let disposeOfflineUx: (() => void) | null = null;
 	let disposePlatform: (() => void) | null = null;
+	let disposeScrollBoundaryFeedback: (() => void) | null = null;
 	let todayWidgetSync: TodayWidgetSyncService | null = null;
 
 	function init(): () => void {
@@ -41,6 +43,12 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 		started = true;
 
 		const platform = getHostPlatform();
+		if (
+			(platform.isNative && platform.platformType === 'android') ||
+			(!platform.isNative && isPwaStandalone())
+		) {
+			disposeScrollBoundaryFeedback = installScrollBoundaryFeedback();
+		}
 
 		disposePlatform =
 			platform.init?.({
@@ -156,6 +164,8 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 			todayWidgetSync?.dispose();
 			todayWidgetSync = null;
 			connectivity.destroy();
+			disposeScrollBoundaryFeedback?.();
+			disposeScrollBoundaryFeedback = null;
 			disposePlatform?.();
 			disposePlatform = null;
 			started = false;

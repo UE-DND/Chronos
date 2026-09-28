@@ -80,6 +80,9 @@ async function handleHapticCall(method: string, params?: unknown): Promise<void>
 	if (method === 'impact') {
 		const style = (params as { style?: NativeHapticImpactStyle })?.style ?? 'medium';
 		await Haptics.impact({ style: IMPACT_STYLE_MAP[style] ?? ImpactStyle.Medium });
+	} else if (method === 'vibrate') {
+		const duration = (params as { duration?: number })?.duration ?? 12;
+		await Haptics.vibrate({ duration });
 	} else if (method === 'notification') {
 		const type = (params as { type?: NativeHapticNotificationType })?.type ?? 'success';
 		await Haptics.notification({ type: NOTIFICATION_TYPE_MAP[type] ?? NotificationType.Success });

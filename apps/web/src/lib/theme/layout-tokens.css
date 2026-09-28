@@ -148,14 +148,40 @@
 		display: none;
 	}
 
-	.app-scroll-y,
-	.secondary-scroll {
+	.app-scroll-y {
 		overscroll-behavior-y: none;
+	}
+
+	.native-overscroll-y,
+	.secondary-scroll {
+		overscroll-behavior-y: contain;
 	}
 
 	.secondary-scroll {
 		scrollbar-width: none;
 		-ms-overflow-style: none;
+	}
+
+	.scroll-boundary-feedback {
+		position: fixed;
+		z-index: calc(var(--z-secondary-page) + 1);
+		height: 32px;
+		opacity: 0;
+		pointer-events: none;
+		background: linear-gradient(
+			to bottom,
+			color-mix(in srgb, var(--color-brand) 34%, transparent),
+			transparent
+		);
+		transition: opacity 90ms linear;
+	}
+
+	.scroll-boundary-feedback[data-edge='bottom'] {
+		transform: rotate(180deg);
+	}
+
+	:root.reduce-motion .scroll-boundary-feedback {
+		transition: none;
 	}
 
 	.secondary-scroll::-webkit-scrollbar {

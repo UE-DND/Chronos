@@ -142,7 +142,7 @@ describe('haptic feedback service', () => {
 		expect(mockVibrate).toHaveBeenLastCalledWith(15);
 
 		haptic.light();
-		expect(mockVibrate).toHaveBeenLastCalledWith(25);
+		expect(mockVibrate).toHaveBeenLastCalledWith(12);
 
 		haptic.medium();
 		expect(mockVibrate).toHaveBeenLastCalledWith(50);
@@ -176,7 +176,7 @@ describe('haptic feedback service', () => {
 		await vi.waitFor(() => expect(callNative).toHaveBeenCalledTimes(6));
 
 		expect(callNative).toHaveBeenCalledWith('haptic', 'selection', {});
-		expect(callNative).toHaveBeenCalledWith('haptic', 'impact', { style: 'light' });
+		expect(callNative).toHaveBeenCalledWith('haptic', 'vibrate', { duration: 12 });
 		expect(callNative).toHaveBeenCalledWith('haptic', 'impact', { style: 'medium' });
 		expect(callNative).toHaveBeenCalledWith('haptic', 'impact', { style: 'heavy' });
 		expect(callNative).toHaveBeenCalledWith('haptic', 'notification', { type: 'success' });
@@ -193,8 +193,8 @@ describe('haptic feedback service', () => {
 		enableHaptic();
 
 		expect(haptic.light()).toBe(true);
-		await vi.waitFor(() => expect(mockVibrate).toHaveBeenCalledWith(25));
-		expect(callNative).toHaveBeenCalledWith('haptic', 'impact', { style: 'light' });
+		await vi.waitFor(() => expect(mockVibrate).toHaveBeenCalledWith(12));
+		expect(callNative).toHaveBeenCalledWith('haptic', 'vibrate', { duration: 12 });
 	});
 
 	it('does not call native bridge when preference is off', () => {

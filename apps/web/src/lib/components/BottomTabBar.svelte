@@ -61,7 +61,7 @@
 	}
 
 	function handleTabClick(event: MouseEvent, tab: BottomTabSlotContribution) {
-		haptic.light();
+		haptic.medium();
 		if (timetableScreen?.state.isEditing && tab.hostPanel !== 'timetable') {
 			timetableScreen.setEditing(false);
 		}

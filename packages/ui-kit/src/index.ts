@@ -71,7 +71,6 @@ export {
 	scrollRevealScrollbar,
 	splitScrollLayoutClasses
 } from './actions/scroll-reveal-scrollbar';
-export { dampenOverscroll, scrollRubberBand } from './actions/scroll-rubber-band';
 export { CHRONOS_MOUNTABLE } from '@chronos/core';
 export {
 	previewAndNotify,

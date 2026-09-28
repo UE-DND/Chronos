@@ -14,6 +14,7 @@
 		WEEK_PAGER_NEIGHBOR_RADIUS
 	} from '$lib/timetable/week-navigation';
 	import { createWeekPagerSnap } from '$lib/timetable/week-pager-snap';
+	import { createWeekPagerTouch } from '$lib/timetable/week-pager-touch';
 	import type { CapsulePagerPreview } from '$lib/timetable/capsule-pager-preview';
 	import TimetableGrid from './TimetableGrid.svelte';
 
@@ -64,6 +65,7 @@
 	let suppressScrollUntil = 0;
 	let settleTimer = 0;
 	let pagerSnap: ReturnType<typeof createWeekPagerSnap> | undefined;
+	let pagerTouch: ReturnType<typeof createWeekPagerTouch> | undefined;
 	let paintWeek = $state(0);
 
 	// 同步写入 preview，勿改 RAF 合并：与 displayedWeek 须在同一事件内到达指示器，否则点阵会先落到整数周。
@@ -155,6 +157,7 @@
 
 	function onPagerScrollEnd() {
 		if (!active) return;
+		if (pagerTouch?.isActive) return;
 		if (pagerSnap?.isAnimating) return;
 		window.clearTimeout(settleTimer);
 		settleTimer = 0;
@@ -205,6 +208,12 @@
 		});
 		const snap = createWeekPagerSnap(node, onPagerScrollEnd);
 		pagerSnap = snap;
+		const touch = createWeekPagerTouch(node, {
+			enabled: () => allowPagerTouch,
+			suspendSnap: snap.setSuspended,
+			onSettled: onPagerScrollEnd
+		});
+		pagerTouch = touch;
 		const resizeObserver = new ResizeObserver(() => {
 			snap.cancel();
 			if (pagerGesture) return;
@@ -214,6 +223,8 @@
 		resizeObserver.observe(node);
 		return () => {
 			resizeObserver.disconnect();
+			touch.destroy();
+			if (pagerTouch === touch) pagerTouch = undefined;
 			snap.destroy();
 			if (pagerSnap === snap) pagerSnap = undefined;
 			window.clearTimeout(settleTimer);
@@ -335,7 +346,7 @@
 		scroll-snap-type: x mandatory;
 		overscroll-behavior: contain;
 		-webkit-overflow-scrolling: touch;
-		touch-action: pan-x pan-y;
+		touch-action: pan-y;
 	}
 
 	.timetable-week-pager-locked {
@@ -351,6 +362,6 @@
 		height: 100%;
 		overflow: hidden;
 		scroll-snap-align: start;
-		scroll-snap-stop: normal;
+		scroll-snap-stop: always;
 	}
 </style>

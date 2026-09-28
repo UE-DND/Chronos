@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
 	pwaInstallInit: vi.fn().mockResolvedValue(undefined),
 	setInstallPromptGate: vi.fn(),
 	tryScheduleInstallDialog: vi.fn(),
+	isPwaStandalone: vi.fn(() => false),
+	installScrollBoundaryFeedback: vi.fn(() => vi.fn()),
 	initAnalytics: vi.fn(),
 	attachOfflineUx: vi.fn(() => vi.fn()),
 	onboardingState: { open: false } as { open: boolean },
@@ -22,6 +24,7 @@ vi.mock('$lib/platform/connectivity.svelte', () => ({
 }));
 
 vi.mock('$lib/client/pwa-install.svelte', () => ({
+	isPwaStandalone: mocks.isPwaStandalone,
 	pwaInstallController: {
 		init: mocks.pwaInstallInit,
 		setInstallPromptGate: mocks.setInstallPromptGate,
@@ -29,6 +32,10 @@ vi.mock('$lib/client/pwa-install.svelte', () => ({
 		dismiss: vi.fn(),
 		tryScheduleInstallDialog: mocks.tryScheduleInstallDialog
 	}
+}));
+
+vi.mock('$lib/platform/scroll-boundary-feedback', () => ({
+	installScrollBoundaryFeedback: mocks.installScrollBoundaryFeedback
 }));
 
 vi.mock('$lib/client/web-host-update', () => ({ recoverInterruptedWebUpdate: vi.fn() }));
