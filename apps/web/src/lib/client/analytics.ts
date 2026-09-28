@@ -1,6 +1,8 @@
 import { env } from '$env/dynamic/public';
 import type { PostHog } from 'posthog-js';
 import type { IAnalyticsService } from '@chronos/core';
+import { resolveActiveProfile } from '$lib/boot/profile-registry';
+import { getHostPlatform } from '$lib/platform/host-platform';
 
 /** Host-owned analytics events (apps/web UI, PWA, settings). Plugin events use `trackPluginAnalytics`. */
 export type HostAnalyticsEvent =
@@ -108,11 +110,16 @@ export function captureAnalyticsEvent(
 	name: string,
 	properties?: Record<string, string | number | boolean>
 ) {
+	const classifiedProperties = {
+		...properties,
+		chronos_profile: resolveActiveProfile().profileId,
+		chronos_platform: getHostPlatform().platformType === 'android' ? 'android' : 'web'
+	};
 	if (client) {
-		client.capture(name, properties);
+		client.capture(name, classifiedProperties);
 		return;
 	}
-	pending?.push([name, properties]);
+	pending?.push([name, classifiedProperties]);
 }
 
 /** UI telemetry facade — routes through `IAnalyticsService` when the engine port is bound. */
