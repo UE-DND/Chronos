@@ -1,4 +1,5 @@
 <!--VITE PLUS START-->
+<!--VITE PLUS MANAGE CONTENT, DON'T EDIT MANUALLY-->
 
 # Using Vite+, the Unified Toolchain for the Web
 
@@ -47,15 +48,21 @@ Be concise. Do not write unsolicited "WHY" explanations. Required declarations (
 
 ## 未发布阶段的数据契约
 
-产品尚未发布：Chronos 自有数据库、数据结构与线格式版本固定为 `1`。直接维护唯一当前结构，不新增升级链、旧格式分支、兼容别名或旧数据补迁移。开发数据失效时手动清空并重新导入，不在启动时自动删除。此约定不改变产品发布号、随宿主发布的插件版本、第三方依赖或外部标准版本。
+Chronos 目前尚未发布，保持自有数据库、数据结构与线格式版本固定为 `1`。直接维护唯一当前结构，不新增升级链、旧格式分支、兼容别名或旧数据补迁移。开发数据失效时手动清空并重新导入，不在启动时自动删除。此约定不改变产品发布号、随宿主发布的插件版本、第三方依赖或外部标准版本。
 
 ## Commit Convention
 
 Use Gitmoji format: `<emoji> <concise Chinese>` (no `feat:`/`fix:` prefix). e.g., `✨ 新增课表导出功能`.
 Do not commit / push unless explicitly requested; reporting completion ≠ committing.
 
+## Branch, Commit, and PR Contracts
+
+- Keep each commit focused on one logical change and follow the Commit Convention above.
+- When a larger change can be split into independently reviewable layers and an upper layer depends on lower-layer work that is not merged yet, prefer stacked pull requests: target the bottom pull request at the trunk and each higher pull request at the immediately preceding branch. Keep unrelated changes in separate pull requests targeting the appropriate trunk; all branches in a stack must belong to the same repository.
+- Pull request titles do not need Gitmoji. Use `.github/pull_request_template.md` for descriptions and omit the release-notes section for non-release pull requests.
+
 ## Validation
 
-Canonical commands are `vp run check` and `vp run test` (see `CONTRIBUTING.md`; `vite.config.ts` tasks wrap `vp check` / `vp test` with `svelte-kit sync` / cwd). Run scoped single-file tests during iteration, full suite once at the end; docs-only changes may skip tests with a note. Run `vp install` only when deps / manifest changed or install is stale. On env issues run `vp env doctor`, attempt the obvious fix first, and only ask for help if still blocked.
+Canonical commands are `vp run check` and `vp run test` (see `CONTRIBUTING.md`; the `vite.config.ts` tasks perform project-specific setup and plugin preparation before running the underlying checks). Run scoped single-file tests during iteration, full suite once at the end; docs-only changes may skip tests with a note. Run `vp install` after cloning, switching branches, pulling dependency changes, or when the installation is stale. On env issues run `vp env doctor`, attempt the obvious fix first, and only ask for help if still blocked.
 
 Skills share these validation results for the same final code state. Rerun affected checks only after further changes, failures, or new evidence. Fix failures caused by the requested change; report unrelated failures without expanding scope. Work is complete when the requested behavior is implemented, applicable validation is complete, and any remaining limitations are reported.
