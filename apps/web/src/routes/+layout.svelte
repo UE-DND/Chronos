@@ -50,8 +50,8 @@
 
 	const shell = createAppShell();
 	const timetableScreen = getTimetableScreen();
-	const platform = createPlatformBootstrap({ shell, timetableScreen });
 	const shellTab = createShellTabController(() => getAppController());
+	const platform = createPlatformBootstrap({ shell, timetableScreen, shellTab });
 
 	configureNavigationCoordinator({
 		goto: (href, opts) => goto(href, opts),

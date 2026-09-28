@@ -9,7 +9,8 @@ const mocks = vi.hoisted(() => ({
 	tryScheduleInstallDialog: vi.fn(),
 	initAnalytics: vi.fn(),
 	attachOfflineUx: vi.fn(() => vi.fn()),
-	onboardingState: { open: false } as { open: boolean }
+	onboardingState: { open: false } as { open: boolean },
+	tabIds: ['today'] as string[]
 }));
 
 vi.mock('$lib/platform/connectivity.svelte', () => ({
@@ -37,9 +38,13 @@ vi.mock('$lib/client/analytics', () => ({
 }));
 
 vi.mock('$lib/services/app-engine', () => ({
+	ensureEngineFullyReady: vi.fn().mockResolvedValue(undefined),
 	ensureEngineReady: vi.fn().mockResolvedValue({
 		events: { on: vi.fn(() => ({ dispose: vi.fn() })) }
 	}),
+	getAppController: vi.fn(() => ({
+		getSlots: () => mocks.tabIds.map((id) => ({ id }))
+	})),
 	getAppEngine: vi.fn(() => ({
 		themes: { getTheme: vi.fn() },
 		state: { activeThemeId: 'm3-default' },
@@ -82,10 +87,12 @@ describe('createPlatformBootstrap', () => {
 			currentTimetable: null
 		}
 	};
-	const deps = { shell, timetableScreen } as unknown as PlatformBootstrapDeps;
+	const shellTab = { setActiveTab: vi.fn() };
+	const deps = { shell, timetableScreen, shellTab } as unknown as PlatformBootstrapDeps;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.tabIds = ['today'];
 		mocks.onboardingState.open = false;
 		vi.stubGlobal('document', { addEventListener: vi.fn(), removeEventListener: vi.fn() });
 		vi.stubGlobal('window', {
@@ -130,6 +137,55 @@ describe('createPlatformBootstrap', () => {
 		platform.init();
 
 		expect(mocks.connectivityInit).toHaveBeenCalledTimes(1);
+	});
+
+	it('routes the Today widget deep link to the Today tab when the plugin exists', async () => {
+		const { setHostPlatform, resetHostPlatform } = await import('./host-platform');
+		let callbacks: import('./host-platform').HostPlatformInitCallbacks | undefined;
+		setHostPlatform({
+			id: 'mobile',
+			isNative: true,
+			platformType: 'android',
+			supportsPwaInstall: false,
+			shouldShowInstallGuide: false,
+			init(next) {
+				callbacks = next;
+				return vi.fn();
+			}
+		});
+
+		const platform = createPlatformBootstrap(deps);
+		const teardown = platform.init();
+		callbacks?.onDeepLink?.(new URL('chronos://today'));
+
+		await vi.waitFor(() => expect(shellTab.setActiveTab).toHaveBeenCalledWith('today'));
+		teardown();
+		resetHostPlatform();
+	});
+
+	it('falls back to the main timetable tab when the Today plugin is absent', async () => {
+		mocks.tabIds = ['timetable'];
+		const { setHostPlatform, resetHostPlatform } = await import('./host-platform');
+		let callbacks: import('./host-platform').HostPlatformInitCallbacks | undefined;
+		setHostPlatform({
+			id: 'mobile',
+			isNative: true,
+			platformType: 'android',
+			supportsPwaInstall: false,
+			shouldShowInstallGuide: false,
+			init(next) {
+				callbacks = next;
+				return vi.fn();
+			}
+		});
+
+		const platform = createPlatformBootstrap(deps);
+		const teardown = platform.init();
+		callbacks?.onDeepLink?.(new URL('chronos://today'));
+
+		await vi.waitFor(() => expect(shellTab.setActiveTab).toHaveBeenCalledWith('timetable'));
+		teardown();
+		resetHostPlatform();
 	});
 
 	it('hides splash screen on boot failure so error UI is shown', async () => {

@@ -332,24 +332,33 @@ describe('today-courses', () => {
 				termStartDate: '2026-03-02',
 				startWeek: 1,
 				endWeek: 20,
-				periodTimes: []
-			}
+				periodTimes: [{ index: 1, startTime: '08:00', endTime: '08:45' }]
+			},
+			courses: [
+				createCourse({
+					id: 'today',
+					name: 'Today course',
+					dayOfWeek: 1,
+					startPeriod: 1,
+					endPeriod: 1,
+					weeks: [1]
+				})
+			]
 		});
 
-		const queryCourses = vi.fn(async () => []);
+		const queryCourses = vi.fn(async () => [
+			{ timetableId: 't1', timetableName: 'Main', course: timetable.courses[0]! }
+		]);
 		const storage = { queryCourses } as unknown as IStorageService;
 
-		await queryTodayCourses(storage, {
+		const hits = await queryTodayCourses(storage, {
 			todayIso: '2026-03-02',
 			scope: 'active',
 			timetable
 		});
 
-		expect(queryCourses).toHaveBeenCalledWith({
-			dayOfWeek: 1,
-			week: 1,
-			timetableIds: ['t1']
-		});
+		expect(hits.map(({ course }) => course.id)).toEqual(['today']);
+		expect(queryCourses).toHaveBeenCalledWith({ dayOfWeek: 1, week: 1, timetableIds: ['t1'] });
 	});
 
 	it('queryTodayCourses queries each timetable with its own week when scope is all', async () => {

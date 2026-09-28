@@ -6,7 +6,8 @@ import {
 	type PeriodTime,
 	type Timetable,
 	dayOfWeekFromIso,
-	parsePeriodRanges
+	parsePeriodRanges,
+	projectTodayCourseHits
 } from '@chronos/core';
 import type { TodayScope } from './constants';
 
@@ -121,7 +122,8 @@ export async function queryTodayCourses(
 
 	if (scope === 'active') {
 		const week = calendarService.calculateAcademicWeek(todayIso, timetable.academicConfig);
-		return storage.queryCourses({ dayOfWeek, week, timetableIds: [timetable.id] });
+		const hits = await storage.queryCourses({ dayOfWeek, week, timetableIds: [timetable.id] });
+		return projectTodayCourseHits(hits, timetable.academicConfig.periodTimes.length);
 	}
 
 	const summaries = await storage.listTimetables();

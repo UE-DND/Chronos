@@ -521,11 +521,6 @@ export const zhCn = {
 - Chronos-Android v1.0.0 完全由 gpt-5.4 编写，从空白文件夹到完整可发布版本仅用时 87 分钟
 - Chronos-PWA 主要由 composer-2.5 和 gemini-3.6-flash 编写，相较 Android 旧版改进了架构思路，并优化了使用体验
 
-## 为什么使用 PWA
-
-1. 解决 Apple 生态应用分发的问题
-2. Android coder 每天只做两件事：等 Studio 编译，看 Gradel 报错
-
 ## 问题反馈 & 功能建议
 
 除 GitHub Issue 外，本项目暂无其他公开的反馈渠道

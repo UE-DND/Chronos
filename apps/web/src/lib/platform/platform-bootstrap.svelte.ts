@@ -5,16 +5,24 @@ import { pwaInstallController } from '$lib/client/pwa-install.svelte';
 import { initAnalytics } from '$lib/client/analytics';
 
 import { attachOfflineUx } from '$lib/platform/offline-ux.svelte';
-import { ensureEngineReady, getOfficialPluginService } from '$lib/services/app-engine';
+import {
+	ensureEngineFullyReady,
+	ensureEngineReady,
+	getAppController,
+	getOfficialPluginService
+} from '$lib/services/app-engine';
 import { configureHostI18n } from '$lib/i18n/host-i18n.svelte';
 import { getHostPlatform } from '$lib/platform/host-platform';
 import { dispatchSystemBack } from '$lib/navigation/nav-coordinator';
 import type { TimetableScreenController } from '$lib/timetable/timetable-screen.svelte';
+import type { ShellTabController } from '$lib/shell/shell-tab.svelte';
+import { createTodayWidgetSyncService, type TodayWidgetSyncService } from './today-widget-sync';
 import { registerHyperellipse } from 'hyperellipse';
 
 export type PlatformBootstrapDeps = {
 	shell: AppShellController;
 	timetableScreen: TimetableScreenController;
+	shellTab: ShellTabController;
 };
 
 export type PlatformBootstrapController = {
@@ -26,6 +34,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 	let disposeEffects: (() => void) | null = null;
 	let disposeOfflineUx: (() => void) | null = null;
 	let disposePlatform: (() => void) | null = null;
+	let todayWidgetSync: TodayWidgetSyncService | null = null;
 
 	function init(): () => void {
 		if (started) return () => {};
@@ -37,6 +46,21 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 			platform.init?.({
 				onSystemBack: () => dispatchSystemBack(),
 				onDeepLink: (url) => {
+					if (url.protocol === 'chronos:' && url.hostname === 'today') {
+						void ensureEngineFullyReady()
+							.then(() => {
+								const hasTodayTab = getAppController()
+									.getSlots('shell.bottom-bar.tab')
+									.some((tab) => tab.id === 'today');
+								deps.shellTab.setActiveTab(hasTodayTab ? 'today' : 'timetable');
+								return import('$lib/navigation/nav-coordinator');
+							})
+							.then(({ navigateForward }) => navigateForward('/', { replace: true }))
+							.catch((error) =>
+								console.error('[platform] Failed to open today widget link', error)
+							);
+						return;
+					}
 					const path = url.hostname === 's' || url.pathname.startsWith('/s') ? '/s' : url.pathname;
 					const target = `${path}${url.search}${url.hash}`;
 					void import('$lib/navigation/nav-coordinator').then(({ navigateForward }) => {
@@ -46,6 +70,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 				onAppResume: () => {
 					void ensureEngineReady().then((engine) => {
 						engine.refreshSystemTime();
+						void todayWidgetSync?.sync();
 						void getOfficialPluginService().retryPendingUpdates();
 					});
 				}
@@ -75,6 +100,11 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 					.catch(console.error);
 				deps.shell.init();
 				deps.timetableScreen.init(deps.shell);
+				todayWidgetSync?.dispose();
+				todayWidgetSync = createTodayWidgetSyncService(engine, platform, {
+					visibilityTarget: document
+				});
+				todayWidgetSync.start();
 				// Gate first so the async install init cannot auto-popup behind onboarding.
 				if (!platform.supportsPwaInstall) {
 					pwaInstallController.setInstallPromptGate(() => true);
@@ -123,6 +153,8 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 			deps.shell.appearance.destroy();
 			disposeOfflineUx?.();
 			disposeOfflineUx = null;
+			todayWidgetSync?.dispose();
+			todayWidgetSync = null;
 			connectivity.destroy();
 			disposePlatform?.();
 			disposePlatform = null;

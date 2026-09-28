@@ -2,8 +2,9 @@
 
 .agents/** linguist-documentation
 
-.svelte-kit/** linguist-generated
-src/lib/paraglide/** linguist-generated
-project.inlang/cache/** linguist-generated
+**/.svelte-kit/** linguist-generated
+**/paraglide/** linguist-generated
+**/project.inlang/cache/** linguist-generated
+apps/web/src/lib/theme/generated-colors.css linguist-generated
 
 pnpm-lock.yaml text eol=lf

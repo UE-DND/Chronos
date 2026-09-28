@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_name">Chronos Today</string>
+    <string name="widget_description">Today\'s timetable and next class</string>
+    <string name="widget_sync_needed">Schedule needs sync. Tap to open Chronos.</string>
+    <string name="widget_no_timetable">Select or create a timetable in Chronos.</string>
+    <string name="widget_no_classes">No classes today. Enjoy your day.</string>
+    <string name="widget_all_done">Today\'s classes are over.</string>
+    <string name="widget_week">Week %1$d</string>
+    <string name="widget_period">Periods %1$d–%2$d</string>
+    <plurals name="widget_total_classes">
+        <item quantity="one">%d class today</item>
+        <item quantity="other">%d classes today</item>
+    </plurals>
+    <string name="widget_status_current">Now</string>
+    <string name="widget_status_preparing">Get ready</string>
+    <string name="widget_status_upcoming">Upcoming</string>
+</resources>
