@@ -162,6 +162,28 @@
 		-ms-overflow-style: none;
 	}
 
+	.android-scroll-boundary-feedback {
+		position: fixed;
+		z-index: calc(var(--z-secondary-page) + 1);
+		height: 32px;
+		opacity: 0;
+		pointer-events: none;
+		background: linear-gradient(
+			to bottom,
+			color-mix(in srgb, var(--color-brand) 34%, transparent),
+			transparent
+		);
+		transition: opacity 90ms linear;
+	}
+
+	.android-scroll-boundary-feedback[data-edge='bottom'] {
+		transform: rotate(180deg);
+	}
+
+	:root.reduce-motion .android-scroll-boundary-feedback {
+		transition: none;
+	}
+
 	.secondary-scroll::-webkit-scrollbar {
 		display: none;
 		width: 0;

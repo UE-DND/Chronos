@@ -13,6 +13,7 @@ import {
 } from '$lib/services/app-engine';
 import { configureHostI18n } from '$lib/i18n/host-i18n.svelte';
 import { getHostPlatform } from '$lib/platform/host-platform';
+import { installAndroidScrollBoundaryFeedback } from '$lib/platform/android-scroll-boundary-feedback';
 import { dispatchSystemBack } from '$lib/navigation/nav-coordinator';
 import type { TimetableScreenController } from '$lib/timetable/timetable-screen.svelte';
 import type { ShellTabController } from '$lib/shell/shell-tab.svelte';
@@ -34,6 +35,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 	let disposeEffects: (() => void) | null = null;
 	let disposeOfflineUx: (() => void) | null = null;
 	let disposePlatform: (() => void) | null = null;
+	let disposeAndroidScrollBoundaryFeedback: (() => void) | null = null;
 	let todayWidgetSync: TodayWidgetSyncService | null = null;
 
 	function init(): () => void {
@@ -41,6 +43,9 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 		started = true;
 
 		const platform = getHostPlatform();
+		if (platform.isNative && platform.platformType === 'android') {
+			disposeAndroidScrollBoundaryFeedback = installAndroidScrollBoundaryFeedback();
+		}
 
 		disposePlatform =
 			platform.init?.({
@@ -156,6 +161,8 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 			todayWidgetSync?.dispose();
 			todayWidgetSync = null;
 			connectivity.destroy();
+			disposeAndroidScrollBoundaryFeedback?.();
+			disposeAndroidScrollBoundaryFeedback = null;
 			disposePlatform?.();
 			disposePlatform = null;
 			started = false;
