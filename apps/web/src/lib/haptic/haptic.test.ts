@@ -193,8 +193,8 @@ describe('haptic feedback service', () => {
 		enableHaptic();
 
 		expect(haptic.light()).toBe(true);
-		await vi.waitFor(() => expect(mockVibrate).toHaveBeenCalledWith(25));
-		expect(callNative).toHaveBeenCalledWith('haptic', 'impact', { style: 'light' });
+		await vi.waitFor(() => expect(mockVibrate).toHaveBeenCalledWith(12));
+		expect(callNative).toHaveBeenCalledWith('haptic', 'vibrate', { duration: 12 });
 	});
 
 	it('does not call native bridge when preference is off', () => {
