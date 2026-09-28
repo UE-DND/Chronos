@@ -56,13 +56,11 @@
 		return [
 			{
 				mode: 'sharp' as const,
-				label: hostT('display.capsule.sharp.label'),
-				description: hostT('display.capsule.sharp.desc')
+				label: hostT('display.capsule.sharp.label')
 			},
 			{
 				mode: 'pill' as const,
-				label: hostT('display.capsule.pill.label'),
-				description: hostT('display.capsule.pill.desc')
+				label: hostT('display.capsule.pill.label')
 			}
 		] as const;
 	});
@@ -149,7 +147,6 @@
 			<MineRow
 				label={true}
 				title={option.label}
-				supporting={option.description}
 				onclick={() => selectCapsuleCornerStyle(option.mode)}
 			>
 				{#snippet trailing()}

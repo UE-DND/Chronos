@@ -99,9 +99,7 @@ export const zhCn = {
 	'display.layout.compact.desc': '一屏展示全天课程，无需滚动',
 	'display.layout.compact.landscapeUnavailable': '紧凑横屏不可用，竖屏恢复原设置',
 	'display.capsule.pill.label': '合并圆角',
-	'display.capsule.pill.desc': '相邻接触的课程边缘合并去圆角',
 	'display.capsule.sharp.label': '移除圆角',
-	'display.capsule.sharp.desc': '移除四周圆角，呈现利落直角',
 	'display.locale.zh-cn': '简体中文',
 	'display.locale.en': 'English',
 

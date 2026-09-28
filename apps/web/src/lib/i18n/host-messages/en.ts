@@ -101,9 +101,7 @@ export const en = {
 	'display.layout.compact.landscapeUnavailable':
 		'Compact landscape: unavailable; restores in portrait',
 	'display.capsule.pill.label': 'Merged corners',
-	'display.capsule.pill.desc': 'Merge corners where adjacent courses touch',
 	'display.capsule.sharp.label': 'Square corners',
-	'display.capsule.sharp.desc': 'Remove rounded corners for a crisp look',
 	'display.locale.zh-cn': '简体中文',
 	'display.locale.en': 'English',
 
