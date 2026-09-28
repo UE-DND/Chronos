@@ -4,7 +4,7 @@
     <string name="widget_description">查看今日课表和下一节课程</string>
     <string name="widget_sync_needed">日程需同步，点击打开 Chronos</string>
     <string name="widget_no_timetable">请在 Chronos 中选择或创建课表</string>
-    <string name="widget_no_classes">今日无课，好好休息</string>
+    <string name="widget_no_classes">今日无课</string>
     <string name="widget_all_done">今日课程已结束</string>
     <string name="widget_week">第 %1$d 周</string>
     <string name="widget_period">第 %1$d–%2$d 节</string>
