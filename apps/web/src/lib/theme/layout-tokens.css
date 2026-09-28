@@ -148,9 +148,13 @@
 		display: none;
 	}
 
-	.app-scroll-y,
-	.secondary-scroll {
+	.app-scroll-y {
 		overscroll-behavior-y: none;
+	}
+
+	.native-overscroll-y,
+	.secondary-scroll {
+		overscroll-behavior-y: contain;
 	}
 
 	.secondary-scroll {
