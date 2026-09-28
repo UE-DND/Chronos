@@ -162,7 +162,7 @@
 		-ms-overflow-style: none;
 	}
 
-	.android-scroll-boundary-feedback {
+	.scroll-boundary-feedback {
 		position: fixed;
 		z-index: calc(var(--z-secondary-page) + 1);
 		height: 32px;
@@ -176,11 +176,11 @@
 		transition: opacity 90ms linear;
 	}
 
-	.android-scroll-boundary-feedback[data-edge='bottom'] {
+	.scroll-boundary-feedback[data-edge='bottom'] {
 		transform: rotate(180deg);
 	}
 
-	:root.reduce-motion .android-scroll-boundary-feedback {
+	:root.reduce-motion .scroll-boundary-feedback {
 		transition: none;
 	}
 

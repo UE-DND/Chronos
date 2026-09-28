@@ -16,10 +16,10 @@ function findScrollSurface(target: EventTarget | null): HTMLElement | null {
 	return target.closest<HTMLElement>(SCROLL_SURFACE_SELECTOR);
 }
 
-/** Shows a brief edge glow on Android without moving or intercepting the scroll surface. */
-export function installAndroidScrollBoundaryFeedback(doc: Document = document): () => void {
+/** Shows a brief edge glow without moving or intercepting the scroll surface. */
+export function installScrollBoundaryFeedback(doc: Document = document): () => void {
 	const indicator = doc.createElement('div');
-	indicator.className = 'android-scroll-boundary-feedback';
+	indicator.className = 'scroll-boundary-feedback';
 	indicator.setAttribute('aria-hidden', 'true');
 	doc.body.append(indicator);
 
@@ -120,16 +120,33 @@ export function installAndroidScrollBoundaryFeedback(doc: Document = document): 
 		if (ended || event.touches.length === 0) hide();
 	}
 
+	function onWheel(event: WheelEvent) {
+		const node = findScrollSurface(event.target);
+		if (!node || Math.abs(event.deltaY) < 1) return;
+
+		const maxScrollTop = Math.max(0, node.scrollHeight - node.clientHeight);
+		const atTop = node.scrollTop <= 0.5;
+		const atBottom = node.scrollTop >= maxScrollTop - 0.5;
+		const edge = atTop && event.deltaY < 0 ? 'top' : atBottom && event.deltaY > 0 ? 'bottom' : null;
+		if (!edge) return;
+
+		show(node, edge, Math.min(MAX_PULL_PX, Math.abs(event.deltaY)));
+		if (hideTimer !== undefined) clearTimeout(hideTimer);
+		hideTimer = setTimeout(hideIndicator, 220);
+	}
+
 	doc.addEventListener('touchstart', onTouchStart, { passive: true, capture: true });
 	doc.addEventListener('touchmove', onTouchMove, { passive: true, capture: true });
 	doc.addEventListener('touchend', onTouchEnd, { passive: true, capture: true });
 	doc.addEventListener('touchcancel', hide, { passive: true, capture: true });
+	doc.addEventListener('wheel', onWheel, { passive: true, capture: true });
 
 	return () => {
 		doc.removeEventListener('touchstart', onTouchStart, true);
 		doc.removeEventListener('touchmove', onTouchMove, true);
 		doc.removeEventListener('touchend', onTouchEnd, true);
 		doc.removeEventListener('touchcancel', hide, true);
+		doc.removeEventListener('wheel', onWheel, true);
 		if (hideTimer !== undefined) clearTimeout(hideTimer);
 		indicator.remove();
 	};
