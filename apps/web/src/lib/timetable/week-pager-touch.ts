@@ -5,7 +5,8 @@ const HORIZONTAL_RATIO = 1.35;
 const COMMIT_DISTANCE_RATIO = 0.23;
 const FLING_DISTANCE_PX = 24;
 const FLING_VELOCITY_PX_MS = 0.5;
-const SETTLE_MS = 180;
+const MIN_SETTLE_MS = 80;
+const MAX_SETTLE_MS = 100;
 
 /** Keep touch paging independent of the browser's fling distance and axis heuristic. */
 export function createWeekPagerTouch(
@@ -41,7 +42,11 @@ export function createWeekPagerTouch(
 	function settle(target: number) {
 		stopAnimation();
 		const from = node.scrollLeft;
-		const duration = isReducedMotionActive() ? 0 : SETTLE_MS;
+		const distance = target - from;
+		const duration = isReducedMotionActive()
+			? 0
+			: MIN_SETTLE_MS +
+				Math.min(1, Math.abs(distance) / node.clientWidth) * (MAX_SETTLE_MS - MIN_SETTLE_MS);
 		if (duration === 0 || Math.abs(target - from) < 1) {
 			node.scrollLeft = target;
 			restoreSnap();
@@ -51,7 +56,7 @@ export function createWeekPagerTouch(
 		const started = performance.now();
 		function step(now: number) {
 			const t = Math.min(1, (now - started) / duration);
-			node.scrollLeft = from + (target - from) * (1 - (1 - t) ** 3);
+			node.scrollLeft = from + distance * (1 - (1 - t) ** 2.25);
 			if (t < 1) {
 				frame = requestAnimationFrame(step);
 			} else {

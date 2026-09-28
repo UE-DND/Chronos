@@ -100,6 +100,28 @@ describe('week pager touch', () => {
 		h.touch.destroy();
 	});
 
+	it('settles a short return sooner than a nearly full-page flick', () => {
+		const h = createHarness();
+		h.pointer('pointerdown', 500, 500);
+		h.pointer('pointermove', 460, 500);
+		h.advance(200);
+		h.pointer('pointerup', 460, 500);
+		h.advance(96);
+		expect(h.node.scrollLeft).toBe(9000);
+		expect(h.onSettled).toHaveBeenCalledTimes(1);
+
+		h.pointer('pointerdown', 500, 500);
+		h.pointer('pointermove', 460, 500);
+		h.pointer('pointerup', 460, 500);
+		h.advance(64);
+		expect(h.node.scrollLeft).toBeGreaterThan(9900);
+		expect(h.onSettled).toHaveBeenCalledTimes(1);
+		h.advance(48);
+		expect(h.node.scrollLeft).toBe(10000);
+		expect(h.onSettled).toHaveBeenCalledTimes(2);
+		h.touch.destroy();
+	});
+
 	it('restores native snapping after a new touch interrupts settling', () => {
 		const h = createHarness();
 		h.pointer('pointerdown', 500, 500);
