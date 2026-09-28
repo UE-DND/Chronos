@@ -13,9 +13,7 @@ type ActivePull = {
 
 function findScrollSurface(target: EventTarget | null): HTMLElement | null {
 	if (!(target instanceof Element)) return null;
-	const node = target.closest<HTMLElement>(SCROLL_SURFACE_SELECTOR);
-	if (!node || node.scrollHeight <= node.clientHeight + 1) return null;
-	return node;
+	return target.closest<HTMLElement>(SCROLL_SURFACE_SELECTOR);
 }
 
 /** Shows a brief edge glow on Android without moving or intercepting the scroll surface. */
