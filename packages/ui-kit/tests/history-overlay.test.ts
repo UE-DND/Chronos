@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { createHistoryOverlaySync } from '../src/overlay/history-overlay';
 afterEach(() => vi.unstubAllGlobals());
 describe('overlay lifecycle', () => {
