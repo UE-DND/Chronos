@@ -15,6 +15,10 @@ import {
 import type { AndroidStableUpdate } from '../../packages/core/src/types/host-update';
 
 const temporary: string[] = [];
+const androidReleaseWorkflow = readFileSync(
+	new URL('../../.github/workflows/release.yml', import.meta.url),
+	'utf8'
+);
 vi.mock('node:child_process', () => ({ execFileSync: vi.fn() }));
 afterEach(() => {
 	vi.resetAllMocks();
@@ -68,6 +72,22 @@ function release(version: string): AndroidStableUpdate {
 	};
 }
 describe('ready Android publishing', () => {
+	it('requires PostHog configuration for every official Android profile', () => {
+		expect(androidReleaseWorkflow).toContain('PUBLIC_POSTHOG_KEY: ${{ vars.PUBLIC_POSTHOG_KEY }}');
+		expect(androidReleaseWorkflow).toContain(
+			'PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}'
+		);
+		expect(androidReleaseWorkflow).toContain(
+			'if [[ -z "$PUBLIC_POSTHOG_KEY" || -z "$PUBLIC_POSTHOG_HOST" ]]'
+		);
+		expect(androidReleaseWorkflow.indexOf('Validate Android analytics configuration')).toBeLessThan(
+			androidReleaseWorkflow.indexOf('Reuse immutable Android artifacts on retry')
+		);
+		for (const profileId of ANDROID_PROFILES) {
+			expect(androidReleaseWorkflow).toContain(`profile: ${profileId}`);
+		}
+	});
+
 	it('collects CQUT and CQUT offline independently and rejects corrupted APK bytes', () => {
 		const directory = artifacts();
 		expect(Object.keys(collectAndroidRelease(directory).profiles)).toEqual([...ANDROID_PROFILES]);

@@ -5,6 +5,11 @@ const envState = vi.hoisted(() => ({
 	PUBLIC_POSTHOG_HOST: 'https://eu.i.posthog.com'
 }));
 
+const analyticsContext = vi.hoisted(() => ({
+	profile: 'chronos-default',
+	platform: 'web'
+}));
+
 const posthog = vi.hoisted(() => ({
 	init: vi.fn(),
 	capture: vi.fn()
@@ -12,6 +17,14 @@ const posthog = vi.hoisted(() => ({
 
 vi.mock('$env/dynamic/public', () => ({
 	env: envState
+}));
+
+vi.mock('$lib/boot/profile-registry', () => ({
+	resolveActiveProfile: () => ({ profileId: analyticsContext.profile })
+}));
+
+vi.mock('$lib/platform/host-platform', () => ({
+	getHostPlatform: () => ({ platformType: analyticsContext.platform })
 }));
 
 vi.mock('posthog-js', () => ({
@@ -23,6 +36,8 @@ describe('analytics', () => {
 		vi.resetModules();
 		vi.clearAllMocks();
 		envState.PUBLIC_POSTHOG_KEY = '';
+		analyticsContext.profile = 'chronos-default';
+		analyticsContext.platform = 'web';
 		vi.stubEnv('DEV', false);
 	});
 
@@ -66,7 +81,10 @@ describe('analytics', () => {
 		trackEvent('share_link_decode_success');
 
 		await vi.waitFor(() => {
-			expect(posthog.capture).toHaveBeenCalledWith('share_link_decode_success', undefined);
+			expect(posthog.capture).toHaveBeenCalledWith('share_link_decode_success', {
+				chronos_profile: 'chronos-default',
+				chronos_platform: 'web'
+			});
 		});
 	});
 
@@ -75,11 +93,35 @@ describe('analytics', () => {
 		const { initAnalytics, captureAnalyticsEvent } = await import('./analytics');
 
 		initAnalytics();
-		captureAnalyticsEvent('plugin.tool-wallpaper.pick', { source: 'plugin' });
+		captureAnalyticsEvent('plugin.tool-wallpaper.pick', {
+			source: 'plugin',
+			chronos_profile: 'spoofed-profile',
+			chronos_platform: 'ios'
+		});
 
 		await vi.waitFor(() => {
 			expect(posthog.capture).toHaveBeenCalledWith('plugin.tool-wallpaper.pick', {
-				source: 'plugin'
+				source: 'plugin',
+				chronos_profile: 'chronos-default',
+				chronos_platform: 'web'
+			});
+		});
+	});
+
+	it('classifies Android profile events consistently', async () => {
+		envState.PUBLIC_POSTHOG_KEY = 'phc_test';
+		analyticsContext.profile = 'chronos-cqut-offline';
+		analyticsContext.platform = 'android';
+		const { initAnalytics, trackEvent } = await import('./analytics');
+
+		initAnalytics();
+		trackEvent('course_save', { action: 'create' });
+
+		await vi.waitFor(() => {
+			expect(posthog.capture).toHaveBeenCalledWith('course_save', {
+				action: 'create',
+				chronos_profile: 'chronos-cqut-offline',
+				chronos_platform: 'android'
 			});
 		});
 	});
