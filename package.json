@@ -21,7 +21,6 @@
 		"tsx": "^4.23.15",
 		"typescript": "^6.0.3",
 		"vite": "catalog:",
-		"vite-plus": "catalog:",
-		"vitest": "4.1.10"
+		"vite-plus": "catalog:"
 	}
 }

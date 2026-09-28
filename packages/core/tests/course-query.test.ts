@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { createCourse } from '../src/domain/course';
 import { matchesCourseQuery } from '../src/domain/course-query';
 

@@ -110,32 +110,44 @@ export default defineConfig({
 			'build:cqut': {
 				command:
 					'CHRONOS_DISTRIBUTION=cqut node --experimental-strip-types apps/web/scripts/run-host.ts build',
-				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
+				cache: {
+					env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
+				}
 			},
 			'build:cqut-offline': {
 				command:
 					'CHRONOS_DISTRIBUTION=cqut-offline node --experimental-strip-types apps/web/scripts/run-host.ts build',
-				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
+				cache: {
+					env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
+				}
 			},
 			'build:default': {
 				command:
 					'CHRONOS_DISTRIBUTION=default node --experimental-strip-types apps/web/scripts/run-host.ts build',
-				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
+				cache: {
+					env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
+				}
 			},
 			'build:pages': {
 				command:
 					'CHRONOS_DEPLOY_TARGET=pages CHRONOS_DISTRIBUTION=pages node --experimental-strip-types apps/web/scripts/run-host.ts build && cp apps/web/build/404.html apps/web/build/index.html',
-				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
+				cache: {
+					env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
+				}
 			},
 			'build:mobile': {
 				command:
 					'CHRONOS_DEPLOY_TARGET=mobile CHRONOS_DISTRIBUTION=mobile node --experimental-strip-types apps/web/scripts/run-host.ts build',
-				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'SOURCE_DATE_EPOCH']
+				cache: {
+					env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'SOURCE_DATE_EPOCH']
+				}
 			},
 			'mobile:build': {
 				command:
 					'CHRONOS_DEPLOY_TARGET=mobile CHRONOS_DISTRIBUTION=mobile node --experimental-strip-types apps/web/scripts/run-host.ts build && vp run --filter @chronos/mobile sync',
-				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'SOURCE_DATE_EPOCH']
+				cache: {
+					env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'SOURCE_DATE_EPOCH']
+				}
 			},
 			'mobile:sync': {
 				command: 'vp run --filter @chronos/mobile sync',
@@ -148,7 +160,9 @@ export default defineConfig({
 			'bundle:analyze': {
 				command:
 					'ANALYZE=true CHRONOS_DISTRIBUTION=default node --experimental-strip-types apps/web/scripts/run-host.ts build',
-				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
+				cache: {
+					env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
+				}
 			},
 			check:
 				'node --experimental-strip-types scripts/architecture/check-boundaries.ts && node --experimental-strip-types apps/web/scripts/emit-profile-artifacts.ts && vp check && vp run --filter @chronos/web check:web',
@@ -168,7 +182,9 @@ export default defineConfig({
 			},
 			'theme:generate': {
 				command: 'node --experimental-strip-types scripts/generate-theme-tokens.ts',
-				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV']
+				cache: {
+					env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV']
+				}
 			},
 			'icons:png': 'node --experimental-strip-types scripts/generate-icons.ts',
 			'bench:share-link': {
@@ -178,7 +194,9 @@ export default defineConfig({
 			'build:official-plugins': {
 				command:
 					'node --experimental-strip-types scripts/official-plugin-build/build-official-plugins.ts',
-				env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'SOURCE_DATE_EPOCH']
+				cache: {
+					env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'SOURCE_DATE_EPOCH']
+				}
 			},
 			'fetch:holiday-cn-fallback':
 				'node --experimental-strip-types scripts/fetch-holiday-cn-fallback.ts',
