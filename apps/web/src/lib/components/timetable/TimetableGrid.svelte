@@ -650,6 +650,7 @@
 		class="min-h-0 flex-1 {isFitLayout
 			? 'overflow-hidden'
 			: 'app-scroll-y overflow-y-auto'} {timetableBodyTintClass(hasDynamicBackground)}"
+		style="touch-action: pan-y"
 		role="region"
 		aria-label={hostT('timetable.grid.aria')}
 	>
@@ -819,7 +820,7 @@
 		style="{capsuleCornerAttrs(displayCorners)
 			.style}; --capsule: {colors.background}; --capsule-fg: {colors.text}; touch-action: {isEditing
 			? 'none'
-			: 'pan-x pan-y'}; -webkit-user-drag: none; user-select: none;"
+			: 'pan-y'}; -webkit-user-drag: none; user-select: none;"
 		aria-label={buildCourseCapsuleAriaLabel(placed.course, {
 			teacher,
 			isHolidayMuted: placed.displayModel.isHolidayMuted

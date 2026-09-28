@@ -14,6 +14,7 @@ export function createWeekPagerSnap(node: HTMLElement, onSettled: () => void) {
 	let lastTime = performance.now();
 	let lastVelocity = 0;
 	let animation: { frame: number; restore: () => void } | null = null;
+	let suspended = false;
 
 	function cancel() {
 		if (animation) {
@@ -82,7 +83,8 @@ export function createWeekPagerSnap(node: HTMLElement, onSettled: () => void) {
 		lastOffset = offset;
 		lastTime = now;
 		lastVelocity = velocity;
-		if (pointerDown || touching || now < wheelActiveUntil || isReducedMotionActive()) return;
+		if (suspended || pointerDown || touching || now < wheelActiveUntil || isReducedMotionActive())
+			return;
 
 		const width = node.clientWidth;
 		const maxOffset = node.scrollWidth - width;
@@ -144,6 +146,10 @@ export function createWeekPagerSnap(node: HTMLElement, onSettled: () => void) {
 			return animation !== null;
 		},
 		cancel,
+		setSuspended(value: boolean) {
+			if (value) cancel();
+			suspended = value;
+		},
 		destroy() {
 			listeners.abort();
 			cancel();
