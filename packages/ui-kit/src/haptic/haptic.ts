@@ -62,6 +62,7 @@ function vibrateFallback(pattern: number | number[]): boolean {
 
 type NativeHapticCall =
 	| { method: 'impact'; params: { style: 'light' | 'medium' | 'heavy' } }
+	| { method: 'vibrate'; params: { duration: number } }
 	| { method: 'notification'; params: { type: 'success' | 'warning' | 'error' } }
 	| { method: 'selection'; params?: Record<string, never> };
 
@@ -116,7 +117,7 @@ export function triggerVibrate(pattern: number | number[]): boolean {
 /** Vibration API fallbacks (restored pre-native durations, slightly strengthened). */
 const FALLBACK = {
 	selection: 15,
-	light: 25,
+	light: 12,
 	medium: 50,
 	heavy: 80,
 	success: [30, 60, 40] as number[],
@@ -129,9 +130,12 @@ export const haptic = {
 		return triggerNativeOrVibrate({ method: 'selection' }, FALLBACK.selection);
 	},
 
-	/** 轻微反馈：Tab 切换、按钮/开关点击、Radio 勾选 (~25ms fallback) */
+	/** 轻微反馈：Tab 切换、按钮/开关点击、Radio 勾选 (~12ms) */
 	light(): boolean {
-		return triggerNativeOrVibrate({ method: 'impact', params: { style: 'light' } }, FALLBACK.light);
+		return triggerNativeOrVibrate(
+			{ method: 'vibrate', params: { duration: FALLBACK.light } },
+			FALLBACK.light
+		);
 	},
 
 	/** 中度反馈：周数滑动吸附、胶囊 Tab / 分段切换 (~50ms fallback) */

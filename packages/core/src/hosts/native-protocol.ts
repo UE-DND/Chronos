@@ -50,6 +50,10 @@ export interface NativeHapticImpactParams {
 	readonly style: NativeHapticImpactStyle;
 }
 
+export interface NativeHapticVibrateParams {
+	readonly duration: number;
+}
+
 export interface NativeHapticNotificationParams {
 	readonly type: NativeHapticNotificationType;
 }
@@ -71,15 +75,17 @@ export type NativeClipboardMethod = 'readText' | 'writeText';
  * | `impact`       | `{ style: NativeHapticImpactStyle }`        | `void` on success; reject/error |
  * | `notification` | `{ type: NativeHapticNotificationType }`    | `void` on success; reject/error |
  * | `selection`    | `{}` / omitted (optional)                   | `void` on success; reject/error |
+ * | `vibrate`      | `{ duration: number }`                     | `void` on success; reject/error |
  *
  * Hosts should play feedback immediately and resolve with `undefined` (or omit `result`).
  * Reject / return `{ error }` when the platform cannot fire haptics.
  */
-export type NativeHapticMethod = 'impact' | 'notification' | 'selection';
+export type NativeHapticMethod = 'impact' | 'notification' | 'selection' | 'vibrate';
 
 export type NativeHapticRequest =
 	| { readonly method: 'impact'; readonly params: NativeHapticImpactParams }
 	| { readonly method: 'notification'; readonly params: NativeHapticNotificationParams }
+	| { readonly method: 'vibrate'; readonly params: NativeHapticVibrateParams }
 	| { readonly method: 'selection'; readonly params?: NativeHapticSelectionParams };
 
 /**

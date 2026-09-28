@@ -1,5 +1,8 @@
+import { haptic } from '$lib/haptic/haptic';
+
 const SCROLL_SURFACE_SELECTOR = '.native-overscroll-y, .secondary-scroll';
 const MAX_PULL_PX = 56;
+const MIN_HAPTIC_PULL_PX = 12;
 const INDICATOR_HEIGHT_PX = 32;
 const MAX_OPACITY = 0.36;
 const HIDE_DELAY_MS = 180;
@@ -117,7 +120,10 @@ export function installScrollBoundaryFeedback(doc: Document = document): () => v
 		const ended = Array.from(event.changedTouches).some(
 			(touch) => touch.identifier === activePull?.identifier
 		);
-		if (ended || event.touches.length === 0) hide();
+		if (ended || event.touches.length === 0) {
+			if (activePull.strength >= MIN_HAPTIC_PULL_PX) haptic.light();
+			hide();
+		}
 	}
 
 	function onWheel(event: WheelEvent) {

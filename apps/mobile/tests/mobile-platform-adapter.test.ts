@@ -13,6 +13,7 @@ import {
 
 const mockHaptics = vi.hoisted(() => ({
 	impact: vi.fn(),
+	vibrate: vi.fn(),
 	notification: vi.fn(),
 	selectionStart: vi.fn(),
 	selectionChanged: vi.fn()
@@ -154,6 +155,9 @@ describe('mobile-platform-adapter', () => {
 
 			await bridge.callNative('haptic', 'impact', { style: 'heavy' });
 			expect(mockHaptics.impact).toHaveBeenCalledWith({ style: 'HEAVY' });
+
+			await bridge.callNative('haptic', 'vibrate', { duration: 12 });
+			expect(mockHaptics.vibrate).toHaveBeenCalledWith({ duration: 12 });
 		});
 
 		it('maps notification haptic calls to Capacitor Haptics.notification', async () => {
