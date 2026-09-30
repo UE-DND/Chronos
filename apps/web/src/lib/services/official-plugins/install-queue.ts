@@ -37,10 +37,12 @@ export type {
  */
 export class OfficialPluginInstallQueue implements Disposable {
 	private readonly tasks = new Map<string, PluginInstallTask>();
+	private readonly attempts = new Map<string, symbol>();
 	private readonly listeners = new Set<(change: { kind: InstallQueueChangeKind }) => void>();
 	private isProcessing = false;
 	private activeTaskId: string | null = null;
 	private activeController: AbortController | null = null;
+	private activeAttempt: symbol | null = null;
 	private disposed = false;
 
 	constructor(private readonly deps: OfficialPluginInstallQueueDeps) {}
@@ -59,12 +61,14 @@ export class OfficialPluginInstallQueue implements Disposable {
 				return;
 			}
 			this.tasks.set(manifest.id, requeueTask(existing, manifest, manifestUrl));
+			this.attempts.set(manifest.id, Symbol());
 			this.notifyState();
 			void this.processNext();
 			return;
 		}
 
 		this.tasks.set(manifest.id, createQueuedTask(manifest, manifestUrl));
+		this.attempts.set(manifest.id, Symbol());
 		this.notifyState();
 		void this.processNext();
 	}
@@ -103,6 +107,7 @@ export class OfficialPluginInstallQueue implements Disposable {
 		if (task.status !== 'failed' && task.status !== 'canceled') return;
 
 		this.tasks.set(pluginId, requeueTask(task, task.manifest, task.manifestUrl));
+		this.attempts.set(pluginId, Symbol());
 		this.notifyState();
 		void this.processNext();
 	}
@@ -147,6 +152,7 @@ export class OfficialPluginInstallQueue implements Disposable {
 			const task = this.tasks.get(pluginId);
 			if (task && (task.status === 'completed' || task.status === 'canceled')) {
 				this.tasks.delete(pluginId);
+				this.attempts.delete(pluginId);
 				this.notifyState();
 			}
 			return;
@@ -156,6 +162,7 @@ export class OfficialPluginInstallQueue implements Disposable {
 		for (const [id, task] of this.tasks.entries()) {
 			if (task.status === 'completed' || task.status === 'canceled') {
 				this.tasks.delete(id);
+				this.attempts.delete(id);
 				changed = true;
 			}
 		}
@@ -174,6 +181,7 @@ export class OfficialPluginInstallQueue implements Disposable {
 
 	getActiveTask(): PluginInstallTask | undefined {
 		if (!this.activeTaskId) return undefined;
+		if (this.attempts.get(this.activeTaskId) !== this.activeAttempt) return undefined;
 		return this.tasks.get(this.activeTaskId);
 	}
 
@@ -228,6 +236,8 @@ export class OfficialPluginInstallQueue implements Disposable {
 		this.activeController = new AbortController();
 		const controller = this.activeController;
 		const activeId = nextTask.pluginId;
+		const attempt = this.attempts.get(activeId)!;
+		this.activeAttempt = attempt;
 
 		this.tasks.set(activeId, markTaskDownloading(nextTask));
 		this.notifyState();
@@ -237,6 +247,7 @@ export class OfficialPluginInstallQueue implements Disposable {
 			await this.deps.runner(nextTask.manifest, nextTask.manifestUrl, {
 				signal: controller.signal,
 				onProgress: (prog) => {
+					if (this.attempts.get(activeId) !== attempt) return;
 					const current = this.tasks.get(activeId);
 					if (!current || current.status === 'canceled' || controller.signal.aborted) return;
 					this.tasks.set(activeId, updateTaskProgress(current, prog));
@@ -245,7 +256,12 @@ export class OfficialPluginInstallQueue implements Disposable {
 			});
 
 			const current = this.tasks.get(activeId);
-			if (current && current.status !== 'canceled' && !controller.signal.aborted) {
+			if (
+				this.attempts.get(activeId) === attempt &&
+				current &&
+				current.status !== 'canceled' &&
+				!controller.signal.aborted
+			) {
 				const completed = markTaskCompleted(current);
 				this.tasks.set(activeId, completed);
 				this.notifyState();
@@ -253,7 +269,9 @@ export class OfficialPluginInstallQueue implements Disposable {
 				this.clearFinished(activeId);
 			}
 		} catch (err: unknown) {
-			const current = this.tasks.get(activeId) ?? nextTask;
+			// A canceled runner may settle after the same plugin has been queued again.
+			if (this.attempts.get(activeId) !== attempt) return;
+			const current = this.tasks.get(activeId)!;
 			const outcome = resolveTaskErrorOutcome(err, {
 				signalAborted: controller.signal.aborted,
 				currentStatus: current.status
@@ -275,6 +293,7 @@ export class OfficialPluginInstallQueue implements Disposable {
 			this.isProcessing = false;
 			this.activeTaskId = null;
 			this.activeController = null;
+			this.activeAttempt = null;
 			void this.processNext();
 		}
 	}

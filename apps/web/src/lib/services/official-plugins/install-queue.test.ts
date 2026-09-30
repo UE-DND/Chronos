@@ -15,6 +15,65 @@ function createManifest(id: string, name = id): PluginManifest {
 }
 
 describe('OfficialPluginInstallQueue', () => {
+	it.each(['enqueue', 'retry'] as const)(
+		'preserves a new attempt started by %s before the canceled runner settles',
+		async (restart) => {
+			const first = Promise.withResolvers<void>();
+			const second = Promise.withResolvers<void>();
+			let reportOldProgress: NonNullable<Parameters<PluginInstallRunner>[2]>['onProgress'];
+			const runner = vi
+				.fn<PluginInstallRunner>()
+				.mockImplementationOnce((_manifest, _url, options) => {
+					reportOldProgress = options?.onProgress;
+					return first.promise;
+				})
+				.mockImplementationOnce(() => second.promise);
+			const onTaskCanceled = vi.fn();
+			const onTaskCompleted = vi.fn();
+			const queue = new OfficialPluginInstallQueue({ runner, onTaskCanceled, onTaskCompleted });
+			const manifest = createManifest('theme');
+			queue.enqueue(manifest);
+			queue.cancel(manifest.id);
+			if (restart === 'enqueue') queue.enqueue(manifest);
+			else queue.retry(manifest.id);
+			reportOldProgress?.({ stage: 'verifying', percent: 80 });
+			expect(queue.getTask(manifest.id)?.status).toBe('queued');
+			expect(queue.getActiveTask()).toBeUndefined();
+			first.reject(new DOMException('Aborted', 'AbortError'));
+			await Promise.resolve();
+			await Promise.resolve();
+			expect(runner).toHaveBeenCalledTimes(2);
+			expect(queue.getTask(manifest.id)?.status).toBe('downloading');
+			expect(onTaskCanceled).not.toHaveBeenCalled();
+			reportOldProgress?.({ stage: 'installing', percent: 90 });
+			expect(queue.getTask(manifest.id)?.progress.percent).toBe(0);
+			second.resolve();
+			await Promise.resolve();
+			await Promise.resolve();
+			expect(onTaskCompleted).toHaveBeenCalledTimes(1);
+			expect(queue.getTask(manifest.id)).toBeUndefined();
+		}
+	);
+
+	it('does not resurrect a canceled task removed before its runner fails', async () => {
+		const pending = Promise.withResolvers<void>();
+		const queue = new OfficialPluginInstallQueue({ runner: () => pending.promise });
+		const statuses: string[] = [];
+		queue.onChanged(() => {
+			const task = queue.getTask('theme');
+			if (task) statuses.push(task.status);
+		});
+		queue.enqueue(createManifest('theme'));
+		queue.cancel('theme');
+		queue.clearFinished('theme');
+		statuses.length = 0;
+		pending.reject(new DOMException('Aborted', 'AbortError'));
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(statuses).toEqual([]);
+		expect(queue.getTask('theme')).toBeUndefined();
+	});
+
 	it('starts the first enqueued task immediately and marks it active', async () => {
 		let resolveInstall!: () => void;
 		const runner = vi.fn().mockImplementation(() => {
