@@ -12,7 +12,6 @@ function record(
 ): InstalledOfficialPluginRecord {
 	return {
 		code: null,
-		enabled: true,
 		origin: { kind: 'user' as const },
 		installedAt: 1,
 		...overrides

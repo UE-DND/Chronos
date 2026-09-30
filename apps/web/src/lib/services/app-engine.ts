@@ -107,9 +107,8 @@ async function bootstrapEnginePhase2(engine: ChronosEngine): Promise<void> {
 			service.listFailures().size > 0 ||
 			records.some(
 				(record) =>
-					record.enabled &&
-					((!record.manifest.colorsUrl && !service.isPluginActive(record.manifest.id)) ||
-						record.manifest.themeId === preferred)
+					(!record.manifest.colorsUrl && !service.isPluginActive(record.manifest.id)) ||
+					record.manifest.themeId === preferred
 			);
 		if (!couldRecover) await engine.revertToDefaultThemes();
 	}
@@ -205,7 +204,7 @@ function getMissingPreinstalls(
 	const installed = new Map(service.listInstalled().map((record) => [record.manifest.id, record]));
 	return profile.preinstall.flatMap((entry) => {
 		const record = installed.get(entry.id);
-		return record && record.enabled === (entry.enabled !== false) ? [] : [entry.id];
+		return record ? [] : [entry.id];
 	});
 }
 

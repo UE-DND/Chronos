@@ -41,7 +41,7 @@ export function parseInstallationState(value: unknown): PluginInstallationState 
 		state.records.some(
 			(record) =>
 				!record?.manifest?.id ||
-				typeof record.enabled !== 'boolean' ||
+				Object.hasOwn(record, 'enabled') ||
 				!(
 					record.origin?.kind === 'user' ||
 					(record.origin?.kind === 'profile' && typeof record.origin.profileId === 'string')
@@ -50,6 +50,9 @@ export function parseInstallationState(value: unknown): PluginInstallationState 
 		new Set(state.records.map((record) => record.manifest.id)).size !== state.records.length ||
 		(state.prepared &&
 			(!Array.isArray(state.prepared.records) ||
+				state.prepared.records.some(
+					(record) => !record?.manifest?.id || Object.hasOwn(record, 'enabled')
+				) ||
 				!state.prepared.target?.buildId ||
 				!Number.isSafeInteger(state.prepared.revision) ||
 				typeof state.prepared.token !== 'string' ||
@@ -168,8 +171,7 @@ export class OfficialPluginInstalledStore {
 			) {
 				for (const record of state.prepared.records) {
 					const index = state.records.findIndex((old) => old.manifest.id === record.manifest.id);
-					if (index >= 0)
-						state.records[index] = { ...record, enabled: state.records[index].enabled };
+					if (index >= 0) state.records[index] = record;
 				}
 				state.revision++;
 				delete state.prepared;
@@ -219,12 +221,13 @@ export class OfficialPluginInstalledStore {
 			state.removed = [...new Set([...state.removed, id])];
 		});
 	}
-	async setEnabled(id: string, enabled: boolean, acceptedHostVersion?: string) {
+	async acceptHostVersion(id: string, hostVersion: string, expectedRevision: number) {
 		await this.mutate((state) => {
 			const record = state.records.find((record) => record.manifest.id === id);
 			if (!record) throw new Error(`Plugin not installed: ${id}`);
-			record.enabled = enabled;
-			if (acceptedHostVersion) record.acceptedHostVersion = acceptedHostVersion;
+			if ((record.revision ?? -1) !== expectedRevision)
+				throw new Error('Plugin changed during compatibility confirmation; retry');
+			record.acceptedHostVersion = hostVersion;
 			record.revision = (record.revision ?? 0) + 1;
 		});
 	}

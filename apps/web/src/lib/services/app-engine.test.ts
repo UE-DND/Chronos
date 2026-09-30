@@ -189,7 +189,6 @@ describe('app-engine bootstrap', () => {
 			acceptedHostVersion: APP_VERSION,
 			colorsJson: themeColorsJson,
 			manifestUrl: 'https://example.com/theme-yumemita.manifest.json',
-			enabled: true,
 			origin: { kind: 'user' as const },
 			installedAt: 1
 		};
@@ -354,7 +353,6 @@ describe('theme preferences during deferred boot', () => {
 				colorsUrl: '/broken.json'
 			},
 			colorsJson: 'invalid json',
-			enabled: true,
 			origin: { kind: 'user' as const },
 			installedAt: 1
 		};
