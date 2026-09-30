@@ -15,7 +15,6 @@ export interface InstalledOfficialPluginRecord {
 	iconThemeJson?: string | null;
 	cssCode?: string | null;
 	manifestUrl?: string;
-	enabled: boolean;
 	installedAt: number;
 }
 

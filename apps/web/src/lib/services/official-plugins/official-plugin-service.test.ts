@@ -313,7 +313,6 @@ describe('OfficialPluginService', () => {
 					manifest,
 					acceptedHostVersion: '0.4.1',
 					code: SAMPLE_BUNDLE,
-					enabled: true,
 					origin: { kind: 'user' as const },
 					installedAt: Date.now()
 				}
@@ -464,7 +463,6 @@ describe('OfficialPluginService', () => {
 					code: SAMPLE_BUNDLE,
 					cssCode: '.x{color:red}',
 					manifestUrl: OFFICIAL_MANIFEST_URL,
-					enabled: true,
 					origin: { kind: 'user' as const },
 					installedAt: Date.now()
 				}
@@ -518,7 +516,6 @@ describe('OfficialPluginService', () => {
 					manifest: staleManifest,
 					code: SAMPLE_BUNDLE,
 					manifestUrl: OFFICIAL_MANIFEST_URL,
-					enabled: true,
 					origin: { kind: 'user' as const },
 					installedAt: Date.now()
 				}
@@ -581,7 +578,6 @@ describe('OfficialPluginService', () => {
 					manifest,
 					code: SAMPLE_BUNDLE,
 					manifestUrl,
-					enabled: true,
 					origin: { kind: 'user' as const },
 					installedAt: Date.now()
 				}
@@ -598,7 +594,7 @@ describe('OfficialPluginService', () => {
 		expect(httpRequest).not.toHaveBeenCalled();
 		expect(engine.isPluginLoaded('test-plugin')).toBe(false);
 		expect(service.getUpdateStatus('test-plugin')?.status).toBe('confirmation-required');
-		await service.enable('test-plugin');
+		await service.confirmHostCompatibility('test-plugin');
 		expect(engine.isPluginLoaded('test-plugin')).toBe(true);
 		expect(service.getInstalled('test-plugin')?.acceptedHostVersion).toBe('0.4.1');
 	});
@@ -624,7 +620,6 @@ describe('OfficialPluginService', () => {
 					manifest: staleManifest,
 					code: SAMPLE_BUNDLE,
 					manifestUrl: OFFICIAL_MANIFEST_URL,
-					enabled: true,
 					origin: { kind: 'user' as const },
 					installedAt: Date.now()
 				}
@@ -667,7 +662,6 @@ describe('OfficialPluginService', () => {
 					manifest: staleManifest,
 					code: SAMPLE_BUNDLE,
 					manifestUrl: OFFICIAL_MANIFEST_URL,
-					enabled: true,
 					origin: { kind: 'user' as const },
 					installedAt: Date.now()
 				}
@@ -730,7 +724,6 @@ describe('OfficialPluginService', () => {
 			manifest,
 			manifestUrl: OFFICIAL_MANIFEST_URL,
 			code: SAMPLE_BUNDLE,
-			enabled: true,
 			origin: { kind: 'user' },
 			installedAt: 1
 		});
@@ -762,7 +755,7 @@ describe('OfficialPluginService', () => {
 		service.dispose();
 	});
 
-	it('prepares disabled official plugins for the next Web host without executing their code', async () => {
+	it('prepares installed official plugins for the next Web host without executing their code', async () => {
 		const hash = await engine.runtime.sha256(SAMPLE_BUNDLE);
 		const manifest: PluginManifest = {
 			id: 'test-plugin',
@@ -781,7 +774,6 @@ describe('OfficialPluginService', () => {
 				{
 					manifest,
 					code: SAMPLE_BUNDLE,
-					enabled: false,
 					origin: { kind: 'user' },
 					installedAt: 1,
 					manifestUrl: OFFICIAL_MANIFEST_URL
@@ -821,12 +813,14 @@ describe('OfficialPluginService', () => {
 		});
 		expect(load).not.toHaveBeenCalled();
 		expect(service.getInstalled('test-plugin')?.manifest.version).toBe('0.4.1');
-		expect(service.installationStore.prepared?.records[0].enabled).toBe(false);
-		await expect(service.enable('test-plugin')).rejects.toThrow('Application update in progress');
+		expect(service.installationStore.prepared?.records).toHaveLength(1);
+		await expect(service.installationStore.remove('test-plugin')).rejects.toThrow(
+			'Application update in progress'
+		);
 		expect(load).not.toHaveBeenCalled();
 		await service.installationStore.startHost(target);
 		expect(service.getInstalled('test-plugin')?.manifest.version).toBe('0.4.2');
-		expect(service.getInstalled('test-plugin')?.enabled).toBe(false);
+		expect(service.getInstalled('test-plugin')).toBeDefined();
 	});
 
 	it('installs plugin through installQueue with progress and state transitions', async () => {
@@ -897,7 +891,7 @@ describe('OfficialPluginService', () => {
 		expect(service.isPluginActive('test-plugin')).toBe(true);
 	});
 
-	it('updates disabled plugin assets through applyHotUpdate without activating runtime', async () => {
+	it('updates plugin assets through applyHotUpdate while preserving its data', async () => {
 		const hash = await engine.env.runtime.sha256(SAMPLE_BUNDLE);
 		const manifest: PluginManifest = {
 			id: 'test-plugin',
@@ -914,7 +908,6 @@ describe('OfficialPluginService', () => {
 
 		httpRequest.mockResolvedValueOnce(httpResponse({ text: async () => SAMPLE_BUNDLE }));
 		await service.install(manifest);
-		await service.disable('test-plugin');
 		await engine.storage.setPluginData('test-plugin', PLUGIN_CONFIG_STORAGE_KEY, {
 			choice: 'kept'
 		});
@@ -930,12 +923,11 @@ describe('OfficialPluginService', () => {
 		});
 
 		expect(updated.code).toBe(updatedBundle);
-		expect(updated.enabled).toBe(false);
 		expect(await engine.storage.getPluginData('test-plugin', PLUGIN_CONFIG_STORAGE_KEY)).toEqual({
 			choice: 'kept'
 		});
 		expect(await engine.storage.getPluginData('test-plugin', 'private')).toEqual({ draft: 'kept' });
-		expect(service.isPluginActive('test-plugin')).toBe(false);
+		expect(service.isPluginActive('test-plugin')).toBe(true);
 	});
 
 	it('rolls back runtime when an upgrade install is aborted after deactivation', async () => {
@@ -1141,56 +1133,6 @@ describe('profile preinstallation lifecycle', () => {
 		engine.dispose();
 	});
 
-	it('keeps failed enables disabled and allows retry', async () => {
-		const { engine, service, profile, tool } = await setupProfile();
-		await service.prepareProfile({
-			...profile,
-			preinstall: [{ id: profile.defaultTheme.pluginId }]
-		});
-		await service.install(tool);
-		await service.disable(tool.id);
-		const load = vi
-			.spyOn(engine, 'loadPlugin')
-			.mockRejectedValueOnce(new Error('activation failed'));
-		await expect(service.enable(tool.id)).rejects.toThrow('activation failed');
-		expect(service.getInstalled(tool.id)?.enabled).toBe(false);
-		expect(service.isPluginActive(tool.id)).toBe(false);
-		const store = new OfficialPluginInstalledStore(engine);
-		await store.load();
-		expect(store.find(tool.id)?.enabled).toBe(false);
-		await service.enable(tool.id);
-		expect(service.isPluginActive(tool.id)).toBe(true);
-		expect(service.getInstalled(tool.id)?.enabled).toBe(true);
-		load.mockRestore();
-		service.dispose();
-		engine.dispose();
-	});
-
-	it('rolls back activation when persisting the enabled flag fails', async () => {
-		const { engine, service, profile, tool } = await setupProfile();
-		await service.prepareProfile({
-			...profile,
-			preinstall: [{ id: profile.defaultTheme.pluginId }]
-		});
-		await service.install(tool);
-		await service.disable(tool.id);
-		const load = vi
-			.spyOn(engine.storage, 'setPluginData')
-			.mockRejectedValueOnce(new Error('storage failed'));
-		await expect(service.enable(tool.id)).rejects.toThrow('storage failed');
-		expect(service.getInstalled(tool.id)?.enabled).toBe(false);
-		expect(service.isPluginActive(tool.id)).toBe(false);
-		const store = new OfficialPluginInstalledStore(engine);
-		await store.load();
-		expect(store.find(tool.id)?.enabled).toBe(false);
-		await service.enable(tool.id);
-		expect(service.isPluginActive(tool.id)).toBe(true);
-		expect(service.getInstalled(tool.id)?.enabled).toBe(true);
-		load.mockRestore();
-		service.dispose();
-		engine.dispose();
-	});
-
 	it('boots a non-M3 default first and shares records with market management', async () => {
 		const { engine, service } = await setupProfile();
 		expect(engine.state.activeThemeId).toBe('custom-default');
@@ -1202,7 +1144,6 @@ describe('profile preinstallation lifecycle', () => {
 			profileId: 'custom'
 		});
 		expect(engine.getPluginContext('test-plugin').config.answer).toBe(42);
-		await expect(service.disable('custom-theme')).rejects.toThrow('required');
 		await expect(service.uninstall('custom-theme')).rejects.toThrow('required');
 		service.dispose();
 		engine.dispose();
@@ -1210,14 +1151,12 @@ describe('profile preinstallation lifecycle', () => {
 	it('restores required installs and configuration, and releases plugins removed from the profile', async () => {
 		const { engine, service, profile, tool } = await setupProfile();
 		await service.init();
-		await expect(service.disable(tool.id)).rejects.toThrow('required');
 		await expect(service.uninstall(tool.id)).rejects.toThrow('required');
 		const store = new OfficialPluginInstalledStore(engine);
 		await store.load();
 		await store.upsert({
 			...service.getInstalled(tool.id)!,
-			origin: { kind: 'user' },
-			enabled: false
+			origin: { kind: 'user' }
 		});
 		await engine.storage.setPluginData(tool.id, '__config__', { answer: 99 });
 		service.dispose();
@@ -1227,22 +1166,20 @@ describe('profile preinstallation lifecycle', () => {
 			preinstall: [{ id: 'custom-theme' }, { id: tool.id, config: { answer: 0 } }]
 		});
 		await second.init();
-		expect(second.getInstalled(tool.id)?.enabled).toBe(true);
+		expect(second.getInstalled(tool.id)).toBeDefined();
 		expect(second.isPreinstalledPlugin(tool.id)).toBe(true);
 		expect(second.getInstalled(tool.id)?.origin).toEqual({ kind: 'user' });
 		await expect(second.uninstall(tool.id)).rejects.toThrow('required');
 		expect(second.getInstalled(tool.id)?.initialConfig).toEqual({ answer: 42 });
-		await second.enable(tool.id);
 		expect(engine.getPluginContext(tool.id).config.answer).toBe(99);
 		await second.prepareProfile({ ...profile, preinstall: [{ id: 'custom-theme' }] });
 		expect(second.isPreinstalledPlugin(tool.id)).toBe(false);
-		await second.disable(tool.id);
 		await second.uninstall(tool.id);
 		second.dispose();
 		const third = createService(engine);
 		await third.prepareProfile(profile);
 		await third.init();
-		expect(third.getInstalled(tool.id)?.enabled).toBe(true);
+		expect(third.getInstalled(tool.id)).toBeDefined();
 		const state = await engine.storage.getPluginData<{ removed: string[] }>(
 			OFFICIAL_PLUGINS_PLUGIN_ID,
 			INSTALLED_STORAGE_KEY
@@ -1276,7 +1213,7 @@ describe('profile preinstallation lifecycle', () => {
 		});
 		const next = createService(engine);
 		await next.prepareProfile(profile);
-		expect(next.getInstalled(theme.id)?.enabled).toBe(true);
+		expect(next.getInstalled(theme.id)).toBeDefined();
 		expect(engine.defaultThemeId).toBe('custom-default');
 		next.dispose();
 		engine.dispose();

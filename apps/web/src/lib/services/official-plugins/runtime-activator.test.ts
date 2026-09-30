@@ -89,7 +89,6 @@ describe('OfficialPluginRuntimeActivator', () => {
 						sha256: 'different-hash'
 					} as never,
 					code: SAMPLE_BUNDLE,
-					enabled: true,
 					origin: { kind: 'user' },
 					installedAt: 1
 				})
@@ -125,7 +124,6 @@ describe('OfficialPluginRuntimeActivator', () => {
 					variants: { light: { colors: colors.light }, dark: { colors: colors.dark } }
 				}),
 				code: `export default { id: 'hybrid', apply(ctx) { ctx.registerSlot('theme.definition', { id: 'hybrid-theme', name: 'Hybrid', workbenchColors: ${JSON.stringify(mismatch ? { light: {}, dark: {} } : colors)}, resolveWallpaperColors() { return { workbenchColors: {} }; } }); } };`,
-				enabled: true,
 				origin: { kind: 'user' as const },
 				installedAt: 1
 			};
@@ -158,7 +156,6 @@ describe('OfficialPluginRuntimeActivator', () => {
 				colorsSha256: 'hash'
 			},
 			colorsJson: THEME_COLORS_JSON,
-			enabled: true,
 			origin: { kind: 'user' as const },
 			installedAt: 1
 		});
@@ -182,7 +179,6 @@ describe('OfficialPluginRuntimeActivator', () => {
 					sha256: 'hash'
 				},
 				code: SAMPLE_BUNDLE,
-				enabled: true,
 				origin: { kind: 'user' as const },
 				installedAt: 1
 			})
@@ -241,7 +237,6 @@ describe('OfficialPluginRuntimeActivator', () => {
 				},
 				code: SAMPLE_BUNDLE,
 				cssCode: '.x{color:red}',
-				enabled: true,
 				origin: { kind: 'user' as const },
 				installedAt: 1
 			})
@@ -311,7 +306,6 @@ describe('OfficialPluginRuntimeActivator', () => {
 			},
 			code: SAMPLE_BUNDLE,
 			cssCode: '.x{color:red}',
-			enabled: true,
 			origin: { kind: 'user' as const },
 			installedAt: 1
 		});
@@ -335,7 +329,6 @@ describe('OfficialPluginRuntimeActivator', () => {
 				sha256: 'hash'
 			},
 			code: SAMPLE_BUNDLE,
-			enabled: true,
 			origin: { kind: 'user' as const },
 			installedAt: 1
 		});
@@ -362,7 +355,6 @@ describe('OfficialPluginRuntimeActivator', () => {
 				sha256: 'hash'
 			},
 			code: SAMPLE_BUNDLE,
-			enabled: true,
 			origin: { kind: 'user' as const },
 			installedAt: 1
 		});
@@ -394,7 +386,6 @@ describe('OfficialPluginRuntimeActivator', () => {
 				},
 				colorsJson: THEME_COLORS_JSON,
 				iconThemeJson: '{"id":"icon-test","icons":{}}',
-				enabled: true,
 				origin: { kind: 'user' as const },
 				installedAt: 1
 			})
@@ -421,7 +412,6 @@ describe('OfficialPluginRuntimeActivator', () => {
 				sha256: 'hash'
 			},
 			code: SAMPLE_BUNDLE,
-			enabled: true,
 			origin: { kind: 'user' as const },
 			installedAt: 1
 		});

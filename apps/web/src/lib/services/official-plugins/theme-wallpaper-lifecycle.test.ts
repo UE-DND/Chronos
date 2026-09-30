@@ -33,7 +33,6 @@ async function setup() {
 	const store = new OfficialPluginInstalledStore(engine);
 	const initial = {
 		manifest,
-		enabled: true,
 		origin: { kind: 'user' as const },
 		installedAt: 1,
 		wallpaperAssetId: 'old-image'
@@ -78,7 +77,6 @@ describe('theme image replacement lifecycle', () => {
 		expect(blobs.has('custom-wallpaper')).toBe(true);
 		expect(runtime.deactivate).toHaveBeenCalledWith(manifest.id, { revertThemes: false });
 		expect(JSON.stringify(next)).not.toContain('blob');
-		await service.disable(manifest.id);
 		expect(blobs.has(next.wallpaperAssetId!)).toBe(true);
 		await service.uninstall(manifest.id);
 		expect([...blobs.keys()]).toEqual(['custom-wallpaper']);

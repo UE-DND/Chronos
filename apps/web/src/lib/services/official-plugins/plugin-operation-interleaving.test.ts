@@ -219,13 +219,13 @@ describe('PluginOperationCoordinator interleaving in OfficialPluginService', () 
 			await new Promise((r) => setTimeout(r, 10));
 		}
 
-		// disable aborts current operations for test-plugin
-		const disablePromise = service.disable('test-plugin').catch(() => {
+		// uninstall aborts current operations for test-plugin
+		const uninstallPromise = service.uninstall('test-plugin').catch(() => {
 			// expected to throw Plugin not installed since it wasn't yet installed
 		});
 
 		await expect(installPromise).rejects.toThrow(/abort/i);
-		await disablePromise;
+		await uninstallPromise;
 
 		expect(service.getInstalled('test-plugin')).toBeUndefined();
 		expect(engine.isPluginLoaded('test-plugin')).toBe(false);
@@ -324,39 +324,5 @@ describe('PluginOperationCoordinator interleaving in OfficialPluginService', () 
 		expect(service.getInstalled('plugin-b')).toBeDefined();
 		expect(engine.isPluginLoaded('plugin-a')).toBe(true);
 		expect(engine.isPluginLoaded('plugin-b')).toBe(true);
-	});
-
-	it('serializes operations on the same plugin in FIFO order', async () => {
-		const hash = await engine.env.runtime.sha256(SAMPLE_BUNDLE);
-		const manifest: PluginManifest = {
-			id: 'test-plugin',
-			name: { 'zh-CN': 'Test' },
-			version: '1.0.0',
-			description: { 'zh-CN': 'Test' },
-			author: 'Chronos',
-			type: 'tool',
-			toolGroup: 'utility',
-			bundleFormat: 'esm',
-			bundleUrl: '/test.bundle.js',
-			sha256: hash
-		};
-
-		httpRequest.mockResolvedValue(httpResponse({ text: async () => SAMPLE_BUNDLE }));
-		await service.install(manifest, '/test.manifest.json');
-
-		const executionOrder: string[] = [];
-
-		const p1 = service.disable('test-plugin').then(() => {
-			executionOrder.push('disable');
-		});
-		const p2 = service.enable('test-plugin').then(() => {
-			executionOrder.push('enable');
-		});
-
-		await Promise.all([p1, p2]);
-
-		expect(executionOrder).toEqual(['disable', 'enable']);
-		expect(service.getInstalled('test-plugin')?.enabled).toBe(true);
-		expect(engine.isPluginLoaded('test-plugin')).toBe(true);
 	});
 });

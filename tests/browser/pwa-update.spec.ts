@@ -125,7 +125,7 @@ test('rejects an unauthorized worker and keeps the current timetable', async ({
 	).toBe(false);
 });
 
-test('retries preparation, updates every window and preserves disabled plugins offline', async ({
+test('retries preparation, updates every window and preserves installed plugins offline', async ({
 	page,
 	context,
 	request
@@ -145,16 +145,6 @@ test('retries preparation, updates every window and preserves disabled plugins o
 			)
 		)
 		.toBe(true);
-	await page.getByRole('tab', { name: /^已安装/ }).click();
-	await page.getByRole('switch').click();
-	await expect
-		.poll(
-			async () =>
-				(await stored(page)).installation?.records.find(
-					(record: { manifest: { id: string } }) => record.manifest.id === 'tool-clock'
-				)?.enabled
-		)
-		.toBe(false);
 	const other = await context.newPage();
 	await other.goto('/Chronos/');
 	await expect.poll(() => workerBuild(other)).toBe(oldFeed.host.buildId);
@@ -179,10 +169,10 @@ test('retries preparation, updates every window and preserves disabled plugins o
 	const after = await stored(page);
 	expect(after.installation.prepared).toBeUndefined();
 	expect(
-		after.installation.records.find(
+		after.installation.records.some(
 			(record: { manifest: { id: string } }) => record.manifest.id === 'tool-clock'
-		)?.enabled
-	).toBe(false);
+		)
+	).toBe(true);
 	expect(after.courses).toEqual(before.courses);
 	expect(after.tables).toEqual(before.tables);
 	await context.setOffline(true);

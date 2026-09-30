@@ -157,23 +157,17 @@ export async function handlePluginHmr(
 		options?.signal?.throwIfAborted();
 		const updated = await service.applyHotUpdate(data, { signal: options?.signal });
 		if (options?.signal?.aborted) return false;
-		if (updated.enabled && updated.manifest.type === 'theme') {
+		if (updated.manifest.type === 'theme') {
 			const manifest = updated.manifest as PluginManifest & { themeId?: string };
 			const active = engine.state.activeThemeId;
 			if (active && (active === id || manifest.themeId === active)) engine.setTheme(active);
 		}
-		if (!options?.silent)
-			engine.notify(
-				updated.enabled
-					? `[HMR] 插件 ${id} 已热重载 (${costMs}ms)`
-					: `[HMR] 插件 ${id} 已更新 (${costMs}ms，未启用)`,
-				'info'
-			);
+		if (!options?.silent) engine.notify(`[HMR] 插件 ${id} 已热重载 (${costMs}ms)`, 'info');
 		return true;
 	} catch (err) {
 		if (options?.signal?.aborted) return false;
 		const error = err instanceof Error ? err : new Error(String(err));
-		const action = existing.enabled ? '热重载' : '热更新';
+		const action = '热重载';
 		console.error(`[Plugin HMR] ${action} ${id} 失败:`, error);
 		engine.notify(`[HMR] ${action} ${id} 失败: ${error.message}`, 'error');
 		return false;

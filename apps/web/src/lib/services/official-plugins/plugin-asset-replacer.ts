@@ -11,7 +11,6 @@ export interface PluginAssetReplacerDeps {
 
 export interface ReplacePluginAssetsOptions {
 	preserveInstalledAt?: boolean;
-	forceEnabled?: boolean;
 	revertThemesOnDeactivate?: boolean;
 	signal?: AbortSignal;
 }
@@ -27,11 +26,10 @@ export async function replacePluginAssets(
 ): Promise<InstalledOfficialPluginRecord> {
 	const pluginId = candidate.manifest.id;
 	const existing = deps.installedStore.find(pluginId);
-	const hadActiveRuntime = Boolean(existing?.enabled && deps.runtimeActivator.isActive(pluginId));
+	const hadActiveRuntime = deps.runtimeActivator.isActive(pluginId);
 
 	const record: InstalledOfficialPluginRecord = {
 		...candidate,
-		enabled: options?.forceEnabled || (existing?.enabled ?? candidate.enabled),
 		installedAt:
 			options?.preserveInstalledAt && existing
 				? existing.installedAt
@@ -68,7 +66,7 @@ export async function replacePluginAssets(
 	try {
 		options?.signal?.throwIfAborted?.();
 
-		if (existing?.enabled) {
+		if (existing && hadActiveRuntime) {
 			await deps.runtimeActivator.deactivate(pluginId, {
 				revertThemes: options?.revertThemesOnDeactivate ?? false
 			});
@@ -77,10 +75,8 @@ export async function replacePluginAssets(
 
 		options?.signal?.throwIfAborted?.();
 
-		if (record.enabled) {
-			runtimeTouched = true;
-			await deps.runtimeActivator.activate(record);
-		}
+		runtimeTouched = true;
+		await deps.runtimeActivator.activate(record);
 
 		options?.signal?.throwIfAborted?.();
 

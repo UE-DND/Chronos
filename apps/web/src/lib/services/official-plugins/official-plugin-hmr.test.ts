@@ -31,7 +31,6 @@ describe('official-plugin-hmr', () => {
 		cssCode: '.test { color: red; }',
 		colorsJson: null,
 		iconThemeJson: null,
-		enabled: true,
 		origin: { kind: 'user' as const },
 		installedAt: 1000
 	};
@@ -93,26 +92,6 @@ describe('official-plugin-hmr', () => {
 		);
 	});
 
-	it('updates disabled plugin in store without activating runtime', async () => {
-		installedMap.set('tool-test', { ...sampleRecord, enabled: false });
-
-		await handlePluginHmr(mockService as OfficialPluginService, mockEngine as ChronosEngine, {
-			id: 'tool-test',
-			rev: 'abc2',
-			costMs: '8.0',
-			code: 'new code',
-			cssCode: null,
-			colorsJson: null,
-			iconThemeJson: null
-		});
-
-		expect(applyHotUpdateFn).toHaveBeenCalled();
-		expect(notifyFn).toHaveBeenCalledWith(
-			expect.stringContaining('[HMR] 插件 tool-test 已更新 (8.0ms，未启用)'),
-			'info'
-		);
-	});
-
 	it('notifies when plugin is not installed', async () => {
 		await handlePluginHmr(mockService as OfficialPluginService, mockEngine as ChronosEngine, {
 			id: 'unknown-plugin',
@@ -147,7 +126,6 @@ describe('official-plugin-hmr', () => {
 			cssCode: null,
 			colorsJson: '{"id":"theme-test"}',
 			iconThemeJson: null,
-			enabled: true,
 			origin: { kind: 'user' as const },
 			installedAt: 1000
 		};
@@ -307,7 +285,7 @@ describe('official-plugin-hmr', () => {
 		expect(applyHotUpdateFn).toHaveBeenCalledTimes(2);
 		lifecycle.dispose();
 	});
-	it('failure does not block later updates and queued work rechecks uninstall and enabled state', async () => {
+	it('failure does not block later updates and queued work rechecks uninstall', async () => {
 		const service = mockService as OfficialPluginService;
 		const engine = mockEngine as ChronosEngine;
 		setupPluginHmr(service, engine);
@@ -326,19 +304,11 @@ describe('official-plugin-hmr', () => {
 		await failure;
 		await good;
 		expect(installedMap.get('tool-test')?.code).toBe('good');
-		const disabled = enqueuePluginHmr(service, engine, {
-			...payload,
-			rev: 'disabled',
-			code: 'disabled'
-		});
-		installedMap.set('tool-test', { ...installedMap.get('tool-test')!, enabled: false });
-		await disabled;
-		expect(installedMap.get('tool-test')).toMatchObject({ enabled: false, code: 'disabled' });
 		const removed = enqueuePluginHmr(service, engine, { ...payload, rev: 'removed' });
 		installedMap.delete('tool-test');
 		await removed;
 		expect(installedMap.has('tool-test')).toBe(false);
-		expect(applyHotUpdateFn).toHaveBeenCalledTimes(3);
+		expect(applyHotUpdateFn).toHaveBeenCalledTimes(2);
 	});
 	it('dispose aborts bootstrap and running work, drops queued work and waits for rollback before a replacement session', async () => {
 		const service = mockService as OfficialPluginService;

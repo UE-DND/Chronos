@@ -13,7 +13,6 @@
 	import { resolveLocaleMapText } from '@chronos/core';
 	import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import Switch from '$lib/components/ui/Switch.svelte';
 	import Dialog from '$lib/components/ui/Dialog.svelte';
 	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
 	import LoadingIndicator from '$lib/components/ui/LoadingIndicator.svelte';
@@ -258,17 +257,13 @@
 		}
 	}
 
-	async function handleToggleEnabled(pluginId: string, enabled: boolean) {
+	async function handleConfirmCompatibility(pluginId: string) {
 		operatingPluginId = pluginId;
 		try {
-			if (enabled) {
-				await officialPlugins.enable(pluginId);
-			} else {
-				await officialPlugins.disable(pluginId);
-			}
+			await officialPlugins.confirmHostCompatibility(pluginId);
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : String(err);
-			snackbarKey('snackbar.toggle.failed', { message: msg });
+			snackbarKey('snackbar.confirmCompatibility.failed', { message: msg });
 		} finally {
 			operatingPluginId = null;
 		}
@@ -385,12 +380,7 @@
 						{@const meta = getPluginCategoryMeta(resolvePluginCatalogCategory(record.manifest))}
 						{@const isBusy = operatingPluginId === record.manifest.id}
 						{@const update = updateStatuses[record.manifest.id]}
-						<div
-							class={[
-								'flex flex-col gap-2 p-3 transition-colors hover:bg-surface-variant/30',
-								!record.enabled && 'opacity-60'
-							]}
-						>
+						<div class="flex flex-col gap-2 p-3 transition-colors hover:bg-surface-variant/30">
 							<div class="flex items-start justify-between gap-3">
 								<div class="min-w-0 flex-1">
 									<div class="flex flex-wrap items-center gap-1.5">
@@ -430,8 +420,8 @@
 									<Button
 										variant="outlined"
 										disabled={isBusy}
-										onclick={() => handleToggleEnabled(record.manifest.id, true)}
-										>{hostT('plugins.action.enable')}</Button
+										onclick={() => handleConfirmCompatibility(record.manifest.id)}
+										>{hostT('plugins.action.confirmCompatibility')}</Button
 									>
 								{:else if update.status !== 'downloading'}
 									<Button variant="outlined" onclick={() => officialPlugins.retryPendingUpdates()}
@@ -457,25 +447,13 @@
 										<Button
 											variant="outlined"
 											class="text-label-small h-7 px-2.5 font-normal"
-											disabled={isBusy || !record.enabled}
+											disabled={isBusy || update?.status === 'confirmation-required'}
 											onclick={() =>
 												handleOpenConfig(record.manifest.id, name, record.manifest.configSchema)}
 										>
 											<TuneFill class="mr-0.5 size-3" />
 											{hostT('plugins.action.settings')}
 										</Button>
-									{/if}
-									{#if !officialPlugins.isPreinstalledPlugin(record.manifest.id)}
-										<span class="text-label-small text-on-surface-variant">
-											{hostT('plugins.action.enable')}
-										</span>
-										<Switch
-											size="sm"
-											checked={record.enabled && update?.status !== 'confirmation-required'}
-											disabled={isBusy}
-											onCheckedChange={(checked) =>
-												handleToggleEnabled(record.manifest.id, checked === true)}
-										/>
 									{/if}
 								</div>
 							</div>
