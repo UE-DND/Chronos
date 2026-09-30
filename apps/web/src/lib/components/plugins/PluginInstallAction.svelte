@@ -132,7 +132,7 @@
 		<Button variant="outlined" onclick={onInstall}>{hostT('plugins.action.update')}</Button>
 	{:else if installed}
 		<span
-			class="inline-flex items-center gap-1 rounded-full bg-primary-container/50 px-2.5 py-1 text-xs font-medium text-primary"
+			class="text-label-large inline-flex h-7 min-h-7 min-w-24 shrink-0 items-center justify-center gap-1 rounded-full border border-transparent bg-primary-container/50 px-2.5 text-primary"
 		>
 			<CheckCircleFill class="size-3.5" />
 			{hostT('plugins.badge.installed')}
@@ -140,7 +140,7 @@
 	{:else}
 		<Button
 			variant="filled"
-			class="text-label-small h-7 !min-h-7 shrink-0 px-2.5"
+			class="text-label-large h-7 !min-h-7 min-w-24 shrink-0 px-2.5"
 			onclick={onInstall}
 		>
 			{hostT('plugins.action.install')}

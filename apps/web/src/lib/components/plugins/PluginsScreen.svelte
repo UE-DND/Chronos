@@ -442,8 +442,9 @@
 							<div class="flex shrink-0 items-center justify-end">
 								{#if officialPlugins.isPreinstalledPlugin(record.manifest.id)}
 									<span
-										class="text-label-small shrink-0 rounded-full bg-surface-variant px-2 py-0.5 text-on-surface-variant"
+										class="text-label-large inline-flex h-7 min-h-7 min-w-24 shrink-0 items-center justify-center gap-1 rounded-full border border-transparent bg-surface-variant px-2.5 text-on-surface-variant"
 									>
+										<CheckCircleFill class="size-3.5" />
 										{hostT('plugins.preinstall.label')}
 									</span>
 								{:else}
