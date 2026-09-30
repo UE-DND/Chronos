@@ -100,14 +100,20 @@ describe('OfficialPluginAssetPipeline', () => {
 			sha256: expected
 		};
 
-		httpRequest
-			.mockResolvedValueOnce(httpResponse({ text: async () => 'stale-bytes' }))
-			.mockResolvedValueOnce(httpResponse({ text: async () => SAMPLE_BUNDLE }));
+		httpRequest.mockResolvedValueOnce(httpResponse({ text: async () => 'stale-bytes' }));
+		const progress: { stage: string; percent: number }[] = [];
+		httpRequest.mockImplementationOnce(async () => {
+			expect(progress.at(-1)?.stage).toBe('downloading');
+			return httpResponse({ text: async () => SAMPLE_BUNDLE });
+		});
 
-		const assets = await pipeline.download(manifest);
+		const assets = await pipeline.download(manifest, undefined, {
+			onProgress: (p) => progress.push(p)
+		});
 		expect(assets.code).toBe(SAMPLE_BUNDLE);
 		expect(httpRequest).toHaveBeenCalledTimes(2);
 		expect(httpRequest.mock.calls[1]?.[0]).toContain('?v=');
+		expect(progress.every((p, i) => i === 0 || p.percent >= progress[i - 1]!.percent)).toBe(true);
 	});
 
 	it('rejects css sha256 mismatch', async () => {

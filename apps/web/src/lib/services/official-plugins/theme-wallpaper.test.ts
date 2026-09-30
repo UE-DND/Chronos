@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import type { ChronosEngine } from '@chronos/core';
+import type { ChronosEngine, HttpResponse, PluginManifest } from '@chronos/core';
 import type { ImageRepository } from '$lib/storage/image-repository';
 import { OfficialPluginAssetPipeline } from './asset-pipeline';
 import { OfficialPluginRuntimeActivator } from './runtime-activator';
@@ -42,6 +42,46 @@ function setup() {
 	return { pipeline, request, sha256, decode, revoke };
 }
 describe('theme wallpaper assets', () => {
+	it('reports wallpaper body reads as downloading and keeps overall progress monotonic', async () => {
+		const { pipeline, request, sha256, decode } = setup();
+		const progress: { stage: string; percent: number; label?: string }[] = [];
+		request.mockResolvedValueOnce({ ok: true, text: async () => colors });
+		request.mockResolvedValueOnce({ ok: true, text: async () => '{}' });
+		request.mockResolvedValueOnce({
+			ok: true,
+			bytes: async (onProgress: Parameters<HttpResponse['bytes']>[0]) => {
+				expect(progress.at(-1)).toMatchObject({ stage: 'downloading', label: 'wallpaper' });
+				onProgress?.({ receivedBytes: 1, totalBytes: 3 });
+				expect(progress.at(-1)).toMatchObject({ stage: 'downloading', label: 'wallpaper' });
+				onProgress?.({ receivedBytes: 2 });
+				onProgress?.({ receivedBytes: 3, totalBytes: 3 });
+				return new Uint8Array([1, 2, 3]);
+			}
+		});
+		sha256.mockImplementation(async (data: string | Uint8Array) => {
+			if (data instanceof Uint8Array)
+				expect(progress.at(-1)).toMatchObject({ stage: 'verifying', label: 'wallpaper' });
+			return hash;
+		});
+		decode.mockImplementation(async () => {
+			expect(progress.at(-1)).toMatchObject({ stage: 'verifying', label: 'wallpaper' });
+		});
+		const manifest = {
+			colorsUrl: 'https://themes.test/colors.json',
+			colorsSha256: hash,
+			iconThemeUrl: 'https://themes.test/icons.json',
+			iconThemeSha256: hash
+		} as PluginManifest;
+		const assets = await pipeline.download(manifest, undefined, {
+			onProgress: (p) => progress.push(p)
+		});
+		expect(assets.wallpaper?.size).toBe(3);
+		expect(progress.at(-1)).toMatchObject({ stage: 'verifying', percent: 85 });
+		expect(progress.every((p, i) => i === 0 || p.percent >= progress[i - 1]!.percent)).toBe(true);
+		expect(
+			progress.filter((p) => p.stage === 'downloading' && p.label === 'wallpaper').length
+		).toBeGreaterThan(1);
+	});
 	it('resolves against colors JSON and verifies bytes before decoding', async () => {
 		const { pipeline, request, decode, revoke } = setup();
 		const blob = await pipeline.downloadThemeWallpaper(

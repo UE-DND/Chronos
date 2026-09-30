@@ -28,6 +28,11 @@ export class OfficialPluginAssetPipeline {
 		let colorsJson: string | null = null;
 		let iconThemeJson: string | null = null;
 		let cssCode: string | null = null;
+		let percent = 0;
+		const reportProgress: NonNullable<AssetDownloadOptions['onProgress']> = (progress) => {
+			percent = Math.max(percent, progress.percent);
+			options?.onProgress?.({ ...progress, percent });
+		};
 
 		const tasks: Array<{
 			url: string;
@@ -75,22 +80,15 @@ export class OfficialPluginAssetPipeline {
 		for (let i = 0; i < tasks.length; i++) {
 			options?.signal?.throwIfAborted?.();
 			const task = tasks[i]!;
-			const downloadPercent = Math.round((i / total) * 70);
-			options?.onProgress?.({
-				stage: 'downloading',
-				percent: downloadPercent,
-				label: task.label
-			});
-
 			const text = await this.downloadTextAsset(
 				task.url,
 				task.sha256,
 				task.label,
 				options?.signal,
-				(verifyPercent) => {
-					options?.onProgress?.({
-						stage: 'verifying',
-						percent: Math.round(70 + (i / total) * 15 + (verifyPercent / 100) * (15 / total)),
+				(progress) => {
+					reportProgress({
+						stage: progress.stage,
+						percent: Math.round(((i + progress.percent / 100) / total) * 70),
 						label: task.label
 					});
 				}
@@ -100,23 +98,27 @@ export class OfficialPluginAssetPipeline {
 		}
 
 		options?.signal?.throwIfAborted?.();
-		options?.onProgress?.({
-			stage: 'verifying',
-			percent: 85
-		});
-
 		const wallpaper = await this.downloadThemeWallpaper(
 			colorsJson,
 			resolvedManifest.colorsUrl,
-			options?.signal
+			options?.signal,
+			options?.onProgress
+				? (progress) =>
+						reportProgress({
+							...progress,
+							percent: Math.round(70 + (progress.percent / 100) * 15)
+						})
+				: undefined
 		);
+		reportProgress({ stage: 'verifying', percent: 85 });
 		return { code, colorsJson, iconThemeJson, cssCode, ...(wallpaper ? { wallpaper } : {}) };
 	}
 
 	async downloadThemeWallpaper(
 		colorsJson: string | null,
 		colorsUrl?: string,
-		signal?: AbortSignal
+		signal?: AbortSignal,
+		onProgress?: AssetDownloadOptions['onProgress']
 	): Promise<Blob | undefined> {
 		if (!colorsJson) return undefined;
 		const raw = JSON.parse(colorsJson);
@@ -124,20 +126,41 @@ export class OfficialPluginAssetPipeline {
 		const asset = parseColorThemeJson(raw).wallpaper!;
 		if (!colorsUrl) throw new Error('Theme wallpaper requires a colors URL');
 		const url = resolveManifestAssetUrl(colorsUrl, asset.url);
+		signal?.throwIfAborted();
+		onProgress?.({ stage: 'downloading', percent: 0, label: 'wallpaper' });
 		const response = await this.engine.http.request(withIntegrityBust(url, asset.sha256), {
 			method: 'GET',
 			timeoutMs: 20_000,
 			signal
 		});
 		if (!response.ok) throw new Error('Failed to download theme wallpaper');
-		const bytes = await response.bytes();
+		let downloadPercent = 0;
+		const bytes = await response.bytes(
+			onProgress
+				? ({ receivedBytes, totalBytes }) => {
+						downloadPercent = Math.max(
+							downloadPercent,
+							totalBytes ? Math.min(90, (receivedBytes / totalBytes) * 90) : 0
+						);
+						onProgress({
+							stage: 'downloading',
+							percent: downloadPercent,
+							label: 'wallpaper'
+						});
+					}
+				: undefined
+		);
 		signal?.throwIfAborted();
+		onProgress?.({ stage: 'verifying', percent: 90, label: 'wallpaper' });
 		const hash = await this.engine.runtime.sha256(bytes);
+		signal?.throwIfAborted();
 		if (hash.toLowerCase() !== asset.sha256.toLowerCase())
 			throw new Error('Theme wallpaper integrity check failed');
 		const blob = new Blob([new Uint8Array(bytes)]);
+		onProgress?.({ stage: 'verifying', percent: 95, label: 'wallpaper' });
 		await validateImage(blob);
 		signal?.throwIfAborted();
+		onProgress?.({ stage: 'verifying', percent: 100, label: 'wallpaper' });
 		return blob;
 	}
 
@@ -146,7 +169,7 @@ export class OfficialPluginAssetPipeline {
 		expectedSha256: string | undefined,
 		label = 'asset',
 		signal?: AbortSignal,
-		onVerifyProgress?: (percent: number) => void
+		onProgress?: AssetDownloadOptions['onProgress']
 	): Promise<string> {
 		const requestUrl = withIntegrityBust(url, expectedSha256);
 		try {
@@ -156,7 +179,7 @@ export class OfficialPluginAssetPipeline {
 				expectedSha256,
 				label,
 				signal,
-				onVerifyProgress
+				onProgress
 			);
 		} catch (err) {
 			if (!isIntegrityMismatch(err) || requestUrl === url) throw err;
@@ -168,7 +191,7 @@ export class OfficialPluginAssetPipeline {
 				expectedSha256,
 				label,
 				signal,
-				onVerifyProgress
+				onProgress
 			);
 		}
 	}
@@ -179,9 +202,10 @@ export class OfficialPluginAssetPipeline {
 		expectedSha256: string | undefined,
 		label: string,
 		signal?: AbortSignal,
-		onVerifyProgress?: (percent: number) => void
+		onProgress?: AssetDownloadOptions['onProgress']
 	): Promise<string> {
 		signal?.throwIfAborted?.();
+		onProgress?.({ stage: 'downloading', percent: 0, label });
 		const response = await this.engine.http.request(requestUrl, {
 			method: 'GET',
 			timeoutMs: 20_000,
@@ -193,7 +217,7 @@ export class OfficialPluginAssetPipeline {
 		const text = await response.text();
 		signal?.throwIfAborted?.();
 		if (expectedSha256) {
-			onVerifyProgress?.(50);
+			onProgress?.({ stage: 'verifying', percent: 85, label });
 			const hash = await this.engine.runtime.sha256(text);
 			signal?.throwIfAborted?.();
 			if (hash.toLowerCase() !== expectedSha256.toLowerCase()) {
@@ -201,8 +225,8 @@ export class OfficialPluginAssetPipeline {
 					`Plugin ${label} integrity check failed. Expected ${expectedSha256}, got ${hash}`
 				);
 			}
-			onVerifyProgress?.(100);
 		}
+		onProgress?.({ stage: 'verifying', percent: 100, label });
 		return text;
 	}
 }
