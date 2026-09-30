@@ -122,13 +122,15 @@ export class WebHttpProxyProvider implements IHttpService {
 						options.timeoutMs
 					)
 				: undefined;
-		const clearRequestTimeout = () => {
+		const finishRequest = () => {
 			if (timeoutId !== undefined) clearTimeout(timeoutId);
+			mergedSignal?.dispose();
 		};
 		const abortSignals = [options?.signal, controller?.signal].filter(
 			(signal): signal is AbortSignal => signal !== undefined
 		);
-		const requestSignal = abortSignals.length > 0 ? mergeAbortSignals(abortSignals) : undefined;
+		const mergedSignal = abortSignals.length > 0 ? mergeAbortSignals(abortSignals) : undefined;
+		const requestSignal = mergedSignal?.signal;
 
 		try {
 			if (options?.bypassCors && !deploymentHasServerPlugins()) {
@@ -195,7 +197,7 @@ export class WebHttpProxyProvider implements IHttpService {
 			response.headers.forEach((val, key) => {
 				responseHeaders[key] = val;
 			});
-			if (!response.body) clearRequestTimeout();
+			if (!response.body) finishRequest();
 			// fetch resolves at headers; the same deadline must also cover body consumption.
 			const consume = async <T>(read: () => Promise<T>): Promise<T> => {
 				try {
@@ -205,7 +207,7 @@ export class WebHttpProxyProvider implements IHttpService {
 					// Browsers may reject a timed-out body with AbortError; preserve the cause.
 					throw requestSignal?.aborted ? requestSignal.reason : error;
 				} finally {
-					clearRequestTimeout();
+					finishRequest();
 				}
 			};
 
@@ -219,7 +221,7 @@ export class WebHttpProxyProvider implements IHttpService {
 				bytes: (onProgress) => consume(() => readResponseBytes(response, onProgress))
 			};
 		} catch (error) {
-			clearRequestTimeout();
+			finishRequest();
 			throw requestSignal?.aborted ? requestSignal.reason : error;
 		}
 	}

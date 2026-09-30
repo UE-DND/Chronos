@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { getEventListeners } from 'node:events';
 import { WebHttpProxyProvider } from './web-http';
 import { OfficialPluginInstallQueue } from '$lib/services/official-plugins/install-queue';
 
@@ -46,6 +47,33 @@ function pendingBody() {
 }
 
 describe('Web HTTP response bodies', () => {
+	it.each(['complete', 'body failure', 'request failure', 'empty body'] as const)(
+		'removes merged signal listeners after %s',
+		async (outcome) => {
+			vi.useFakeTimers();
+			const source = new AbortController();
+			vi.stubGlobal(
+				'fetch',
+				vi.fn(async () => {
+					if (outcome === 'request failure') throw new Error('Offline');
+					return new Response(outcome === 'empty body' ? null : 'complete');
+				})
+			);
+			const request = new WebHttpProxyProvider().request('https://themes.test/asset', {
+				signal: source.signal,
+				timeoutMs: 100
+			});
+			if (outcome === 'request failure') await expect(request).rejects.toThrow('Offline');
+			else {
+				const response = await request;
+				if (outcome === 'body failure') await expect(response.json()).rejects.toThrow();
+				else if (outcome === 'complete') expect(await response.text()).toBe('complete');
+			}
+			expect(getEventListeners(source.signal, 'abort')).toHaveLength(0);
+			expect(vi.getTimerCount()).toBe(0);
+		}
+	);
+
 	it('forwards an explicit cache reload to fetch', async () => {
 		const fetchMock = vi.fn(async () => new Response('fresh'));
 		vi.stubGlobal('fetch', fetchMock);
