@@ -34,7 +34,13 @@ export interface HttpResponse {
 	ok: boolean;
 	text(): Promise<string>;
 	json<T = unknown>(): Promise<T>;
-	bytes(): Promise<Uint8Array>;
+	/** Reports decoded bytes while reading; totalBytes is omitted when unknown. */
+	bytes(onProgress?: (progress: HttpDownloadProgress) => void): Promise<Uint8Array>;
+}
+
+export interface HttpDownloadProgress {
+	receivedBytes: number;
+	totalBytes?: number;
 }
 
 /** Request options for a short-lived, cookie-backed upstream session. */
