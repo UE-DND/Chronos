@@ -187,6 +187,7 @@ export class WebHttpProxyProvider implements IHttpService {
 				method: options?.method ?? 'GET',
 				headers,
 				body,
+				cache: options?.cache,
 				signal: requestSignal
 			});
 

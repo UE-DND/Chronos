@@ -183,15 +183,15 @@ export class OfficialPluginAssetPipeline {
 			);
 		} catch (err) {
 			if (!isIntegrityMismatch(err) || requestUrl === url) throw err;
-			// Stale SW/runtime cache served old bytes (e.g. slow-network fallback):
-			// the busted key already differs per content version, retry once.
+			// Even a hash-specific URL may have cached corrupt bytes; refresh it once.
 			return await this.fetchVerifiedText(
 				requestUrl,
 				url,
 				expectedSha256,
 				label,
 				signal,
-				onProgress
+				onProgress,
+				'reload'
 			);
 		}
 	}
@@ -202,14 +202,16 @@ export class OfficialPluginAssetPipeline {
 		expectedSha256: string | undefined,
 		label: string,
 		signal?: AbortSignal,
-		onProgress?: AssetDownloadOptions['onProgress']
+		onProgress?: AssetDownloadOptions['onProgress'],
+		cache?: 'reload'
 	): Promise<string> {
 		signal?.throwIfAborted?.();
 		onProgress?.({ stage: 'downloading', percent: 0, label });
 		const response = await this.engine.http.request(requestUrl, {
 			method: 'GET',
 			timeoutMs: 20_000,
-			signal
+			signal,
+			cache
 		});
 		if (!response.ok) {
 			throw new Error(`Failed to download plugin ${label} from ${url}`);

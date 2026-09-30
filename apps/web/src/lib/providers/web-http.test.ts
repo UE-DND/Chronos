@@ -46,6 +46,19 @@ function pendingBody() {
 }
 
 describe('Web HTTP response bodies', () => {
+	it('forwards an explicit cache reload to fetch', async () => {
+		const fetchMock = vi.fn(async () => new Response('fresh'));
+		vi.stubGlobal('fetch', fetchMock);
+		const response = await new WebHttpProxyProvider().request('https://themes.test/bundle.js', {
+			cache: 'reload'
+		});
+		expect(await response.text()).toBe('fresh');
+		expect(fetchMock).toHaveBeenCalledWith(
+			'https://themes.test/bundle.js',
+			expect.objectContaining({ cache: 'reload' })
+		);
+	});
+
 	it.each(['text', 'json', 'bytes', 'bytes-progress'] as const)(
 		'keeps the request deadline while reading %s',
 		async (method) => {
