@@ -83,7 +83,6 @@ describe('theme wallpaper assets', () => {
 			manifest: { id: 'theme-owner', colorsUrl: '/colors.json', colorsSha256: hash } as never,
 			colorsJson: colors,
 			wallpaperAssetId: 'cached-image',
-			enabled: true,
 			origin: { kind: 'user' as const },
 			installedAt: 1
 		});

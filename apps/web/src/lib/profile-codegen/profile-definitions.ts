@@ -9,10 +9,7 @@ const DEFAULT_PROFILE: ChronosProfile = {
 	description: '包含分享口令与标准备份能力',
 	defaultTheme: { pluginId: 'theme-m3', themeId: 'm3-default' },
 	defaultImportSlot: 'share-link',
-	preinstall: [
-		{ id: 'theme-m3', enabled: true },
-		{ id: 'codec-share', enabled: true }
-	]
+	preinstall: [{ id: 'theme-m3' }, { id: 'codec-share' }]
 };
 
 const CQUT_PROFILE: ChronosProfile = {
@@ -21,11 +18,7 @@ const CQUT_PROFILE: ChronosProfile = {
 	description: '专为重庆理工大学定制，内置知行理工教务直连与校区专属节次',
 	defaultTheme: { pluginId: 'theme-m3', themeId: 'm3-default' },
 	defaultImportSlot: 'cqut-online',
-	preinstall: [
-		{ id: 'theme-m3', enabled: true },
-		{ id: 'source-cqut', enabled: true },
-		{ id: 'codec-share', enabled: true }
-	]
+	preinstall: [{ id: 'theme-m3' }, { id: 'source-cqut' }, { id: 'codec-share' }]
 };
 
 const CQUT_OFFLINE_PROFILE: ChronosProfile = {
@@ -35,11 +28,7 @@ const CQUT_OFFLINE_PROFILE: ChronosProfile = {
 	defaultTheme: { pluginId: 'theme-m3', themeId: 'm3-default' },
 	defaultImportSlot: 'edu-html',
 	deniedPluginServerActions: [{ pluginId: 'source-cqut', action: 'preview' }],
-	preinstall: [
-		{ id: 'theme-m3', enabled: true },
-		{ id: 'source-cqut', enabled: true },
-		{ id: 'codec-share', enabled: true }
-	]
+	preinstall: [{ id: 'theme-m3' }, { id: 'source-cqut' }, { id: 'codec-share' }]
 };
 
 export const CHRONOS_PROFILES: Record<string, ChronosProfile> = {

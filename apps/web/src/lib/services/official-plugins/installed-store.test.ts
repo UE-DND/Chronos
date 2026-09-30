@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
 import { ChronosEngine } from '@chronos/core';
 import type { ChronosEnv } from '@chronos/core';
 import { DEFAULT_USER_PREFERENCES } from '@chronos/core';
-import { OfficialPluginInstalledStore } from './installed-store';
+import { OfficialPluginInstalledStore, parseInstallationState } from './installed-store';
 
 function createMockEnv() {
 	const kv = new Map<string, unknown>();
@@ -59,6 +59,19 @@ describe('OfficialPluginInstalledStore', () => {
 			await engine.storage.getPluginData('core.official-plugins', 'installed_plugins')
 		).toEqual(invalid);
 	});
+	it('rejects obsolete enable state without migrating development data', () => {
+		expect(() =>
+			parseInstallationState({
+				records: [
+					{ manifest: { id: 'old' }, origin: { kind: 'user' }, enabled: false, installedAt: 1 }
+				],
+				removed: [],
+				seeded: true,
+				revision: 0,
+				generation: ''
+			})
+		).toThrow('reset development data manually');
+	});
 	it('notifies change listeners on persist', async () => {
 		const listener = vi.fn();
 		store.onChanged(listener);
@@ -75,7 +88,6 @@ describe('OfficialPluginInstalledStore', () => {
 				bundleUrl: '/b.js',
 				sha256: 'abc'
 			},
-			enabled: true,
 			origin: { kind: 'user' as const },
 			installedAt: 1
 		});
@@ -92,7 +104,6 @@ describe('OfficialPluginInstalledStore', () => {
 		await restarted.upsert({
 			manifest: { id: 'removed' } as never,
 			origin: { kind: 'user' },
-			enabled: true,
 			installedAt: 1
 		});
 		await store.load();
@@ -105,7 +116,6 @@ describe('OfficialPluginInstalledStore', () => {
 		const record = (id: string) => ({
 			manifest: { id } as never,
 			origin: { kind: 'user' as const },
-			enabled: false,
 			installedAt: 1
 		});
 		await Promise.all([store.upsert(record('a')), other.upsert(record('b'))]);
@@ -135,12 +145,11 @@ describe('OfficialPluginInstalledStore', () => {
 		await store.upsert({
 			manifest: { id: 'a' } as never,
 			origin: { kind: 'user' },
-			enabled: false,
 			installedAt: 1
 		});
 		const other = new OfficialPluginInstalledStore(engine);
 		await other.startHost(host);
-		await other.setEnabled('a', true);
+		await other.upsert(other.find('a')!);
 		const target = { ...host, buildId: 'c'.repeat(64) };
 		await expect(
 			store.prepare({
@@ -159,13 +168,13 @@ describe('OfficialPluginInstalledStore', () => {
 			token: 'ready',
 			until: Date.now() + 10000
 		});
-		await expect(other.setEnabled('a', false)).rejects.toThrow('Application update in progress');
+		await expect(other.remove('a')).rejects.toThrow('Application update in progress');
 		const updated = new OfficialPluginInstalledStore(engine);
 		await updated.startHost(target);
 		await expect(store.startHost(host, host.buildId)).rejects.toThrow('Host generation changed');
 		await other.startHost(target, host.buildId);
 		expect(other.prepared).toBeUndefined();
 		await expect(store.remove('a')).rejects.toThrow('Application update in progress');
-		expect(updated.find('a')?.enabled).toBe(true);
+		expect(updated.find('a')).toBeDefined();
 	});
 });

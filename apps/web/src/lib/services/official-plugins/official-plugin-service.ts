@@ -126,10 +126,9 @@ export class OfficialPluginService implements Disposable {
 		const cached = this.installedStore.find(id);
 		if (cached && this.isCompatible(cached)) {
 			try {
-				await this.runtimeActivator.activate({ ...cached, enabled: true });
+				await this.runtimeActivator.activate(cached);
 				this.engine.validateDefaultTheme(profile.defaultTheme);
-				if (!cached.enabled || this.installedStore.getRemoved().includes(id))
-					await this.installedStore.setEnabled(id, true);
+				if (this.installedStore.getRemoved().includes(id)) await this.installedStore.upsert(cached);
 			} catch (error) {
 				console.error('[preinstall] Default cache could not activate', error);
 				await this.installPreinstall(id);
@@ -151,7 +150,6 @@ export class OfficialPluginService implements Disposable {
 			system: true,
 			preinstall: {
 				profileId: this.profile.profileId,
-				enabled: entry.enabled !== false,
 				config: entry.config
 			}
 		});
@@ -168,8 +166,7 @@ export class OfficialPluginService implements Disposable {
 				const cached = this.installedStore.find(entry.id);
 				if (cached && this.isCompatible(cached)) {
 					try {
-						await this.runtimeActivator.activate({ ...cached, enabled: true });
-						await this.installedStore.setEnabled(entry.id, true);
+						await this.runtimeActivator.activate(cached);
 					} catch {
 						await this.installPreinstall(entry.id);
 					}
@@ -181,8 +178,7 @@ export class OfficialPluginService implements Disposable {
 		}
 		for (const id of this.installedStore.getRemoved()) {
 			const record = this.installedStore.find(id);
-			if (record?.enabled && this.isPreinstalledPlugin(id))
-				await this.installedStore.upsert(record);
+			if (record && this.isPreinstalledPlugin(id)) await this.installedStore.upsert(record);
 		}
 		this.installedStore.notify();
 	}
@@ -339,7 +335,7 @@ export class OfficialPluginService implements Disposable {
 			if (this.operations.isBusy(id)) continue;
 			const record = this.installedStore.find(id);
 			if (
-				!record?.enabled ||
+				!record ||
 				!this.isCompatible(record) ||
 				this.activeVersions.get(id) !== record.revision
 			) {
@@ -458,7 +454,7 @@ export class OfficialPluginService implements Disposable {
 				});
 				continue;
 			}
-			if (record.enabled && !this.runtimeActivator.isActive(record.manifest.id)) {
+			if (!this.runtimeActivator.isActive(record.manifest.id)) {
 				try {
 					await this.runtimeActivator.activate(record);
 					this.failures.delete(record.manifest.id);
@@ -619,7 +615,7 @@ export class OfficialPluginService implements Disposable {
 						validate: required ? () => this.engine.validateDefaultTheme(required) : undefined
 					},
 					next,
-					{ ...options, forceEnabled: this.isPreinstalledPlugin(candidate.manifest.id) }
+					options
 				);
 			result = required
 				? await this.engine.withPluginReplacement(candidate.manifest.id, replace)
@@ -634,11 +630,10 @@ export class OfficialPluginService implements Disposable {
 		if (previous?.wallpaperAssetId && previous.wallpaperAssetId !== id) {
 			await this.images.delete(previous.wallpaperAssetId).catch(console.error);
 		}
-		if (result.enabled)
-			this.activeVersions.set(
-				result.manifest.id,
-				this.installedStore.find(result.manifest.id)?.revision
-			);
+		this.activeVersions.set(
+			result.manifest.id,
+			this.installedStore.find(result.manifest.id)?.revision
+		);
 		this.updateStatuses.set(result.manifest.id, { status: 'ready' });
 		this.failures.delete(result.manifest.id);
 		return result;
@@ -669,7 +664,7 @@ export class OfficialPluginService implements Disposable {
 		options?: {
 			silent?: boolean;
 			system?: boolean;
-			preinstall?: { profileId: string; enabled: boolean; config?: Record<string, unknown> };
+			preinstall?: { profileId: string; config?: Record<string, unknown> };
 			signal?: AbortSignal;
 			onProgress?: (progress: {
 				stage: PluginInstallStage;
@@ -730,7 +725,6 @@ export class OfficialPluginService implements Disposable {
 				iconThemeJson: assets.iconThemeJson ?? null,
 				cssCode: assets.cssCode ?? null,
 				manifestUrl: manifestUrl ?? existingSnapshot?.manifestUrl,
-				enabled: existingSnapshot?.enabled ?? options?.preinstall?.enabled ?? true,
 				installedAt: existingSnapshot?.installedAt ?? Date.now()
 			};
 
@@ -778,7 +772,7 @@ export class OfficialPluginService implements Disposable {
 		);
 	}
 
-	async enable(pluginId: string): Promise<void> {
+	async confirmHostCompatibility(pluginId: string): Promise<void> {
 		return this.operations.run(pluginId, async ({ signal }) => {
 			await this.installedStore.load();
 			this.lifecycle.signal.throwIfAborted();
@@ -789,22 +783,16 @@ export class OfficialPluginService implements Disposable {
 			if (!record) {
 				throw new Error(`Plugin not installed: ${pluginId}`);
 			}
-			if (record.enabled && this.runtimeActivator.isActive(pluginId)) return;
-
-			if (
-				isOfficialCatalogManifestUrl(record.manifestUrl, pluginId) &&
-				record.manifest.version !== this.hostVersion
-			) {
-				await this.installedStore.setEnabled(pluginId, true, this.hostVersion);
-				await this.retryPendingUpdates();
-				return;
-			}
-			await this.runtimeActivator.activate({ ...record, enabled: true });
+			if (isOfficialCatalogManifestUrl(record.manifestUrl, pluginId))
+				throw new Error('Official plugins do not require compatibility confirmation');
+			if (record.acceptedHostVersion === this.hostVersion) return;
+			await this.runtimeActivator.activate(record);
 			try {
 				this.lifecycle.signal.throwIfAborted();
 				signal.throwIfAborted();
-				await this.installedStore.upsert(
-					{ ...record, enabled: true, acceptedHostVersion: this.hostVersion },
+				await this.installedStore.acceptHostVersion(
+					pluginId,
+					this.hostVersion,
 					record.revision ?? -1
 				);
 				this.activeVersions.set(pluginId, this.installedStore.find(pluginId)?.revision);
@@ -814,26 +802,8 @@ export class OfficialPluginService implements Disposable {
 				await this.runtimeActivator.deactivate(pluginId, { revertThemes: true });
 				throw error;
 			}
-			this.engine.notify(hostT('plugins.notify.enabled', { pluginId }), 'info');
+			this.engine.notify(hostT('plugins.notify.confirmed', { pluginId }), 'info');
 		});
-	}
-
-	async disable(pluginId: string): Promise<void> {
-		this.assertUserRemoval(pluginId);
-		return this.operations.run(
-			pluginId,
-			async ({ signal }) => {
-				const record = this.installedStore.find(pluginId);
-				if (!record) {
-					throw new Error(`Plugin not installed: ${pluginId}`);
-				}
-				signal.throwIfAborted();
-				await this.installedStore.setEnabled(pluginId, false);
-				await this.runtimeActivator.deactivate(pluginId, { revertThemes: true });
-				this.engine.notify(hostT('plugins.notify.disabled', { pluginId }), 'info');
-			},
-			{ cancelExisting: true }
-		);
 	}
 
 	async getPluginConfig<T extends Record<string, unknown>>(pluginId: string): Promise<T | null> {

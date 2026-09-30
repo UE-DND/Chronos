@@ -2,7 +2,6 @@ import type { UserPreferences } from '../domain/preferences';
 
 export interface PluginProfileConfig {
 	id: string;
-	enabled?: boolean;
 	config?: Record<string, unknown>;
 }
 
@@ -42,14 +41,12 @@ export function resolveLayeredPluginConfig<T extends Record<string, unknown>>(
 export function validateProfile(profile: ChronosProfile): void {
 	if (new Set(profile.preinstall.map((p) => p.id)).size !== profile.preinstall.length)
 		throw new Error('Duplicate preinstall plugin ID');
-	if (profile.preinstall.some((entry) => entry.enabled === false))
-		throw new Error('Preinstalled plugins must be enabled');
 	const selection = profile.defaultTheme;
 	if (!selection?.pluginId?.trim() || !selection.themeId?.trim())
 		throw new Error(`Profile ${profile.profileId} requires a default theme`);
-	if (!profile.preinstall.some((p) => p.id === selection.pluginId && p.enabled !== false))
+	if (!profile.preinstall.some((p) => p.id === selection.pluginId))
 		throw new Error(
-			`Default theme provider ${selection.pluginId} must be enabled in profile ${profile.profileId}`
+			`Default theme provider ${selection.pluginId} must be preinstalled in profile ${profile.profileId}`
 		);
 	if (profile.preferences && 'visualThemeId' in profile.preferences)
 		throw new Error('Profile preferences must not set visualThemeId');
