@@ -380,9 +380,11 @@
 						{@const meta = getPluginCategoryMeta(resolvePluginCatalogCategory(record.manifest))}
 						{@const isBusy = operatingPluginId === record.manifest.id}
 						{@const update = updateStatuses[record.manifest.id]}
-						<div class="flex flex-col gap-2 p-3 transition-colors hover:bg-surface-variant/30">
-							<div class="flex items-start justify-between gap-3">
-								<div class="min-w-0 flex-1">
+						<div
+							class="flex items-center justify-between gap-3 p-3 transition-colors hover:bg-surface-variant/30"
+						>
+							<div class="flex min-w-0 flex-1 flex-col gap-2">
+								<div>
 									<div class="flex flex-wrap items-center gap-1.5">
 										<span class="text-body-medium line-clamp-1 font-medium text-on-surface">
 											{name}
@@ -404,46 +406,26 @@
 										</p>
 									{/if}
 								</div>
-								{#if officialPlugins.isPreinstalledPlugin(record.manifest.id)}
-									<span
-										class="text-label-small shrink-0 rounded-full bg-surface-variant px-2 py-0.5 text-on-surface-variant"
-										>{hostT('plugins.preinstall.label')}</span
-									>
-								{/if}
-							</div>
 
-							{#if update && update.status !== 'ready'}
-								<p class="text-body-small text-on-surface-variant" title={update.error}>
-									{hostT(`plugins.update.${update.status}`)}
-								</p>
-								{#if update.status === 'confirmation-required'}
-									<Button
-										variant="outlined"
-										disabled={isBusy}
-										onclick={() => handleConfirmCompatibility(record.manifest.id)}
-										>{hostT('plugins.action.confirmCompatibility')}</Button
-									>
-								{:else if update.status !== 'downloading'}
-									<Button variant="outlined" onclick={() => officialPlugins.retryPendingUpdates()}
-										>{hostT('plugins.action.retry')}</Button
-									>
+								{#if update && update.status !== 'ready'}
+									<p class="text-body-small text-on-surface-variant" title={update.error}>
+										{hostT(`plugins.update.${update.status}`)}
+									</p>
+									{#if update.status === 'confirmation-required'}
+										<Button
+											variant="outlined"
+											disabled={isBusy}
+											onclick={() => handleConfirmCompatibility(record.manifest.id)}
+											>{hostT('plugins.action.confirmCompatibility')}</Button
+										>
+									{:else if update.status !== 'downloading'}
+										<Button variant="outlined" onclick={() => officialPlugins.retryPendingUpdates()}
+											>{hostT('plugins.action.retry')}</Button
+										>
+									{/if}
 								{/if}
-							{/if}
-							<div class="flex items-center justify-between gap-2">
-								{#if !officialPlugins.isPreinstalledPlugin(record.manifest.id)}
-									<Button
-										variant="text"
-										tone="danger"
-										class="text-caption h-6 shrink-0 px-1.5"
-										disabled={isBusy}
-										onclick={() => promptUninstall(record.manifest.id, name)}
-									>
-										{hostT('common.uninstall')}
-									</Button>
-								{/if}
-
-								<div class="flex shrink-0 items-center gap-1.5">
-									{#if record.manifest.configSchema}
+								{#if record.manifest.configSchema}
+									<div class="flex items-center gap-1.5">
 										<Button
 											variant="outlined"
 											class="text-label-small h-7 px-2.5 font-normal"
@@ -454,8 +436,27 @@
 											<TuneFill class="mr-0.5 size-3" />
 											{hostT('plugins.action.settings')}
 										</Button>
-									{/if}
-								</div>
+									</div>
+								{/if}
+							</div>
+							<div class="flex shrink-0 items-center justify-end">
+								{#if officialPlugins.isPreinstalledPlugin(record.manifest.id)}
+									<span
+										class="text-label-small shrink-0 rounded-full bg-surface-variant px-2 py-0.5 text-on-surface-variant"
+									>
+										{hostT('plugins.preinstall.label')}
+									</span>
+								{:else}
+									<Button
+										variant="text"
+										tone="danger"
+										class="text-caption h-6 shrink-0 px-1.5"
+										disabled={isBusy}
+										onclick={() => promptUninstall(record.manifest.id, name)}
+									>
+										{hostT('common.uninstall')}
+									</Button>
+								{/if}
 							</div>
 						</div>
 					{/each}
