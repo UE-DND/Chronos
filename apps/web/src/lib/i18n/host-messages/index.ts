@@ -21,7 +21,6 @@ export const CORE_SHELL_MESSAGE_KEYS = [
 	'item.display',
 	'item.feedback',
 	'item.plugins',
-	'item.plugins.supporting',
 	'item.install',
 	'item.install.supporting.standalone',
 	'item.install.supporting.local',

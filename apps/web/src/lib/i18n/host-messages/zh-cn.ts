@@ -45,7 +45,6 @@ export const zhCn = {
 	'item.display': '显示设置',
 	'item.feedback': '反馈设置',
 	'item.plugins': '插件中心',
-	'item.plugins.supporting': '管理插件与扩展',
 	'item.install': '安装 Chronos',
 	'item.install.supporting.standalone': '已安装为桌面应用',
 	'item.install.supporting.local': '已安装，可在应用中打开',
