@@ -516,15 +516,10 @@
 					{#each groupedCatalogManifests as group (group.category)}
 						{@const groupMeta = getPluginCategoryMeta(group.category)}
 						<div class="flex flex-col gap-2">
-							<div class="flex items-center justify-between px-1">
+							<div class="px-1">
 								<h3 class="text-label-large font-medium text-on-surface">
 									{groupMeta.label}
 								</h3>
-								<span class="text-label-small text-on-surface-variant">
-									{hostT('plugins.builtin.count', {
-										count: group.entries.length
-									})}
-								</span>
 							</div>
 							<div class="ui-section-surface [&>*+*]:border-t [&>*+*]:border-border/40">
 								{#each group.entries as entry (entry.manifest.id)}
