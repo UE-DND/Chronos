@@ -599,6 +599,40 @@ describe('OfficialPluginService', () => {
 		expect(service.getInstalled('test-plugin')?.acceptedHostVersion).toBe('0.4.1');
 	});
 
+	it('rejects compatibility confirmation when another window replaces the plugin during activation', async () => {
+		const other = new OfficialPluginInstalledStore(engine);
+		await other.load();
+		await other.upsert({
+			manifest: {
+				id: 'test-plugin',
+				version: '0.4.0',
+				type: 'tool',
+				bundleFormat: 'esm',
+				bundleUrl: 'bundle.js',
+				sha256: await engine.runtime.sha256(SAMPLE_BUNDLE)
+			} as PluginManifest,
+			code: SAMPLE_BUNDLE,
+			manifestUrl: 'https://cdn.example.com/plugin/manifest.json',
+			origin: { kind: 'user' },
+			installedAt: 1
+		});
+		await service.init();
+		const load = engine.loadPlugin.bind(engine);
+		vi.spyOn(engine, 'loadPlugin').mockImplementationOnce(async (...args) => {
+			const handle = await load(...args);
+			await other.upsert({
+				...other.find('test-plugin')!,
+				manifest: { ...other.find('test-plugin')!.manifest, version: '0.4.2' }
+			});
+			return handle;
+		});
+		await expect(service.confirmHostCompatibility('test-plugin')).rejects.toThrow('Plugin changed');
+		await other.load();
+		expect(other.find('test-plugin')?.manifest.version).toBe('0.4.2');
+		expect(other.find('test-plugin')?.acceptedHostVersion).toBeUndefined();
+		expect(engine.isPluginLoaded('test-plugin')).toBe(false);
+	});
+
 	it('retains incompatible official plugins without executing them when offline', async () => {
 		const hash = await engine.env.runtime.sha256(SAMPLE_BUNDLE);
 		const staleManifest: PluginManifest = {

@@ -221,10 +221,12 @@ export class OfficialPluginInstalledStore {
 			state.removed = [...new Set([...state.removed, id])];
 		});
 	}
-	async acceptHostVersion(id: string, hostVersion: string) {
+	async acceptHostVersion(id: string, hostVersion: string, expectedRevision: number) {
 		await this.mutate((state) => {
 			const record = state.records.find((record) => record.manifest.id === id);
 			if (!record) throw new Error(`Plugin not installed: ${id}`);
+			if ((record.revision ?? -1) !== expectedRevision)
+				throw new Error('Plugin changed during compatibility confirmation; retry');
 			record.acceptedHostVersion = hostVersion;
 			record.revision = (record.revision ?? 0) + 1;
 		});

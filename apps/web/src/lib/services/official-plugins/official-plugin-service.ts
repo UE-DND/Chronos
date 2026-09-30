@@ -790,7 +790,11 @@ export class OfficialPluginService implements Disposable {
 			try {
 				this.lifecycle.signal.throwIfAborted();
 				signal.throwIfAborted();
-				await this.installedStore.acceptHostVersion(pluginId, this.hostVersion);
+				await this.installedStore.acceptHostVersion(
+					pluginId,
+					this.hostVersion,
+					record.revision ?? -1
+				);
 				this.activeVersions.set(pluginId, this.installedStore.find(pluginId)?.revision);
 				this.updateStatuses.set(pluginId, { status: 'ready' });
 				this.installedStore.notify();
