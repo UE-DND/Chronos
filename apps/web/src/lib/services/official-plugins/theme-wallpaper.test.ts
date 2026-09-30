@@ -3,6 +3,7 @@ import type { ChronosEngine, HttpResponse, PluginManifest } from '@chronos/core'
 import type { ImageRepository } from '$lib/storage/image-repository';
 import { OfficialPluginAssetPipeline } from './asset-pipeline';
 import { OfficialPluginRuntimeActivator } from './runtime-activator';
+import { OfficialPluginInstallQueue, type PluginInstallRunner } from './install-queue';
 const hash = 'a'.repeat(64);
 const colors = JSON.stringify({
 	id: 'image-theme',
@@ -10,7 +11,10 @@ const colors = JSON.stringify({
 	variants: { light: { colors: {} }, dark: { colors: {} } },
 	wallpaper: { url: './image.png', sha256: hash }
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+	vi.unstubAllGlobals();
+	vi.useRealTimers();
+});
 function setup() {
 	const request = vi
 		.fn()
@@ -42,6 +46,39 @@ function setup() {
 	return { pipeline, request, sha256, decode, revoke };
 }
 describe('theme wallpaper assets', () => {
+	it.each(['cancel', 'timeout'] as const)(
+		'releases the install queue after %s during stalled image decoding',
+		async (outcome) => {
+			vi.useFakeTimers();
+			const { pipeline, decode, revoke } = setup();
+			const pendingDecode = Promise.withResolvers<void>();
+			decode.mockReturnValue(pendingDecode.promise);
+			const runner = vi.fn<PluginInstallRunner>(async (manifest, _url, options) => {
+				if (manifest.id === 'theme')
+					await pipeline.downloadThemeWallpaper(
+						colors,
+						'https://themes.test/colors.json',
+						options?.signal
+					);
+			});
+			const queue = new OfficialPluginInstallQueue({ runner });
+			queue.enqueue({ id: 'theme' } as PluginManifest);
+			queue.enqueue({ id: 'next' } as PluginManifest);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(decode).toHaveBeenCalledOnce();
+			if (outcome === 'cancel') queue.cancel('theme');
+			await vi.advanceTimersByTimeAsync(outcome === 'timeout' ? 20_000 : 0);
+			expect(runner).toHaveBeenCalledTimes(2);
+			expect(queue.getTask('next')).toBeUndefined();
+			if (outcome === 'cancel') expect(queue.getTask('theme')).toBeUndefined();
+			else expect(queue.getTask('theme')).toMatchObject({ status: 'failed' });
+			expect(revoke).toHaveBeenCalledWith('blob:validate');
+			expect(vi.getTimerCount()).toBe(0);
+			pendingDecode.reject(new Error('Late decode rejection'));
+			await vi.advanceTimersByTimeAsync(0);
+		}
+	);
+
 	it('reports wallpaper body reads as downloading and keeps overall progress monotonic', async () => {
 		const { pipeline, request, sha256, decode } = setup();
 		const progress: { stage: string; percent: number; label?: string }[] = [];

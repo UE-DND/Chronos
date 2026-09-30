@@ -158,7 +158,7 @@ export class OfficialPluginAssetPipeline {
 			throw new Error('Theme wallpaper integrity check failed');
 		const blob = new Blob([new Uint8Array(bytes)]);
 		onProgress?.({ stage: 'verifying', percent: 95, label: 'wallpaper' });
-		await validateImage(blob);
+		await validateImage(blob, signal);
 		signal?.throwIfAborted();
 		onProgress?.({ stage: 'verifying', percent: 100, label: 'wallpaper' });
 		return blob;
