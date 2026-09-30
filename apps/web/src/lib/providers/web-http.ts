@@ -1,5 +1,10 @@
 import { base } from '$app/paths';
-import type { HttpRequestOptions, HttpResponse, IHttpService } from '@chronos/core';
+import type {
+	HttpDownloadProgress,
+	HttpRequestOptions,
+	HttpResponse,
+	IHttpService
+} from '@chronos/core';
 import { mergeAbortSignals } from '$lib/utils/abort-signal';
 import { deploymentHasServerPlugins } from '$lib/boot/plugin-proxy-meta.generated';
 
@@ -49,6 +54,53 @@ function isDomainAllowed(hostname: string, allowedDomains: string[]): boolean {
 	});
 }
 
+async function readResponseBytes(
+	response: Response,
+	onProgress?: (progress: HttpDownloadProgress) => void
+): Promise<Uint8Array> {
+	if (!onProgress || !response.body) {
+		const bytes = new Uint8Array(await response.arrayBuffer());
+		onProgress?.({ receivedBytes: bytes.length, totalBytes: bytes.length });
+		return bytes;
+	}
+	const length = response.headers.get('Content-Length');
+	const encoding = response.headers.get('Content-Encoding')?.trim().toLowerCase();
+	const parsedLength = length === null ? undefined : Number(length);
+	let totalBytes =
+		(!encoding || encoding === 'identity') &&
+		parsedLength !== undefined &&
+		Number.isSafeInteger(parsedLength) &&
+		parsedLength >= 0
+			? parsedLength
+			: undefined;
+	const reader = response.body.getReader();
+	const chunks: Uint8Array[] = [];
+	let receivedBytes = 0;
+	try {
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			chunks.push(value);
+			receivedBytes += value.length;
+			// CORS may hide Content-Encoding, or the server may send an inaccurate length.
+			if (totalBytes !== undefined && receivedBytes > totalBytes) totalBytes = undefined;
+			onProgress({ receivedBytes, ...(totalBytes === undefined ? {} : { totalBytes }) });
+		}
+		const bytes = new Uint8Array(receivedBytes);
+		let offset = 0;
+		for (const chunk of chunks) {
+			bytes.set(chunk, offset);
+			offset += chunk.length;
+		}
+		return bytes;
+	} catch (error) {
+		await reader.cancel().catch(() => {});
+		throw error;
+	} finally {
+		reader.releaseLock();
+	}
+}
+
 /**
  * WebHttpProxyProvider implements IHttpService for Web environments.
  * It manages direct fetches, CORS bypass proxy routing with whitelist validation,
@@ -65,8 +117,18 @@ export class WebHttpProxyProvider implements IHttpService {
 		const controller = options?.timeoutMs ? new AbortController() : undefined;
 		const timeoutId =
 			options?.timeoutMs && controller
-				? setTimeout(() => controller.abort(), options.timeoutMs)
+				? setTimeout(
+						() => controller.abort(new DOMException('Request timed out', 'TimeoutError')),
+						options.timeoutMs
+					)
 				: undefined;
+		const clearRequestTimeout = () => {
+			if (timeoutId !== undefined) clearTimeout(timeoutId);
+		};
+		const abortSignals = [options?.signal, controller?.signal].filter(
+			(signal): signal is AbortSignal => signal !== undefined
+		);
+		const requestSignal = abortSignals.length > 0 ? mergeAbortSignals(abortSignals) : undefined;
 
 		try {
 			if (options?.bypassCors && !deploymentHasServerPlugins()) {
@@ -109,11 +171,6 @@ export class WebHttpProxyProvider implements IHttpService {
 				}
 			}
 
-			const abortSignals = [options?.signal, controller?.signal].filter(
-				(signal): signal is AbortSignal => signal !== undefined
-			);
-			const requestSignal = abortSignals.length > 0 ? mergeAbortSignals(abortSignals) : undefined;
-
 			let requestUrl = url;
 			if (base && url.startsWith('/official-plugins/')) requestUrl = `${base}${url}`;
 			else if (base && typeof window !== 'undefined') {
@@ -137,23 +194,32 @@ export class WebHttpProxyProvider implements IHttpService {
 			response.headers.forEach((val, key) => {
 				responseHeaders[key] = val;
 			});
+			if (!response.body) clearRequestTimeout();
+			// fetch resolves at headers; the same deadline must also cover body consumption.
+			const consume = async <T>(read: () => Promise<T>): Promise<T> => {
+				try {
+					requestSignal?.throwIfAborted();
+					return await read();
+				} catch (error) {
+					// Browsers may reject a timed-out body with AbortError; preserve the cause.
+					throw requestSignal?.aborted ? requestSignal.reason : error;
+				} finally {
+					clearRequestTimeout();
+				}
+			};
 
 			return {
 				status: response.status,
 				statusText: response.statusText,
 				headers: responseHeaders,
 				ok: response.ok,
-				text: () => response.text(),
-				json: <T = unknown>() => response.json() as Promise<T>,
-				bytes: async () => {
-					const buf = await response.arrayBuffer();
-					return new Uint8Array(buf);
-				}
+				text: () => consume(() => response.text()),
+				json: <T = unknown>() => consume(() => response.json() as Promise<T>),
+				bytes: (onProgress) => consume(() => readResponseBytes(response, onProgress))
 			};
-		} finally {
-			if (timeoutId) {
-				clearTimeout(timeoutId);
-			}
+		} catch (error) {
+			clearRequestTimeout();
+			throw requestSignal?.aborted ? requestSignal.reason : error;
 		}
 	}
 }
