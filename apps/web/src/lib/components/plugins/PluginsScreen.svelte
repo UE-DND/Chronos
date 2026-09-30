@@ -554,10 +554,11 @@
 														>
 													{/if}
 													{#if manifest.downloadSizeBytes !== undefined}
-														<span class="text-caption text-on-surface-variant/70">
-															{hostT('plugins.size', {
-																size: formatBytes(manifest.downloadSizeBytes)
-															})}
+														<span
+															class="text-caption inline-flex items-center gap-1 text-on-surface-variant/70"
+														>
+															<span aria-hidden="true">｜</span>
+															{formatBytes(manifest.downloadSizeBytes, 0)}
 														</span>
 													{/if}
 												</div>

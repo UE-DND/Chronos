@@ -39,4 +39,9 @@ describe('formatBytes', () => {
 		expect(formatBytes(1536)).toBe('1.5 KB');
 		expect(formatBytes(2 * 1024 * 1024)).toBe('2.0 MB');
 	});
+
+	it('supports displaying rounded whole units', () => {
+		expect(formatBytes(1536, 0)).toBe('2 KB');
+		expect(formatBytes(1.5 * 1024 * 1024, 0)).toBe('2 MB');
+	});
 });
