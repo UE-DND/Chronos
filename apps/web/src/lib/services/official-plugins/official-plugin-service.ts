@@ -151,7 +151,7 @@ export class OfficialPluginService implements Disposable {
 			system: true,
 			preinstall: {
 				profileId: this.profile.profileId,
-				enabled: entry.enabled !== false,
+				enabled: true,
 				config: entry.config
 			}
 		});

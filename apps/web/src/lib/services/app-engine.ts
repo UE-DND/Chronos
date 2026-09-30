@@ -205,7 +205,7 @@ function getMissingPreinstalls(
 	const installed = new Map(service.listInstalled().map((record) => [record.manifest.id, record]));
 	return profile.preinstall.flatMap((entry) => {
 		const record = installed.get(entry.id);
-		return record && record.enabled === (entry.enabled !== false) ? [] : [entry.id];
+		return record && record.enabled ? [] : [entry.id];
 	});
 }
 

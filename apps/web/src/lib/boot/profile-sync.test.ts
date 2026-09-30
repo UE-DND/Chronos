@@ -15,11 +15,9 @@ describe('profile and deployment boundaries', () => {
 			expect(
 				profile.preinstall.every((entry) => OFFICIAL_PLUGINS.some((p) => p.id === entry.id))
 			).toBe(true);
-			expect(
-				profile.preinstall.some(
-					(entry) => entry.id === profile.defaultTheme.pluginId && entry.enabled !== false
-				)
-			).toBe(true);
+			expect(profile.preinstall.some((entry) => entry.id === profile.defaultTheme.pluginId)).toBe(
+				true
+			);
 			expect(profile.preinstall.some((entry) => entry.id === 'core-shell')).toBe(false);
 			expect(profile.preinstall.some((entry) => entry.id === 'theme-arknights')).toBe(false);
 		}

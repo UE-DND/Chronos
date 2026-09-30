@@ -38,22 +38,11 @@ describe('profile validation', () => {
 		defaultTheme: { pluginId: 'base', themeId: 'theme' },
 		preinstall: [{ id: 'base' }]
 	};
-	it('rejects a disabled ordinary preinstall', () => {
-		expect(() =>
-			validateProfile({
-				...profile,
-				preinstall: [...profile.preinstall, { id: 'tool', enabled: false }]
-			})
-		).toThrow('must be enabled');
-	});
-	it('rejects missing, disabled and overridden defaults', () => {
+	it('rejects missing and overridden defaults', () => {
 		expect(() =>
 			validateProfile({ ...profile, defaultTheme: undefined } as unknown as ChronosProfile)
 		).toThrow();
 		expect(() => validateProfile({ ...profile, preinstall: [] })).toThrow();
-		expect(() =>
-			validateProfile({ ...profile, preinstall: [{ id: 'base', enabled: false }] })
-		).toThrow();
 		expect(() =>
 			validateProfile({
 				...profile,
