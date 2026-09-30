@@ -126,7 +126,6 @@ function registerCoreShellSlots(
 		id: 'plugins',
 		sectionId: DEFAULT_MINE_SECTION_ID,
 		title: () => t('item.plugins'),
-		supporting: () => t('item.plugins.supporting'),
 		href: '/plugins',
 		icon: 'code',
 		iconTone: 'secondary',
@@ -148,7 +147,7 @@ function registerCoreShellSlots(
 		icon: 'add-home',
 		iconTone: 'primary',
 		keywords: keywordList(t, 'item.install.keywords'),
-		order: 10
+		order: 20
 	});
 
 	ctx.registerSlot('mine.item', {
@@ -159,7 +158,7 @@ function registerCoreShellSlots(
 		icon: 'info',
 		iconTone: 'tertiary',
 		keywords: keywordList(t, 'item.about.keywords'),
-		order: 20
+		order: 10
 	});
 }
 

@@ -46,7 +46,6 @@ export const en = {
 	'item.display': 'Display settings',
 	'item.feedback': 'Feedback settings',
 	'item.plugins': 'Plugin center',
-	'item.plugins.supporting': 'Manage plugins and extensions',
 	'item.install': 'Install Chronos',
 	'item.install.supporting.standalone': 'Installed as a desktop app',
 	'item.install.supporting.local': 'Installed — open in the app',
