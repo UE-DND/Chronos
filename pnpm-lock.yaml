@@ -334,8 +334,8 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0(@sveltejs/kit@2.70.3(@sveltejs/vite-plugin-svelte@7.3.1(@voidzero-dev/vite-plus-core@1.0.0(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3))(svelte@5.57.1))(@voidzero-dev/vite-plus-core@1.0.0(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3))(svelte@5.57.1)(typescript@6.0.3))(@voidzero-dev/vite-plus-core@1.0.0(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3))(workbox-build@7.4.1)(workbox-window@7.4.1)
       rolldown-license-plugin:
-        specifier: ^3.0.11
-        version: 3.0.11(rolldown@1.2.9)
+        specifier: ^3.0.14
+        version: 3.0.14(rolldown@1.2.9)
       smol-toml:
         specifier: ^1.9.0
         version: 1.9.0
@@ -4029,8 +4029,8 @@ packages:
     engines: {node: 20 || >=22}
     hasBin: true
 
-  rolldown-license-plugin@3.0.11:
-    resolution: {integrity: sha512-xsGoilQ7bNqm2+mFoD/GmXQiIfzIqhkQ6HF+K4fHClGeSfcmmhOZlUEi6r8J/jCVcSbVk2t9OBqvOh0ms2diqQ==}
+  rolldown-license-plugin@3.0.14:
+    resolution: {integrity: sha512-Lf0UPQNfKpVXVZJLsVA4VriRcTk1HpY0LknqBIi72eEo//K5bHk9kTfUD6OMvlQh3Qfb3wbwFmK4O2vT9pvNtg==}
     peerDependencies:
       rolldown: '*'
 
@@ -7877,7 +7877,7 @@ snapshots:
       glob: 13.0.6
       package-json-from-dist: 1.0.1
 
-  rolldown-license-plugin@3.0.11(rolldown@1.2.9):
+  rolldown-license-plugin@3.0.14(rolldown@1.2.9):
     dependencies:
       rolldown: 1.2.9
 
