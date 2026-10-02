@@ -129,6 +129,18 @@ deployment = "chronos-default"
 
 Web 的软件更新使用 Service Worker；移动端构建关闭 PWA。Web 在准备完已安装可选官方插件后才授权新 Worker 接管，所有窗口随接管刷新。移动端检查独立的 Android 就绪 feed，匹配实际包名、签名与 Profile 后打开固定 GitHub APK 地址；应用更新后后台恢复可选官方插件。具体约束见 [ADR 0047](.agents/docs/adr/0047-host-update-transactions.md)。
 
+Android Release 使用 `app/src/main/generated/baselineProfiles/` 中的 Baseline 和 Startup Profiles。前者通过 ProfileInstaller 支持侧载 APK 的 ART 编译优化，后者交给 R8 优化启动代码的 DEX 布局；它们优化原生宿主，不直接优化 WebView 内的 JavaScript/CSS。普通 Release 构建不启动模拟器，CI 检查 APK 包含编译后的 Profile 和错误页且没有 PWA 专用资源。
+
+更新原生启动路径或 Capacitor/AndroidX 依赖后，先运行 `vp run mobile:build`，连接 API 33+ 的设备或模拟器（也可使用已 root 的 API 28+ 设备），确认 WebView 满足最低版本，然后在 `apps/mobile/android` 运行：
+
+```sh
+./gradlew :app:generateBaselineProfile
+```
+
+采集模块 `:baselineprofile` 使用独立的 debug 签名 `nonMinifiedRelease` 变体，启动应用并等待实际应用界面出现；不会使用正式签名密钥。检查并提交重新生成的两个文本 Profile。正式 Release APK/AAB 仍必须配置官方签名环境变量。Profile 来自启动场景采集，性能收益需用真实设备测量，不能从模拟器采集结果推断。
+
+当前 Profile 于 2026-10-02 使用 Android 15 / API 35、ARM64 Pixel 6 模拟器和 WebView 124 采集，覆盖冷启动至欢迎页或课表可见的路径。未覆盖课表导入、页面切换等后续交互。
+
 | 构建任务                       | 客户端预安装插件                             | 服务端插件    |
 | ------------------------------ | -------------------------------------------- | ------------- |
 | `build:default`、`build:pages` | `theme-m3`、`codec-share`                    | 无            |

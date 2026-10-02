@@ -162,6 +162,12 @@ jobs:
           ./gradlew --no-daemon assembleRelease
           APK="app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
+          python3 - "$APK" <<'PY'
+          import sys, zipfile
+          with zipfile.ZipFile(sys.argv[1]) as apk:
+              for required in ('assets/dexopt/baseline.prof', 'assets/dexopt/baseline.profm'):
+                  assert apk.getinfo(required).file_size > 0, f'Missing or empty APK asset: {required}'
+          PY
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --min-sdk-version 21 --print-certs "$APK" > "$RUNNER_TEMP/apk-signature.txt"
           grep -q 'Verified using v1 scheme (JAR signing): true' "$RUNNER_TEMP/apk-signature.txt"
           grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' "$RUNNER_TEMP/apk-signature.txt"
