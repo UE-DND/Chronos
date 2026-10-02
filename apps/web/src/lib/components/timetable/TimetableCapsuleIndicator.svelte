@@ -16,9 +16,9 @@
 	import { trackEvent } from '$lib/client/analytics';
 	import { haptic } from '$lib/haptic/haptic';
 
-	const STATE_TRANSITION_MS = 200;
+	const STATE_TRANSITION_MS = 260;
 	const GLASS_LINGER_MS = 400;
-	const GLASS_FADE_MS = 250;
+	const GLASS_FADE_MS = 320;
 
 	interface Props {
 		screen: TimetableScreenController;
