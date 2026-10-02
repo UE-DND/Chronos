@@ -83,8 +83,6 @@ export const en = {
 	'display.section.themeMode': 'Theme mode',
 	'display.section.layout': 'Timetable page style',
 	'display.periodHighlight.label': 'Highlight current period',
-	'display.periodHighlight.desc': 'Highlight the current period in the sidebar and scroll to it',
-	'display.periodHighlight.desc.compact': 'Highlight the current period in the sidebar',
 	'display.section.capsule': 'Course capsule style',
 	'display.builtin.default': 'Default',
 	'display.colorScheme.builtinDesc': 'Use Chronos brand colors',

@@ -82,8 +82,6 @@ export const zhCn = {
 	'display.section.themeMode': '主题模式',
 	'display.section.layout': '课表页样式',
 	'display.periodHighlight.label': '高亮当前节次',
-	'display.periodHighlight.desc': '在课表左侧高亮当前时间段，并自动滚动定位',
-	'display.periodHighlight.desc.compact': '在课表左侧高亮当前时间段',
 	'display.section.capsule': '课程胶囊样式',
 	'display.builtin.default': '默认',
 	'display.colorScheme.builtinDesc': '使用 Chronos 品牌配色',

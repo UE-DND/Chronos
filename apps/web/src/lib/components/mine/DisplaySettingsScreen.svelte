@@ -20,11 +20,6 @@
 	const currentPeriodHighlightEnabled = $derived(
 		shell.controller.userPreferences?.currentPeriodHighlightEnabled ?? false
 	);
-	const periodHighlightDesc = $derived(
-		layoutMode === 'compact'
-			? hostT('display.periodHighlight.desc.compact')
-			: hostT('display.periodHighlight.desc')
-	);
 
 	const themeOptions = $derived.by(() => {
 		void shell.controller.currentLocale;
@@ -131,7 +126,7 @@
 	</MineSection>
 
 	<MineSection>
-		<MineRow label title={hostT('display.periodHighlight.label')} supporting={periodHighlightDesc}>
+		<MineRow label title={hostT('display.periodHighlight.label')}>
 			{#snippet trailing()}
 				<Switch
 					checked={currentPeriodHighlightEnabled}
