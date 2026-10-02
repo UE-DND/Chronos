@@ -282,3 +282,18 @@ JSON 主题中的壁纸 URL 以颜色 JSON 地址为基准解析。图片下载�
 ### 下载大小
 
 Manifest 中的 `downloadSizeBytes` 只用于显示下载大小。它的值是安装所需资源的原始字节数之和。文本按 UTF-8 计算，不包括 Manifest、HTTP 传输压缩和运行时额外请求。未声明此字段时，不显示大小。资源完整性仍通过 SHA-256 校验。
+
+### Android 自更新验证
+
+应用内更新由 `ChronosUpdater` 的原生任务管理。更新按钮授权本次下载及安装，离开页面不取消任务；系统可能要求安装权限或再次确认。Android 12 起尝试免确认自更新，Android 7–11 使用系统确认。首次安装含更新器的新版本仍需手动完成。
+
+修改更新器后，除 `vp run check`、`vp run test` 与 `vp run mobile:build` 外，在配置了 JDK 21、Android SDK 的环境运行：
+
+```sh
+cd apps/mobile/android
+./gradlew :app:testDebugUnitTest :app:assembleDebug :app:connectedDebugAndroidTest
+```
+
+原生仪器测试覆盖任务恢复、广播核对和文件损坏。完整自更新使用同测试签名、不同 versionCode 的两个 APK，保持各 APK 内 `public/version.json` 与实际版本一致。安装旧 APK 后，将新 APK 放入目标应用可读的目录，使用 instrumentation 参数 `fixtureApk` 运行 `ChronosUpdateManagerTest#z_stageSignedUpgradeFixture`。该测试通过测试代码暂存 APK，再执行实际原生校验及安装；生产更新器没有测试地址或绕过校验开关。覆盖安装可能结束 instrumentation，须另行核对系统安装版本、任务最终结果及保留的数据，不能只依赖测试返回码。测试用版本、签名及宿主描述应与正式 feed 分开。
+
+验收至少覆盖 Android 11、12、14、16，检查首次授权、权限撤销、系统确认、后台完成、进程中断、用户取消和空间不足。仅有单元测试或单一系统版本证据时，明确报告验证范围。
