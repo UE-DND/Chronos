@@ -39,6 +39,13 @@ export interface AndroidStableUpdate {
 	profiles: Record<string, AndroidProfileUpdate>;
 }
 
+export interface SelectedAndroidUpdate extends AndroidProfileUpdate {
+	release: HostRelease;
+	packageId: string;
+	versionCode: number;
+	signingCertificateSha256: string;
+}
+
 export function androidVersionCode(version: string): number {
 	const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(version);
 	if (!match) throw new Error('Android updates require a stable version');
@@ -110,7 +117,7 @@ export function selectAndroidUpdate(
 	profileId: string,
 	packageId: string,
 	certificate: string
-): AndroidProfileUpdate & { release: HostRelease; versionCode: number } {
+): SelectedAndroidUpdate {
 	const update = value as AndroidStableUpdate;
 	if (
 		update?.formatVersion !== 1 ||
@@ -135,13 +142,20 @@ export function selectAndroidUpdate(
 		entry.sizeBytes < 1 ||
 		apk.protocol !== 'https:' ||
 		apk.hostname !== 'github.com' ||
+		apk.port ||
 		apk.username ||
 		apk.password ||
 		apk.search ||
 		apk.hash ||
-		!apk.pathname.includes(`/releases/download/${update.release.tagName}/`) ||
-		!apk.pathname.endsWith(`-${profileFlavor}-${entry.host.version}.apk`)
+		apk.pathname !==
+			`/UE-DND/Chronos/releases/download/${update.release.tagName}/Chronos-${profileFlavor}-${entry.host.version}.apk`
 	)
 		throw new Error('Invalid pinned Android artifact');
-	return { ...entry, release: update.release, versionCode: update.versionCode };
+	return {
+		...entry,
+		release: update.release,
+		versionCode: update.versionCode,
+		packageId: update.packageId,
+		signingCertificateSha256: update.signingCertificateSha256
+	};
 }

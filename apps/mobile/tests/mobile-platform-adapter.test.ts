@@ -30,6 +30,11 @@ const mockApp = vi.hoisted(() => ({
 	exitApp: vi.fn()
 }));
 
+const mockUpdater = vi.hoisted(() => ({
+	startUpdate: vi.fn().mockResolvedValue({ phase: 'downloading', percent: 0, canCancel: true }),
+	takeEvents: vi.fn().mockResolvedValue({ events: [] })
+}));
+
 const mockAppLauncher = vi.hoisted(() => ({ openUrl: vi.fn().mockResolvedValue(undefined) }));
 
 const mockSplashScreen = vi.hoisted(() => ({
@@ -71,6 +76,7 @@ vi.mock('@capacitor/clipboard', () => ({
 }));
 
 vi.mock('@capacitor/core', () => ({
+	registerPlugin: vi.fn(() => mockUpdater),
 	CapacitorHttp: mockCapacitorHttp,
 	CapacitorCookies: mockCapacitorCookies,
 	Capacitor: {
@@ -419,30 +425,35 @@ describe('mobile-platform-adapter', () => {
 			expect(adapter.shouldShowInstallGuide).toBe(false);
 		});
 
-		it('opens a configured HTTPS update URL with Capacitor AppLauncher', async () => {
+		it('passes the complete APK descriptor to the native updater', async () => {
 			capacitorState.isNative = true;
 			capacitorState.platform = 'android';
-			const adapter = createMobilePlatformAdapter();
-			const action = adapter.getUpdateAction?.();
-
-			expect(action).toBeDefined();
-			expect(action?.mode).toBe('external-link');
-			expect(action?.canApplyInApp).toBe(false);
-			expect(action?.actionLabelKey).toBe('about.update.external');
-
-			await action?.applyUpdate({
-				tagName: 'v1.1.0',
-				name: 'Chronos 1.1.0',
-				publishedAt: '2026-09-25',
-				body: '',
-				platforms: {
-					android: { updateUrl: 'https://example.com/chronos.apk' }
-				}
-			});
-
-			expect(mockAppLauncher.openUrl).toHaveBeenCalledWith({
-				url: 'https://example.com/chronos.apk'
-			});
+			const action = createMobilePlatformAdapter().getUpdateAction?.();
+			const release = { tagName: 'v1.1.3', name: '', body: '', publishedAt: '' };
+			const androidUpdate = {
+				host: {
+					version: '1.1.3',
+					buildId: 'a'.repeat(64),
+					sourceCommit: 'b'.repeat(40),
+					profileId: 'chronos-default',
+					deploymentId: 'mobile',
+					target: 'mobile' as const
+				},
+				release,
+				packageId: 'org.uednd.chronos',
+				signingCertificateSha256: 'c'.repeat(64),
+				versionCode: 1001003,
+				apkUrl:
+					'https://github.com/UE-DND/Chronos/releases/download/v1.1.3/Chronos-default-1.1.3.apk',
+				sha256: 'd'.repeat(64),
+				sizeBytes: 1234,
+				pluginCatalogUrl: 'https://ue-dnd.github.io/Chronos/plugins/releases/1.1.3/catalog.json'
+			};
+			await action?.applyUpdate({ ...release, androidUpdate });
+			expect(action?.mode).toBe('native-apk');
+			expect(action?.canApplyInApp).toBe(true);
+			expect(mockUpdater.startUpdate).toHaveBeenCalledWith({ update: androidUpdate });
+			expect(mockAppLauncher.openUrl).not.toHaveBeenCalled();
 		});
 
 		it('does not invent an update URL when release metadata omits one', async () => {
@@ -458,7 +469,7 @@ describe('mobile-platform-adapter', () => {
 					publishedAt: '2026-09-25',
 					body: ''
 				})
-			).rejects.toThrow('当前版本没有可用的 Android 更新地址');
+			).rejects.toThrow('Android update descriptor unavailable');
 
 			expect(mockAppLauncher.openUrl).not.toHaveBeenCalled();
 		});

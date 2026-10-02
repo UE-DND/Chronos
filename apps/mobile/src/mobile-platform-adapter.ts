@@ -1,3 +1,4 @@
+import { createAndroidUpdateAction, flushAndroidUpdateEvents } from './android-updater';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -141,6 +142,8 @@ export function updateMobileBackState(canGoBack: boolean): void {
 export function initMobilePlatform(callbacks?: HostPlatformInitCallbacks): () => void {
 	if (typeof window === 'undefined' || !isCapacitorNative()) return () => {};
 
+	if (Capacitor.getPlatform() === 'android') void flushAndroidUpdateEvents().catch(() => {});
+
 	// 1. Inject NativeHostBridge onto window for @chronos/ui-kit
 	const bridge = createCapacitorNativeBridge();
 	(window as unknown as Record<string, unknown>)[CHRONOS_NATIVE_BRIDGE_KEY] = bridge;
@@ -226,6 +229,8 @@ export function initMobilePlatform(callbacks?: HostPlatformInitCallbacks): () =>
 				App.addListener('appStateChange', ({ isActive }) => {
 					if (isActive) {
 						callbacks.onAppResume?.();
+						if (Capacitor.getPlatform() === 'android')
+							void flushAndroidUpdateEvents().catch(() => {});
 					}
 				})
 			);
@@ -362,6 +367,7 @@ export function createMobilePlatformAdapter(): HostPlatformAdapter {
 		getAndroidInstallationIdentity:
 			isNative && platformType === 'android' ? readAndroidInstallationIdentity : undefined,
 		getUpdateAction(): PlatformUpdateAction {
+			if (isNative && platformType === 'android') return createAndroidUpdateAction();
 			return {
 				mode: 'external-link',
 				canApplyInApp: false,

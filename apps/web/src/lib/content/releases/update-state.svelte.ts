@@ -6,18 +6,23 @@ import type { ReleaseCatalog } from './catalog';
 import { compareReleaseVersions, type Release } from './release';
 import { createReleaseFeedAdapter, type ReleaseFeedAdapter } from './release-feed-adapter';
 import { SwUpdateError, type ApplyUpdateOptions } from '$lib/client/pwa-sw';
-import { getHostPlatform, type PlatformUpdateAction } from '$lib/platform/host-platform';
+import {
+	getHostPlatform,
+	type PlatformUpdateAction,
+	type HostUpdatePhase,
+	type NativeUpdateState
+} from '$lib/platform/host-platform';
 import {
 	createDefaultServiceWorkerAdapter,
-	type ServiceWorkerAdapter,
-	type SwUpdateProgress
+	type ServiceWorkerAdapter
 } from './service-worker-adapter';
 
 export type UpdateSource = 'none' | 'semver' | 'sw' | 'both';
 
-export type InstallPhase = SwUpdateProgress['phase'];
+export type InstallPhase = HostUpdatePhase;
 
 interface SoftwareUpdateState {
+	nativeState: NativeUpdateState | null;
 	checking: boolean;
 	updating: boolean;
 	installPhase: InstallPhase | null;
@@ -52,7 +57,9 @@ interface CachedCheckSnapshot {
 export function createUpdateState(options: UpdateStateOptions = {}) {
 	const currentVersion = options.currentVersion ?? APP_VERSION;
 	const hostUpdateAction = options.platformUpdateAction ?? getHostPlatform().getUpdateAction?.();
-	const isExternalUpdatePlatform = hostUpdateAction?.mode === 'external-link';
+	const isNativeUpdatePlatform = hostUpdateAction?.mode === 'native-apk';
+	const isExternalUpdatePlatform =
+		hostUpdateAction?.mode === 'external-link' || isNativeUpdatePlatform;
 	const feedAdapter: ReleaseFeedAdapter =
 		options.releaseFeedAdapter ??
 		createReleaseFeedAdapter({
@@ -85,6 +92,67 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 	let latestRelease = $state<Release | null>(null);
 	let errorMessage = $state<string | null>(null);
 	let lastChecked = $state<SvelteDate | null>(null);
+	let nativeState = $state.raw<NativeUpdateState | null>(null);
+
+	function applyNativeState(snapshot: NativeUpdateState) {
+		nativeState = snapshot;
+		if (snapshot.phase === 'idle') return;
+		const active = !['idle', 'succeeded', 'failed', 'canceled'].includes(snapshot.phase);
+		updating = active;
+		installPhase = active ? (snapshot.phase as HostUpdatePhase) : null;
+		installPercent = snapshot.percent;
+		errorMessage =
+			snapshot.phase === 'failed'
+				? `about.update.android.error.${snapshot.errorCode ?? 'install_failed'}`
+				: null;
+		if (
+			active ||
+			(snapshot.phase === 'failed' &&
+				snapshot.targetVersion != null &&
+				compareReleaseVersions(snapshot.targetVersion, currentVersion) > 0)
+		) {
+			hasUpdate = true;
+			hasNewerVersion =
+				snapshot.targetVersion != null &&
+				compareReleaseVersions(snapshot.targetVersion, currentVersion) > 0;
+		}
+		if (snapshot.phase === 'succeeded' && !hasNewerVersion) applyUpdateSignals(false, false);
+	}
+
+	async function observeNativeUpdate(): Promise<() => void> {
+		const native = hostUpdateAction?.native;
+		if (!native) return () => {};
+		let receivedEvent = false;
+		const dispose = await native.subscribe((snapshot) => {
+			receivedEvent = true;
+			applyNativeState(snapshot);
+		});
+		try {
+			const snapshot = await native.getState();
+			if (!receivedEvent) applyNativeState(snapshot);
+		} catch {
+			dispose();
+			errorMessage = 'about.update.android.error.install_failed';
+			return () => {};
+		}
+		return dispose;
+	}
+
+	async function continueNativeUpdate() {
+		try {
+			if (hostUpdateAction?.native)
+				applyNativeState(await hostUpdateAction.native.continueUpdate());
+		} catch {
+			errorMessage = 'about.update.android.error.install_failed';
+		}
+	}
+	async function cancelNativeUpdate() {
+		try {
+			if (hostUpdateAction?.native) applyNativeState(await hostUpdateAction.native.cancelUpdate());
+		} catch {
+			errorMessage = 'about.update.android.error.install_failed';
+		}
+	}
 
 	function resolveUpdateSource(newerVersion: boolean, swHasUpdate: boolean): UpdateSource {
 		if (newerVersion && swHasUpdate) return 'both';
@@ -192,6 +260,7 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 		} finally {
 			lastChecked = new SvelteDate();
 			checking = false;
+			if (nativeState) applyNativeState(nativeState);
 		}
 	}
 
@@ -207,24 +276,50 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 		return 'about.update.error.installFailed';
 	}
 
-	const platformUpdateAction: PlatformUpdateAction | undefined = hostUpdateAction
-		? {
-				mode: hostUpdateAction.mode,
-				canApplyInApp: hostUpdateAction.canApplyInApp,
-				actionLabelKey: hostUpdateAction.actionLabelKey,
-				applyUpdate(release, opts) {
-					if (!hostUpdateAction.canApplyInApp) {
-						return hostUpdateAction.applyUpdate(release, opts);
+	const platformUpdateAction: PlatformUpdateAction | undefined = isNativeUpdatePlatform
+		? hostUpdateAction
+		: hostUpdateAction
+			? {
+					mode: hostUpdateAction.mode,
+					canApplyInApp: hostUpdateAction.canApplyInApp,
+					actionLabelKey: hostUpdateAction.actionLabelKey,
+					applyUpdate(release, opts) {
+						if (!hostUpdateAction.canApplyInApp) {
+							return hostUpdateAction.applyUpdate(release, opts);
+						}
+						return swAdapter.applyUpdateAndReload(opts);
 					}
-					return swAdapter.applyUpdateAndReload(opts);
 				}
-			}
-		: undefined;
+			: undefined;
 
 	async function installUpdate() {
 		if (updating) return;
 		updating = true;
 		errorMessage = null;
+
+		if (isNativeUpdatePlatform) {
+			if (!platformUpdateAction?.native) {
+				updating = false;
+				errorMessage = 'about.update.android.error.install_failed';
+				return;
+			}
+			try {
+				if (nativeState?.phase === 'failed' && !latestRelease) {
+					applyNativeState(await platformUpdateAction.native.continueUpdate());
+				} else {
+					await platformUpdateAction.applyUpdate(latestRelease);
+				}
+				applyNativeState(await platformUpdateAction.native.getState());
+			} catch (error) {
+				updating = false;
+				const code =
+					typeof error === 'object' && error != null && 'code' in error
+						? String(error.code)
+						: 'install_failed';
+				errorMessage = `about.update.android.error.${code}`;
+			}
+			return;
+		}
 
 		if (platformUpdateAction && !platformUpdateAction.canApplyInApp) {
 			trackEvent('external_update_open');
@@ -273,6 +368,7 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 	}
 
 	const state = $derived({
+		nativeState,
 		checking,
 		updating,
 		installPhase,
@@ -293,6 +389,9 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 		get updateAction() {
 			return platformUpdateAction;
 		},
+		observeNativeUpdate,
+		continueNativeUpdate,
+		cancelNativeUpdate,
 		checkUpdate,
 		installUpdate
 	};

@@ -44,9 +44,33 @@
 	const controller = getAppController();
 	const activeLocale = $derived(appLocaleToBcp47(controller.currentLocale as AppLocale));
 	const androidUpdateUrl = $derived(updateState.state.latestRelease?.platforms?.android?.updateUrl);
+	const androidTask = $derived(
+		updateState.state.updating || updateState.state.nativeState?.phase === 'failed'
+			? updateState.state.nativeState
+			: null
+	);
+	const androidTargetVersion = $derived(
+		androidTask?.targetVersion ?? updateState.state.latestRelease?.androidUpdate?.host.version
+	);
+	const androidDownloadSize = $derived(
+		androidTask?.sizeBytes ?? updateState.state.latestRelease?.androidUpdate?.sizeBytes
+	);
 
 	onMount(() => {
 		void updateState.checkUpdate();
+		let active = true;
+		let dispose = () => {};
+		void updateState
+			.observeNativeUpdate()
+			.then((cleanup) => {
+				if (active) dispose = cleanup;
+				else cleanup();
+			})
+			.catch(() => {});
+		return () => {
+			active = false;
+			dispose();
+		};
 	});
 
 	let htmlBody = $state('');
@@ -140,11 +164,38 @@
 			{/if}
 
 			<div class="pt-2">
+				{#if updateState.updateAction?.mode === 'native-apk'}
+					<p class="text-body-small mb-3 text-on-surface-variant">
+						{hostT('about.update.android.notice')}
+						{#if androidTargetVersion}
+							v{androidTargetVersion}
+							· {((androidDownloadSize ?? 0) / 1024 / 1024).toFixed(1)} MB
+						{/if}
+					</p>
+				{/if}
 				{#if updateState.state.updating}
 					<UpdateInstallProgress
 						phase={updateState.state.installPhase ?? 'downloading'}
 						percent={updateState.state.installPercent}
 					/>
+					{#if updateState.state.installPhase === 'awaiting-permission' || updateState.state.installPhase === 'awaiting-confirmation'}
+						<Button
+							variant="filled"
+							class="mt-3 w-full"
+							onclick={() => void updateState.continueNativeUpdate()}
+						>
+							{hostT('about.update.android.continue')}
+						</Button>
+					{/if}
+					{#if updateState.state.nativeState?.canCancel}
+						<Button
+							variant="outlined"
+							class="mt-3 w-full"
+							onclick={() => void updateState.cancelNativeUpdate()}
+						>
+							{hostT('about.update.android.cancel')}
+						</Button>
+					{/if}
 				{:else}
 					{#if updateState.state.errorMessage}
 						<p class="text-body-medium mb-2 text-danger">

@@ -3,6 +3,7 @@ export interface AndroidReleaseInfo {
 }
 
 export interface Release {
+	androidUpdate?: import('@chronos/core').SelectedAndroidUpdate;
 	hostUpdate?: import('@chronos/core').WebHostUpdate;
 	tagName: string;
 	name: string;

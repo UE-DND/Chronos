@@ -58,7 +58,11 @@ export async function fetchLatestProjectRelease(
 				installed.packageId,
 				installed.signingCertificateSha256
 			);
-			return success({ ...entry.release, platforms: { android: { updateUrl: entry.apkUrl } } });
+			return success({
+				...entry.release,
+				androidUpdate: entry,
+				platforms: { android: { updateUrl: entry.apkUrl } }
+			});
 		}
 		const update = validateWebUpdate(data, HOST_BUILD);
 		return success({ ...update.release, hostUpdate: update });

@@ -4,6 +4,125 @@ import { createReleaseFeedAdapter, fetchLatestProjectRelease } from './release-f
 import * as serviceWorkerAdapter from './service-worker-adapter';
 import { HOST_BUILD } from '$lib/config/app-meta';
 import { AppError, failure, success } from '@chronos/core';
+import type { NativeUpdateState, PlatformUpdateAction } from '$lib/platform/host-platform';
+
+describe('native APK update lifecycle', () => {
+	function setup(initial: NativeUpdateState = { phase: 'idle', percent: null, canCancel: false }) {
+		let listener: ((state: NativeUpdateState) => void) | undefined;
+		const sw = {
+			isSupported: () => true,
+			isUpdatePending: vi.fn(() => true),
+			checkForUpdate: vi.fn(),
+			applyUpdateAndReload: vi.fn()
+		};
+		const action: PlatformUpdateAction = {
+			mode: 'native-apk',
+			canApplyInApp: true,
+			actionLabelKey: 'about.update.android.install',
+			applyUpdate: vi.fn(async () => undefined),
+			native: {
+				getState: vi.fn(async () => initial),
+				subscribe: vi.fn(async (callback) => {
+					listener = callback;
+					return () => {
+						listener = undefined;
+					};
+				}),
+				continueUpdate: vi.fn(async () => ({
+					phase: 'installing' as const,
+					percent: null,
+					canCancel: false
+				})),
+				cancelUpdate: vi.fn(async () => ({
+					phase: 'canceled' as const,
+					percent: null,
+					canCancel: false
+				}))
+			}
+		};
+		const controller = createUpdateState({
+			currentVersion: '1.0.0',
+			platformUpdateAction: action,
+			swAdapter: sw,
+			fetchLatestRelease: async () =>
+				success({ tagName: 'v1.0.1', name: '', body: '', publishedAt: '' })
+		});
+		return { controller, action, sw, emit: (state: NativeUpdateState) => listener?.(state) };
+	}
+
+	it('never checks or installs a service worker and remains active after enqueue', async () => {
+		const { controller, action, sw, emit } = setup();
+		const dispose = await controller.observeNativeUpdate();
+		await controller.checkUpdate();
+		await controller.installUpdate();
+		emit({ phase: 'downloading', percent: 32, canCancel: true });
+		await controller.installUpdate();
+		expect(action.applyUpdate).toHaveBeenCalledTimes(1);
+		expect(sw.isUpdatePending).not.toHaveBeenCalled();
+		expect(sw.checkForUpdate).not.toHaveBeenCalled();
+		expect(sw.applyUpdateAndReload).not.toHaveBeenCalled();
+		expect(controller.state.installPercent).toBe(32);
+		expect(controller.state.updating).toBe(true);
+		dispose();
+	});
+	it('restores confirmation and supports continuing without the release feed', async () => {
+		const { controller, action } = setup({
+			phase: 'awaiting-confirmation',
+			percent: null,
+			canCancel: true,
+			targetVersion: '1.0.1'
+		});
+		const dispose = await controller.observeNativeUpdate();
+		expect(controller.state.installPhase).toBe('awaiting-confirmation');
+		expect(controller.state.hasUpdate).toBe(true);
+		await controller.continueNativeUpdate();
+		expect(action.native?.continueUpdate).toHaveBeenCalledOnce();
+		expect(controller.state.installPhase).toBe('installing');
+		dispose();
+	});
+	it('does not let the previous successful task hide a newer release', async () => {
+		const { controller } = setup({
+			phase: 'succeeded',
+			percent: null,
+			canCancel: false,
+			targetVersion: '1.0.0'
+		});
+		const dispose = await controller.observeNativeUpdate();
+		await controller.checkUpdate();
+		expect(controller.state.hasNewerVersion).toBe(true);
+		expect(controller.state.hasUpdate).toBe(true);
+		dispose();
+	});
+
+	it('can start a newer release after an older task failed', async () => {
+		const { controller, action } = setup({
+			phase: 'failed',
+			percent: null,
+			canCancel: false,
+			targetVersion: '1.0.0',
+			errorCode: 'version_conflict'
+		});
+		const dispose = await controller.observeNativeUpdate();
+		await controller.checkUpdate();
+		await controller.installUpdate();
+		expect(action.applyUpdate).toHaveBeenCalledOnce();
+		expect(action.native?.continueUpdate).not.toHaveBeenCalled();
+		dispose();
+	});
+
+	it('reports terminal failures and cancellation without leaving a spinner', async () => {
+		const { controller, emit } = setup({ phase: 'downloading', percent: 10, canCancel: true });
+		const dispose = await controller.observeNativeUpdate();
+		emit({ phase: 'failed', percent: null, canCancel: false, errorCode: 'signature_mismatch' });
+		expect(controller.state.updating).toBe(false);
+		expect(controller.state.errorMessage).toBe('about.update.android.error.signature_mismatch');
+		emit({ phase: 'downloading', percent: 20, canCancel: true });
+		await controller.cancelNativeUpdate();
+		expect(controller.state.updating).toBe(false);
+		expect(controller.state.nativeState?.phase).toBe('canceled');
+		dispose();
+	});
+});
 
 describe('fetchLatestProjectRelease', () => {
 	it('successfully parses release from project version.json', async () => {
