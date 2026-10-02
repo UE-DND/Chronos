@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Chronos</title>
+		<style>
+			body {
+				margin: 0;
+				padding: 48px 24px;
+				background: #f8f9fa;
+				color: #202124;
+				font: 16px/1.6 sans-serif;
+			}
+			main {
+				max-width: 480px;
+				margin: 0 auto;
+			}
+			h1 {
+				font-size: 24px;
+			}
+			p {
+				margin: 16px 0;
+			}
+			a {
+				color: #174ea6;
+			}
+			.actions a {
+				display: inline-block;
+				margin: 8px 16px 8px 0;
+			}
+			#version {
+				font-size: 14px;
+				color: #5f6368;
+				overflow-wrap: break-word;
+			}
+			@media (prefers-color-scheme: dark) {
+				body {
+					background: #202124;
+					color: #e8eaed;
+				}
+				a {
+					color: #8ab4f8;
+				}
+				#version {
+					color: #bdc1c6;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<h1 id="title">无法加载 Chronos</h1>
+			<p id="detail">
+				请将 Android System WebView 或 Chrome 更新至 116
+				或更高版本，再关闭并重新打开应用。如果已经更新，请尝试重开应用或重新安装官方 APK。
+			</p>
+			<p id="store-help">可在设备的应用商店中搜索并更新系统 WebView 和 Chrome。</p>
+			<p id="version"></p>
+			<p class="actions">
+				<a
+					id="webview"
+					href="https://play.google.com/store/apps/details?id=com.google.android.webview"
+					>更新 WebView</a
+				>
+				<a id="chrome" href="https://play.google.com/store/apps/details?id=com.android.chrome"
+					>更新 Chrome</a
+				>
+				<a id="retry" href="/">重试加载</a>
+			</p>
+		</main>
+		<script>
+			// This page must run without the app bundle or Capacitor plugins, even on old WebViews.
+			(function () {
+				var english = (navigator.language || '').toLowerCase().indexOf('en') === 0;
+				var match = /Chrome\/(\d+)/.exec(navigator.userAgent || '');
+				var old = match && Number(match[1]) < 116;
+				if (english) {
+					document.documentElement.lang = 'en';
+					document.getElementById('title').textContent = old
+						? 'Update your WebView'
+						: 'Unable to load Chronos';
+					document.getElementById('detail').textContent =
+						'Update Android System WebView or Chrome to version 116 or later, then close and reopen the app. If already updated, reopen the app or reinstall the official APK.';
+					document.getElementById('store-help').textContent =
+						'You can also find WebView and Chrome updates in your device’s app store.';
+					document.getElementById('webview').textContent = 'Update WebView';
+					document.getElementById('chrome').textContent = 'Update Chrome';
+					document.getElementById('retry').textContent = 'Retry';
+				} else if (old) {
+					document.getElementById('title').textContent = '请更新系统 WebView';
+				}
+				if (match)
+					document.getElementById('version').textContent =
+						(english ? 'Current Chromium version: ' : '当前 Chromium 版本：') + match[1];
+				if (old) document.getElementById('retry').style.display = 'none';
+			})();
+		</script>
+	</body>
+</html>

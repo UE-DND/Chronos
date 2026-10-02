@@ -159,9 +159,20 @@ test('retries preparation, updates every window and preserves installed plugins 
 	expect(before.installation.prepared).toBeUndefined();
 	expect(before.courses).toHaveLength(timetable.courses.length);
 	await request.post('/__e2e/market-failure?enabled=false');
+	// A new controller can answer before the old document reloads. Observe both
+	// reloads before triggering the update, then wait before reading IndexedDB.
+	const reloads = Promise.all(
+		[page, other].map(async (client) => {
+			await client.waitForEvent('framenavigated', {
+				predicate: (frame) => frame === client.mainFrame()
+			});
+			await client.waitForLoadState('domcontentloaded');
+		})
+	);
 	await page.getByRole('button', { name: /立即安装更新|重试/, exact: true }).click();
 	await expect.poll(() => workerBuild(page)).toBe(newFeed.host.buildId);
 	await other.bringToFront();
+	await reloads;
 	await expect.poll(() => workerBuild(other)).toBe(newFeed.host.buildId);
 	await expect
 		.poll(async () => (await stored(page)).installation?.generation)

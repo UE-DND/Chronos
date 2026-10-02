@@ -216,6 +216,16 @@
 		pagerTouch = touch;
 		const resizeObserver = new ResizeObserver(() => {
 			snap.cancel();
+			if (touch.isActive) {
+				touch.cancel();
+				window.clearTimeout(settleTimer);
+				settleTimer = 0;
+				pointerHeld = false;
+				pagerGesture = false;
+				gestureStartWeek = null;
+				clearPagerPreview();
+				schedulePaintCollapse();
+			}
 			if (pagerGesture) return;
 			untrack(() => syncPagerScroll(node));
 			if (node.clientWidth > 0) pagerReady = true;

@@ -5,8 +5,8 @@ const HORIZONTAL_RATIO = 1.35;
 const COMMIT_DISTANCE_RATIO = 0.23;
 const FLING_DISTANCE_PX = 24;
 const FLING_VELOCITY_PX_MS = 0.5;
-const MIN_SETTLE_MS = 80;
-const MAX_SETTLE_MS = 100;
+const MIN_SETTLE_MS = 180;
+const MAX_SETTLE_MS = 300;
 
 /** Keep touch paging independent of the browser's fling distance and axis heuristic. */
 export function createWeekPagerTouch(
@@ -39,6 +39,14 @@ export function createWeekPagerTouch(
 		suspendSnap(false);
 	}
 
+	function cancel() {
+		const wasActive = pointerId !== null || frame !== 0;
+		stopAnimation();
+		pointerId = null;
+		direction = 'pending';
+		if (wasActive) restoreSnap();
+	}
+
 	function settle(target: number) {
 		stopAnimation();
 		const from = node.scrollLeft;
@@ -60,10 +68,13 @@ export function createWeekPagerTouch(
 			if (t < 1) {
 				frame = requestAnimationFrame(step);
 			} else {
-				frame = 0;
 				node.scrollLeft = target;
-				restoreSnap();
-				onSettled();
+				// Let the final scroll event update the week and indicator before clearing preview.
+				frame = requestAnimationFrame(() => {
+					frame = 0;
+					restoreSnap();
+					onSettled();
+				});
 			}
 		}
 		frame = requestAnimationFrame(step);
@@ -141,10 +152,10 @@ export function createWeekPagerTouch(
 		get isActive() {
 			return pointerId !== null || frame !== 0;
 		},
+		cancel,
 		destroy() {
 			listeners.abort();
-			stopAnimation();
-			if (pointerId !== null || direction === 'horizontal') restoreSnap();
+			cancel();
 		}
 	};
 }
