@@ -17,8 +17,8 @@
 	import { haptic } from '$lib/haptic/haptic';
 
 	const STATE_TRANSITION_MS = 260;
-	const GLASS_LINGER_MS = 400;
-	const GLASS_FADE_MS = 320;
+	const INDICATOR_LINGER_MS = 400;
+	const INDICATOR_FADE_MS = 320;
 
 	interface Props {
 		screen: TimetableScreenController;
@@ -51,7 +51,7 @@
 
 	function triggerGlassLinger() {
 		glassLingerActive = true;
-		transitionState.scheduleTransitionState('glassLinger', GLASS_LINGER_MS, () => {
+		transitionState.scheduleTransitionState('glassLinger', INDICATOR_LINGER_MS, () => {
 			glassLingerActive = false;
 		});
 	}
@@ -364,7 +364,7 @@
 			className
 		]}
 		style:--indicator-transition-duration={`${STATE_TRANSITION_MS}ms`}
-		style:--indicator-glass-fade-duration={`${GLASS_FADE_MS}ms`}
+		style:--indicator-fade-duration={`${INDICATOR_FADE_MS}ms`}
 	>
 		<div
 			class={[
@@ -386,7 +386,8 @@
 			id="week-indicator"
 			bind:this={gesture.containerEl}
 			role="slider"
-			tabindex="0"
+			tabindex={hasGlass ? 0 : -1}
+			inert={!hasGlass}
 			aria-label={hostT(
 				hasGlass && !isExpanded
 					? 'timetable.week.indicatorGlassAria'
@@ -397,7 +398,7 @@
 			aria-valuenow={ariaWeek}
 			aria-valuetext={tooltipWeekLabel}
 			class={[
-				'capsule-indicator pointer-events-auto inline-flex min-h-11 cursor-pointer touch-none items-center justify-center rounded-full px-2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none',
+				'capsule-indicator inline-flex min-h-11 cursor-pointer touch-none items-center justify-center rounded-full px-2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none',
 				isExpanded && 'capsule-indicator--expanded',
 				hasGlass && 'capsule-indicator--glass'
 			]}
@@ -434,35 +435,29 @@
 		width: calc(4 * var(--dot-pitch) - 6px + 1.25rem + 2px);
 		max-width: min(320px, calc(100vw - 2.5rem));
 		padding-inline: 0.625rem;
-		background-color: transparent;
-		backdrop-filter: blur(0px) saturate(1);
-		-webkit-backdrop-filter: blur(0px) saturate(1);
-		border: 1px solid transparent;
+		/* Fade the capsule itself, keeping the backdrop filter stable on Android. */
+		opacity: 0;
+		pointer-events: none;
+		background-color: color-mix(
+			in srgb,
+			var(--color-surface-container-high, #e5e8f0) 64%,
+			transparent
+		);
+		/* Keep the standard property last so minification retains it for Chromium. */
+		-webkit-backdrop-filter: blur(16px) saturate(1.3);
+		backdrop-filter: blur(16px) saturate(1.3);
+		border: 1px solid color-mix(in srgb, var(--color-outline-variant, #aeb2bb) 50%, transparent);
+		box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
 		transition:
 			width var(--indicator-transition-duration) var(--indicator-easing),
 			padding var(--indicator-transition-duration) var(--indicator-easing),
-			background-color var(--indicator-glass-fade-duration) var(--indicator-easing),
-			border-color var(--indicator-glass-fade-duration) var(--indicator-easing),
-			backdrop-filter var(--indicator-glass-fade-duration) var(--indicator-easing),
-			-webkit-backdrop-filter var(--indicator-glass-fade-duration) var(--indicator-easing);
+			opacity var(--indicator-fade-duration) var(--indicator-easing);
 	}
 
 	.capsule-indicator--glass {
-		background-color: color-mix(
-			in srgb,
-			var(--color-surface-container-high, #e5e8f0) 28%,
-			transparent
-		);
-		backdrop-filter: blur(16px) saturate(1.3);
-		-webkit-backdrop-filter: blur(16px) saturate(1.3);
-		border-color: color-mix(in srgb, var(--color-outline-variant, #aeb2bb) 26%, transparent);
-		transition:
-			width var(--indicator-transition-duration) var(--indicator-easing),
-			padding var(--indicator-transition-duration) var(--indicator-easing),
-			background-color var(--indicator-transition-duration) var(--indicator-easing),
-			border-color var(--indicator-transition-duration) var(--indicator-easing),
-			backdrop-filter var(--indicator-transition-duration) var(--indicator-easing),
-			-webkit-backdrop-filter var(--indicator-transition-duration) var(--indicator-easing);
+		opacity: 1;
+		pointer-events: auto;
+		transition-duration: var(--indicator-transition-duration);
 	}
 
 	.capsule-indicator--expanded {
@@ -502,7 +497,7 @@
 
 	.dots-track {
 		opacity: 0.8;
-		transition: opacity var(--indicator-glass-fade-duration) var(--indicator-easing);
+		transition: opacity var(--indicator-fade-duration) var(--indicator-easing);
 	}
 
 	.capsule-indicator--glass .dots-track {
@@ -571,8 +566,8 @@
 		border-radius: inherit;
 		pointer-events: none;
 		background-color: color-mix(in srgb, var(--color-inverse-surface, #2f3033) 70%, transparent);
-		backdrop-filter: blur(16px) saturate(1.3);
 		-webkit-backdrop-filter: blur(16px) saturate(1.3);
+		backdrop-filter: blur(16px) saturate(1.3);
 		box-shadow: var(--shadow-floating);
 	}
 
