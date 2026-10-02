@@ -19,6 +19,7 @@
 		timetableDayColumnDateClass,
 		timetableDayColumnDateShellClass,
 		timetableHolidayColumnOverlayClass,
+		timetablePeriodHighlightClass,
 		timetablePeriodIndexClass,
 		timetableSideTimeClass,
 		timetableSidebarTintClass,
@@ -205,10 +206,10 @@
 				>
 					{#each gridModel.periods as period (period.index)}
 						<div
-							class="flex h-[var(--row-height)] flex-col items-center justify-center px-1 text-center {period.index ===
-							currentPeriodIndex
-								? 'period-active'
-								: ''}"
+							class="flex h-[var(--row-height)] flex-col items-center justify-center px-1 text-center {timetablePeriodHighlightClass(
+								period.index === currentPeriodIndex,
+								capsuleCornerStyle
+							)}"
 						>
 							<span class={timetablePeriodIndexClass()}>{period.index}</span>
 							<span

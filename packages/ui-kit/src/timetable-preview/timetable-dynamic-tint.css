@@ -70,6 +70,11 @@
 	text-shadow: none;
 }
 
+.period-active.period-active--pill {
+	border-top-right-radius: var(--radius-capsule);
+	border-bottom-right-radius: var(--radius-capsule);
+}
+
 .timetable-chrome-side-time {
 	color: var(--timetable-chrome-side-fg-sub);
 }
