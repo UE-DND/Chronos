@@ -483,6 +483,35 @@ export const en = {
 	'about.update.published': 'Published',
 	'about.update.current': 'Current version',
 	'about.update.changelog': "What's new",
+	'about.update.android.install': 'Download and update',
+	'about.update.android.notice': 'The update installs after download and may close the app.',
+	'about.update.android.continue': 'Continue installation',
+	'about.update.android.cancel': 'Cancel update',
+	'about.update.android.error.permission_denied': 'Allow Chronos to install apps, then retry.',
+	'about.update.android.error.storage_full': 'Not enough storage. Free some space and retry.',
+	'about.update.android.error.integrity_mismatch':
+		'The update file failed its integrity check. Download again.',
+	'about.update.android.error.signature_mismatch':
+		'The signing certificate does not match this app. Installation stopped.',
+	'about.update.android.error.package_mismatch':
+		'The package does not match this app. Installation stopped.',
+	'about.update.android.error.profile_mismatch':
+		'The update profile does not match this app. Installation stopped.',
+	'about.update.android.error.version_conflict':
+		'The update version is invalid or is not newer than the installed app.',
+	'about.update.android.error.download_failed': 'Download failed. Check your network and retry.',
+	'about.update.android.error.install_failed':
+		'Installation failed. Retry or check system restrictions.',
+	'about.update.android.error.task_missing':
+		'The update task or file is unavailable. Download again.',
+	'about.update.android.error.invalid_descriptor': 'The update descriptor does not match this app.',
+	'about.update.android.error.install_blocked':
+		'Installation was blocked. Check installation permissions and device policies.',
+	'about.update.android.error.user_canceled': 'Installation canceled. You can retry manually.',
+	'about.update.phase.verifying': 'Verifying update…',
+	'about.update.phase.awaiting-permission': 'Waiting for installation permission',
+	'about.update.phase.awaiting-confirmation': 'Waiting for system installation confirmation',
+	'about.update.phase.waiting-network': 'Download paused; waiting for the network or system',
 	'about.update.install': 'Install update',
 	'about.update.external': 'Go to update',
 	'about.update.unavailable': 'No Android update link is available for this release.',

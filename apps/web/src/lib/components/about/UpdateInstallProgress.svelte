@@ -16,6 +16,11 @@
 		switch (phase) {
 			case 'downloading':
 				return hostT('about.update.phase.downloading');
+			case 'verifying':
+			case 'awaiting-permission':
+			case 'awaiting-confirmation':
+			case 'waiting-network':
+				return hostT(`about.update.phase.${phase}`);
 			case 'installing':
 				return hostT('about.update.phase.installing');
 			case 'restarting':
