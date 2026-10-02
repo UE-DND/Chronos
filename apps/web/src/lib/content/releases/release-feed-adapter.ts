@@ -25,14 +25,13 @@ export async function fetchLatestProjectRelease(
 	versionUrl = `${base}/version.json`,
 	android = false
 ): Promise<AppResult<Release>> {
+	const abortController = new AbortController();
+	const timeout = setTimeout(() => abortController.abort(), 8000);
 	try {
 		const targetUrl = `${versionUrl}?t=${Date.now()}`;
 		const response = await fetchFn(targetUrl, {
 			cache: 'no-store',
-			signal:
-				typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal
-					? AbortSignal.timeout(8000)
-					: undefined
+			signal: abortController.signal
 		});
 
 		if (response.status === 404) {
@@ -74,6 +73,8 @@ export async function fetchLatestProjectRelease(
 					? error.message
 					: '网络连接异常，无法获取更新信息';
 		return failure(AppError.network(message));
+	} finally {
+		clearTimeout(timeout);
 	}
 }
 
