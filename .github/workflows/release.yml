@@ -353,10 +353,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout source code
+      - name: Checkout feed publication scripts
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.version.outputs.commit }}
+          # Manual retries can repair publication logic without changing tagged APKs or website.
+          ref: ${{ github.sha }}
       - name: Setup Node.js 24
         uses: actions/setup-node@v7
         with:

@@ -132,11 +132,11 @@ export function stageAndroidRelease(
 		throw new Error('Immutable Android release conflict');
 	writeFileSync(record, json);
 	const releases = readdirSync(directory).map((file) => {
-		const item = JSON.parse(readFileSync(resolve(directory, file), 'utf8')) as AndroidStableUpdate;
-		validateAndroidRelease(item);
-		return item;
+		return JSON.parse(readFileSync(resolve(directory, file), 'utf8')) as AndroidStableUpdate;
 	});
 	releases.sort((a, b) => b.versionCode - a.versionCode);
+	// Archived records retain their immutable APK names; only the ready feed is installable.
+	validateAndroidRelease(releases[0]);
 	writeFileSync(
 		resolve(history, 'android/stable.json'),
 		JSON.stringify(releases[0], null, '\t') + '\n'
