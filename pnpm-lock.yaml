@@ -291,8 +291,8 @@ importers:
         specifier: ^18.0.14
         version: 18.0.14
       posthog-js:
-        specifier: ^1.434.11
-        version: 1.434.11
+        specifier: ^1.434.17
+        version: 1.434.17
       vite-plugin-functions-mixins:
         specifier: ^0.4.1
         version: 0.4.1(@voidzero-dev/vite-plus-core@1.0.0(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3))
@@ -334,8 +334,8 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0(@sveltejs/kit@2.70.3(@sveltejs/vite-plugin-svelte@7.3.1(@voidzero-dev/vite-plus-core@1.0.0(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3))(svelte@5.57.1))(@voidzero-dev/vite-plus-core@1.0.0(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3))(svelte@5.57.1)(typescript@6.0.3))(@voidzero-dev/vite-plus-core@1.0.0(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3))(workbox-build@7.4.1)(workbox-window@7.4.1)
       rolldown-license-plugin:
-        specifier: ^3.0.11
-        version: 3.0.11(rolldown@1.2.9)
+        specifier: ^3.0.14
+        version: 3.0.14(rolldown@1.2.9)
       smol-toml:
         specifier: ^1.9.0
         version: 1.9.0
@@ -441,8 +441,8 @@ importers:
         specifier: github:CQUT-OpenProject/CAS-SDK#v2.0.0
         version: https://codeload.github.com/CQUT-OpenProject/CAS-SDK/tar.gz/165182d73c8421b5b38c9c5ded2df4916ba7bc4d
       undici:
-        specifier: ^8.11.0
-        version: 8.11.0
+        specifier: ^8.11.2
+        version: 8.11.2
       zod:
         specifier: ^4.5.4
         version: 4.6.5
@@ -3936,8 +3936,8 @@ packages:
     resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
     engines: {node: ^10 || ^12 || >=14}
 
-  posthog-js@1.434.11:
-    resolution: {integrity: sha512-B5DPg/SZaMEqsJIqX7lVkcH3orFFTk8Ok8q17fYYB8WS1rlzuoSqj5RD8v3JLIL+U9WDBZfzpY6XY9LvnJD1Yg==}
+  posthog-js@1.434.17:
+    resolution: {integrity: sha512-R5Tb+YrDnZLVtMKXASXklXpfPwzwJ6YJKvcdL/UWV8OHigLm+ZveXtSsz3zwfidMpmSXHI0g2PJkeArO51qnAA==}
     peerDependencies:
       '@types/react': '>=16.8.0'
       react: '>=16.8.0'
@@ -4029,8 +4029,8 @@ packages:
     engines: {node: 20 || >=22}
     hasBin: true
 
-  rolldown-license-plugin@3.0.11:
-    resolution: {integrity: sha512-xsGoilQ7bNqm2+mFoD/GmXQiIfzIqhkQ6HF+K4fHClGeSfcmmhOZlUEi6r8J/jCVcSbVk2t9OBqvOh0ms2diqQ==}
+  rolldown-license-plugin@3.0.14:
+    resolution: {integrity: sha512-Lf0UPQNfKpVXVZJLsVA4VriRcTk1HpY0LknqBIi72eEo//K5bHk9kTfUD6OMvlQh3Qfb3wbwFmK4O2vT9pvNtg==}
     peerDependencies:
       rolldown: '*'
 
@@ -4360,8 +4360,8 @@ packages:
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
 
-  undici@8.11.0:
-    resolution: {integrity: sha512-AdzuGcAkzhbha3GgCSoUBx2P0quwym6qdFNCQz/fDGZc8w9XJ741wHUbt2kTmfPz+ZIOMkySFkiY7RXmiDDC8w==}
+  undici@8.11.2:
+    resolution: {integrity: sha512-u4UB2/IrKdU6lFxumHmmo1a3fCQO5tzQllRorfoRS63txhrB7xTpSn1PftwC4qEHkOaqP95fCWW4lJzwErwzhQ==}
     engines: {node: '>=22.19.0'}
 
   unicode-canonical-property-names-ecmascript@2.0.1:
@@ -7776,7 +7776,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  posthog-js@1.434.11:
+  posthog-js@1.434.17:
     dependencies:
       '@posthog/browser-common': 0.9.0
       '@posthog/core': 1.55.2
@@ -7877,7 +7877,7 @@ snapshots:
       glob: 13.0.6
       package-json-from-dist: 1.0.1
 
-  rolldown-license-plugin@3.0.11(rolldown@1.2.9):
+  rolldown-license-plugin@3.0.14(rolldown@1.2.9):
     dependencies:
       rolldown: 1.2.9
 
@@ -8308,7 +8308,7 @@ snapshots:
 
   undici-types@7.18.2: {}
 
-  undici@8.11.0: {}
+  undici@8.11.2: {}
 
   unicode-canonical-property-names-ecmascript@2.0.1: {}
 
