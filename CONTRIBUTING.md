@@ -131,6 +131,8 @@ Web 的软件更新使用 Service Worker；移动端构建关闭 PWA。Web 在�
 
 移动端适配器在 Capacitor 同步前移除 Apple touch 图标、PWA 图标和 `pwa/` 截图目录，并移除 HTML 中对应的图标引用；Web/PWA 构建仍保留这些资源。APK 保留应用启动图标、插件、许可证和独立的 `webview-error.html`。Android Chromium WebView 最低版本为 116（Tailwind 4 要求 111，应用和插件使用的 `AbortSignal.any` 要求 116）；低版本或主页面加载失败时显示本地中英文错误页，提示更新系统 WebView/Chrome 后重开应用。华为 WebView 使用 Capacitor 独立的版本体系，此 Chromium 下限不等同于华为包版本。
 
+Android Release 构建启用 R8 代码优化、混淆和资源裁剪，并使用 AGP 8.13 的优化资源裁剪管线。Capacitor 自带的消费方规则保留插件与反射调用入口；新增反射入口时检查对应保留规则，并验证优化后的 APK。Web 静态文件仍由 Web 构建处理。Release CI 将各 Profile 的 `mapping.txt` 单独保存为 `android-r8-mapping-*` artifact，保留 90 天；排查崩溃时使用与 APK 对应的映射，长期维护的版本应在到期前下载归档。重用已发布 APK 时不会重新生成映射。
+
 | 构建任务                       | 客户端预安装插件                             | 服务端插件    |
 | ------------------------------ | -------------------------------------------- | ------------- |
 | `build:default`、`build:pages` | `theme-m3`、`codec-share`                    | 无            |
