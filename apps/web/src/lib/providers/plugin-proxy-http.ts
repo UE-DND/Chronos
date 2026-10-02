@@ -71,7 +71,8 @@ export class PluginProxyHttpAdapter implements IHttpService {
 		const abortSignals = [options?.signal, controller?.signal].filter(
 			(signal): signal is AbortSignal => signal !== undefined
 		);
-		const signal = abortSignals.length > 0 ? mergeAbortSignals(abortSignals) : undefined;
+		const mergedSignal = abortSignals.length > 0 ? mergeAbortSignals(abortSignals) : undefined;
+		const signal = mergedSignal?.signal;
 
 		try {
 			const proxyRes = await fetch(`${base}/api/plugins/${pluginId}/${action}`, {
@@ -92,6 +93,7 @@ export class PluginProxyHttpAdapter implements IHttpService {
 			return buildProxyResponse(proxyRes, proxyData);
 		} finally {
 			if (timeoutId) clearTimeout(timeoutId);
+			mergedSignal?.dispose();
 		}
 	}
 }
