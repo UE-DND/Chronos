@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -138,5 +138,43 @@ describe('ready Android publishing', () => {
 		expect(
 			JSON.parse(readFileSync(resolve(root, 'site/android/stable.json'), 'utf8')).release.tagName
 		).toBe('v1.0.3');
+	});
+	it('preserves superseded records without applying current APK naming rules to them', () => {
+		const root = mkdtempSync(resolve(tmpdir(), 'chronos-ready-feed-'));
+		temporary.push(root);
+		const history = resolve(root, 'history');
+		const site = resolve(root, 'site');
+		mkdirSync(resolve(history, 'android/releases'), { recursive: true });
+		const archived = release('1.0.1');
+		for (const id of ANDROID_PROFILES) {
+			archived.profiles[id].apkUrl =
+				`https://github.com/UE-DND/Chronos/releases/download/v1.0.1/Chronos-${id}-1.0.1.apk`;
+		}
+		const record = resolve(history, 'android/releases/v1.0.1.json');
+		const bytes = JSON.stringify(archived, null, '\t') + '\n';
+		writeFileSync(record, bytes);
+		stageAndroidRelease(history, site, release('1.0.3'));
+		stageAndroidRelease(history, site, release('1.0.2'));
+		expect(readFileSync(record, 'utf8')).toBe(bytes);
+		expect(JSON.parse(readFileSync(resolve(site, 'android/stable.json'), 'utf8'))).toEqual(
+			release('1.0.3')
+		);
+	});
+	it('still rejects a highest historical record that fails current installation rules', () => {
+		const root = mkdtempSync(resolve(tmpdir(), 'chronos-ready-feed-'));
+		temporary.push(root);
+		const history = resolve(root, 'history');
+		const site = resolve(root, 'site');
+		stageAndroidRelease(history, site, release('1.0.2'));
+		const invalid = release('1.0.4');
+		invalid.profiles['chronos-default'].apkUrl =
+			'https://github.com/another/repository/releases/download/v1.0.4/Chronos-default-1.0.4.apk';
+		writeFileSync(resolve(history, 'android/releases/v1.0.4.json'), JSON.stringify(invalid));
+		expect(() => stageAndroidRelease(history, site, release('1.0.3'))).toThrow(
+			'Invalid pinned Android artifact'
+		);
+		expect(JSON.parse(readFileSync(resolve(site, 'android/stable.json'), 'utf8'))).toEqual(
+			release('1.0.2')
+		);
 	});
 });
