@@ -8,7 +8,7 @@
 	import SearchField from '$lib/components/ui/SearchField.svelte';
 	import { getAppController } from '$lib/services/app-engine';
 
-	import { resolveLocalizedText } from '@chronos/core';
+	import { DEFAULT_MINE_SECTION_ID, resolveLocalizedText } from '@chronos/core';
 	import { CodeFill } from '$lib/icons';
 	import { resolveShellIcon } from '$lib/shell/resolve-shell-icon';
 	import type { Component } from 'svelte';
@@ -87,9 +87,10 @@
 			});
 		}
 
-		// Registry `get()` already returns order-sorted contributions, so both
-		// sections and items keep their sorted order through insertion here.
-		return Object.values(sectionMap);
+		// Keep registry order for other sections, with app & support always last.
+		return Object.values(sectionMap).sort(
+			(a, b) => Number(a.id === DEFAULT_MINE_SECTION_ID) - Number(b.id === DEFAULT_MINE_SECTION_ID)
+		);
 	});
 
 	const filteredSections = $derived.by(() => {
