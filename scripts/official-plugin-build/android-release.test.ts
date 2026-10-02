@@ -83,6 +83,12 @@ describe('ready Android publishing', () => {
 		expect(androidReleaseWorkflow.indexOf('Validate Android analytics configuration')).toBeLessThan(
 			androidReleaseWorkflow.indexOf('Reuse immutable Android artifacts on retry')
 		);
+		const reuseStep = androidReleaseWorkflow
+			.split('- name: Reuse immutable Android artifacts on retry')[1]
+			.split('- name:')[0];
+		for (const variable of ['PUBLIC_POSTHOG_KEY', 'PUBLIC_POSTHOG_HOST']) {
+			expect(reuseStep).toContain(`${variable}: \${{ vars.${variable} }}`);
+		}
 		for (const profileId of ANDROID_PROFILES) {
 			expect(androidReleaseWorkflow).toContain(`profile: ${profileId}`);
 		}

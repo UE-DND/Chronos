@@ -138,6 +138,8 @@ jobs:
       - name: Reuse immutable Android artifacts on retry
         id: reuse
         env:
+          PUBLIC_POSTHOG_KEY: ${{ vars.PUBLIC_POSTHOG_KEY }}
+          PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.version.outputs.tag }}
           PROFILE: ${{ matrix.profile }}
