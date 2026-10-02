@@ -1,3 +1,5 @@
+import type { CapsuleCornerStyle } from '@chronos/core';
+
 /** Shared timetable grid surface classes for production and preview grids. */
 
 export function timetableSolidBgClass(hasDynamicBackground: boolean): string {
@@ -41,4 +43,14 @@ export function timetableHolidayColumnOverlayClass(hasDynamicBackground: boolean
 		return 'bg-[var(--dynamic-tint-holiday-overlay)]';
 	}
 	return 'bg-on-surface-variant/5';
+}
+
+export function timetablePeriodHighlightClass(
+	isActive: boolean,
+	capsuleCornerStyle?: CapsuleCornerStyle
+): string {
+	if (!isActive) return '';
+	return capsuleCornerStyle === 'pill'
+		? 'period-active period-active--pill rounded-r-capsule'
+		: 'period-active';
 }
