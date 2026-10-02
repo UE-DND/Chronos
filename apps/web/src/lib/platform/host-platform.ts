@@ -1,17 +1,47 @@
 import type { PlatformType, TodayWidgetSnapshot } from '@chronos/core';
 import { getBootPlatformAdapter } from '$chronos-platform-adapter';
 import type { Release } from '../content/releases/release';
-import type { SwUpdateProgress } from '../client/pwa-sw';
 
-export type PlatformUpdateMode = 'service-worker' | 'external-link';
+export type PlatformUpdateMode = 'service-worker' | 'external-link' | 'native-apk';
+
+export type HostUpdatePhase =
+	| 'downloading'
+	| 'installing'
+	| 'restarting'
+	| 'verifying'
+	| 'awaiting-permission'
+	| 'awaiting-confirmation'
+	| 'waiting-network';
+export interface HostUpdateProgress {
+	phase: HostUpdatePhase;
+	percent: number | null;
+}
+export interface NativeUpdateState {
+	phase: Exclude<HostUpdatePhase, 'restarting'> | 'idle' | 'succeeded' | 'failed' | 'canceled';
+	percent: number | null;
+	canCancel: boolean;
+	taskId?: string;
+	targetVersion?: string;
+	sizeBytes?: number;
+	errorCode?: string;
+}
+
+export interface NativeUpdateAction {
+	getState(this: void): Promise<NativeUpdateState>;
+	subscribe(this: void, listener: (state: NativeUpdateState) => void): Promise<() => void>;
+	continueUpdate(this: void): Promise<NativeUpdateState>;
+	cancelUpdate(this: void): Promise<NativeUpdateState>;
+}
 
 export interface PlatformUpdateAction {
 	readonly mode: PlatformUpdateMode;
 	readonly canApplyInApp: boolean;
 	readonly actionLabelKey: string;
+	readonly native?: NativeUpdateAction;
 	applyUpdate(
+		this: void,
 		release?: Release | null,
-		options?: { onProgress?: (progress: SwUpdateProgress) => void }
+		options?: { onProgress?: (progress: HostUpdateProgress) => void }
 	): Promise<void>;
 }
 
