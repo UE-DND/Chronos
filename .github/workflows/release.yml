@@ -281,7 +281,7 @@ jobs:
         with:
           ref: ${{ needs.version.outputs.commit }}
       - name: Setup Node.js 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
       - name: Run plugin release smoke tests
@@ -310,7 +310,7 @@ jobs:
         with:
           ref: ${{ needs.version.outputs.commit }}
       - name: Setup Node.js 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
       - name: Download built APK artifacts
@@ -342,7 +342,7 @@ jobs:
         with:
           ref: ${{ needs.version.outputs.commit }}
       - name: Setup Node.js 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
       - name: Download published website
@@ -392,7 +392,7 @@ jobs:
         with:
           ref: ${{ needs.version.outputs.commit }}
       - name: Setup Node.js 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
       - name: Download original website for identity verification
