@@ -395,7 +395,7 @@ describe('Web Providers', () => {
 				timeoutMs: 30,
 				signal: new AbortController().signal
 			})
-		).rejects.toMatchObject({ name: 'AbortError' });
+		).rejects.toMatchObject({ name: 'TimeoutError' });
 
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(fetchMock.mock.calls[0]?.[1]?.signal).toBeDefined();

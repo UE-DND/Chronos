@@ -86,7 +86,7 @@ describe('OfficialPluginAssetPipeline', () => {
 		await expect(pipeline.download(manifest)).rejects.toThrow(/integrity check failed/);
 	});
 
-	it('retries once with an integrity-busted URL after sha256 mismatch', async () => {
+	it('reloads cached bytes once after sha256 mismatch', async () => {
 		const expected = await engine.env.runtime.sha256(SAMPLE_BUNDLE);
 		const manifest: PluginManifest = {
 			id: 'test',
@@ -100,14 +100,23 @@ describe('OfficialPluginAssetPipeline', () => {
 			sha256: expected
 		};
 
-		httpRequest
-			.mockResolvedValueOnce(httpResponse({ text: async () => 'stale-bytes' }))
-			.mockResolvedValueOnce(httpResponse({ text: async () => SAMPLE_BUNDLE }));
+		const progress: { stage: string; percent: number }[] = [];
+		httpRequest.mockImplementation(async (_url, options) => {
+			expect(progress.at(-1)?.stage).toBe('downloading');
+			return httpResponse({
+				text: async () => (options?.cache === 'reload' ? SAMPLE_BUNDLE : 'stale-bytes')
+			});
+		});
 
-		const assets = await pipeline.download(manifest);
+		const assets = await pipeline.download(manifest, undefined, {
+			onProgress: (p) => progress.push(p)
+		});
 		expect(assets.code).toBe(SAMPLE_BUNDLE);
 		expect(httpRequest).toHaveBeenCalledTimes(2);
 		expect(httpRequest.mock.calls[1]?.[0]).toContain('?v=');
+		expect(httpRequest.mock.calls[0]?.[1]?.cache).toBeUndefined();
+		expect(httpRequest.mock.calls[1]?.[1]?.cache).toBe('reload');
+		expect(progress.every((p, i) => i === 0 || p.percent >= progress[i - 1]!.percent)).toBe(true);
 	});
 
 	it('rejects css sha256 mismatch', async () => {

@@ -673,10 +673,8 @@ export class OfficialPluginService implements Disposable {
 			}) => void;
 		}
 	): Promise<void> {
-		const signal = options?.signal
-			? mergeAbortSignals([options.signal, this.lifecycle.signal])
-			: this.lifecycle.signal;
-		signal?.throwIfAborted?.();
+		options?.signal?.throwIfAborted();
+		this.lifecycle.signal.throwIfAborted();
 		validatePluginManifest(manifest);
 		const sourceUrl =
 			manifestUrl ??
@@ -696,8 +694,13 @@ export class OfficialPluginService implements Disposable {
 		await this.installedStore.load();
 		const existingSnapshot = this.installedStore.find(manifest.id);
 		const expectedRevision = existingSnapshot?.revision ?? -1;
+		const mergedSignal = mergeAbortSignals(
+			options?.signal ? [options.signal, this.lifecycle.signal] : [this.lifecycle.signal]
+		);
+		const { signal } = mergedSignal;
 
 		try {
+			signal.throwIfAborted();
 			const assets = await this.assetPipeline.download(manifest, manifestUrl, {
 				signal,
 				onProgress: options?.onProgress
@@ -748,6 +751,8 @@ export class OfficialPluginService implements Disposable {
 				throw new DOMException('Aborted', 'AbortError');
 			}
 			throw err;
+		} finally {
+			mergedSignal.dispose();
 		}
 	}
 

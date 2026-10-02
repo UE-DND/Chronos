@@ -1,8 +1,12 @@
-import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vite-plus/test';
 import { ChronosEngine } from '@chronos/core';
 import type { ChronosEnv } from '@chronos/core';
 import { DEFAULT_USER_PREFERENCES } from '@chronos/core';
-import { OfficialPluginInstalledStore, parseInstallationState } from './installed-store';
+import {
+	emptyInstallationState,
+	OfficialPluginInstalledStore,
+	parseInstallationState
+} from './installed-store';
 
 function createMockEnv() {
 	const kv = new Map<string, unknown>();
@@ -50,6 +54,61 @@ describe('OfficialPluginInstalledStore', () => {
 		await engine.init();
 		store = new OfficialPluginInstalledStore(engine);
 	});
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	it.each(['notification failure', 'dispose during commit'])(
+		'preserves a successful installation after %s',
+		async (scenario) => {
+			const gate = Promise.withResolvers<void>();
+			let persisted = emptyInstallationState();
+			let closed = false;
+			const postMessage = vi.fn(() => {
+				throw new DOMException(
+					closed ? 'Channel closed' : 'Notification failed',
+					'InvalidStateError'
+				);
+			});
+			vi.stubGlobal('window', {});
+			vi.stubGlobal(
+				'BroadcastChannel',
+				class {
+					postMessage = postMessage;
+					close() {
+						closed = true;
+					}
+				}
+			);
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			const installing = new OfficialPluginInstalledStore(engine, {
+				read: async () => structuredClone(persisted),
+				transaction: async (change) => {
+					await gate.promise;
+					const state = structuredClone(persisted);
+					change(state);
+					persisted = state;
+					return state;
+				}
+			});
+			const listener = vi.fn();
+			installing.onChanged(listener);
+			const pending = installing.upsert({
+				manifest: { id: 'theme' } as never,
+				origin: { kind: 'user' },
+				installedAt: 1,
+				wallpaperAssetId: 'new-wallpaper'
+			});
+			if (scenario === 'dispose during commit') installing.dispose();
+			gate.resolve();
+			await expect(pending).resolves.toBeUndefined();
+			expect(persisted.records[0]?.wallpaperAssetId).toBe('new-wallpaper');
+			expect(installing.find('theme')?.wallpaperAssetId).toBe('new-wallpaper');
+			expect(listener).toHaveBeenCalledTimes(scenario === 'notification failure' ? 1 : 0);
+			installing.dispose();
+		}
+	);
 
 	it('rejects invalid development state without overwriting it', async () => {
 		const invalid = [{ obsolete: true }];

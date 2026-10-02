@@ -122,6 +122,14 @@ export class OfficialPluginInstalledStore {
 			}
 		}
 	}
+	private broadcast(message: Record<string, string | number>): void {
+		// Notifications happen after commit and must not turn a saved installation into a failure.
+		try {
+			this.channel?.postMessage(message);
+		} catch (error) {
+			console.error(error);
+		}
+	}
 	async load(): Promise<InstalledOfficialPluginRecord[]> {
 		this.state = await this.repository.read();
 		return this.state.records;
@@ -182,7 +190,7 @@ export class OfficialPluginInstalledStore {
 			}
 		});
 		this.generation = host.buildId;
-		this.channel?.postMessage({ generation: host.buildId });
+		this.broadcast({ generation: host.buildId });
 	}
 	private async mutate(change: (state: PluginInstallationState) => void): Promise<void> {
 		this.state = await this.repository.transaction((state) => {
@@ -195,7 +203,7 @@ export class OfficialPluginInstalledStore {
 			state.revision++;
 			delete state.prepared;
 		});
-		this.channel?.postMessage({ revision: this.state.revision });
+		this.broadcast({ revision: this.state.revision });
 		this.notify();
 	}
 	async markSeeded() {
@@ -243,14 +251,14 @@ export class OfficialPluginInstalledStore {
 				throw new Error('Update is already running in another window');
 			state.prepared = update;
 		});
-		this.channel?.postMessage({ transition: update.target.buildId });
+		this.broadcast({ transition: update.target.buildId });
 		this.notify();
 	}
 	async cancelPreparation(token: string) {
 		this.state = await this.repository.transaction((state) => {
 			if (state.prepared?.token === token) delete state.prepared;
 		});
-		this.channel?.postMessage({ cancelled: token });
+		this.broadcast({ cancelled: token });
 		this.notify();
 	}
 	async persist() {
@@ -264,6 +272,7 @@ export class OfficialPluginInstalledStore {
 	}
 	dispose() {
 		this.channel?.close();
+		this.channel = undefined;
 		this.listeners.clear();
 	}
 }
