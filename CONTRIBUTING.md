@@ -129,6 +129,8 @@ deployment = "chronos-default"
 
 Web 的软件更新使用 Service Worker；移动端构建关闭 PWA。Web 在准备完已安装可选官方插件后才授权新 Worker 接管，所有窗口随接管刷新。移动端检查独立的 Android 就绪 feed，匹配实际包名、签名与 Profile 后打开固定 GitHub APK 地址；应用更新后后台恢复可选官方插件。具体约束见 [ADR 0047](.agents/docs/adr/0047-host-update-transactions.md)。
 
+Android Release 构建启用 R8 代码优化、混淆和资源裁剪，并使用 AGP 8.13 的优化资源裁剪管线。Capacitor 自带的消费方规则保留插件与反射调用入口；新增反射入口时检查对应保留规则，并验证优化后的 APK。Web 静态文件仍由 Web 构建处理。Release CI 将各 Profile 的 `mapping.txt` 单独保存为 `android-r8-mapping-*` artifact，保留 90 天；排查崩溃时使用与 APK 对应的映射，长期维护的版本应在到期前下载归档。重用已发布 APK 时不会重新生成映射。
+
 | 构建任务                       | 客户端预安装插件                             | 服务端插件    |
 | ------------------------------ | -------------------------------------------- | ------------- |
 | `build:default`、`build:pages` | `theme-m3`、`codec-share`                    | 无            |
