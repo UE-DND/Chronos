@@ -49,6 +49,7 @@ export const zhCn = {
 	'item.install.supporting.standalone': '已安装为桌面应用',
 	'item.install.supporting.local': '已安装，可在应用中打开',
 	'item.install.supporting.prompt': '添加到主屏幕，快捷打开应用',
+	'mine.about.updateAvailable': '有新版本！',
 	'item.about': '关于 Chronos',
 	'item.manage-timetables.keywords': '课表,管理,切换,编辑,课程',
 	'item.import.keywords': '导入,数据,共享,文件,扫码,课表',
@@ -425,8 +426,6 @@ export const zhCn = {
 	'pwa.snackbar.manualInstall':
 		'请用 Chrome / Edge 地址栏右侧的安装图标 ⊕ 或菜单中的“安装 Chronos”',
 	'pwa.snackbar.unsupportedInstall': '当前浏览器不支持一键安装，请改用 Chrome / Edge 打开后安装',
-	'pwa.snackbar.updateAvailable': '检测到新版本，建议尽快更新',
-	'pwa.snackbar.updateAction': '查看更新',
 	'pwa.openInApp.hint': '如未自动跳转，请从程序坞、启动台或开始菜单手动打开 Chronos。',
 	'pwa.install.hero.subtitle': '无广告 · 轻量化的课表体验',
 	'pwa.install.feature.launch.title': '一键直达课表',

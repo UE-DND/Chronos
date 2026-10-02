@@ -1,14 +1,12 @@
 <script lang="ts">
 	import type { AppLocale } from '@chronos/core';
+	import { getAppUpdateState } from '$lib/client/app-update-ux.svelte';
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
 	import type { HostMessageKey } from '$lib/i18n/host-messages';
 	import { appLocaleToBcp47 } from '$lib/i18n/locale-sync';
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import {
-		createUpdateState,
-		type SoftwareUpdateStateController
-	} from '$lib/content/releases/update-state.svelte';
+	import { type SoftwareUpdateStateController } from '$lib/content/releases/update-state.svelte';
 	import { parseMarkdown } from '$lib/content/markdown';
 	import { formatPublishedDate } from '$lib/content/releases/release-display';
 	import { APP_VERSION, SOURCE_CODE_URL } from '$lib/config/app-meta';
@@ -36,7 +34,7 @@
 	} from '$lib/icons';
 
 	let {
-		updateState = createUpdateState()
+		updateState = getAppUpdateState()
 	}: {
 		updateState?: SoftwareUpdateStateController;
 	} = $props();

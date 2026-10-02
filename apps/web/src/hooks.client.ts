@@ -1,6 +1,7 @@
 import { ensurePwaSwRegistered } from '$lib/client/pwa-sw';
-import { initPwaUpdateUx } from '$lib/client/pwa-update-ux.svelte';
+import { initAppUpdateUx } from '$lib/client/app-update-ux.svelte';
+import { getHostPlatform } from '$lib/platform/host-platform';
 import '$lib/client/pwa-install.svelte';
 
-ensurePwaSwRegistered();
-initPwaUpdateUx();
+if (getHostPlatform().getUpdateAction?.().mode === 'service-worker') ensurePwaSwRegistered();
+initAppUpdateUx();

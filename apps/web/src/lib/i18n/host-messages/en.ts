@@ -50,6 +50,7 @@ export const en = {
 	'item.install.supporting.standalone': 'Installed as a desktop app',
 	'item.install.supporting.local': 'Installed — open in the app',
 	'item.install.supporting.prompt': 'Add to home screen for quick access',
+	'mine.about.updateAvailable': 'New version available!',
 	'item.about': 'About Chronos',
 	'item.manage-timetables.keywords': 'timetable,manage,switch,edit,courses',
 	'item.import.keywords': 'import,data,share,file,scan,qr,timetable',
@@ -439,8 +440,6 @@ export const en = {
 		'Use the install icon in the Chrome / Edge address bar, or choose Install Chronos from the menu',
 	'pwa.snackbar.unsupportedInstall':
 		'One-tap install is not supported in this browser, please open this page in Chrome / Edge instead',
-	'pwa.snackbar.updateAvailable': 'A new version is available',
-	'pwa.snackbar.updateAction': 'View update',
 	'pwa.openInApp.hint':
 		'If it does not open automatically, launch Chronos from the Dock, Launchpad, or Start menu.',
 	'pwa.install.hero.subtitle': 'Ad-free · lightweight timetable experience',

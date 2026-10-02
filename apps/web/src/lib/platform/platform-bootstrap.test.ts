@@ -11,6 +11,9 @@ const mocks = vi.hoisted(() => ({
 	installScrollBoundaryFeedback: vi.fn(() => vi.fn()),
 	initAnalytics: vi.fn(),
 	attachOfflineUx: vi.fn(() => vi.fn()),
+	checkAppUpdateOnResume: vi.fn(async () => {}),
+	refreshSystemTime: vi.fn(),
+	retryPendingUpdates: vi.fn(),
 	onboardingState: { open: false } as { open: boolean },
 	tabIds: ['today'] as string[]
 }));
@@ -39,6 +42,9 @@ vi.mock('$lib/platform/scroll-boundary-feedback', () => ({
 }));
 
 vi.mock('$lib/client/web-host-update', () => ({ recoverInterruptedWebUpdate: vi.fn() }));
+vi.mock('$lib/client/app-update-ux.svelte', () => ({
+	checkAppUpdateOnResume: mocks.checkAppUpdateOnResume
+}));
 
 vi.mock('$lib/client/analytics', () => ({
 	initAnalytics: mocks.initAnalytics
@@ -47,8 +53,10 @@ vi.mock('$lib/client/analytics', () => ({
 vi.mock('$lib/services/app-engine', () => ({
 	ensureEngineFullyReady: vi.fn().mockResolvedValue(undefined),
 	ensureEngineReady: vi.fn().mockResolvedValue({
-		events: { on: vi.fn(() => ({ dispose: vi.fn() })) }
+		events: { on: vi.fn(() => ({ dispose: vi.fn() })) },
+		refreshSystemTime: mocks.refreshSystemTime
 	}),
+	getOfficialPluginService: () => ({ retryPendingUpdates: mocks.retryPendingUpdates }),
 	getAppController: vi.fn(() => ({
 		getSlots: () => mocks.tabIds.map((id) => ({ id }))
 	})),
@@ -144,6 +152,31 @@ describe('createPlatformBootstrap', () => {
 		platform.init();
 
 		expect(mocks.connectivityInit).toHaveBeenCalledTimes(1);
+	});
+
+	it('checks app updates through the native resume callback', async () => {
+		const { setHostPlatform, resetHostPlatform } = await import('./host-platform');
+		let callbacks: import('./host-platform').HostPlatformInitCallbacks | undefined;
+		setHostPlatform({
+			id: 'mobile',
+			isNative: true,
+			platformType: 'android',
+			supportsPwaInstall: false,
+			shouldShowInstallGuide: false,
+			init(next) {
+				callbacks = next;
+				return () => {};
+			}
+		});
+		const teardown = createPlatformBootstrap(deps).init();
+		try {
+			callbacks?.onAppResume?.();
+			expect(mocks.checkAppUpdateOnResume).toHaveBeenCalledOnce();
+			await vi.waitFor(() => expect(mocks.refreshSystemTime).toHaveBeenCalledOnce());
+		} finally {
+			teardown();
+			resetHostPlatform();
+		}
 	});
 
 	it('routes the Today widget deep link to the Today tab when the plugin exists', async () => {

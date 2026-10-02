@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appUpdateNotice } from '$lib/client/app-update-ux.svelte';
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -10,7 +11,6 @@
 	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
 	import { estimateAppDataBytes } from '$lib/storage/clear-app-data';
 	import { formatBytes } from '$lib/utils/format-bytes';
-	import { isSwUpdatePending, onSwUpdateAvailable } from '$lib/client/pwa-sw';
 	import {
 		APP_VERSION,
 		BUILD_TIME,
@@ -23,7 +23,7 @@
 	import MineSection from '$lib/components/mine/MineSection.svelte';
 	import MineRow from '$lib/components/mine/MineRow.svelte';
 	import AppHero from '$lib/components/AppHero.svelte';
-	import { InfoFill, LayersClearFill, ScheduleFill } from '$lib/icons';
+	import { ChevronRight, InfoFill, LayersClearFill, ScheduleFill } from '$lib/icons';
 
 	let { shell }: { shell: AppShellController } = $props();
 
@@ -33,9 +33,6 @@
 	let clearDialogOpen = $state(false);
 	let clearing = $state(false);
 	let dataUsageBytes = $state<number | null>(null);
-	// Durable update entry: the transient update snackbar can be overwritten
-	// by connectivity/install snackbars, so the About version row keeps the signal.
-	let swUpdatePending = $state(false);
 
 	const dataUsageSupporting = $derived(
 		dataUsageBytes === null
@@ -51,10 +48,6 @@
 
 	onMount(() => {
 		void refreshDataUsage();
-		swUpdatePending = isSwUpdatePending();
-		return onSwUpdateAvailable(() => {
-			swUpdatePending = true;
-		});
 	});
 
 	function formatBuildTime(value: string) {
@@ -111,11 +104,23 @@
 	<MineSection title={hostT('about.section.version')}>
 		<MineRow
 			title={hostT('about.version.current')}
-			supporting={swUpdatePending ? hostT('about.update.title.new') : APP_VERSION}
+			supporting={APP_VERSION}
 			href={resolve('/about/update')}
 			icon={InfoFill}
 			iconTone="primary"
-		/>
+		>
+			{#snippet trailing()}
+				{#if appUpdateNotice.hasUpdate}
+					<span
+						class="text-label-large inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-transparent bg-primary-container/50 px-2.5 text-primary"
+					>
+						{hostT('mine.about.updateAvailable')}
+					</span>
+				{:else}
+					<ChevronRight aria-hidden="true" class="size-4.5 shrink-0 text-on-surface-variant" />
+				{/if}
+			{/snippet}
+		</MineRow>
 		<MineRow
 			title={hostT('about.buildTime')}
 			supporting={formatBuildTime(BUILD_TIME)}
