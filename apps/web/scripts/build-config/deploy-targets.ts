@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import type { Adapter } from '@sveltejs/kit';
 import adapterVercel from '@sveltejs/adapter-vercel';
 import adapterStatic from '@sveltejs/adapter-static';
+import { prepareMobileAssets } from './mobile-assets.ts';
 import type { DeployTargetDefinition } from '../../src/lib/config/deploy-targets.ts';
 
 export * from '../../src/lib/config/deploy-targets.ts';
@@ -18,7 +19,11 @@ export function createDeployTargetAdapter(def: DeployTargetDefinition, buildId?:
 		async adapt(builder) {
 			if (!def.isMobile && buildId) builder.generateEnvModule();
 			await adapter.adapt(builder);
-			if (def.isMobile || !buildId) return;
+			if (def.isMobile) {
+				await prepareMobileAssets(resolve('build'));
+				return;
+			}
+			if (!buildId) return;
 			const output = resolve(def.target === 'vercel' ? '.vercel/output/static' : 'build');
 			await builder.generateFallback(resolve(output, `_chronos/${buildId}/shell.html`));
 		}

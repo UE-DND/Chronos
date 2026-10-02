@@ -129,6 +129,8 @@ deployment = "chronos-default"
 
 Web 的软件更新使用 Service Worker；移动端构建关闭 PWA。Web 在准备完已安装可选官方插件后才授权新 Worker 接管，所有窗口随接管刷新。移动端检查独立的 Android 就绪 feed，匹配实际包名、签名与 Profile 后打开固定 GitHub APK 地址；应用更新后后台恢复可选官方插件。具体约束见 [ADR 0047](.agents/docs/adr/0047-host-update-transactions.md)。
 
+移动端适配器在 Capacitor 同步前移除 Apple touch 图标、PWA 图标和 `pwa/` 截图目录，并移除 HTML 中对应的图标引用；Web/PWA 构建仍保留这些资源。APK 保留应用启动图标、插件、许可证和独立的 `webview-error.html`。Android Chromium WebView 最低版本为 116（Tailwind 4 要求 111，应用和插件使用的 `AbortSignal.any` 要求 116）；低版本或主页面加载失败时显示本地中英文错误页，提示更新系统 WebView/Chrome 后重开应用。华为 WebView 使用 Capacitor 独立的版本体系，此 Chromium 下限不等同于华为包版本。
+
 | 构建任务                       | 客户端预安装插件                             | 服务端插件    |
 | ------------------------------ | -------------------------------------------- | ------------- |
 | `build:default`、`build:pages` | `theme-m3`、`codec-share`                    | 无            |

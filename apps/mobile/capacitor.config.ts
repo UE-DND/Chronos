@@ -4,8 +4,13 @@ const config: CapacitorConfig = {
 	appId: 'org.uednd.chronos',
 	appName: 'Chronos',
 	webDir: '../web/build',
+	android: {
+		// Tailwind 4 needs Chromium 111; AbortSignal.any in app/plugins needs 116.
+		minWebViewVersion: 116
+	},
 	server: {
-		androidScheme: 'https'
+		androidScheme: 'https',
+		errorPath: 'webview-error.html'
 	},
 	plugins: {
 		SplashScreen: {
