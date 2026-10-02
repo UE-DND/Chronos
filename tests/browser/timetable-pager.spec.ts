@@ -54,6 +54,8 @@ async function importTimetable(page: Page, request: APIRequestContext) {
 	await page.goto('/Chronos/');
 	const pager = page.locator('.timetable-week-pager');
 	await expect(pager).toBeVisible();
+	// Initial scroll synchronization suppresses events for 150 ms.
+	await page.waitForTimeout(180);
 	const position = () =>
 		pager.evaluate((node) => (node as HTMLElement).scrollLeft / (node as HTMLElement).clientWidth);
 	return { pager, position };
@@ -96,9 +98,56 @@ test('keeps vertical scrolling on its week and limits a touch swipe to one week'
 	expect(page.url()).toMatch(/\/Chronos\/?$/);
 });
 
+test('shows the whole capsule only during week navigation and disables it after fading', async ({
+	page,
+	request
+}) => {
+	const { pager, position } = await importTimetable(page, request);
+	const indicator = page.locator('#week-indicator');
+	await expect(indicator).toHaveCSS('opacity', '0');
+	await expect(indicator).toHaveCSS('pointer-events', 'none');
+	await expect(indicator).toHaveAttribute('tabindex', '-1');
+	await expect(indicator).toHaveAttribute('inert', '');
+
+	const initial = await position();
+	const rect = (await pager.boundingBox())!;
+	const start = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+	const dx = initial >= 15 ? 160 : -160;
+	const cdp = await page.context().newCDPSession(page);
+	await cdp.send('Input.dispatchTouchEvent', {
+		type: 'touchStart',
+		touchPoints: [{ ...start, id: 1 }]
+	});
+	await cdp.send('Input.dispatchTouchEvent', {
+		type: 'touchMove',
+		touchPoints: [{ x: start.x + dx, y: start.y, id: 1 }]
+	});
+	await expect(indicator).toHaveCSS('opacity', '1');
+	await expect(indicator).toHaveCSS('pointer-events', 'auto');
+	await expect(indicator).toHaveAttribute('tabindex', '0');
+	await expect(indicator).not.toHaveAttribute('inert', '');
+	await expect(indicator).toHaveCSS('backdrop-filter', 'blur(16px) saturate(1.3)');
+
+	await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+	await cdp.detach();
+	await expect.poll(position).toBeCloseTo(initial + (dx > 0 ? -1 : 1), 1);
+	await expect(indicator).toHaveCSS('opacity', '0');
+	await expect(indicator).toHaveCSS('pointer-events', 'none');
+	await expect(indicator).toHaveAttribute('inert', '');
+
+	await swipe(page, start, -dx, 0);
+	await expect(indicator).toHaveClass(/capsule-indicator--glass/);
+	await expect.poll(position).toBeCloseTo(initial, 1);
+	await expect(indicator).toHaveCSS('opacity', '0');
+});
+
 async function prepareMotionTest(page: Page, request: APIRequestContext) {
 	const result = await importTimetable(page, request);
 	const indicator = page.locator('#week-indicator');
+	await result.pager.evaluate((node) => {
+		node.scrollLeft = node.scrollLeft > 0 ? 0 : node.clientWidth;
+	});
+	await expect(indicator).toHaveAttribute('tabindex', '0');
 	await indicator.press('Home');
 	for (let i = 0; i < 5; i++) await indicator.press('ArrowRight');
 	await expect.poll(result.position).toBe(5);
