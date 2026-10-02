@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'androidx.baselineprofile'
 
 def appPackageJson = rootProject.file('../../web/package.json')
 if (!appPackageJson.isFile()) {
@@ -36,7 +37,11 @@ if (configuredReleaseSigning && releaseSigning.values().any { !it }) {
 }
 
 gradle.taskGraph.whenReady { graph ->
-    if (graph.allTasks.any { it.name.toLowerCase().contains('release') } && !configuredReleaseSigning) {
+    // Profile collection uses a separate debug-signed nonMinifiedRelease variant.
+    def publishesRelease = graph.allTasks.any {
+        it.project == project && it.name in ['assembleRelease', 'bundleRelease', 'packageRelease', 'packageReleaseBundle', 'signReleaseBundle']
+    }
+    if (publishesRelease && !configuredReleaseSigning) {
         throw new GradleException('Release APK requires the official signing key; debug signing is not allowed')
     }
 }
@@ -80,6 +85,12 @@ android {
     }
 }
 
+baselineProfile {
+    mergeIntoMain true
+    saveInSrc true
+    automaticGenerationDuringBuild false
+}
+
 repositories {
     flatDir{
         dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
@@ -92,6 +103,8 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    implementation 'androidx.profileinstaller:profileinstaller:1.4.1'
+    baselineProfile project(':baselineprofile')
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

@@ -166,7 +166,7 @@ jobs:
           import sys, zipfile
           with zipfile.ZipFile(sys.argv[1]) as apk:
               names = set(apk.namelist())
-              for required in ('assets/public/webview-error.html',):
+              for required in ('assets/dexopt/baseline.prof', 'assets/dexopt/baseline.profm', 'assets/public/webview-error.html'):
                   assert apk.getinfo(required).file_size > 0, f'Missing or empty APK asset: {required}'
               assert not any(name.startswith(('assets/public/pwa/', 'assets/public/pwa-')) or name == 'assets/public/apple-touch-icon.png' for name in names), 'PWA-only assets leaked into APK'
           PY
