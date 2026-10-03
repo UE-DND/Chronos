@@ -1,0 +1,21 @@
+{
+	"id": "theme-m3",
+	"name": {
+		"zh-CN": "Material 3",
+		"en": "Material 3"
+	},
+	"version": "1.2.1",
+	"description": {
+		"zh-CN": "Material 3 主题",
+		"en": "Material 3 theme"
+	},
+	"author": "Chronos",
+	"type": "theme",
+	"bundleFormat": "esm",
+	"downloadSizeBytes": 152208,
+	"colorsUrl": "../../bundles/theme-m3/4d37cd37ba9a9c00d872b744/colors.json",
+	"colorsSha256": "d0880f8a7d4380581a8a69c1a3fa5c5cbf93ef64d86a82a034789b8d23e316f2",
+	"themeId": "m3-default",
+	"bundleUrl": "../../bundles/theme-m3/4d37cd37ba9a9c00d872b744/bundle.js",
+	"sha256": "3c12cc1a99e1991fa1a09c5e5cd0e74d64218f853f1ee67f59cf7e32b55b8f35"
+}
