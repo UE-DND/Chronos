@@ -110,7 +110,13 @@ export function createWeekPagerTouch(
 	node.ownerDocument.addEventListener(
 		'pointermove',
 		(event) => {
-			if (event.pointerId !== pointerId || direction === 'vertical') return;
+			if (event.pointerId !== pointerId) return;
+			// A long press can hand this pointer to course dragging after pointerdown.
+			if (!enabled()) {
+				cancel();
+				return;
+			}
+			if (direction === 'vertical') return;
 			const dx = event.clientX - startX;
 			const dy = event.clientY - startY;
 			if (direction === 'pending') {
@@ -128,6 +134,10 @@ export function createWeekPagerTouch(
 
 	function release(event: PointerEvent, canceled: boolean) {
 		if (event.pointerId !== pointerId) return;
+		if (!enabled()) {
+			cancel();
+			return;
+		}
 		pointerId = null;
 		if (direction !== 'horizontal') {
 			settle(startPage * node.clientWidth);

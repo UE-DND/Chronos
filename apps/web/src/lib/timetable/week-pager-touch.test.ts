@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { createWeekPagerTouch } from './week-pager-touch';
 
-function createHarness({ initialOffset = 9000, reducedMotion = false, hz = 60 } = {}) {
+function createHarness({
+	initialOffset = 9000,
+	reducedMotion = false,
+	hz = 60,
+	enabled = (): boolean => true
+} = {}) {
 	let now = 0;
 	let nextFrame = 1;
 	let nextFrameTime = 1000 / hz;
@@ -26,7 +31,7 @@ function createHarness({ initialOffset = 9000, reducedMotion = false, hz = 60 } 
 	const suspendSnap = vi.fn();
 	const onSettled = vi.fn();
 	const touch = createWeekPagerTouch(node as unknown as HTMLElement, {
-		enabled: () => true,
+		enabled,
 		suspendSnap,
 		onSettled
 	});
@@ -75,6 +80,48 @@ afterEach(() => {
 });
 
 describe('week pager touch', () => {
+	it.each([-300, 300])('cancels paging when long press takes over before moving %s px', (dx) => {
+		let enabled = true;
+		const h = createHarness({ enabled: () => enabled });
+		h.pointer('pointerdown', 500);
+		h.advance(450);
+		enabled = false;
+		h.pointer('pointermove', 500 + dx);
+		expect(h.node.scrollLeft).toBe(9000);
+		expect(h.touch.isActive).toBe(false);
+		expect(h.node.style.scrollSnapType).toBe('');
+		expect(h.suspendSnap).toHaveBeenLastCalledWith(false);
+
+		// Returning to view mode must not revive the pointer claimed by course dragging.
+		enabled = true;
+		h.pointer('pointermove', 500 + dx * 2);
+		h.pointer('pointerup', 500 + dx * 2);
+		h.advance(400);
+		expect(h.node.scrollLeft).toBe(9000);
+		expect(h.onSettled).not.toHaveBeenCalled();
+
+		h.drag(dx);
+		h.advance(400);
+		expect(h.node.scrollLeft).toBe(dx < 0 ? 10000 : 8000);
+		h.touch.destroy();
+	});
+
+	it('cancels a disabled gesture on release even without a pointermove', () => {
+		let enabled = true;
+		const h = createHarness({ enabled: () => enabled });
+		h.pointer('pointerdown', 500);
+		h.advance(450);
+		enabled = false;
+		h.pointer('pointerup', 200);
+		h.advance(400);
+		expect(h.node.scrollLeft).toBe(9000);
+		expect(h.touch.isActive).toBe(false);
+		expect(h.node.style.scrollSnapType).toBe('');
+		expect(h.suspendSnap).toHaveBeenLastCalledWith(false);
+		expect(h.onSettled).not.toHaveBeenCalled();
+		h.touch.destroy();
+	});
+
 	it('leaves a diagonal vertical gesture on the current week', () => {
 		const h = createHarness();
 		h.pointer('pointerdown', 500, 500);
