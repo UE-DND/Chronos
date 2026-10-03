@@ -200,7 +200,7 @@
 	function handleOpenAutoFocus(event: Event) {
 		event.preventDefault();
 		requestAnimationFrame(() => {
-			(titleRef ?? contentRef)?.focus();
+			if (sheetOpen) (titleRef ?? contentRef)?.focus();
 		});
 	}
 
@@ -268,6 +268,8 @@
 		<Dialog.Overlay
 			bind:ref={overlayRef}
 			class="bottom-sheet-overlay fixed inset-0 z-[var(--z-overlay)] bg-black/50"
+			aria-hidden="true"
+			onclick={() => handleDialogOpenChange(false)}
 		/>
 		<Dialog.Content
 			bind:ref={contentRef}
@@ -276,84 +278,93 @@
 			data-dragging={isDragging ? '' : undefined}
 			data-snapping-back={isSnappingBack ? '' : undefined}
 			data-closing={isClosing ? '' : undefined}
+			restoreScrollDelay={0}
 			onOpenAutoFocus={handleOpenAutoFocus}
 			ontransitionend={onContentTransitionEnd}
 		>
-			{#if showHandle}
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div
-					bind:this={dragHandleRef}
-					class="relative flex shrink-0 touch-none justify-center py-3 before:absolute before:inset-x-0 before:-top-4 before:-bottom-4 before:content-['']"
-					aria-label={dragDismissAria}
-					onpointerdown={onHandlePointerDown}
-				>
-					<div class="h-1 w-10 rounded-full bg-on-surface-variant/40"></div>
-				</div>
-			{/if}
+			<!-- The child API releases Bits UI's body lock when closed, before exit completes. -->
+			{#snippet child({ props })}
+				<div {...props}>
+					{#if showHandle}
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div
+							bind:this={dragHandleRef}
+							class="relative flex shrink-0 touch-none justify-center py-3 before:absolute before:inset-x-0 before:-top-4 before:-bottom-4 before:content-['']"
+							aria-label={dragDismissAria}
+							onpointerdown={onHandlePointerDown}
+						>
+							<div class="h-1 w-10 rounded-full bg-on-surface-variant/40"></div>
+						</div>
+					{/if}
 
-			{#if title || actions}
-				<div
-					class={['flex shrink-0 items-center gap-3', showHandle ? 'px-4 pb-3' : 'px-6 pt-6 pb-2']}
-				>
-					{#if title}
-						<Dialog.Title
-							bind:ref={titleRef}
-							tabindex={-1}
+					{#if title || actions}
+						<div
 							class={[
-								'text-title-large min-w-0 flex-1 font-medium text-on-surface outline-none',
-								showHandle ? 'truncate' : 'text-center'
+								'flex shrink-0 items-center gap-3',
+								showHandle ? 'px-4 pb-3' : 'px-6 pt-6 pb-2'
 							]}
 						>
-							{title}
-						</Dialog.Title>
+							{#if title}
+								<Dialog.Title
+									bind:ref={titleRef}
+									tabindex={-1}
+									class={[
+										'text-title-large min-w-0 flex-1 font-medium text-on-surface outline-none',
+										showHandle ? 'truncate' : 'text-center'
+									]}
+								>
+									{title}
+								</Dialog.Title>
+							{/if}
+							{#if actions}
+								<div class="shrink-0">
+									{@render actions()}
+								</div>
+							{/if}
+						</div>
 					{/if}
-					{#if actions}
-						<div class="shrink-0">
-							{@render actions()}
+
+					{#if description || children}
+						<div
+							class={[
+								showHandle
+									? [
+											'app-scroll-y min-h-0 flex-1 overflow-y-auto',
+											!footer && 'pb-[calc(1rem+var(--tabbar-block-safe,0px))]'
+										]
+									: 'shrink-0 px-6 pb-5'
+							]}
+						>
+							{#if description}
+								<Dialog.Description
+									class={[
+										'text-body-medium leading-relaxed text-on-surface-variant',
+										!showHandle && 'text-center'
+									]}
+								>
+									{description}
+								</Dialog.Description>
+							{/if}
+							{#if children}
+								{@render children()}
+							{/if}
+						</div>
+					{/if}
+
+					{#if footer}
+						<div
+							class={[
+								'flex shrink-0 items-center gap-2',
+								showHandle
+									? 'mt-2 justify-end ps-4 pe-[calc(1rem+var(--tabbar-inline-safe,0px))] pb-[calc(var(--tabbar-block-safe,0px)+0.75rem)]'
+									: 'w-full justify-stretch gap-3 border-t border-outline-variant/40 ps-6 pe-[calc(1.5rem+var(--tabbar-inline-safe,0px))] pt-4 pb-[calc(var(--tabbar-block-safe,0px)+0.75rem)] [&>button]:flex-1'
+							]}
+						>
+							{@render footer()}
 						</div>
 					{/if}
 				</div>
-			{/if}
-
-			{#if description || children}
-				<div
-					class={[
-						showHandle
-							? [
-									'app-scroll-y min-h-0 flex-1 overflow-y-auto',
-									!footer && 'pb-[calc(1rem+var(--tabbar-block-safe,0px))]'
-								]
-							: 'shrink-0 px-6 pb-5'
-					]}
-				>
-					{#if description}
-						<Dialog.Description
-							class={[
-								'text-body-medium leading-relaxed text-on-surface-variant',
-								!showHandle && 'text-center'
-							]}
-						>
-							{description}
-						</Dialog.Description>
-					{/if}
-					{#if children}
-						{@render children()}
-					{/if}
-				</div>
-			{/if}
-
-			{#if footer}
-				<div
-					class={[
-						'flex shrink-0 items-center gap-2',
-						showHandle
-							? 'mt-2 justify-end ps-4 pe-[calc(1rem+var(--tabbar-inline-safe,0px))] pb-[calc(var(--tabbar-block-safe,0px)+0.75rem)]'
-							: 'w-full justify-stretch gap-3 border-t border-outline-variant/40 ps-6 pe-[calc(1.5rem+var(--tabbar-inline-safe,0px))] pt-4 pb-[calc(var(--tabbar-block-safe,0px)+0.75rem)] [&>button]:flex-1'
-					]}
-				>
-					{@render footer()}
-				</div>
-			{/if}
+			{/snippet}
 		</Dialog.Content>
 	</Dialog.Portal>
 </Dialog.Root>
@@ -376,6 +387,11 @@
 	:global(.bottom-sheet-overlay[data-dialog-overlay][data-starting-style]),
 	:global(.bottom-sheet-overlay[data-dialog-overlay][data-ending-style]) {
 		opacity: 0;
+	}
+
+	:global(.bottom-sheet-overlay[data-dialog-overlay][data-state='closed']),
+	:global(.bottom-sheet-content[data-dialog-content][data-state='closed']) {
+		pointer-events: none !important;
 	}
 
 	:global(.bottom-sheet-content[data-dialog-content]) {
