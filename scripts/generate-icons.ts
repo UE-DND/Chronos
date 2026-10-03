@@ -9,7 +9,7 @@ const pwaDir = resolve(webStatic, 'pwa');
 const sourceSvgPath = resolve(webStatic, 'chronos-icon.svg');
 const androidRes = resolve(root, 'apps/mobile/android/app/src/main/res');
 
-const BG = '#f0f4f8';
+const BG = '#FFFFFF';
 const BRAND = '#0068B7';
 const SOURCE_VIEWBOX = 108;
 /** Maskable safe zone: keep artwork inside the central ~80%. */
@@ -19,6 +19,9 @@ mkdirSync(pwaDir, { recursive: true });
 
 const sourceSvg = readFileSync(sourceSvgPath, 'utf8');
 const sourceInner = extractSvgInner(sourceSvg);
+
+// Keep the browser favicon and in-app mark identical to the launcher artwork.
+writeFileSync(resolve(root, 'apps/web/src/lib/assets/favicon.svg'), sourceSvg);
 
 function extractSvgInner(svg: string): string {
 	const match = svg.match(/<svg\b[^>]*>([\s\S]*)<\/svg\s*>/i);
@@ -117,7 +120,7 @@ const maskable512 = paddedIconSvg(512, MASKABLE_SAFE_RATIO);
 writePng(resolve(webStatic, 'pwa-192-maskable.png'), maskable192, 192);
 writePng(resolve(webStatic, 'pwa-512-maskable.png'), maskable512, 512);
 
-// Apple touch icon: mild padding on splash background
+// Apple touch icon: mild padding on the white icon background.
 writePng(resolve(webStatic, 'apple-touch-icon.png'), paddedIconSvg(180, 0.86), 180);
 
 const narrowW = 1080;
