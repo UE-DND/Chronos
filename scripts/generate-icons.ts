@@ -10,6 +10,7 @@ const sourceSvgPath = resolve(webStatic, 'chronos-icon.svg');
 const androidRes = resolve(root, 'apps/mobile/android/app/src/main/res');
 
 const BG = '#FFFFFF';
+const ANDROID_NIGHT_BG = '#18212B';
 const BRAND = '#0068B7';
 const SOURCE_VIEWBOX = 108;
 /** Maskable safe zone: keep artwork inside the central ~80%. */
@@ -18,17 +19,22 @@ const MASKABLE_SAFE_RATIO = 0.8;
 mkdirSync(pwaDir, { recursive: true });
 
 const sourceSvg = readFileSync(sourceSvgPath, 'utf8');
-const sourceInner = extractSvgInner(sourceSvg);
+const sourceArtwork = extractSvgArtwork(sourceSvg);
 
 // Keep the browser favicon and in-app mark identical to the launcher artwork.
 writeFileSync(resolve(root, 'apps/web/src/lib/assets/favicon.svg'), sourceSvg);
 
-function extractSvgInner(svg: string): string {
+function extractSvgArtwork(svg: string): string {
 	const match = svg.match(/<svg\b[^>]*>([\s\S]*)<\/svg\s*>/i);
 	if (!match?.[1]) {
 		throw new Error(`Could not parse SVG inner content from ${sourceSvgPath}`);
 	}
-	return match[1].trim();
+	const inner = match[1].trim();
+	const background = inner.match(/<rect\b[^>]*\bid="icon-background"[^>]*\/>/i);
+	if (!background) {
+		throw new Error(`Missing icon-background rectangle in ${sourceSvgPath}`);
+	}
+	return inner.replace(background[0], '').trim();
 }
 
 function renderPng(svg: string, size: number): Buffer {
@@ -47,6 +53,22 @@ function writePng(output: string, svg: string, size: number): void {
 }
 
 function writeAndroidIcons(): void {
+	for (const [qualifier, background] of [
+		['values', BG],
+		['values-night', ANDROID_NIGHT_BG]
+	] as const) {
+		const valuesDir = resolve(androidRes, qualifier);
+		mkdirSync(valuesDir, { recursive: true });
+		writeFileSync(
+			resolve(valuesDir, 'ic_launcher_background.xml'),
+			`<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">${background}</color>
+</resources>
+`
+		);
+	}
+
 	const densities = [
 		['mdpi', 48, 108],
 		['hdpi', 72, 162],
@@ -56,33 +78,35 @@ function writeAndroidIcons(): void {
 	] as const;
 	for (const [density, launcherSize, foregroundSize] of densities) {
 		const mipmapDir = resolve(androidRes, `mipmap-${density}`);
+		mkdirSync(mipmapDir, { recursive: true });
 		writePng(resolve(mipmapDir, 'ic_launcher.png'), anyIconSvg(), launcherSize);
 		writePng(resolve(mipmapDir, 'ic_launcher_round.png'), anyIconSvg(), launcherSize);
 		writePng(
 			resolve(mipmapDir, 'ic_launcher_foreground.png'),
-			paddedIconSvg(foregroundSize, MASKABLE_SAFE_RATIO),
+			paddedIconSvg(foregroundSize, MASKABLE_SAFE_RATIO, null),
 			foregroundSize
 		);
 	}
 }
 
-function anyIconSvg(): string {
+function anyIconSvg(background = BG): string {
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SOURCE_VIEWBOX}" height="${SOURCE_VIEWBOX}" viewBox="0 0 ${SOURCE_VIEWBOX} ${SOURCE_VIEWBOX}">
-${sourceInner}
+<rect width="${SOURCE_VIEWBOX}" height="${SOURCE_VIEWBOX}" fill="${background}" />
+${sourceArtwork}
 </svg>`;
 }
 
-for (const density of ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi']) {
-	mkdirSync(resolve(androidRes, `mipmap-${density}`), { recursive: true });
-}
-
-function paddedIconSvg(canvasSize: number, contentRatio: number, background = BG): string {
+function paddedIconSvg(
+	canvasSize: number,
+	contentRatio: number,
+	background: string | null = BG
+): string {
 	const inner = canvasSize * contentRatio;
 	const inset = (canvasSize - inner) / 2;
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasSize}" height="${canvasSize}" viewBox="0 0 ${canvasSize} ${canvasSize}">
-	<rect width="${canvasSize}" height="${canvasSize}" fill="${background}" />
+	${background ? `<rect width="${canvasSize}" height="${canvasSize}" fill="${background}" />` : ''}
 	<svg x="${inset}" y="${inset}" width="${inner}" height="${inner}" viewBox="0 0 ${SOURCE_VIEWBOX} ${SOURCE_VIEWBOX}">
-${sourceInner}
+${sourceArtwork}
 	</svg>
 </svg>`;
 }
@@ -96,7 +120,7 @@ function screenshotSvg(width: number, height: number): string {
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
 	<rect width="${width}" height="${height}" fill="${BG}" />
 	<svg x="${iconX}" y="${iconY}" width="${iconSize}" height="${iconSize}" viewBox="0 0 ${SOURCE_VIEWBOX} ${SOURCE_VIEWBOX}">
-${sourceInner}
+${sourceArtwork}
 	</svg>
 	<text
 		x="${width / 2}"
