@@ -272,7 +272,7 @@
 
 	function jumpToCurrentWeekIfGlass() {
 		if (!hasGlass || isExpanded) return;
-		haptic.light();
+		haptic.medium();
 		screen.jumpToCurrentWeek();
 	}
 
@@ -283,22 +283,22 @@
 		} else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
 			e.preventDefault();
 			if (displayedWeek > startWeek) {
-				changeWeekByKeyboard(displayedWeek - 1, () => haptic.light());
+				changeWeekByKeyboard(displayedWeek - 1, () => haptic.medium());
 			}
 		} else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
 			e.preventDefault();
 			if (displayedWeek < endWeek) {
-				changeWeekByKeyboard(displayedWeek + 1, () => haptic.light());
+				changeWeekByKeyboard(displayedWeek + 1, () => haptic.medium());
 			}
 		} else if (e.key === 'Home') {
 			e.preventDefault();
 			if (displayedWeek !== startWeek) {
-				changeWeekByKeyboard(startWeek, () => haptic.medium());
+				changeWeekByKeyboard(startWeek, () => haptic.heavy());
 			}
 		} else if (e.key === 'End') {
 			e.preventDefault();
 			if (displayedWeek !== endWeek) {
-				changeWeekByKeyboard(endWeek, () => haptic.medium());
+				changeWeekByKeyboard(endWeek, () => haptic.heavy());
 			}
 		}
 	}

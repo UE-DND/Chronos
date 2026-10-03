@@ -40,8 +40,8 @@ export function createCapsuleIndicatorGesture({
 	onWeekChange,
 	onScrubCommit,
 	onTap,
-	onScrubStartFeedback = () => haptic.medium(),
-	onWeekStepFeedback = () => haptic.light()
+	onScrubStartFeedback = () => haptic.heavy(),
+	onWeekStepFeedback = () => haptic.medium()
 }: CapsuleIndicatorGestureOptions) {
 	let isScrubbing = $state(false);
 	let scrubWeek = $state(1);
