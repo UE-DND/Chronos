@@ -37,6 +37,7 @@ interface SoftwareUpdateState {
 }
 
 export interface UpdateStateOptions {
+	allowLocalFallback?: boolean;
 	currentVersion?: string;
 	releaseFeedAdapter?: ReleaseFeedAdapter;
 	swAdapter?: ServiceWorkerAdapter;
@@ -69,7 +70,7 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 				isExternalUpdatePlatform && typeof __ANDROID_RELEASE_FEED_URL__ === 'string'
 					? __ANDROID_RELEASE_FEED_URL__
 					: undefined,
-			allowLocalFallback: !isExternalUpdatePlatform,
+			allowLocalFallback: options.allowLocalFallback ?? !isExternalUpdatePlatform,
 			requireVersionUrl: isExternalUpdatePlatform
 		});
 
@@ -188,16 +189,16 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 		return true;
 	}
 
-	async function checkUpdate() {
+	async function performCheck(): Promise<boolean> {
 		checking = true;
 		errorMessage = null;
 		trackEvent('update_check_attempt');
 
-		const swHasUpdate = isExternalUpdatePlatform
-			? false
-			: swAdapter.isUpdatePending() || (await swAdapter.checkForUpdate());
-
+		let swHasUpdate = false;
 		try {
+			swHasUpdate =
+				!isExternalUpdatePlatform &&
+				(swAdapter.isUpdatePending() || (await swAdapter.checkForUpdate()));
 			const result = await feedAdapter.fetchLatestRelease();
 			if (result.ok) {
 				const release = result.value;
@@ -214,6 +215,7 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 					latest_version: release.tagName,
 					update_source: updateSource
 				});
+				return true;
 			} else if (swHasUpdate) {
 				applyUpdateSignals(false, swHasUpdate);
 				commitCheckSnapshot();
@@ -262,6 +264,14 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 			checking = false;
 			if (nativeState) applyNativeState(nativeState);
 		}
+		return false;
+	}
+
+	let checkInFlight: Promise<boolean> | undefined;
+	function checkUpdate(): Promise<boolean> {
+		return (checkInFlight ??= performCheck().finally(() => {
+			checkInFlight = undefined;
+		}));
 	}
 
 	function resolveInstallError(err: unknown): string {

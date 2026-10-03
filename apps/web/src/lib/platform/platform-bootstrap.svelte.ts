@@ -1,3 +1,4 @@
+import { checkAppUpdateOnResume } from '$lib/client/app-update-ux.svelte';
 import type { AppShellController } from '$lib/app/app-shell.svelte';
 import { connectivity } from '$lib/platform/connectivity.svelte';
 import { onboardingController } from '$lib/client/onboarding.svelte';
@@ -76,6 +77,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 					});
 				},
 				onAppResume: () => {
+					void checkAppUpdateOnResume();
 					void ensureEngineReady().then((engine) => {
 						engine.refreshSystemTime();
 						void todayWidgetSync?.sync();

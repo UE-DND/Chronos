@@ -125,6 +125,31 @@ describe('native APK update lifecycle', () => {
 });
 
 describe('fetchLatestProjectRelease', () => {
+	it('times out a stalled request even without AbortSignal.timeout support', async () => {
+		vi.useFakeTimers();
+		const savedTimeout = Object.getOwnPropertyDescriptor(AbortSignal, 'timeout');
+		Reflect.deleteProperty(AbortSignal, 'timeout');
+		try {
+			const fetchFn = vi.fn(
+				(_url: unknown, options: RequestInit) =>
+					new Promise<Response>((_resolve, reject) => {
+						options.signal?.addEventListener('abort', () =>
+							reject(new DOMException('Aborted', 'AbortError'))
+						);
+					})
+			);
+			const pending = fetchLatestProjectRelease(fetchFn as unknown as typeof fetch);
+			await vi.advanceTimersByTimeAsync(8000);
+			expect(fetchFn.mock.calls[0]![1].signal?.aborted).toBe(true);
+			const result = await pending;
+			expect(result.ok).toBe(false);
+			if (!result.ok) expect(result.error.message).toContain('超时');
+		} finally {
+			if (savedTimeout) Object.defineProperty(AbortSignal, 'timeout', savedTimeout);
+			vi.useRealTimers();
+		}
+	});
+
 	it('successfully parses release from project version.json', async () => {
 		const mockFetch = vi.fn().mockResolvedValue({
 			ok: true,
@@ -217,6 +242,58 @@ describe('createReleaseFeedAdapter', () => {
 });
 
 describe('createUpdateState', () => {
+	it('reports remote failure for automatic retry instead of accepting a local fallback', async () => {
+		const listReleases = vi.fn(async () =>
+			success([{ tagName: 'v0.2.0', name: '', body: '', publishedAt: '' }])
+		);
+		const controller = createUpdateState({
+			allowLocalFallback: false,
+			fetchLatestRelease: async () => failure(AppError.network('offline')),
+			localCatalog: { listReleases, getRelease: async () => failure(AppError.notFound('none')) },
+			checkSwUpdate: async () => false
+		});
+		expect(await controller.checkUpdate()).toBe(false);
+		expect(listReleases).not.toHaveBeenCalled();
+		expect(controller.state.checking).toBe(false);
+		expect(controller.state.errorMessage).toBe('offline');
+	});
+
+	it('shares an in-flight check between automatic and manual callers', async () => {
+		let finish = () => {};
+		const release = { tagName: 'v0.2.0', name: '', body: '', publishedAt: '' };
+		const fetchLatestRelease = vi.fn(
+			() =>
+				new Promise<ReturnType<typeof success<typeof release>>>((resolve) => {
+					finish = () => resolve(success(release));
+				})
+		);
+		const controller = createUpdateState({ fetchLatestRelease, checkSwUpdate: async () => false });
+		const first = controller.checkUpdate();
+		const second = controller.checkUpdate();
+		await Promise.resolve();
+		expect(first).toBe(second);
+		expect(fetchLatestRelease).toHaveBeenCalledOnce();
+		finish();
+		expect(await first).toBe(true);
+		expect(controller.state.checking).toBe(false);
+	});
+
+	it('finishes a check when the service worker adapter rejects, allowing a later retry', async () => {
+		const checkSwUpdate = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('SW unavailable'))
+			.mockResolvedValue(false);
+		const controller = createUpdateState({
+			checkSwUpdate,
+			fetchLatestRelease: async () =>
+				success({ tagName: 'v0.2.0', name: '', body: '', publishedAt: '' })
+		});
+		expect(await controller.checkUpdate()).toBe(false);
+		expect(controller.state.checking).toBe(false);
+		expect(await controller.checkUpdate()).toBe(true);
+		expect(controller.state.errorMessage).toBeNull();
+	});
+
 	it('starts in checking state so the first paint is not up to date', () => {
 		const updateState = createUpdateState({
 			currentVersion: '0.2.0',

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appUpdateNotice } from '$lib/client/app-update-ux.svelte';
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
 	import type { AppShellController } from '$lib/app/app-shell.svelte';
 	import { resolveMineSectionId } from '$lib/components/mine/mine-section-id';
@@ -9,7 +10,7 @@
 	import { getAppController } from '$lib/services/app-engine';
 
 	import { DEFAULT_MINE_SECTION_ID, resolveLocalizedText } from '@chronos/core';
-	import { CodeFill } from '$lib/icons';
+	import { ChevronRight, CodeFill } from '$lib/icons';
 	import { resolveShellIcon } from '$lib/shell/resolve-shell-icon';
 	import type { Component } from 'svelte';
 
@@ -150,7 +151,22 @@
 						onclick={item.onClick}
 						icon={item.icon}
 						iconTone={item.iconTone}
-					/>
+					>
+						{#snippet trailing()}
+							{#if item.id === 'about' && appUpdateNotice.hasUpdate}
+								<span
+									class="text-label-large inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-transparent bg-primary-container/50 px-2.5 text-primary"
+								>
+									{hostT('mine.about.updateAvailable')}
+								</span>
+							{:else}
+								<ChevronRight
+									aria-hidden="true"
+									class="size-4.5 shrink-0 text-on-surface-variant"
+								/>
+							{/if}
+						{/snippet}
+					</MineRow>
 				{/each}
 			</MineSection>
 		{/each}
