@@ -1,4 +1,5 @@
 import { createAndroidUpdateAction, flushAndroidUpdateEvents } from './android-updater';
+import { createAndroidClassNotifications } from './class-notifications';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -211,6 +212,11 @@ export function initMobilePlatform(callbacks?: HostPlatformInitCallbacks): () =>
 
 		// Deep links listener
 		if (callbacks?.onDeepLink) {
+			void App.getLaunchUrl()
+				.then((result) => {
+					if (!disposed && result?.url) callbacks.onDeepLink?.(new URL(result.url));
+				})
+				.catch(() => {});
 			trackListener(
 				App.addListener('appUrlOpen', (event) => {
 					try {
@@ -336,6 +342,8 @@ export function createMobilePlatformAdapter(): HostPlatformAdapter {
 		platformType,
 		supportsPwaInstall: false,
 		shouldShowInstallGuide: false,
+		classNotifications:
+			isNative && platformType === 'android' ? createAndroidClassNotifications() : undefined,
 		init(callbacks) {
 			return initMobilePlatform(callbacks);
 		},

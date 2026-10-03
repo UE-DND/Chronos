@@ -13,6 +13,7 @@ public class MainActivity extends BridgeActivity {
 		registerPlugin(ChronosInstallationPlugin.class);
 		registerPlugin(ChronosUpdaterPlugin.class);
 		registerPlugin(ChronosWidgetPlugin.class);
+		registerPlugin(ChronosClassNotificationsPlugin.class);
 		super.onCreate(savedInstanceState);
 		if (bridge != null && bridge.getWebView() != null) {
 			bridge.getWebView().setHapticFeedbackEnabled(false);

@@ -1,0 +1,4 @@
+<resources>
+    <string name="class_reminder_channel">Before-class reminders</string>
+    <string name="class_reminder_channel_description">Notifications before classes in the active timetable</string>
+</resources>

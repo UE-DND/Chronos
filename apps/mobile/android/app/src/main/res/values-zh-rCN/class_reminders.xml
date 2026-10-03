@@ -1,0 +1,4 @@
+<resources>
+    <string name="class_reminder_channel">课前提醒</string>
+    <string name="class_reminder_channel_description">当前课表课程开始前的通知</string>
+</resources>
