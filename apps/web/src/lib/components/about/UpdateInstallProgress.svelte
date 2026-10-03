@@ -35,7 +35,7 @@
 	<div class="flex items-center justify-between gap-3">
 		<p class="text-body-medium text-on-surface">{phaseLabel}</p>
 		{#if clampedPercent !== null}
-			<span class="text-caption font-mono text-primary">{clampedPercent}%</span>
+			<span class="text-caption font-mono text-primary">{Math.round(clampedPercent)}%</span>
 		{/if}
 	</div>
 	<div

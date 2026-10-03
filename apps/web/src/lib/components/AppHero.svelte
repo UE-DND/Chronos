@@ -2,11 +2,11 @@
 	import { staticPath } from '$lib/config/static-path';
 
 	let {
-		title,
+		title = '',
 		subtitle = '',
 		titleId
 	}: {
-		title: string;
+		title?: string;
 		subtitle?: string;
 		titleId?: string;
 	} = $props();
@@ -18,10 +18,14 @@
 		alt="Chronos"
 		class="h-20 w-20 rounded-2xl shadow-raised ring-1 ring-black/5 dark:ring-white/10"
 	/>
-	<div class="flex flex-col items-center gap-1">
-		<h1 id={titleId} class="text-headline-small font-semibold text-on-surface">{title}</h1>
-		{#if subtitle}
-			<p class="text-body-small text-on-surface-variant">{subtitle}</p>
-		{/if}
-	</div>
+	{#if title || subtitle}
+		<div class="flex flex-col items-center gap-1">
+			{#if title}
+				<h1 id={titleId} class="text-headline-small font-semibold text-on-surface">{title}</h1>
+			{/if}
+			{#if subtitle}
+				<p class="text-body-small text-on-surface-variant">{subtitle}</p>
+			{/if}
+		</div>
+	{/if}
 </div>

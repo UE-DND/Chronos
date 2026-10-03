@@ -9,7 +9,7 @@
 	import { type SoftwareUpdateStateController } from '$lib/content/releases/update-state.svelte';
 	import { parseMarkdown } from '$lib/content/markdown';
 	import { formatPublishedDate } from '$lib/content/releases/release-display';
-	import { APP_VERSION, SOURCE_CODE_URL } from '$lib/config/app-meta';
+	import { SOURCE_CODE_URL } from '$lib/config/app-meta';
 	import { getAppController } from '$lib/services/app-engine';
 
 	import AppHero from '$lib/components/AppHero.svelte';
@@ -42,17 +42,6 @@
 	const controller = getAppController();
 	const activeLocale = $derived(appLocaleToBcp47(controller.currentLocale as AppLocale));
 	const androidUpdateUrl = $derived(updateState.state.latestRelease?.platforms?.android?.updateUrl);
-	const androidTask = $derived(
-		updateState.state.updating || updateState.state.nativeState?.phase === 'failed'
-			? updateState.state.nativeState
-			: null
-	);
-	const androidTargetVersion = $derived(
-		androidTask?.targetVersion ?? updateState.state.latestRelease?.androidUpdate?.host.version
-	);
-	const androidDownloadSize = $derived(
-		androidTask?.sizeBytes ?? updateState.state.latestRelease?.androidUpdate?.sizeBytes
-	);
 
 	onMount(() => {
 		void updateState.checkUpdate();
@@ -84,20 +73,12 @@
 		});
 	});
 
-	const heroTitle = $derived(
-		updateState.state.hasUpdate
-			? hostT('about.update.title.new')
-			: updateState.state.checking
-				? hostT('about.update.title.checking')
-				: hostT('about.update.title.default')
-	);
-
 	const heroSubtitle = $derived(
 		updateState.state.hasUpdate
 			? updateState.state.hasNewerVersion
 				? hostT('about.update.subtitle.new')
 				: hostT('about.update.subtitle.swOnly')
-			: hostT('about.update.subtitle.current', { version: APP_VERSION })
+			: ''
 	);
 
 	function formatCheckTime(date: Date | null): string {
@@ -116,7 +97,7 @@
 </script>
 
 <div class="flex flex-col gap-6 py-2">
-	<AppHero title={heroTitle} subtitle={heroSubtitle} />
+	<AppHero subtitle={heroSubtitle} />
 
 	{#if updateState.state.checking}
 		<Card
@@ -144,11 +125,7 @@
 						subtitle={formatPublishedDate(updateState.state.latestRelease.publishedAt)}
 					/>
 				{/if}
-				<HighlightRow
-					icon={InfoFill}
-					title={hostT('about.update.current')}
-					subtitle={`v${updateState.state.currentVersion}`}
-				/>
+				<HighlightRow icon={InfoFill} title={`v${updateState.state.currentVersion}`} />
 			</HighlightRowList>
 
 			{#if htmlBody && updateState.state.hasNewerVersion}
@@ -162,15 +139,6 @@
 			{/if}
 
 			<div class="pt-2">
-				{#if updateState.updateAction?.mode === 'native-apk'}
-					<p class="text-body-small mb-3 text-on-surface-variant">
-						{hostT('about.update.android.notice')}
-						{#if androidTargetVersion}
-							v{androidTargetVersion}
-							· {((androidDownloadSize ?? 0) / 1024 / 1024).toFixed(1)} MB
-						{/if}
-					</p>
-				{/if}
 				{#if updateState.state.updating}
 					<UpdateInstallProgress
 						phase={updateState.state.installPhase ?? 'downloading'}
