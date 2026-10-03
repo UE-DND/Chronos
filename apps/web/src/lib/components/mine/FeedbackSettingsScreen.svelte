@@ -24,12 +24,16 @@
 		shell.controller.userPreferences?.prepareReminderMinutes ??
 			DEFAULT_USER_PREFERENCES.prepareReminderMinutes
 	);
-	const prepareOptions = $derived(
-		PREPARE_REMINDER_MINUTES_OPTIONS.map((minutes) => ({
-			value: String(minutes),
-			label: hostT('mine.feedback.prepare.minutes', { minutes })
-		}))
-	);
+	const notifications = $derived(shell.classNotifications.state);
+	let permissionHelpOpen = $state(false);
+	async function openNotificationSettings() {
+		if (notifications.background) await shell.classNotifications.openSettings();
+		else permissionHelpOpen = true;
+	}
+	const prepareOptions = PREPARE_REMINDER_MINUTES_OPTIONS.map((minutes) => ({
+		value: String(minutes),
+		label: String(minutes)
+	}));
 	const instanceId = $props.id();
 	let prepareOpen = $state(false);
 	let prepareDraft = $state('');
@@ -108,7 +112,6 @@
 	<MineSection title={hostT('mine.feedback.section.prepare')}>
 		<MineRow
 			title={hostT('mine.feedback.prepare.label')}
-			supporting={hostT('mine.feedback.prepare.description')}
 			onclick={openPreparePicker}
 			aria-haspopup="dialog"
 			aria-expanded={prepareOpen}
@@ -119,8 +122,41 @@
 				</span>
 			{/snippet}
 		</MineRow>
+		<MineRow label title={hostT('mine.feedback.notifications.label')}>
+			{#snippet trailing()}
+				<Switch
+					checked={notifications.enabled}
+					disabled={notifications.busy || notifications.status === 'unsupported'}
+					onCheckedChange={shell.classNotifications.setEnabled}
+				/>
+			{/snippet}
+		</MineRow>
+		{#if notifications.status === 'permission'}
+			<MineRow
+				title={hostT('mine.feedback.notifications.settings')}
+				onclick={openNotificationSettings}
+			/>
+		{:else if notifications.status === 'error'}
+			<MineRow
+				title={hostT('mine.feedback.notifications.retry')}
+				onclick={() => shell.classNotifications.sync(true)}
+			/>
+		{/if}
+		{#if notifications.enabled}
+			<MineRow
+				title={hostT('mine.feedback.notifications.test')}
+				onclick={shell.classNotifications.sendTest}
+				disabled={notifications.busy}
+			/>
+		{/if}
 	</MineSection>
 </div>
+
+<BottomSheet bind:open={permissionHelpOpen} title={hostT('mine.feedback.notifications.settings')}>
+	<p class="text-body-medium px-4 py-3 text-on-surface-variant">
+		{hostT('mine.feedback.notifications.browserHelp')}
+	</p>
+</BottomSheet>
 
 <BottomSheet bind:open={prepareOpen} title={hostT('mine.feedback.prepare.label')}>
 	<div class="px-4 pt-1 pb-2">

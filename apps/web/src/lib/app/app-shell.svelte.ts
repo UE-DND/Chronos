@@ -1,3 +1,5 @@
+import { createClassNotificationsController } from '$lib/platform/class-notifications.svelte';
+import { getHostPlatform } from '$lib/platform/host-platform';
 import { createAppearance } from '$lib/appearance/appearance.svelte';
 import { createWallpaperController } from '$lib/wallpaper/wallpaper-controller.svelte';
 import { hostT } from '$lib/i18n/host-i18n.svelte';
@@ -36,6 +38,10 @@ export function createAppShell() {
 	const appearance = createAppearance(getSharedCoursePaletteRef(), notifyCoursePaletteChanged);
 	const controller = getAppController();
 	const engine = getAppEngine();
+	const classNotifications = createClassNotificationsController(
+		engine,
+		getHostPlatform().classNotifications
+	);
 
 	const themeMode = $derived(controller.userPreferences?.themeMode ?? 'auto');
 	const isDark = $derived(resolveDark(themeMode, systemPrefersDark));
@@ -240,6 +246,7 @@ export function createAppShell() {
 	}
 
 	async function clearAllData() {
+		await classNotifications.clearData();
 		let result = await resetAppToInitialState();
 		try {
 			await wallpaper.clear();
@@ -275,6 +282,7 @@ export function createAppShell() {
 			return controller;
 		},
 		wallpaper,
+		classNotifications,
 		init,
 		destroy,
 		updatePreferences,

@@ -1,4 +1,8 @@
-import type { PlatformType, TodayWidgetSnapshot } from '@chronos/core';
+import type { ClassNotificationBatch, PlatformType, TodayWidgetSnapshot } from '@chronos/core';
+import {
+	createWebClassNotifications,
+	initWebClassNotificationLinks
+} from './web-class-notifications';
 import { getBootPlatformAdapter } from '$chronos-platform-adapter';
 import type { Release } from '../content/releases/release';
 
@@ -56,6 +60,30 @@ export interface HostPlatformInitCallbacks {
 	onAppResume?: () => void;
 }
 
+export interface ClassNotificationStatus {
+	readonly supported: boolean;
+	readonly permission: 'prompt' | 'granted' | 'denied';
+	readonly exact: boolean;
+}
+
+export interface ClassNotificationMessage extends ClassNotificationBatch {
+	courses: (ClassNotificationBatch['courses'][number] & { body: string })[];
+	title: string;
+	body: string;
+}
+
+export interface ClassNotificationAdapter {
+	readonly background: boolean;
+	getStatus(this: void): Promise<ClassNotificationStatus>;
+	/** Only called directly from a user interaction. */
+	requestPermission(this: void): Promise<ClassNotificationStatus>;
+	openSettings(this: void): Promise<void>;
+	replacePlan(this: void, plan: ClassNotificationMessage[]): Promise<void>;
+	sendTest(this: void, title: string, body: string): Promise<void>;
+	clearData(this: void): Promise<void>;
+	dispose(this: void): void;
+}
+
 export interface HostPlatformAdapter {
 	getAndroidInstallationIdentity?: () => Promise<{
 		packageId: string;
@@ -78,6 +106,7 @@ export interface HostPlatformAdapter {
 		mimeType: string
 	): Promise<NativeShareResult>;
 	updateTodayWidgetSnapshot?(snapshot: TodayWidgetSnapshot): Promise<void>;
+	classNotifications?: ClassNotificationAdapter;
 	getUpdateAction?(): PlatformUpdateAction;
 	wrapHttpService?(
 		inner: import('@chronos/core').IHttpService
@@ -91,6 +120,8 @@ export function getDefaultWebPlatform(): HostPlatformAdapter {
 		platformType: 'web',
 		supportsPwaInstall: true,
 		shouldShowInstallGuide: true,
+		classNotifications: createWebClassNotifications(),
+		init: initWebClassNotificationLinks,
 		getUpdateAction() {
 			return {
 				mode: 'service-worker',

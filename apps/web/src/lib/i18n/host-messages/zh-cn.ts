@@ -350,10 +350,19 @@ export const zhCn = {
 	'mine.feedback.haptic.label': '振动反馈',
 	'mine.feedback.section.motion': '动画',
 	'mine.feedback.motion.label': '减少动画效果',
-	'mine.feedback.section.prepare': '课前准备',
-	'mine.feedback.prepare.label': '准备上课时间',
-	'mine.feedback.prepare.description': '开课前显示「准备上课」提示的时间',
-	'mine.feedback.prepare.minutes': '{minutes} 分钟',
+	'mine.feedback.section.prepare': '课前提醒',
+	'mine.feedback.notifications.label': '系统通知',
+	'mine.feedback.notifications.settings': '通知权限设置',
+	'mine.feedback.notifications.retry': '重新安排通知',
+	'mine.feedback.notifications.test': '发送测试通知',
+	'mine.feedback.notifications.title': '准备上课',
+	'mine.feedback.notifications.testBody':
+		'示例课程 · 19:00–20:35\n示例校区 示例教学楼A101 · 示例教师',
+	'mine.feedback.notifications.course': '{name} · {time}{details}',
+	'mine.feedback.notifications.browserHelp':
+		'请在浏览器的网站设置中允许通知，再开启此开关。如果使用 iPhone，请先将 Chronos 添加到主屏幕并从主屏幕打开。',
+	'mine.feedback.prepare.label': '提醒时间',
+	'mine.feedback.prepare.minutes': '{minutes} 分钟前',
 	'mine.feedback.prepare.saveFailed': '保存失败，请重试',
 
 	// onboarding

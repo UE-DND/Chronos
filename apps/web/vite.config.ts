@@ -232,7 +232,7 @@ export default defineConfig(({ mode }) => {
 				workbox: {
 					clientsClaim: true,
 					// The imported gate pins navigation and environment assets to this host build.
-					importScripts: [`sw-host-gate-${host.buildId}.js`],
+					importScripts: [`sw-host-gate-${host.buildId}.js`, 'sw-class-notifications.js'],
 					cacheId: `chronos-${host.profileId}-${host.target}`,
 					globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}'],
 					globIgnores: ['**/official-plugins/**', '**/plugins/releases/**'],

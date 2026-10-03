@@ -88,6 +88,7 @@ describe('createPlatformBootstrap', () => {
 	};
 	const shell = {
 		init: vi.fn(),
+		classNotifications: { start: vi.fn(), sync: vi.fn(), dispose: vi.fn() },
 		appearance,
 		controller: {
 			activeThemeId: 'm3-default',
@@ -97,6 +98,7 @@ describe('createPlatformBootstrap', () => {
 	};
 	const timetableScreen = {
 		init: vi.fn(),
+		jumpToCurrentWeek: vi.fn(),
 		state: {
 			hasLoadedAppState: false,
 			currentTimetable: null
@@ -111,6 +113,7 @@ describe('createPlatformBootstrap', () => {
 		mocks.onboardingState.open = false;
 		vi.stubGlobal('document', { addEventListener: vi.fn(), removeEventListener: vi.fn() });
 		vi.stubGlobal('window', {
+			location: { href: 'https://chronos.example/' },
 			__chronosHideBootFallback: vi.fn(),
 			addEventListener: vi.fn(),
 			removeEventListener: vi.fn()

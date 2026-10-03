@@ -6,16 +6,16 @@ for (const labels of [
 	{
 		locale: 'zh-cn',
 		heading: '反馈设置',
-		title: '准备上课时间',
-		minutes: (n: number) => `${n} 分钟`,
+		title: '提醒时间',
+		minutes: (n: number) => `${n} 分钟前`,
 		cancel: '取消',
 		confirm: '确定'
 	},
 	{
 		locale: 'en',
 		heading: 'Feedback settings',
-		title: 'Preparation time',
-		minutes: (n: number) => `${n} min`,
+		title: 'Reminder time',
+		minutes: (n: number) => `${n} min before`,
 		cancel: 'Cancel',
 		confirm: 'OK'
 	}
@@ -35,9 +35,10 @@ for (const labels of [
 			await row.click();
 			const wheel = page.getByRole('listbox', { name: labels.title });
 			await expect(wheel.getByRole('option')).toHaveCount(12);
-			await expect(
-				wheel.getByRole('option', { name: labels.minutes(30), exact: true })
-			).toHaveAttribute('aria-selected', 'true');
+			await expect(wheel.getByRole('option', { name: '30', exact: true })).toHaveAttribute(
+				'aria-selected',
+				'true'
+			);
 			await expect.poll(() => wheel.evaluate((node) => Math.round(node.scrollTop))).toBe(200);
 			await expect
 				.poll(() =>
@@ -50,16 +51,18 @@ for (const labels of [
 			await wheel.focus();
 			await wheel.press('End');
 			await expect.poll(() => wheel.evaluate((node) => Math.round(node.scrollTop))).toBe(440);
-			await expect(
-				wheel.getByRole('option', { name: labels.minutes(60), exact: true })
-			).toHaveAttribute('aria-selected', 'true');
+			await expect(wheel.getByRole('option', { name: '60', exact: true })).toHaveAttribute(
+				'aria-selected',
+				'true'
+			);
 			await page.getByRole('button', { name: labels.cancel, exact: true }).click();
 			await expect(wheel).toBeHidden();
 			await expect(row).toContainText(labels.minutes(30));
 			await row.click();
-			await expect(
-				wheel.getByRole('option', { name: labels.minutes(30), exact: true })
-			).toHaveAttribute('aria-selected', 'true');
+			await expect(wheel.getByRole('option', { name: '30', exact: true })).toHaveAttribute(
+				'aria-selected',
+				'true'
+			);
 			await wheel.focus();
 			await wheel.press('Home');
 			await expect.poll(() => wheel.evaluate((node) => Math.round(node.scrollTop))).toBe(0);

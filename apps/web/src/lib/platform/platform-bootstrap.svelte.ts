@@ -62,6 +62,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 									.getSlots('shell.bottom-bar.tab')
 									.some((tab) => tab.id === 'today');
 								deps.shellTab.setActiveTab(hasTodayTab ? 'today' : 'timetable');
+								if (!hasTodayTab) deps.timetableScreen.jumpToCurrentWeek();
 								return import('$lib/navigation/nav-coordinator');
 							})
 							.then(({ navigateForward }) => navigateForward('/', { replace: true }))
@@ -80,6 +81,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 					void checkAppUpdateOnResume();
 					void ensureEngineReady().then((engine) => {
 						engine.refreshSystemTime();
+						void deps.shell.classNotifications.sync(true);
 						void todayWidgetSync?.sync();
 						void getOfficialPluginService().retryPendingUpdates();
 					});
@@ -109,6 +111,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 					.then((module) => module.recoverInterruptedWebUpdate())
 					.catch(console.error);
 				deps.shell.init();
+				deps.shell.classNotifications.start();
 				deps.timetableScreen.init(deps.shell);
 				todayWidgetSync?.dispose();
 				todayWidgetSync = createTodayWidgetSyncService(engine, platform, {
@@ -161,6 +164,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 			disposeEffects?.();
 			disposeEffects = null;
 			deps.shell.appearance.destroy();
+			deps.shell.classNotifications.dispose();
 			disposeOfflineUx?.();
 			disposeOfflineUx = null;
 			todayWidgetSync?.dispose();

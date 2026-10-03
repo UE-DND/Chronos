@@ -357,10 +357,19 @@ export const en = {
 	'mine.feedback.haptic.label': 'Vibration',
 	'mine.feedback.section.motion': 'Animation',
 	'mine.feedback.motion.label': 'Reduce motion',
-	'mine.feedback.section.prepare': 'Class preparation',
-	'mine.feedback.prepare.label': 'Preparation time',
-	'mine.feedback.prepare.description': 'When to show “Get ready” before class',
-	'mine.feedback.prepare.minutes': '{minutes} min',
+	'mine.feedback.section.prepare': 'Class reminders',
+	'mine.feedback.notifications.label': 'System notifications',
+	'mine.feedback.notifications.settings': 'Notification permissions',
+	'mine.feedback.notifications.retry': 'Retry scheduling',
+	'mine.feedback.notifications.test': 'Send a test notification',
+	'mine.feedback.notifications.title': 'Get ready for class',
+	'mine.feedback.notifications.testBody':
+		'Example Course · 19:00–20:35\nExample Campus, Example Building A101 · Example Teacher',
+	'mine.feedback.notifications.course': '{name} · {time}{details}',
+	'mine.feedback.notifications.browserHelp':
+		'Allow notifications in your browser’s site settings, then enable this switch. On iPhone, add Chronos to your Home Screen and open it from there.',
+	'mine.feedback.prepare.label': 'Reminder time',
+	'mine.feedback.prepare.minutes': '{minutes} min before',
 	'mine.feedback.prepare.saveFailed': 'Could not save. Please try again.',
 
 	// onboarding
