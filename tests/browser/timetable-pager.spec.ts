@@ -215,31 +215,42 @@ async function observeMotion(page: Page) {
 	});
 }
 
-for (const close of ['outside touch', 'Escape', 'history back'] as const) {
-	test(`reopens course details during exit after ${close}`, async ({ page, request }) => {
-		const { pager } = await prepareMotionTest(page, request);
-		const capsule = pager.locator('.timetable-week-page').nth(5).locator('.course-capsule').first();
-		const rect = (await capsule.boundingBox())!;
-		const point = { x: rect.x + rect.width / 2, y: rect.y + Math.min(20, rect.height / 2) };
-		const dialog = page.locator('.bottom-sheet-content');
-		await page.touchscreen.tap(point.x, point.y);
-		await expect(dialog).toHaveAttribute('data-state', 'open');
-		const courseName = await dialog.getByRole('heading').nth(1).textContent();
-		// Finish the initial entrance once; subsequent cycles must not wait for exit animations.
-		await expect(dialog).not.toHaveAttribute('data-starting-style');
-		await page.waitForTimeout(350);
-		for (let cycle = 0; cycle < 5; cycle++) {
-			if (close === 'outside touch') await page.touchscreen.tap(215, 100);
-			else if (close === 'Escape') await page.keyboard.press('Escape');
-			else await page.goBack();
-			await expect(dialog).toHaveAttribute('data-state', 'closed');
-			await page.touchscreen.tap(point.x, point.y);
-			await expect(dialog).toHaveAttribute('data-state', 'open', { timeout: 1000 });
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+	test.describe(`course detail motion: ${reducedMotion}`, () => {
+		test.use({ reducedMotion });
+		for (const close of ['outside touch', 'Escape', 'history back'] as const) {
+			test(`reopens course details immediately after ${close}`, async ({ page, request }) => {
+				const { pager } = await prepareMotionTest(page, request);
+				const capsule = pager
+					.locator('.timetable-week-page')
+					.nth(5)
+					.locator('.course-capsule')
+					.first();
+				const rect = (await capsule.boundingBox())!;
+				const point = { x: rect.x + rect.width / 2, y: rect.y + Math.min(20, rect.height / 2) };
+				const dialog = page.locator('.bottom-sheet-content');
+				await page.touchscreen.tap(point.x, point.y);
+				await expect(dialog).toHaveAttribute('data-state', 'open');
+				const courseName = await dialog.getByRole('heading').nth(1).textContent();
+				// Finish the initial entrance once; subsequent cycles must not wait for exit animations.
+				await expect(dialog).not.toHaveAttribute('data-starting-style');
+				await page.waitForTimeout(350);
+				for (let cycle = 0; cycle < 5; cycle++) {
+					if (close === 'outside touch') await page.touchscreen.tap(215, 100);
+					else if (close === 'Escape') await page.keyboard.press('Escape');
+					else await page.goBack();
+					// A short exit can unmount before polling; both closing and absent are closed.
+					if (reducedMotion === 'reduce') await expect(dialog).toHaveCount(0);
+					await expect(page.locator('.bottom-sheet-content[data-state="open"]')).toHaveCount(0);
+					await page.touchscreen.tap(point.x, point.y);
+					await expect(dialog).toHaveAttribute('data-state', 'open', { timeout: 1000 });
+				}
+				// A completion from an interrupted exit must not clear the reopened course.
+				await page.waitForTimeout(350);
+				await expect(dialog).toHaveAttribute('data-state', 'open');
+				await expect(dialog.getByRole('heading').nth(1)).toHaveText(courseName!);
+			});
 		}
-		// A completion from an interrupted exit must not clear the reopened course.
-		await page.waitForTimeout(350);
-		await expect(dialog).toHaveAttribute('data-state', 'open');
-		await expect(dialog.getByRole('heading').nth(1)).toHaveText(courseName!);
 	});
 }
 
