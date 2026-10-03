@@ -131,6 +131,8 @@ Web 的软件更新使用 Service Worker；移动端构建关闭 PWA。Web 在�
 
 Web 与 Android 共用自动检查调度：启动时检查，在线前台每 5 分钟检查，回前台检查过期结果，联网恢复立即检查，离线与后台暂停。检查失败按 10 秒、30 秒、60 秒、5 分钟退避重试，发现更新后停止轮询。自动检查和软件更新页共享更新状态与进行中的请求；检测结果显示在“我的→关于→软件更新”入口，不自动下载或弹窗。Android 不注册或监听 Service Worker 更新。
 
+「课前提醒」中的系统通知默认关闭，复用公共用户偏好 `prepareReminderMinutes` 和 `classNotificationsEnabled`；只提醒当前课表的实际学期课程，与「今日」插件是否安装无关。Android 必须同时授予通知和精确定时权限，原生端持久保存学期剩余日程，每次只登记下一批闹钟，支持离线、后台及重启后恢复。Web/PWA 使用页面定时器与 Service Worker 展示通知，依赖 HTTPS、Notifications API 和 Web Locks；页面挂起或关闭后不保证提醒，不包含 Web Push 或日程上传。权限只在用户操作时申请，恢复前台会检查权限并重排日程；已过期提醒不补发（页面运行时最多容许一分钟延迟，且课程必须尚未开始）。
+
 移动端适配器在 Capacitor 同步前移除 Apple touch 图标、PWA 图标和 `pwa/` 截图目录，并移除 HTML 中对应的图标引用；Web/PWA 构建仍保留这些资源。APK 保留应用启动图标、插件、许可证和独立的 `webview-error.html`。Android Chromium WebView 最低版本为 116（Tailwind 4 要求 111，应用和插件使用的 `AbortSignal.any` 要求 116）；低版本或主页面加载失败时显示本地中英文错误页，提示更新系统 WebView/Chrome 后重开应用。华为 WebView 使用 Capacitor 独立的版本体系，此 Chromium 下限不等同于华为包版本。
 
 Android Release 构建启用 R8 代码优化、混淆和资源裁剪，并使用 AGP 8.13 的优化资源裁剪管线。Capacitor 自带的消费方规则保留插件与反射调用入口；新增反射入口时检查对应保留规则，并验证优化后的 APK。Web 静态文件仍由 Web 构建处理。Release CI 将各 Profile 的 `mapping.txt` 单独保存为 `android-r8-mapping-*` artifact，保留 90 天；排查崩溃时使用与 APK 对应的映射，长期维护的版本应在到期前下载归档。重用已发布 APK 时不会重新生成映射。
@@ -175,7 +177,7 @@ ESM 插件和宿主运行在同一进程，没有安全沙箱。哈希校验只�
 
 官方 ESM 插件包含自己的 Svelte 运行时，因此不能用 `getContext()` 读取宿主上下文。需要的数据应通过 props、controller 或平台接口传入。插件可以用 `fromStore(controller.snapshot)` 订阅应用状态。
 
-课前「准备上课」时间是宿主偏好 `UserPreferences.prepareReminderMinutes`，默认 30 分钟，仅接受 5–60 分钟内的 5 分钟整数倍。用户在“反馈设置→课前准备”中调整，今日插件和 Android 小组件使用同一设置。插件可通过现有接口读取、修改和监听；非法写入会拒绝且不改变偏好：
+课前「准备上课」时间是宿主偏好 `UserPreferences.prepareReminderMinutes`，默认 30 分钟，仅接受 5–60 分钟内的 5 分钟整数倍。用户在“反馈设置→课前提醒”中调整，今日插件和 Android 小组件使用同一设置。插件可通过现有接口读取、修改和监听；非法写入会拒绝且不改变偏好：
 
 ```ts
 const minutes = ctx.state.userPreferences.prepareReminderMinutes;
