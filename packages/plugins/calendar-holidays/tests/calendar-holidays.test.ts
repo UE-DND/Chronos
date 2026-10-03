@@ -118,7 +118,7 @@ describe('calendar-holidays plugin', () => {
 		engine.dispose();
 	});
 
-	it('auto-syncs holidays on apply when not yet synced', async () => {
+	it('waits for manual sync after loading and switching timetables', async () => {
 		const timetable = createTimetable({
 			id: 't1',
 			name: '测试课表',
@@ -155,6 +155,23 @@ describe('calendar-holidays plugin', () => {
 
 		const handle = await engine.loadPlugin(createHolidayPlugin());
 
+		expect(httpRequest).not.toHaveBeenCalled();
+		expect(timetables.get('t1')?.academicConfig.holidayCalendar).toBeUndefined();
+
+		const secondTimetable = createTimetable({
+			id: 't2',
+			name: '另一课表',
+			academicConfig: timetable.academicConfig
+		});
+		timetables.set(secondTimetable.id, secondTimetable);
+		await engine.switchTimetable(secondTimetable.id);
+		await engine.switchTimetable(timetable.id);
+		expect(httpRequest).not.toHaveBeenCalled();
+		expect(timetables.get('t2')?.academicConfig.holidayCalendar).toBeUndefined();
+
+		await syncHolidayCalendarFromHolidayCn(engine.getPluginContext('tool-calendar-holidays'), {
+			force: true
+		});
 		expect(httpRequest).toHaveBeenCalled();
 		const saved = timetables.get('t1');
 		expect(saved?.academicConfig.holidayCalendar).toEqual(

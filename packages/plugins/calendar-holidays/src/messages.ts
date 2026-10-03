@@ -8,7 +8,7 @@ export const HOLIDAY_MESSAGES = {
 		'mine.keywords': '节假日,假期,放假,国庆,春节,holiday',
 		'screen.title': '法定节假日',
 		'screen.intro.body':
-			'安装后自动同步国务院公布的放假安排，并在课表标注。仅标记放假，不包含调休补班。',
+			'点击同步按钮，获取国务院公布的放假安排并在课表标注。仅标记放假，不包含调休补班。',
 		'screen.intro.source': '数据来源：holiday-cn',
 		'screen.sync.action': '同步',
 		'screen.sync.resync': '重新同步',
@@ -33,7 +33,7 @@ export const HOLIDAY_MESSAGES = {
 		'mine.keywords': 'holiday,vacation,national day,spring festival',
 		'screen.title': 'Public Holidays',
 		'screen.intro.body':
-			'Automatically syncs official public holiday schedules on install and marks them on your timetable. Only rest days are marked; makeup workdays are excluded.',
+			'Click Sync to fetch official public holiday schedules and mark them on your timetable. Only rest days are marked; makeup workdays are excluded.',
 		'screen.intro.source': 'Data source: holiday-cn',
 		'screen.sync.action': 'Sync',
 		'screen.sync.resync': 'Resync',

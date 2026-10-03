@@ -2,7 +2,7 @@ import { defineChronosPlugin } from '@chronos/core';
 import type { ChronosContext, ChronosMountable } from '@chronos/core';
 import { HOLIDAY_MESSAGES } from './messages';
 import { HOLIDAY_PLUGIN_ID } from './constants';
-import { clearHolidayCalendarFromAllTimetables, ensureHolidayCalendarSynced } from './holiday-sync';
+import { clearHolidayCalendarFromAllTimetables } from './holiday-sync';
 
 export interface CreateHolidayPluginOptions {
 	screenComponent?: ChronosMountable;
@@ -23,7 +23,7 @@ export function createHolidayPlugin(options: CreateHolidayPluginOptions = {}) {
 		author: 'Chronos',
 		homepage: 'https://github.com/NateScarlet/holiday-cn',
 		allowedDomains: ['fastly.jsdelivr.net', 'raw.githubusercontent.com'],
-		async apply(ctx, t) {
+		apply(ctx, t) {
 			activeCtx = ctx;
 			const keywords = t('mine.keywords')
 				.split(',')
@@ -45,20 +45,6 @@ export function createHolidayPlugin(options: CreateHolidayPluginOptions = {}) {
 				id: HOLIDAY_PLUGIN_ID,
 				title: () => t('screen.title'),
 				...(screenComponent ? { component: screenComponent } : {})
-			});
-
-			try {
-				await ensureHolidayCalendarSynced(ctx);
-			} catch {
-				ctx.actions.notify(t('screen.error.syncFailed'), 'warn');
-			}
-
-			ctx.on('timetable:switched', async () => {
-				try {
-					await ensureHolidayCalendarSynced(ctx);
-				} catch {
-					// Silent on timetable switch; user can resync manually.
-				}
 			});
 		},
 		async dispose() {

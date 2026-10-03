@@ -60,14 +60,6 @@ export async function syncHolidayCalendarFromHolidayCn(
 	return promise;
 }
 
-export async function ensureHolidayCalendarSynced(
-	ctx: ChronosContext,
-	options: SyncHolidayCalendarOptions = {}
-): Promise<boolean> {
-	if (!ctx.state.currentTimetable) return false;
-	return syncHolidayCalendarFromHolidayCn(ctx, options);
-}
-
 async function performHolidaySync(
 	ctx: ChronosContext,
 	timetableId: string,

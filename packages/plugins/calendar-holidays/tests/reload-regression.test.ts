@@ -4,7 +4,7 @@ import { createMockEnv } from '@chronos/core/test-utils';
 import { createHolidayPlugin } from '../src/index';
 
 describe('calendar-holidays reload regression', () => {
-	it('bundle reload clears then re-syncs holidays without warn notification when sync succeeds', async () => {
+	it('bundle reload waits for manual sync after clearing holidays', async () => {
 		const timetable = createTimetable({
 			id: 't1',
 			name: '测试课表',
@@ -57,10 +57,8 @@ describe('calendar-holidays reload regression', () => {
 		expect(timetables.get('t1')?.academicConfig.holidayCalendar).toBeUndefined();
 
 		await engine.loadPlugin(plugin);
-		expect(httpRequest).toHaveBeenCalled();
-		expect(timetables.get('t1')?.academicConfig.holidayCalendar?.holidays).toEqual([
-			{ date: '2026-10-01', label: '国庆节' }
-		]);
+		expect(httpRequest).not.toHaveBeenCalled();
+		expect(timetables.get('t1')?.academicConfig.holidayCalendar).toBeUndefined();
 		expect(notifications.filter((n) => n.type === 'warn')).toEqual([]);
 
 		engine.dispose();
