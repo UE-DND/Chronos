@@ -48,3 +48,27 @@ describe('preparation preferences', () => {
 		}
 	);
 });
+
+describe('class notification preferences', () => {
+	it('defaults to off and persists the explicit choice at schema version 1', async () => {
+		const { store, storage } = harness();
+		expect((await store.getPreferences()).classNotificationsEnabled).toBe(false);
+		await store.savePreferences({ classNotificationsEnabled: true });
+		expect((await new PreferencesStore(storage).getPreferences()).classNotificationsEnabled).toBe(
+			true
+		);
+		expect((await store.getPreferences()).schemaVersion).toBe(1);
+		await store.savePreferences({ classNotificationsEnabled: false });
+		expect((await store.getPreferences()).classNotificationsEnabled).toBe(false);
+	});
+	it('rejects malformed values before writing the rest of the patch', async () => {
+		const { store, values } = harness();
+		await expect(
+			store.savePreferences({
+				classNotificationsEnabled: 'true' as unknown as boolean,
+				themeMode: 'dark'
+			})
+		).rejects.toThrow(TypeError);
+		expect(values.size).toBe(0);
+	});
+});

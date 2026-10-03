@@ -26,6 +26,7 @@ export const PREFERENCE_STORAGE_KEYS = {
 	hapticFeedbackEnabled: 'chronos_preferences:haptic_feedback_enabled',
 	reduceMotionEnabled: 'chronos_preferences:reduce_motion_enabled',
 	prepareReminderMinutes: 'chronos_preferences:prepare_reminder_minutes',
+	classNotificationsEnabled: 'chronos_preferences:class_notifications_enabled',
 	currentPeriodHighlightEnabled: 'chronos_preferences:current_period_highlight_enabled',
 	visualThemeId: 'chronos_preferences:visual_theme_id',
 	locale: 'chronos_preferences:locale'
@@ -43,6 +44,8 @@ export interface UserPreferences {
 	reduceMotionEnabled: boolean;
 	/** Minutes before class to show the preparing status (5–60, in steps of 5). */
 	prepareReminderMinutes: number;
+	/** Whether the host should send system notifications before classes. */
+	classNotificationsEnabled: boolean;
 	currentPeriodHighlightEnabled: boolean;
 	/** Selected theme id; retained as wallpaper source in wallpaper color mode (e.g. m3-default, yumemita). */
 	visualThemeId?: string;
@@ -62,5 +65,6 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 	hapticFeedbackEnabled: true,
 	reduceMotionEnabled: false,
 	prepareReminderMinutes: 30,
+	classNotificationsEnabled: false,
 	currentPeriodHighlightEnabled: false
 };

@@ -100,3 +100,4 @@ export {
 } from './storage/plugin-data-value';
 
 export * from './types/host-update';
+export * from './algorithms/class-notifications';

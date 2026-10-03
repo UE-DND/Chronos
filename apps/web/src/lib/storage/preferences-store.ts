@@ -112,6 +112,8 @@ export class PreferencesStore {
 			hapticFeedbackEnabled,
 			reduceMotionEnabled,
 			prepareReminderMinutes,
+			classNotificationsEnabled:
+				this.localStore.getItem(SETTINGS_KEYS.classNotificationsEnabled) === '1',
 			currentPeriodHighlightEnabled,
 			visualThemeId,
 			...(locale ? { locale } : {})
@@ -119,6 +121,12 @@ export class PreferencesStore {
 	}
 
 	async savePreferences(patch: Partial<UserPreferences>): Promise<void> {
+		if (
+			'classNotificationsEnabled' in patch &&
+			typeof patch.classNotificationsEnabled !== 'boolean'
+		) {
+			throw new TypeError('classNotificationsEnabled must be a boolean');
+		}
 		if (
 			'prepareReminderMinutes' in patch &&
 			!isPrepareReminderMinutes(patch.prepareReminderMinutes)
@@ -167,6 +175,12 @@ export class PreferencesStore {
 			this.localStore.setItem(
 				SETTINGS_KEYS.prepareReminderMinutes,
 				String(patch.prepareReminderMinutes)
+			);
+		}
+		if (patch.classNotificationsEnabled !== undefined) {
+			this.localStore.setItem(
+				SETTINGS_KEYS.classNotificationsEnabled,
+				patch.classNotificationsEnabled ? '1' : '0'
 			);
 		}
 		if (patch.currentPeriodHighlightEnabled !== undefined) {

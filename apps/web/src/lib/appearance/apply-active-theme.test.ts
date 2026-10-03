@@ -67,6 +67,7 @@ describe('applyActiveTheme', () => {
 						capsuleCornerStyle: 'rounded',
 						hapticFeedbackEnabled: true,
 						prepareReminderMinutes: 30,
+						classNotificationsEnabled: false,
 						reduceMotionEnabled: false,
 						currentPeriodHighlightEnabled: true,
 						visualThemeId: 'm3-default'
@@ -145,6 +146,7 @@ describe('applyActiveTheme', () => {
 						capsuleCornerStyle: 'rounded',
 						hapticFeedbackEnabled: true,
 						prepareReminderMinutes: 30,
+						classNotificationsEnabled: false,
 						reduceMotionEnabled: false,
 						currentPeriodHighlightEnabled: true,
 						visualThemeId: 'm3-default'

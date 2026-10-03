@@ -396,6 +396,12 @@ export class ChronosEngine implements EngineContextHost, Disposable {
 
 	async updatePreferences(patch: Partial<UserPreferences>): Promise<void> {
 		if (
+			'classNotificationsEnabled' in patch &&
+			typeof patch.classNotificationsEnabled !== 'boolean'
+		) {
+			throw new TypeError('classNotificationsEnabled must be a boolean');
+		}
+		if (
 			'prepareReminderMinutes' in patch &&
 			!isPrepareReminderMinutes(patch.prepareReminderMinutes)
 		) {
