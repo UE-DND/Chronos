@@ -46,6 +46,7 @@ export type HostAnalyticsEvent =
 	| 'settings_haptic_feedback_change'
 	| 'settings_period_highlight_change'
 	| 'settings_reduce_motion_change'
+	| 'settings_prepare_reminder_change'
 	| 'timetable_switch'
 	| 'timetable_delete'
 	| 'timetable_overlap_expand'

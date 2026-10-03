@@ -33,17 +33,21 @@ async function harness() {
 	timetables.set(timetable.id, timetable);
 	await engine.switchTimetable(timetable.id);
 	const ctx = engine.getPluginContext('tool-today');
-	await ctx.updateConfig({ prepareReminderMinutes: 10 });
+	await ctx.actions.updatePreferences({ prepareReminderMinutes: 10 });
 	const query = vi
 		.spyOn(ctx.service(IStorageService), 'queryCourses')
 		.mockResolvedValue([{ timetableId: 't', timetableName: 'T', course }]);
 	const snapshot = writable({
 		currentTimetable: timetable,
+		userPreferences: engine.state.userPreferences,
 		timetables: [],
 		clockNow: new Date('2026-03-02T07:49:00'),
 		clockTodayIso: '2026-03-02',
 		coursePaletteRevision: 0
 	} as unknown as ChronosUiSnapshot);
+	engine.on('preferences:updated', ({ preferences }) => {
+		snapshot.update((s) => ({ ...s, userPreferences: preferences }));
+	});
 	const screen = createTodayScreenController();
 	await screen.init(
 		{ snapshot, getPluginContext: () => ctx } as unknown as ChronosUiController,
@@ -70,6 +74,22 @@ describe('Today relevant input refresh', () => {
 		}));
 		await settle();
 		expect(query).toHaveBeenCalledTimes(1);
+		screen.dispose();
+		engine.dispose();
+	});
+	it('host preference changes refresh statuses immediately without querying or recoloring courses', async () => {
+		const { engine, screen, query, paints, ctx } = await harness();
+		expect(screen.prepareReminderMinutes).toBe(10);
+		expect(screen.courseEntries[0].status).toBe('upcoming');
+		await ctx.actions.updatePreferences({ prepareReminderMinutes: 15 });
+		await settle();
+		expect(screen.prepareReminderMinutes).toBe(15);
+		expect(screen.courseEntries[0].status).toBe('preparing');
+		await ctx.actions.updatePreferences({ prepareReminderMinutes: 5 });
+		await settle();
+		expect(screen.courseEntries[0].status).toBe('upcoming');
+		expect(query).toHaveBeenCalledTimes(1);
+		expect(paints).toHaveBeenCalledTimes(1);
 		screen.dispose();
 		engine.dispose();
 	});
@@ -146,7 +166,7 @@ describe('Today relevant input refresh', () => {
 		await settle();
 		expect(screen.paintByCourseKey.get('t\0A')).toEqual(newest.get('A'));
 		expect(query).toHaveBeenCalledTimes(1);
-		await ctx.updateConfig({ prepareReminderMinutes: 30 });
+		await ctx.actions.updatePreferences({ prepareReminderMinutes: 30 });
 		await settle();
 		expect(screen.courseEntries[0].status).toBe('preparing');
 		expect(query).toHaveBeenCalledTimes(1);

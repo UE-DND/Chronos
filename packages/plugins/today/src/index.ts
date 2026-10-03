@@ -1,11 +1,7 @@
-import { defineChronosPlugin, type ConfigSchema } from '@chronos/core';
+import { defineChronosPlugin } from '@chronos/core';
 import type { ChronosMountable } from '@chronos/core';
-import { TODAY_CONFIG_SCHEMA, TODAY_MESSAGES } from './messages';
-import {
-	DEFAULT_PREPARE_REMINDER_MINUTES,
-	TODAY_PLUGIN_ID,
-	type TodayPluginConfig
-} from './constants';
+import { TODAY_MESSAGES } from './messages';
+import { TODAY_PLUGIN_ID, type TodayPluginConfig } from './constants';
 
 export type { TodayPluginConfig, TodayScope } from './constants';
 
@@ -25,8 +21,7 @@ export function createTodayPlugin(options: CreateTodayPluginOptions = {}) {
 		toolGroup: 'utility',
 		order: 35,
 		author: 'Chronos',
-		configSchema: TODAY_CONFIG_SCHEMA as ConfigSchema<TodayPluginConfig>,
-		defaultConfig: { scope: 'active', prepareReminderMinutes: DEFAULT_PREPARE_REMINDER_MINUTES },
+		defaultConfig: { scope: 'active' },
 		async apply(ctx, t) {
 			ctx.registerSlot('shell.bottom-bar.tab', {
 				id: 'today',

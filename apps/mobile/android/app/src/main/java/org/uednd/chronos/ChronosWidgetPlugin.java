@@ -18,7 +18,7 @@ public class ChronosWidgetPlugin extends Plugin {
 	public void updateSnapshot(PluginCall call) {
 		try {
 			JSONObject snapshot = call.getObject("snapshot");
-			if (snapshot == null || snapshot.optInt("version", -1) != 1) {
+			if (!TodayWidgetData.isValidSnapshot(snapshot)) {
 				call.reject("Invalid Today widget snapshot");
 				return;
 			}

@@ -96,12 +96,14 @@ describe('today widget projection', () => {
 
 	it('builds an inclusive 14-day date-indexed snapshot with per-day academic weeks and times', () => {
 		const snapshot = buildTodayWidgetSnapshot({
+			prepareReminderMinutes: 15,
 			timetable: timetable(),
 			startDateIso: '2026-03-02',
 			generatedAt: 1234
 		});
 
 		expect(snapshot.version).toBe(1);
+		expect(snapshot.prepareReminderMinutes).toBe(15);
 		expect(snapshot.generatedAt).toBe(1234);
 		expect(snapshot.validFromIso).toBe('2026-03-02');
 		expect(snapshot.validUntilIso).toBe('2026-03-15');
@@ -119,7 +121,11 @@ describe('today widget projection', () => {
 	});
 
 	it('keeps a valid date range and empty days when there is no active timetable', () => {
-		const snapshot = buildTodayWidgetSnapshot({ timetable: null, startDateIso: '2026-12-28' });
+		const snapshot = buildTodayWidgetSnapshot({
+			prepareReminderMinutes: 15,
+			timetable: null,
+			startDateIso: '2026-12-28'
+		});
 
 		expect(snapshot.activeTimetable).toBeNull();
 		expect(snapshot.validUntilIso).toBe('2027-01-10');
@@ -128,7 +134,11 @@ describe('today widget projection', () => {
 	});
 
 	it('keeps the 14-day window inclusive across a month boundary', () => {
-		const snapshot = buildTodayWidgetSnapshot({ timetable: null, startDateIso: '2026-01-28' });
+		const snapshot = buildTodayWidgetSnapshot({
+			prepareReminderMinutes: 15,
+			timetable: null,
+			startDateIso: '2026-01-28'
+		});
 
 		expect(snapshot.validUntilIso).toBe('2026-02-10');
 		expect(snapshot.days['2026-02-01']).toEqual({ academicWeek: null, courses: [] });
@@ -137,10 +147,20 @@ describe('today widget projection', () => {
 	it('sorts projected entries by periods and carries resolved colors when supplied', () => {
 		const active = timetable();
 		const snapshot = buildTodayWidgetSnapshot({
+			prepareReminderMinutes: 15,
 			timetable: active,
 			startDateIso: '2026-03-02',
 			colorsByCourseName: new Map([['Monday', '#123456']])
 		});
 		expect(snapshot.days['2026-03-02']?.courses[0]?.colorHex).toBe('#123456');
+	});
+	it.each([0, 4, 6, 61, 10.5, NaN, Infinity])('rejects invalid preparation time %s', (minutes) => {
+		expect(() =>
+			buildTodayWidgetSnapshot({
+				timetable: null,
+				startDateIso: '2026-03-02',
+				prepareReminderMinutes: minutes
+			})
+		).toThrow(RangeError);
 	});
 });

@@ -25,6 +25,7 @@ function createMockEnv(httpResponse?: HttpResponse): ChronosEnv {
 		timetableLayoutMode: 'fixed',
 		capsuleCornerStyle: 'rounded',
 		hapticFeedbackEnabled: true,
+		prepareReminderMinutes: 30,
 		reduceMotionEnabled: false,
 		currentPeriodHighlightEnabled: true
 	};

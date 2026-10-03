@@ -175,6 +175,18 @@ ESM 插件和宿主运行在同一进程，没有安全沙箱。哈希校验只�
 
 官方 ESM 插件包含自己的 Svelte 运行时，因此不能用 `getContext()` 读取宿主上下文。需要的数据应通过 props、controller 或平台接口传入。插件可以用 `fromStore(controller.snapshot)` 订阅应用状态。
 
+课前「准备上课」时间是宿主偏好 `UserPreferences.prepareReminderMinutes`，默认 30 分钟，仅接受 5–60 分钟内的 5 分钟整数倍。用户在“反馈设置→课前准备”中调整，今日插件和 Android 小组件使用同一设置。插件可通过现有接口读取、修改和监听；非法写入会拒绝且不改变偏好：
+
+```ts
+const minutes = ctx.state.userPreferences.prepareReminderMinutes;
+await ctx.actions.updatePreferences({ prepareReminderMinutes: 15 });
+ctx.on('preferences:updated', ({ preferences }) => {
+	refreshStatus(preferences.prepareReminderMinutes);
+});
+```
+
+core 导出 `PREPARE_REMINDER_MINUTES_OPTIONS` 和 `isPrepareReminderMinutes`，可用于选择器和校验。今日插件不再提供私有 `prepareReminderMinutes` 配置，不迁移该旧配置。Android 小组件快照仍为版本 `1`，必须包含有效的同名字段；无效快照按不可用处理，由下次宿主同步提供当前结构。
+
 课程颜色通过 `ICoursePresentationService` 获取。颜色分配以整张课表为准。不要只给当前可见的课程重新分配颜色，否则同一门课可能在不同页面显示不同颜色。
 
 ### 样式与资源

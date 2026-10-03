@@ -1,4 +1,8 @@
 <script lang="ts">
+	import { tick } from 'svelte';
+	import { DEFAULT_USER_PREFERENCES, PREPARE_REMINDER_MINUTES_OPTIONS } from '@chronos/core';
+	import { PickerWheel } from '@chronos/ui-kit';
+	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
 	import type { AppShellController } from '$lib/app/app-shell.svelte';
 	import { trackEvent } from '$lib/client/analytics';
@@ -15,6 +19,47 @@
 	const reduceMotionEnabled = $derived(
 		shell.controller.userPreferences?.reduceMotionEnabled ?? false
 	);
+
+	const prepareReminderMinutes = $derived(
+		shell.controller.userPreferences?.prepareReminderMinutes ??
+			DEFAULT_USER_PREFERENCES.prepareReminderMinutes
+	);
+	const prepareOptions = $derived(
+		PREPARE_REMINDER_MINUTES_OPTIONS.map((minutes) => ({
+			value: String(minutes),
+			label: hostT('mine.feedback.prepare.minutes', { minutes })
+		}))
+	);
+	const instanceId = $props.id();
+	let prepareOpen = $state(false);
+	let prepareDraft = $state('');
+	let prepareSaving = $state(false);
+	let prepareWheel: PickerWheel | null = $state(null);
+
+	function openPreparePicker() {
+		prepareDraft = String(prepareReminderMinutes);
+		prepareOpen = true;
+		void tick().then(() => prepareWheel?.scrollToValue());
+	}
+
+	async function confirmPrepareSelection() {
+		if (prepareSaving) return;
+		const minutes = Number(prepareWheel?.commitDraft() ?? prepareDraft);
+		if (minutes === prepareReminderMinutes) {
+			prepareOpen = false;
+			return;
+		}
+		prepareSaving = true;
+		try {
+			await shell.setPrepareReminderMinutes(minutes);
+			trackEvent('settings_prepare_reminder_change', { minutes });
+			prepareOpen = false;
+		} catch {
+			shell.controller.notify(hostT('mine.feedback.prepare.saveFailed'), 'error');
+		} finally {
+			prepareSaving = false;
+		}
+	}
 
 	async function toggleHapticFeedback(checked: boolean) {
 		trackEvent('settings_haptic_feedback_change', { enabled: checked });
@@ -60,4 +105,50 @@
 			{/snippet}
 		</MineRow>
 	</MineSection>
+	<MineSection title={hostT('mine.feedback.section.prepare')}>
+		<MineRow
+			title={hostT('mine.feedback.prepare.label')}
+			supporting={hostT('mine.feedback.prepare.description')}
+			onclick={openPreparePicker}
+			aria-haspopup="dialog"
+			aria-expanded={prepareOpen}
+		>
+			{#snippet trailing()}
+				<span class="text-body-medium shrink-0 text-on-surface-variant">
+					{hostT('mine.feedback.prepare.minutes', { minutes: prepareReminderMinutes })}
+				</span>
+			{/snippet}
+		</MineRow>
+	</MineSection>
 </div>
+
+<BottomSheet bind:open={prepareOpen} title={hostT('mine.feedback.prepare.label')}>
+	<div class="px-4 pt-1 pb-2">
+		<PickerWheel
+			bind:this={prepareWheel}
+			bind:value={prepareDraft}
+			options={prepareOptions}
+			label={hostT('mine.feedback.prepare.label')}
+			idPrefix={`prepare-reminder-${instanceId}`}
+			disabled={prepareSaving}
+		/>
+	</div>
+	{#snippet footer()}
+		<button
+			type="button"
+			class="text-label-large h-11 rounded-full px-5 text-on-surface-variant hover:bg-on-surface/5 active:bg-on-surface/10"
+			disabled={prepareSaving}
+			onclick={() => (prepareOpen = false)}
+		>
+			{hostT('common.cancel')}
+		</button>
+		<button
+			type="button"
+			class="text-label-large h-11 rounded-full bg-brand px-6 text-on-primary active:opacity-90"
+			disabled={prepareSaving}
+			onclick={confirmPrepareSelection}
+		>
+			{hostT('common.confirm')}
+		</button>
+	{/snippet}
+</BottomSheet>

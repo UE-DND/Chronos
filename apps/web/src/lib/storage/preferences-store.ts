@@ -10,7 +10,8 @@ import type {
 import {
 	CURRENT_PREFERENCES_SCHEMA_VERSION,
 	DEFAULT_USER_PREFERENCES,
-	PREFERENCE_STORAGE_KEYS
+	PREFERENCE_STORAGE_KEYS,
+	isPrepareReminderMinutes
 } from '@chronos/core';
 
 const SETTINGS_KEYS = PREFERENCE_STORAGE_KEYS;
@@ -90,6 +91,11 @@ export class PreferencesStore {
 			hapticRaw === null ? DEFAULT_USER_PREFERENCES.hapticFeedbackEnabled : hapticRaw === '1';
 		const reduceMotionRaw = this.localStore.getItem(SETTINGS_KEYS.reduceMotionEnabled);
 		const reduceMotionEnabled = reduceMotionRaw === '1';
+		const prepareRaw = this.localStore.getItem(SETTINGS_KEYS.prepareReminderMinutes);
+		const prepareValue = prepareRaw === null ? undefined : Number(prepareRaw);
+		const prepareReminderMinutes = isPrepareReminderMinutes(prepareValue)
+			? prepareValue
+			: DEFAULT_USER_PREFERENCES.prepareReminderMinutes;
 		const periodHighlightRaw = this.localStore.getItem(SETTINGS_KEYS.currentPeriodHighlightEnabled);
 		const currentPeriodHighlightEnabled = periodHighlightRaw === '1';
 		const visualThemeId = this.localStore.getItem(SETTINGS_KEYS.visualThemeId)?.trim() || undefined;
@@ -105,6 +111,7 @@ export class PreferencesStore {
 			capsuleCornerStyle,
 			hapticFeedbackEnabled,
 			reduceMotionEnabled,
+			prepareReminderMinutes,
 			currentPeriodHighlightEnabled,
 			visualThemeId,
 			...(locale ? { locale } : {})
@@ -112,6 +119,12 @@ export class PreferencesStore {
 	}
 
 	async savePreferences(patch: Partial<UserPreferences>): Promise<void> {
+		if (
+			'prepareReminderMinutes' in patch &&
+			!isPrepareReminderMinutes(patch.prepareReminderMinutes)
+		) {
+			throw new RangeError('prepareReminderMinutes must be 5–60 in steps of 5');
+		}
 		if (!this.localStore) return;
 
 		if (patch.themeMode !== undefined) {
@@ -148,6 +161,12 @@ export class PreferencesStore {
 			this.localStore.setItem(
 				SETTINGS_KEYS.reduceMotionEnabled,
 				patch.reduceMotionEnabled ? '1' : '0'
+			);
+		}
+		if (patch.prepareReminderMinutes !== undefined) {
+			this.localStore.setItem(
+				SETTINGS_KEYS.prepareReminderMinutes,
+				String(patch.prepareReminderMinutes)
 			);
 		}
 		if (patch.currentPeriodHighlightEnabled !== undefined) {

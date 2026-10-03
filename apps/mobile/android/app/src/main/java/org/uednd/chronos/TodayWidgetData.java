@@ -23,7 +23,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 final class TodayWidgetData {
-	private static final int PREPARE_MINUTES = 30;
 	private static final String SNAPSHOT_FILE = "today_widget_snapshot.json";
 
 	private TodayWidgetData() {}
@@ -35,14 +34,22 @@ final class TodayWidgetData {
 			int read;
 			while ((read = input.read(buffer)) != -1) bytes.write(buffer, 0, read);
 			JSONObject result = new JSONObject(bytes.toString(StandardCharsets.UTF_8.name()));
-			return result.optInt("version", -1) == 1 ? result : null;
+			return isValidSnapshot(result) ? result : null;
 		} catch (IOException | JSONException error) {
 			return null;
 		}
 	}
 
+	static boolean isValidSnapshot(JSONObject snapshot) {
+		if (snapshot == null || snapshot.optInt("version", -1) != 1) return false;
+		Object raw = snapshot.opt("prepareReminderMinutes");
+		if (!(raw instanceof Number)) return false;
+		double minutes = ((Number) raw).doubleValue();
+		return minutes >= 5 && minutes <= 60 && minutes % 5 == 0;
+	}
+
 	static boolean isFresh(JSONObject snapshot, String todayIso) {
-		if (snapshot == null) return false;
+		if (!isValidSnapshot(snapshot)) return false;
 		String from = snapshot.optString("validFromIso", "");
 		String until = snapshot.optString("validUntilIso", "");
 		JSONObject days = snapshot.optJSONObject("days");
@@ -52,6 +59,8 @@ final class TodayWidgetData {
 	}
 
 	static List<CourseItem> buildCourses(JSONObject snapshot, String todayIso, Calendar now) {
+		if (!isValidSnapshot(snapshot)) return Collections.emptyList();
+		int prepareReminderMinutes = snapshot.optInt("prepareReminderMinutes");
 		JSONObject days = snapshot.optJSONObject("days");
 		JSONObject day = days == null ? null : days.optJSONObject(todayIso);
 		if (day == null) return Collections.emptyList();
@@ -64,7 +73,7 @@ final class TodayWidgetData {
 		for (int index = 0; index < courses.length(); index += 1) {
 			JSONObject course = courses.optJSONObject(index);
 			if (course == null) continue;
-			CourseItem item = new CourseItem(course, currentPeriod, nowMinutes);
+			CourseItem item = new CourseItem(course, currentPeriod, nowMinutes, prepareReminderMinutes);
 			if (!item.name.isEmpty() && item.status != CourseStatus.PAST) items.add(item);
 		}
 		if (items.isEmpty()) return Collections.emptyList();
@@ -196,7 +205,7 @@ final class TodayWidgetData {
 		final CourseStatus status;
 		boolean showStatus;
 
-		CourseItem(JSONObject data, int currentPeriod, int nowMinutes) {
+		CourseItem(JSONObject data, int currentPeriod, int nowMinutes, int prepareReminderMinutes) {
 			id = data.optString("id", "");
 			name = data.optString("name", "");
 			location = data.optString("location", "");
@@ -206,17 +215,17 @@ final class TodayWidgetData {
 			endPeriod = data.optInt("endPeriod", 0);
 			int parsedColor = contextColor(data.optString("colorHex", ""));
 			color = parsedColor == 0 ? Color.rgb(187, 222, 255) : parsedColor;
-			status = resolveStatus(this, currentPeriod, nowMinutes);
+			status = resolveStatus(this, currentPeriod, nowMinutes, prepareReminderMinutes);
 		}
 
-		private static CourseStatus resolveStatus(CourseItem course, int currentPeriod, int nowMinutes) {
+		private static CourseStatus resolveStatus(CourseItem course, int currentPeriod, int nowMinutes, int prepareReminderMinutes) {
 			if (course.startTime != null && course.endTime != null) {
 				int start = parseMinutes(course.startTime);
 				int end = parseMinutes(course.endTime);
 				if (start >= 0 && end >= 0) {
 					if (nowMinutes > end) return CourseStatus.PAST;
 					if (nowMinutes >= start && nowMinutes <= end) return CourseStatus.CURRENT;
-					if (nowMinutes < start && start - nowMinutes <= PREPARE_MINUTES) return CourseStatus.PREPARING;
+					if (nowMinutes < start && start - nowMinutes <= prepareReminderMinutes) return CourseStatus.PREPARING;
 					return CourseStatus.UPCOMING;
 				}
 			}

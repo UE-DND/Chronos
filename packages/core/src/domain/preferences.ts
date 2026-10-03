@@ -7,6 +7,14 @@ export type CapsuleCornerStyle = 'rounded' | 'sharp' | 'pill';
 
 export const CURRENT_PREFERENCES_SCHEMA_VERSION = 1;
 
+export const PREPARE_REMINDER_MINUTES_OPTIONS = [
+	5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60
+] as const;
+
+export function isPrepareReminderMinutes(value: unknown): value is number {
+	return PREPARE_REMINDER_MINUTES_OPTIONS.some((minutes) => minutes === value);
+}
+
 export const PREFERENCE_STORAGE_KEYS = {
 	currentTimetableId: 'chronos_preferences:current_timetable_id',
 	themeMode: 'chronos_preferences:theme_mode',
@@ -17,6 +25,7 @@ export const PREFERENCE_STORAGE_KEYS = {
 	capsuleCornerStyle: 'chronos_preferences:capsule_corner_style',
 	hapticFeedbackEnabled: 'chronos_preferences:haptic_feedback_enabled',
 	reduceMotionEnabled: 'chronos_preferences:reduce_motion_enabled',
+	prepareReminderMinutes: 'chronos_preferences:prepare_reminder_minutes',
 	currentPeriodHighlightEnabled: 'chronos_preferences:current_period_highlight_enabled',
 	visualThemeId: 'chronos_preferences:visual_theme_id',
 	locale: 'chronos_preferences:locale'
@@ -32,6 +41,8 @@ export interface UserPreferences {
 	capsuleCornerStyle: CapsuleCornerStyle;
 	hapticFeedbackEnabled: boolean;
 	reduceMotionEnabled: boolean;
+	/** Minutes before class to show the preparing status (5–60, in steps of 5). */
+	prepareReminderMinutes: number;
 	currentPeriodHighlightEnabled: boolean;
 	/** Selected theme id; retained as wallpaper source in wallpaper color mode (e.g. m3-default, yumemita). */
 	visualThemeId?: string;
@@ -50,5 +61,6 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 	capsuleCornerStyle: 'sharp',
 	hapticFeedbackEnabled: true,
 	reduceMotionEnabled: false,
+	prepareReminderMinutes: 30,
 	currentPeriodHighlightEnabled: false
 };

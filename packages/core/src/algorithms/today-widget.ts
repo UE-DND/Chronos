@@ -1,4 +1,5 @@
 import type { Course } from '../domain/course';
+import { isPrepareReminderMinutes } from '../domain/preferences';
 import type { PeriodTime, Timetable } from '../domain/timetable';
 import { matchesCourseQuery } from '../domain/course-query';
 import type { CourseQueryHit } from '../types/course-query';
@@ -31,6 +32,7 @@ export interface TodayWidgetDay {
 export interface TodayWidgetSnapshot {
 	version: typeof TODAY_WIDGET_SNAPSHOT_VERSION;
 	generatedAt: number;
+	prepareReminderMinutes: number;
 	validFromIso: string;
 	validUntilIso: string;
 	activeTimetable: { id: string; name: string } | null;
@@ -116,6 +118,7 @@ function projectCourse(
 }
 
 export function buildTodayWidgetSnapshot(options: {
+	prepareReminderMinutes: number;
 	timetable: Timetable | null;
 	startDateIso: string;
 	generatedAt?: number;
@@ -126,9 +129,13 @@ export function buildTodayWidgetSnapshot(options: {
 		timetable,
 		startDateIso,
 		generatedAt = Date.now(),
+		prepareReminderMinutes,
 		locale = 'zh-CN',
 		colorsByCourseName
 	} = options;
+	if (!isPrepareReminderMinutes(prepareReminderMinutes)) {
+		throw new RangeError('prepareReminderMinutes must be 5–60 in steps of 5');
+	}
 	const calendar = new AcademicCalendarService();
 	const startDate = parseIsoDate(startDateIso);
 	const days: Record<string, TodayWidgetDay> = {};
@@ -147,6 +154,7 @@ export function buildTodayWidgetSnapshot(options: {
 	return {
 		version: TODAY_WIDGET_SNAPSHOT_VERSION,
 		generatedAt,
+		prepareReminderMinutes,
 		validFromIso: startDateIso,
 		validUntilIso,
 		activeTimetable: timetable ? { id: timetable.id, name: timetable.name } : null,

@@ -58,6 +58,7 @@ export function createTodayWidgetSyncService(
 		if (disposed) return;
 		const snapshot = buildTodayWidgetSnapshot({
 			timetable,
+			prepareReminderMinutes: engine.state.userPreferences.prepareReminderMinutes,
 			startDateIso: getTodayIso(),
 			generatedAt: getNow(),
 			locale: typeof navigator === 'undefined' ? 'zh-CN' : navigator.language,

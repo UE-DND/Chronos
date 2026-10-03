@@ -54,6 +54,7 @@ describe('TimetableScreenController', () => {
 				wallpaperMaskEnabled: true,
 				capsuleCornerStyle: 'rounded',
 				hapticFeedbackEnabled: true,
+				prepareReminderMinutes: 30,
 				reduceMotionEnabled: false,
 				currentPeriodHighlightEnabled: true
 			}
@@ -68,6 +69,7 @@ describe('TimetableScreenController', () => {
 		setCapsuleCornerStyle: async () => {},
 		setHapticFeedbackEnabled: async () => {},
 		setReduceMotionEnabled: async () => {},
+		setPrepareReminderMinutes: async () => {},
 		switchTimetable: async () => {},
 		deleteTimetable: async () => {},
 		clearAllData: async () => {}

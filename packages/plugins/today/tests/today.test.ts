@@ -10,7 +10,6 @@ import {
 } from '@chronos/core';
 import { createMockEnv } from '@chronos/core/test-utils';
 import { createTodayPlugin } from '../src/index';
-import { TODAY_CONFIG_SCHEMA } from '../src/messages';
 import { coursePaintKey, createTodayScreenController } from '../src/today-screen.svelte';
 import {
 	attachCourseStatuses,
@@ -20,11 +19,10 @@ import {
 	resolvePeriodTimeRange,
 	sortCourseHits
 } from '../src/today-courses';
-import { DEFAULT_PREPARE_REMINDER_MINUTES } from '../src/constants';
 import type { ReactiveChronosController } from '@chronos/ui-kit';
 
 describe('today plugin', () => {
-	it('exposes prepare reminder config with 30 minute default', async () => {
+	it('uses host preparation preferences and only keeps private scope config', async () => {
 		const { env } = createMockEnv();
 		const engine = new ChronosEngine({ env });
 		await engine.init();
@@ -32,8 +30,10 @@ describe('today plugin', () => {
 		const handle = await engine.loadPlugin(createTodayPlugin());
 		const ctx = engine.getPluginContext('tool-today');
 
-		expect(ctx.config.prepareReminderMinutes).toBe(DEFAULT_PREPARE_REMINDER_MINUTES);
-		expect(TODAY_CONFIG_SCHEMA.prepareReminderMinutes.default).toBe(30);
+		expect(ctx.config).toEqual({ scope: 'active' });
+		expect(ctx.state.userPreferences.prepareReminderMinutes).toBe(30);
+		await ctx.actions.updatePreferences({ prepareReminderMinutes: 15 });
+		expect(ctx.state.userPreferences.prepareReminderMinutes).toBe(15);
 
 		handle.dispose();
 		engine.dispose();

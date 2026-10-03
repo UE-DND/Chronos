@@ -223,6 +223,10 @@ export function createAppShell() {
 		await updatePreferences({ reduceMotionEnabled: enabled });
 	}
 
+	async function setPrepareReminderMinutes(minutes: number) {
+		await updatePreferences({ prepareReminderMinutes: minutes });
+	}
+
 	async function setCurrentPeriodHighlightEnabled(enabled: boolean) {
 		await updatePreferences({ currentPeriodHighlightEnabled: enabled });
 	}
@@ -281,6 +285,7 @@ export function createAppShell() {
 		setCapsuleCornerStyle,
 		setHapticFeedbackEnabled,
 		setReduceMotionEnabled,
+		setPrepareReminderMinutes,
 		setCurrentPeriodHighlightEnabled,
 		switchTimetable,
 		deleteTimetable,

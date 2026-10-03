@@ -2,6 +2,7 @@ import type { ChronosUiController, ChronosUiSnapshot } from '@chronos/ui-kit';
 import { appLocaleToBcp47, haptic } from '@chronos/ui-kit';
 import {
 	currentTimeMinutes,
+	DEFAULT_USER_PREFERENCES,
 	findCurrentPeriodIndex,
 	isCoursePeriodVisible,
 	ICoursePresentationService,
@@ -12,7 +13,7 @@ import {
 	type CoursePaletteEntry,
 	type CourseQueryHit
 } from '@chronos/core';
-import { DEFAULT_PREPARE_REMINDER_MINUTES, type TodayScope } from './constants';
+import type { TodayScope } from './constants';
 import { attachCourseStatuses, queryTodayCourses, type TodayCourseEntry } from './today-courses';
 
 export function coursePaintKey(timetableId: string, courseName: string): string {
@@ -35,7 +36,6 @@ export function createTodayScreenController(): TodayScreenController {
 	let pluginId = '';
 	let snapshot = $state.raw<ChronosUiSnapshot | null>(null);
 	let scope = $state<TodayScope>('active');
-	let prepareReminderMinutes = $state(DEFAULT_PREPARE_REMINDER_MINUTES);
 	let courseEntries = $state.raw<TodayCourseEntry[]>([]);
 	let paintByCourseKey = $state.raw<Map<string, CoursePaletteEntry>>(new Map());
 	let hits: CourseQueryHit[] = [];
@@ -64,13 +64,19 @@ export function createTodayScreenController(): TodayScreenController {
 			? findCurrentPeriodIndex(parsed, currentTimeMinutes(now()))
 			: (snapshot?.currentPeriodIndex ?? null);
 	}
+	function prepareReminderMinutes() {
+		return (
+			snapshot?.userPreferences?.prepareReminderMinutes ??
+			DEFAULT_USER_PREFERENCES.prepareReminderMinutes
+		);
+	}
 	function updateStatuses() {
 		courseEntries = attachCourseStatuses(
 			hits.filter((hit) => isCoursePeriodVisible(hit.course, periods().length)),
 			periods(),
 			currentTimeMinutes(now()),
 			currentPeriod(),
-			prepareReminderMinutes,
+			prepareReminderMinutes(),
 			appLocaleToBcp47(snapshot?.currentLocale)
 		);
 	}
@@ -159,9 +165,6 @@ export function createTodayScreenController(): TodayScreenController {
 	}
 	function readConfig(config: Record<string, unknown>) {
 		scope = config.scope === 'all' ? 'all' : 'active';
-		const value = config.prepareReminderMinutes;
-		prepareReminderMinutes =
-			typeof value === 'number' && value >= 0 ? value : DEFAULT_PREPARE_REMINDER_MINUTES;
 	}
 	async function init(next: ChronosUiController, id: string) {
 		if (disposed || controller) return;
@@ -220,7 +223,7 @@ export function createTodayScreenController(): TodayScreenController {
 			return scope;
 		},
 		get prepareReminderMinutes() {
-			return prepareReminderMinutes;
+			return prepareReminderMinutes();
 		},
 		get courseEntries() {
 			return courseEntries;

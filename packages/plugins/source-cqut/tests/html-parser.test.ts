@@ -39,6 +39,7 @@ function createMockEnv(): ChronosEnv {
 				timetableLayoutMode: 'fixed',
 				capsuleCornerStyle: 'rounded',
 				hapticFeedbackEnabled: true,
+				prepareReminderMinutes: 30,
 				reduceMotionEnabled: false,
 				currentPeriodHighlightEnabled: true
 			})),

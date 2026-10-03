@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import {
 	ChronosEngine,
+	DEFAULT_USER_PREFERENCES,
 	createTimetable,
 	COURSE_PALETTE_ENTRIES,
 	type ChronosEvents,
@@ -34,7 +35,7 @@ function makeEngine() {
 		]
 	});
 	const engine = {
-		state: { currentTimetable: timetable },
+		state: { currentTimetable: timetable, userPreferences: { ...DEFAULT_USER_PREFERENCES } },
 		coursePresentation: {
 			resolveCoursePaintsForTimetable: vi
 				.fn()
@@ -87,6 +88,7 @@ describe('today widget sync service', () => {
 			COURSE_PALETTE_ENTRIES[2]?.background
 		);
 		expect(initial.validUntilIso).toBe('2026-03-15');
+		expect(initial.prepareReminderMinutes).toBe(30);
 
 		today = '2026-03-03';
 		fake.emit('time:tick', { todayIso: '2026-03-03' } as never);
@@ -95,6 +97,33 @@ describe('today widget sync service', () => {
 
 		service.dispose();
 		expect(fake.handlerCount('timetable:updated')).toBe(0);
+	});
+
+	it('syncs changed preparation preferences even without an active timetable', async () => {
+		const fake = makeEngine();
+		const updateTodayWidgetSnapshot = vi.fn().mockResolvedValue(undefined);
+		const service = createTodayWidgetSyncService(
+			fake.engine,
+			{ updateTodayWidgetSnapshot },
+			{
+				todayIso: () => '2026-03-02'
+			}
+		);
+		service.start();
+		await vi.waitFor(() => expect(updateTodayWidgetSnapshot).toHaveBeenCalledTimes(1));
+		Object.assign(fake.engine.state.userPreferences, { prepareReminderMinutes: 5 });
+		fake.emit('preferences:updated', { preferences: fake.engine.state.userPreferences } as never);
+		await vi.waitFor(() => expect(updateTodayWidgetSnapshot).toHaveBeenCalledTimes(2));
+		expect(updateTodayWidgetSnapshot.mock.calls[1]?.[0].prepareReminderMinutes).toBe(5);
+		Object.assign(fake.engine.state, { currentTimetable: null });
+		Object.assign(fake.engine.state.userPreferences, { prepareReminderMinutes: 60 });
+		fake.emit('preferences:updated', { preferences: fake.engine.state.userPreferences } as never);
+		await vi.waitFor(() => expect(updateTodayWidgetSnapshot).toHaveBeenCalledTimes(3));
+		expect(updateTodayWidgetSnapshot.mock.calls[2]?.[0]).toMatchObject({
+			activeTimetable: null,
+			prepareReminderMinutes: 60
+		});
+		service.dispose();
 	});
 
 	it('keeps platform failures from rejecting event handlers or preventing later syncs', async () => {

@@ -3,7 +3,8 @@ import { type AcademicConfig, type Timetable } from '../domain/timetable';
 import {
 	type UserPreferences,
 	DEFAULT_USER_PREFERENCES,
-	CURRENT_PREFERENCES_SCHEMA_VERSION
+	CURRENT_PREFERENCES_SCHEMA_VERSION,
+	isPrepareReminderMinutes
 } from '../domain/preferences';
 import { HOST_DEFAULT_ICON_THEME_ID } from '../theme/theme-defaults';
 import { todayIsoDate } from '../algorithms/date';
@@ -394,6 +395,12 @@ export class ChronosEngine implements EngineContextHost, Disposable {
 	}
 
 	async updatePreferences(patch: Partial<UserPreferences>): Promise<void> {
+		if (
+			'prepareReminderMinutes' in patch &&
+			!isPrepareReminderMinutes(patch.prepareReminderMinutes)
+		) {
+			throw new RangeError('prepareReminderMinutes must be 5–60 in steps of 5');
+		}
 		this._userPreferences = {
 			...this._userPreferences,
 			...patch,
