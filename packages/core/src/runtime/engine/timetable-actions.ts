@@ -2,6 +2,13 @@ import { createTimetable, type AcademicConfig, type Timetable } from '../../doma
 import type { ChronosActions, TimetableDetailsPatch } from '../../types/actions';
 import type { EngineActionHost } from './engine-action-host';
 
+function createTimetableId(): string {
+	if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+		return `tt_${crypto.randomUUID()}`;
+	}
+	return `tt_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
 /** Timetable CRUD for ChronosEngine. */
 export class TimetableActions implements Pick<
 	ChronosActions,
@@ -14,7 +21,7 @@ export class TimetableActions implements Pick<
 	constructor(private readonly host: EngineActionHost) {}
 
 	async createTimetable(name: string, config?: Partial<AcademicConfig>): Promise<Timetable> {
-		const id = `tt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+		const id = createTimetableId();
 		const timetable = createTimetable({
 			id,
 			name,
@@ -40,13 +47,24 @@ export class TimetableActions implements Pick<
 		timetable: Timetable,
 		options: { overwriteActive?: boolean } = {}
 	): Promise<Timetable> {
-		let toSave = timetable;
+		const importId = createTimetableId();
+		let id = importId;
 		if (options.overwriteActive) {
 			const activeId = await this.host.storage.getActiveTimetableId();
 			if (activeId) {
-				toSave = { ...timetable, id: activeId };
+				id = activeId;
 			}
 		}
+
+		// Codec IDs belong to the preview; persisted courses need globally unique IDs.
+		const toSave = {
+			...timetable,
+			id,
+			courses: timetable.courses.map((course, index) => ({
+				...course,
+				id: `${importId}_c_${index + 1}`
+			}))
+		};
 
 		await this.host.storage.saveTimetable(toSave);
 		await this.host.refreshTimetables();

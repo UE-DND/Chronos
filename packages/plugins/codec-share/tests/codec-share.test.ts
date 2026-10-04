@@ -27,6 +27,40 @@ describe('shareCodecPlugin', () => {
 		]
 	});
 
+	it('imports consecutive shares as independent timetables, including repeated tokens', async () => {
+		const { env } = createMockEnv();
+		const engine = new ChronosEngine({ env });
+		await engine.init();
+		await engine.loadPlugin(shareCodecPlugin);
+		const ctx = engine.getPluginContext('codec-share');
+		const exporter = engine.slots.getSlotItem('export.action', 'share-link')!;
+		const importer = engine.slots.getSlotItem('import.source.tab', 'share-link')!;
+		const firstToken = await exporter.export(sampleTimetable, ctx);
+		const secondToken = await exporter.export(
+			{
+				...sampleTimetable,
+				name: '另一份课表',
+				courses: [{ ...sampleTimetable.courses[0]!, name: '高等数学' }]
+			},
+			ctx
+		);
+		const saved = [];
+		for (const token of [firstToken, secondToken, firstToken]) {
+			const preview = await importer.executeImport({ content: token.content }, ctx);
+			const original = structuredClone(preview);
+			saved.push(await engine.importTimetable(preview, { overwriteActive: false }));
+			expect(preview).toEqual(original);
+		}
+		expect(await env.storage.listTimetables()).toHaveLength(3);
+		expect(new Set(saved.map((t) => t.id)).size).toBe(3);
+		expect(new Set(saved.flatMap((t) => t.courses.map((c) => c.id))).size).toBe(3);
+		for (const timetable of saved) {
+			expect(await env.storage.getTimetable(timetable.id)).toEqual(timetable);
+		}
+		expect(saved.map((t) => t.name)).toEqual(['计算机课表', '另一份课表', '计算机课表']);
+		engine.dispose();
+	});
+
 	it('loads plugin and registers import.source.tab and export.action slots', async () => {
 		const { env } = createMockEnv();
 		const engine = new ChronosEngine({ env });

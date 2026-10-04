@@ -13,6 +13,7 @@ export type TimetableDetailsPatch = Partial<
 /** Shared domain operations used by the engine, plugin contexts and UI adapters. */
 export interface ChronosActions {
 	createTimetable(name: string, config?: Partial<AcademicConfig>): Promise<Timetable>;
+	/** Assigns fresh local IDs; overwriteActive retains only the active timetable ID. */
 	importTimetable(
 		timetable: Timetable,
 		options?: { overwriteActive?: boolean }
