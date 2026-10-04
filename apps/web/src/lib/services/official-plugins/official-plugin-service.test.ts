@@ -1,4 +1,12 @@
-import { describe, expect, it, vi, beforeEach, type Mock } from 'vite-plus/test';
+import { describe, expect, it, vi, beforeEach, afterEach, type Mock } from 'vite-plus/test';
+import { HOST_BUILD } from '$lib/config/app-meta';
+
+const environment = vi.hoisted(() => ({ dev: false }));
+vi.mock('$app/environment', () => ({
+	get dev() {
+		return environment.dev;
+	}
+}));
 import { ChronosEngine } from '@chronos/core';
 import type {
 	ChronosEnv,
@@ -98,7 +106,11 @@ function createMockEnv(httpRequest: HttpMock = vi.fn()) {
 	return { env, httpRequest };
 }
 
-function createService(engine: ChronosEngine, hostVersion = '0.4.1'): OfficialPluginService {
+function createService(
+	engine: ChronosEngine,
+	hostVersion = '0.4.1',
+	hostBuild?: typeof HOST_BUILD
+): OfficialPluginService {
 	const installedStore = new OfficialPluginInstalledStore(engine);
 	const runtimeActivator = new OfficialPluginRuntimeActivator(engine, (pluginId) =>
 		installedStore.has(pluginId)
@@ -108,7 +120,8 @@ function createService(engine: ChronosEngine, hostVersion = '0.4.1'): OfficialPl
 		assetPipeline: new OfficialPluginAssetPipeline(engine),
 		installedStore,
 		runtimeActivator,
-		hostVersion
+		hostVersion,
+		hostBuild
 	});
 }
 
@@ -145,6 +158,34 @@ describe('OfficialPluginService', () => {
 	let service: OfficialPluginService;
 	let httpRequest: HttpMock;
 	let onNotification: ReturnType<typeof vi.fn>;
+
+	afterEach(() => {
+		environment.dev = false;
+		vi.unstubAllGlobals();
+		vi.useRealTimers();
+	});
+
+	it.each([true, false])(
+		'handles a nonresponsive worker during bootstrap (dev=%s)',
+		async (dev) => {
+			environment.dev = dev;
+			vi.useFakeTimers();
+			const postMessage = vi.fn();
+			vi.stubGlobal('navigator', { serviceWorker: { controller: { postMessage } } });
+			service = createService(engine, HOST_BUILD.version, HOST_BUILD);
+			vi.spyOn(service, 'retryPendingUpdates').mockResolvedValue();
+			const pending = service.init();
+			const assertion = dev
+				? expect(pending).resolves.toBeUndefined()
+				: expect(pending).rejects.toMatchObject({ code: 'download_failed' });
+			if (!dev) await vi.waitFor(() => expect(postMessage).toHaveBeenCalledOnce());
+			await vi.advanceTimersByTimeAsync(3000);
+			await assertion;
+			expect(postMessage).toHaveBeenCalledTimes(dev ? 0 : 1);
+			if (dev) expect(service.installationStore.hostGeneration).toBe(HOST_BUILD.buildId);
+			service.dispose();
+		}
+	);
 
 	beforeEach(async () => {
 		httpRequest = vi.fn();

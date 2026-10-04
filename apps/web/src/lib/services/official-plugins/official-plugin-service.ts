@@ -1,4 +1,5 @@
 import { planPreinstall } from './preinstall-policy';
+import { dev } from '$app/environment';
 import { ImageRepository } from '$lib/storage/image-repository';
 import { resolveManifestForDownload } from './manifest-url';
 import { hostT } from '$lib/i18n/host-i18n.svelte';
@@ -254,6 +255,7 @@ export class OfficialPluginService implements Disposable {
 		const generation = this.installedStore.hostGeneration;
 		if (this.hostBuild) {
 			if (
+				!dev &&
 				this.hostBuild.target !== 'mobile' &&
 				typeof navigator !== 'undefined' &&
 				navigator.serviceWorker?.controller

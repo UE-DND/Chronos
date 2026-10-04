@@ -1,4 +1,5 @@
 import { HOST_BUILD } from '$lib/config/app-meta';
+import { dev } from '$app/environment';
 import { fetchLatestProjectRelease } from '$lib/content/releases/release-feed-adapter';
 import { applyUpdateAndReload, readWorkerIdentity, type ApplyUpdateOptions } from './pwa-sw';
 
@@ -40,7 +41,7 @@ export async function applyPreparedWebUpdate(options?: ApplyUpdateOptions): Prom
 }
 
 export async function recoverInterruptedWebUpdate(): Promise<void> {
-	if (HOST_BUILD.target === 'mobile' || !('serviceWorker' in navigator)) return;
+	if (dev || HOST_BUILD.target === 'mobile' || !('serviceWorker' in navigator)) return;
 	const { getOfficialPluginService } = await import('$lib/services/app-engine');
 	const store = getOfficialPluginService().installationStore;
 	await store.load();

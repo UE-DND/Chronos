@@ -1,4 +1,5 @@
 import { HOST_BUILD } from '$lib/config/app-meta';
+import { dev } from '$app/environment';
 import { registerSW } from 'virtual:pwa-register';
 
 let registered = false;
@@ -82,6 +83,8 @@ export function ensurePwaSwRegistered() {
 	// Register immediately: installability requires an active SW with a
 	// fetch handler, idle-deferral delays beforeinstallprompt eligibility.
 	registerServiceWorker();
+	// The dev server has no identity-bearing worker; HMR owns its lifecycle.
+	if (dev) return;
 	navigator.serviceWorker.addEventListener('controllerchange', () => {
 		void checkControllerIdentity();
 	});
