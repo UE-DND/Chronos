@@ -40,7 +40,7 @@
 	} = $props();
 
 	const controller = getAppController();
-	const activeLocale = $derived(appLocaleToBcp47(controller.currentLocale as AppLocale));
+	const activeLocale = $derived(appLocaleToBcp47(controller.locale as AppLocale));
 	const androidUpdateUrl = $derived(updateState.state.latestRelease?.platforms?.android?.updateUrl);
 
 	onMount(() => {

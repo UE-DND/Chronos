@@ -32,7 +32,7 @@
 
 	const ui = $derived(fromStore(controller.snapshot));
 	const pluginContext = $derived(controller.getPluginContext(pluginId));
-	const locale = $derived(appLocaleToBcp47(ui.current.currentLocale));
+	const locale = $derived(appLocaleToBcp47(ui.current.locale));
 
 	function pt(key: keyof (typeof CLOCK_MESSAGES)['zh-cn'], params?: Record<string, unknown>) {
 		void ui.current.slotVersion;
@@ -70,7 +70,7 @@
 	});
 
 	const frozen = $derived(ui.current.clockFrozen);
-	const effectiveNow = $derived(ui.current.clockNow);
+	const effectiveNow = $derived(ui.current.now);
 	const headerDate = $derived(formatCompactDate(partsFromDate(effectiveNow).isoDate));
 	const headerTime = $derived(
 		effectiveNow.toLocaleTimeString(locale, {

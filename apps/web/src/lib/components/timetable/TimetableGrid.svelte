@@ -508,7 +508,9 @@
 		settling: DragSettlePreview;
 	}) {
 		try {
-			await controller.saveCurrentTimetableDetails({ courses: update.updatedCourses });
+			const timetableId = controller.currentTimetable?.id;
+			if (!timetableId) return;
+			await controller.updateTimetableDetails(timetableId, { courses: update.updatedCourses });
 			trackEvent('timetable_course_reorder');
 		} catch {
 			settling = null;

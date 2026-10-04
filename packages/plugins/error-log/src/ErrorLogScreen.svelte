@@ -39,7 +39,7 @@
 	}
 
 	function formatTimestamp(ts: number): string {
-		return new Date(ts).toLocaleString(controller.currentLocale);
+		return new Date(ts).toLocaleString(controller.locale);
 	}
 
 	async function copyEntries(targetEntries: readonly ErrorLogEntry[]) {

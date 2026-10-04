@@ -528,7 +528,7 @@ describe('ChronosEngine in @chronos/core', () => {
 		expect(await env.storage.getActiveTimetableId()).toBe('active-1');
 	});
 
-	it('saveCurrentTimetableDetails deep-merges academicConfig and preserves holidayCalendar', async () => {
+	it('updateTimetableDetails deep-merges academicConfig and preserves holidayCalendar', async () => {
 		const { env } = createMockEnv();
 		const engine = new ChronosEngine({ env });
 		await engine.init();
@@ -553,7 +553,7 @@ describe('ChronosEngine in @chronos/core', () => {
 		await env.storage.saveTimetable(timetable);
 		await engine.switchTimetable('t1');
 
-		await engine.saveCurrentTimetableDetails({
+		await engine.updateTimetableDetails(timetable.id, {
 			academicConfig: {
 				termStartDate: '2026-03-02',
 				startWeek: 1,

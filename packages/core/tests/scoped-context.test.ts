@@ -79,14 +79,15 @@ function createMockHost() {
 			userPreferences: DEFAULT_USER_PREFERENCES,
 			now: new Date(),
 			todayIso: '2026-03-02',
-			clockFrozen: false
+			clockFrozen: false,
+			locale: 'zh-cn'
 		},
 		actions: {
 			createTimetable: vi.fn(),
 			importTimetable: vi.fn(),
 			switchTimetable: vi.fn(),
 			deleteTimetable: vi.fn(),
-			saveCurrentTimetableDetails: vi.fn(),
+			updateTimetableDetails: vi.fn(),
 			saveCourse: vi.fn(),
 			updateCourse: vi.fn(),
 			deleteCourse: vi.fn(),

@@ -2,6 +2,7 @@ import type { CoursePaletteEntry } from '../algorithms/palette';
 import type { Timetable } from '../domain/timetable';
 import type { UserPreferences } from '../domain/preferences';
 import type { CourseQueryFilter, CourseQueryHit } from './course-query';
+import type { TimetableSummary } from './state';
 
 export interface Disposable {
 	dispose(): void;
@@ -100,9 +101,7 @@ export interface StorageChangeEvent {
 export interface IStorageService {
 	// Timetable persistence
 	getTimetable(id: string): Promise<Timetable | null>;
-	listTimetables(): Promise<
-		Array<{ id: string; name: string; courseCount?: number; updatedAt: number }>
-	>;
+	listTimetables(): Promise<TimetableSummary[]>;
 	saveTimetable(timetable: Timetable): Promise<void>;
 	deleteTimetable(id: string): Promise<void>;
 	getActiveTimetableId(): Promise<string | null>;

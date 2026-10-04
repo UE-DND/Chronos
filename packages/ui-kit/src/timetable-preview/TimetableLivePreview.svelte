@@ -34,7 +34,7 @@
 	const hostTranslate = (key: string) => controller.translatePlugin('host-ui', key);
 
 	const timetable = $derived(controller.currentTimetable);
-	const today = $derived(controller.clockTodayIso);
+	const today = $derived(controller.todayIso);
 	const academicWeek = $derived(
 		timetable ? calendarService.calculateAcademicWeek(today, timetable.academicConfig) : null
 	);

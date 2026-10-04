@@ -3,14 +3,14 @@ import { createTimetable, type Timetable } from '@chronos/core';
 import { createCourseEditor } from './course-editor.svelte';
 
 const mocks = vi.hoisted(() => ({
-	saveCurrentTimetableDetails: vi.fn(),
+	updateTimetableDetails: vi.fn(),
 	deleteCourse: vi.fn(),
 	snackbarKey: vi.fn()
 }));
 
 vi.mock('$lib/services/app-engine', () => ({
 	getAppController: () => ({
-		saveCurrentTimetableDetails: mocks.saveCurrentTimetableDetails,
+		updateTimetableDetails: mocks.updateTimetableDetails,
 		deleteCourse: mocks.deleteCourse
 	})
 }));
@@ -46,14 +46,14 @@ function shellWith(currentTimetable: Timetable) {
 	return {
 		controller: {
 			currentTimetable,
-			clockTodayIso: '2026-03-16'
+			todayIso: '2026-03-16'
 		}
 	} as never;
 }
 
 describe('createCourseEditor', () => {
 	beforeEach(() => {
-		mocks.saveCurrentTimetableDetails.mockReset().mockResolvedValue(undefined);
+		mocks.updateTimetableDetails.mockReset().mockResolvedValue(undefined);
 		mocks.deleteCourse.mockReset().mockResolvedValue(undefined);
 		mocks.snackbarKey.mockReset();
 		vi.stubGlobal('crypto', { randomUUID: () => 'test-uuid' });
@@ -121,7 +121,7 @@ describe('createCourseEditor', () => {
 		const candidateId = editor.candidate?.id;
 		await editor.save();
 
-		expect(mocks.saveCurrentTimetableDetails).toHaveBeenCalledWith({
+		expect(mocks.updateTimetableDetails).toHaveBeenCalledWith('timetable-1', {
 			courses: [
 				expect.objectContaining({
 					id: 'c_test-uuid',
@@ -141,7 +141,7 @@ describe('createCourseEditor', () => {
 	});
 
 	it('keeps the draft open and reports a failed save', async () => {
-		mocks.saveCurrentTimetableDetails.mockRejectedValueOnce(new Error('storage failed'));
+		mocks.updateTimetableDetails.mockRejectedValueOnce(new Error('storage failed'));
 		const onDone = vi.fn();
 		const editor = createCourseEditor(shellWith(timetable()), () => null, onDone);
 		editor.syncFromRoute();
@@ -187,7 +187,8 @@ describe('createCourseEditor', () => {
 
 		await editor.save();
 
-		expect(mocks.saveCurrentTimetableDetails).toHaveBeenCalledWith(
+		expect(mocks.updateTimetableDetails).toHaveBeenCalledWith(
+			'timetable-1',
 			expect.objectContaining({
 				courses: [expect.objectContaining({ id: 'existing-id', name: '高等数学 A' })]
 			})

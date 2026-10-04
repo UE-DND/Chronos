@@ -1,35 +1,40 @@
 import type {
-	AcademicConfig,
 	ChronosContext,
 	ChronosEngine,
-	Course,
 	CourseBadge,
 	Disposable,
 	StandardSlotMap,
-	Timetable,
-	UserPreferences
+	ChronosActions,
+	ChronosState,
+	TimetableSummary
 } from '@chronos/core';
 import type { Readable } from 'svelte/store';
 import type { OverlayHistoryPort } from '../overlay/history-overlay';
 
-export type ChronosUiSnapshot = {
-	currentTimetable: Timetable | null;
-	timetables: Array<{ id: string; name: string; courseCount?: number; updatedAt: number }>;
-	activeWeek: number;
-	currentPeriodIndex: number | null;
-	activeThemeId: string | null;
-	activeIconThemeId: string;
-	userPreferences: UserPreferences | null;
-	currentLocale: string;
-	clockNow: Date;
-	clockTodayIso: string;
-	clockFrozen: boolean;
+export type ChronosUiSnapshot = ChronosState & {
+	timetables: TimetableSummary[];
 	slotVersion: number;
 	courseBadges: Record<string, CourseBadge[]>;
 	coursePaletteRevision: number;
 };
 
-export interface ChronosUiController extends Disposable, Readonly<ChronosUiSnapshot> {
+export interface ChronosUiController
+	extends
+		Disposable,
+		Readonly<ChronosUiSnapshot>,
+		Pick<
+			ChronosActions,
+			| 'createTimetable'
+			| 'switchTimetable'
+			| 'deleteTimetable'
+			| 'updateTimetableDetails'
+			| 'saveCourse'
+			| 'updateCourse'
+			| 'deleteCourse'
+			| 'setTheme'
+			| 'updatePreferences'
+			| 'notify'
+		> {
 	readonly snapshot: Readable<ChronosUiSnapshot>;
 	readonly overlayHistoryPort?: OverlayHistoryPort;
 	getPluginContext(pluginId: string): ChronosContext;
@@ -46,17 +51,7 @@ export interface ChronosUiController extends Disposable, Readonly<ChronosUiSnaps
 		slotName: K,
 		slotId: string
 	): string | undefined;
-	createTimetable(name: string, config?: Partial<AcademicConfig>): Promise<Timetable>;
-	switchTimetable(timetableId: string): Promise<void>;
-	deleteTimetable(timetableId: string): Promise<void>;
-	saveCurrentTimetableDetails(patch: Partial<Timetable>): Promise<void>;
-	saveCourse(course: Course): Promise<void>;
-	updateCourse(courseId: string, patch: Partial<Course>): Promise<void>;
-	deleteCourse(courseId: string): Promise<void>;
-	setTheme(themeId: string): void;
-	updatePreferences(patch: Partial<UserPreferences>): Promise<void>;
 	clearAllData(): Promise<void>;
-	notify(message: string, type?: 'info' | 'warn' | 'error'): void;
 	translatePlugin(pluginId: string, key: string, params?: Record<string, unknown>): string;
 }
 

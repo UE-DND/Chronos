@@ -82,7 +82,7 @@ function createTimetableScreen() {
 
 	const navigation = $derived.by(() => {
 		const shell = shellRef;
-		const today = shell?.controller.clockTodayIso ?? todayIsoDate();
+		const today = shell?.controller.todayIso ?? todayIsoDate();
 		const timetable = currentTimetable();
 		const academicWeek = calendarService.calculateAcademicWeek(today, timetable?.academicConfig);
 		const displayedWeek = resolveDisplayedWeek(
@@ -126,7 +126,7 @@ function createTimetableScreen() {
 		if (displayedWeekTimetableIdMemory === timetableId) return;
 
 		const shell = shellRef;
-		const today = shell?.controller.clockTodayIso ?? todayIsoDate();
+		const today = shell?.controller.todayIso ?? todayIsoDate();
 		const academicWeek = calendarService.calculateAcademicWeek(today, timetable?.academicConfig);
 		displayedWeekMemory = resolveDisplayedWeek(
 			timetable,
@@ -139,7 +139,7 @@ function createTimetableScreen() {
 
 	const state = $derived.by(() => {
 		const shell = shellRef;
-		const now = shell?.controller.clockNow ?? new Date();
+		const now = shell?.controller.now ?? new Date();
 		const { timetable, today, academicWeek, displayedWeek, startWeek, endWeek, weeks } = navigation;
 		const { weekLayouts, weekGridModels, weekCourseDisplayModels } = weekViewport;
 		const hasLoadedAppState = shell?.state.initialized ?? false;
@@ -208,7 +208,7 @@ function createTimetableScreen() {
 		if (!timetable) return;
 		interaction.exitEdit();
 		trackEvent('timetable_week_jump_current');
-		const today = shellRef?.controller.clockTodayIso ?? '';
+		const today = shellRef?.controller.todayIso ?? '';
 		const academicWeek = calendarService.calculateAcademicWeek(today, timetable.academicConfig);
 		const { startWeek, endWeek } = academicBounds(timetable);
 		displayedWeekMemory = clampDisplayedWeek(academicWeek, startWeek, endWeek);
@@ -283,7 +283,7 @@ function createTimetableScreen() {
 		}
 
 		try {
-			await shellRef?.controller.saveCurrentTimetableDetails({ courses: updatedCourses });
+			await shellRef?.controller.updateTimetableDetails(timetable.id, { courses: updatedCourses });
 			pendingWeekDelete = null;
 			trackEvent('timetable_course_delete_week');
 			haptic.warning();

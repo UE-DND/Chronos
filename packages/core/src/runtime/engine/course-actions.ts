@@ -23,7 +23,7 @@ export class CourseActions {
 			courses.push(course);
 		}
 
-		await this.timetables.saveCurrentTimetableDetails({ courses });
+		await this.timetables.updateTimetableDetails(current.id, { courses });
 	}
 
 	async updateCourse(courseId: string, patch: Partial<Course>): Promise<void> {
@@ -33,7 +33,7 @@ export class CourseActions {
 		}
 
 		const courses = current.courses.map((c) => (c.id === courseId ? { ...c, ...patch } : c));
-		await this.timetables.saveCurrentTimetableDetails({ courses });
+		await this.timetables.updateTimetableDetails(current.id, { courses });
 	}
 
 	async deleteCourse(courseId: string): Promise<void> {
@@ -43,6 +43,6 @@ export class CourseActions {
 		}
 
 		const courses = current.courses.filter((c) => c.id !== courseId);
-		await this.timetables.saveCurrentTimetableDetails({ courses });
+		await this.timetables.updateTimetableDetails(current.id, { courses });
 	}
 }

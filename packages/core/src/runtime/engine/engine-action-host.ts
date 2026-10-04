@@ -1,3 +1,5 @@
+import type { ChronosActions } from '../../types/actions';
+import type { TimetableSummary } from '../../types/state';
 import type { Timetable } from '../../domain/timetable';
 import type { UserPreferences } from '../../domain/preferences';
 import type { ChronosEvents } from '../../types/context';
@@ -6,15 +8,11 @@ import type { BadgeManager } from '../badge-manager';
 import type { EventPipeline } from '../event-pipeline';
 import type { ThemeRegistry } from '../theme-registry';
 
-export interface TimetableListEntry {
-	id: string;
-	name: string;
-	courseCount?: number;
-	updatedAt: number;
-}
-
 /** Narrow host surface for extracted engine action modules. */
-export interface EngineActionHost {
+export interface EngineActionHost extends Pick<
+	ChronosActions,
+	'switchTimetable' | 'updateTimetableDetails' | 'updatePreferences'
+> {
 	readonly storage: IStorageService;
 	readonly events: EventPipeline;
 	readonly badges: BadgeManager;
@@ -22,8 +20,8 @@ export interface EngineActionHost {
 
 	getCurrentTimetable(): Timetable | null;
 	setCurrentTimetable(timetable: Timetable | null): void;
-	getTimetables(): TimetableListEntry[];
-	setTimetables(timetables: TimetableListEntry[]): void;
+	getTimetables(): TimetableSummary[];
+	setTimetables(timetables: TimetableSummary[]): void;
 	getUserPreferences(): UserPreferences;
 	setUserPreferences(preferences: UserPreferences): void;
 	getActiveThemeId(): string | null;
@@ -35,9 +33,6 @@ export interface EngineActionHost {
 	updateTime(now?: Date): void;
 	rescheduleDayClock(): void;
 	emitIconThemeChanged(): void;
-	switchTimetable(timetableId: string): Promise<void>;
-	saveCurrentTimetableDetails(patch: Partial<Timetable>): Promise<void>;
-	updatePreferences(patch: Partial<UserPreferences>): Promise<void>;
 
 	emit<E extends keyof ChronosEvents>(event: E, payload: ChronosEvents[E]): void;
 }

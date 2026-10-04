@@ -30,7 +30,7 @@
 	});
 
 	const pageTitle = $derived(
-		resolveLocalizedText(screenSlot?.title, hostT('route.pluginPage'), controller.currentLocale)
+		resolveLocalizedText(screenSlot?.title, hostT('route.pluginPage'), controller.locale)
 	);
 </script>
 

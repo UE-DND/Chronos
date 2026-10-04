@@ -28,7 +28,7 @@
 		void shell.controller.slotVersion;
 		return getAppEngine().themes.getTheme(visualThemeId);
 	});
-	const activeLocale = $derived(normalizeAppLocale(shell.controller.currentLocale));
+	const activeLocale = $derived(normalizeAppLocale(shell.controller.locale));
 	const source = $derived(
 		shell.controller.userPreferences?.wallpaperSource ?? DEFAULT_USER_PREFERENCES.wallpaperSource
 	);

@@ -22,7 +22,7 @@
 	);
 
 	const themeOptions = $derived.by(() => {
-		void shell.controller.currentLocale;
+		void shell.controller.locale;
 		return [
 			{ mode: 'auto' as const, label: hostT('display.theme.auto') },
 			{ mode: 'light' as const, label: hostT('display.theme.light') },
@@ -31,7 +31,7 @@
 	});
 
 	const layoutOptions = $derived.by(() => {
-		void shell.controller.currentLocale;
+		void shell.controller.locale;
 		return [
 			{
 				mode: 'compact' as const,
@@ -47,7 +47,7 @@
 	});
 
 	const capsuleCornerOptions = $derived.by(() => {
-		void shell.controller.currentLocale;
+		void shell.controller.locale;
 		return [
 			{
 				mode: 'sharp' as const,

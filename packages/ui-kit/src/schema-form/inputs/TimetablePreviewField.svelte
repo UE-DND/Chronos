@@ -27,7 +27,7 @@
 	const presentationView = $derived(presentationSource ? fromStore(presentationSource) : null);
 
 	const timetable = $derived(ui?.current.currentTimetable ?? null);
-	const today = $derived(ui?.current.clockTodayIso ?? todayIsoDate());
+	const today = $derived(ui?.current.todayIso ?? todayIsoDate());
 	const academicWeek = $derived(
 		calendarService.calculateAcademicWeek(today, timetable?.academicConfig)
 	);

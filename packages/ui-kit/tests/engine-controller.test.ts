@@ -99,7 +99,7 @@ describe('ReactiveChronosController', () => {
 		expect(controller.activeWeek).toBe(1);
 		expect(controller.activeThemeId).toBeNull();
 		expect(controller.userPreferences).toBeDefined();
-		expect(controller.currentLocale).toBe('zh-cn');
+		expect(controller.locale).toBe('zh-cn');
 		expect(controller.slotVersion).toBeGreaterThanOrEqual(1);
 		expect(controller.getSlots('import.source.tab')).toEqual([]);
 		expect(controller.getSlots('export.action')).toEqual([]);
@@ -109,6 +109,26 @@ describe('ReactiveChronosController', () => {
 		controller.dispose();
 	});
 
+	it('keeps shared state names and explicit timetable updates consistent with the engine', async () => {
+		const controller = new ReactiveChronosController(engine);
+		try {
+			const a = await engine.createTimetable('A');
+			const b = await engine.createTimetable('B');
+			await controller.updateTimetableDetails(b.id, { name: 'Updated B' });
+			expect(controller.currentTimetable?.id).toBe(a.id);
+			expect(get(controller.snapshot).timetables.find((t) => t.id === b.id)?.name).toBe(
+				'Updated B'
+			);
+			engine.setVirtualNow(new Date('2026-10-01T09:00:00'));
+			engine.setLocale('en');
+			expect(get(controller.snapshot)).toMatchObject(engine.state);
+			await controller.updateTimetableDetails(a.id, { name: 'Updated A' });
+			expect(controller.currentTimetable?.name).toBe('Updated A');
+		} finally {
+			controller.dispose();
+			engine.dispose();
+		}
+	});
 	it('updates controller userPreferences when engine.init() completes after controller instantiation', async () => {
 		const uninitEngine = new ChronosEngine({ env });
 		await env.storage.savePreferences({ timetableLayoutMode: 'compact' });
@@ -225,10 +245,10 @@ describe('ReactiveChronosController', () => {
 		const controller = new ReactiveChronosController(engine);
 		const locales: string[] = [];
 		const unsubscribe = controller.snapshot.subscribe((snapshot) => {
-			locales.push(snapshot.currentLocale);
+			locales.push(snapshot.locale);
 		});
 
-		expect(get(controller.snapshot).currentLocale).toBe('zh-cn');
+		expect(get(controller.snapshot).locale).toBe('zh-cn');
 		engine.setLocale('en');
 		expect(locales.at(-1)).toBe('en');
 
@@ -241,7 +261,7 @@ describe('ReactiveChronosController', () => {
 		const prevVersion = controller.slotVersion;
 
 		engine.setLocale('en');
-		expect(controller.currentLocale).toBe('en');
+		expect(controller.locale).toBe('en');
 		expect(controller.slotVersion).toBeGreaterThan(prevVersion);
 
 		controller.dispose();

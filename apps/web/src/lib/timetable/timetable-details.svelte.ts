@@ -39,7 +39,7 @@ export class TimetableDetailsEditor {
 		const timetable = this.shell.controller.currentTimetable;
 		if (!timetable || !this.draft) return;
 		const controller = getAppController();
-		await controller.saveCurrentTimetableDetails({
+		await controller.updateTimetableDetails(timetable.id, {
 			name: this.draft.name,
 			academicConfig: this.draft.academicConfig,
 			importMetadata: this.draft.importMetadata?.source

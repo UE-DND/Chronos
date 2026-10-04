@@ -1,6 +1,5 @@
-import type { Course } from '../domain/course';
-import type { AcademicConfig, Timetable } from '../domain/timetable';
-import type { UserPreferences } from '../domain/preferences';
+import type { ChronosActions } from '../types/actions';
+import type { ChronosState } from '../types/state';
 import type { ChronosEnv } from '../types/env';
 import type { EventPipeline } from './event-pipeline';
 import type { HierarchicalSlotRegistry } from './hierarchical-slot-registry';
@@ -20,33 +19,6 @@ export interface EngineContextHost {
 	readonly i18nCatalog: I18nCatalog;
 	readonly locale: string;
 	translateForPlugin(pluginId: string, key: string, params?: Record<string, unknown>): string;
-	readonly state: {
-		readonly currentTimetable: Readonly<Timetable> | null;
-		readonly activeWeek: number;
-		readonly currentPeriodIndex: number | null;
-		readonly activeThemeId: string | null;
-		readonly activeIconThemeId: string;
-		readonly userPreferences: Readonly<UserPreferences>;
-		readonly now: Date;
-		readonly todayIso: string;
-		readonly clockFrozen: boolean;
-	};
-	readonly actions: {
-		createTimetable(name: string, config?: Partial<AcademicConfig>): Promise<Timetable>;
-		importTimetable(
-			timetable: Timetable,
-			options?: { overwriteActive?: boolean }
-		): Promise<Timetable>;
-		switchTimetable(timetableId: string): Promise<void>;
-		deleteTimetable(timetableId: string): Promise<void>;
-		saveCurrentTimetableDetails(patch: Partial<Timetable>): Promise<void>;
-		saveCourse(course: Course): Promise<void>;
-		updateCourse(courseId: string, patch: Partial<Course>): Promise<void>;
-		deleteCourse(courseId: string): Promise<void>;
-		setTheme(themeId: string): void;
-		updatePreferences(patch: Partial<UserPreferences>): Promise<void>;
-		revertToDefaultThemes(): Promise<void>;
-		notify(message: string, type?: 'info' | 'warn' | 'error'): void;
-		setVirtualNow(now: Date | null): void;
-	};
+	readonly state: ChronosState;
+	readonly actions: ChronosActions;
 }

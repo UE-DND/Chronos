@@ -167,7 +167,7 @@
 								{#each group.items as holiday (holiday.date)}
 									<li class="py-3">
 										<span class="text-body-medium text-on-surface"
-											>{formatHolidayRow(holiday, controller.currentLocale)}</span
+											>{formatHolidayRow(holiday, controller.locale)}</span
 										>
 									</li>
 								{/each}

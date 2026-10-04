@@ -22,7 +22,9 @@ import { ScopedContext } from './scoped-context';
 import type { EngineContextHost } from './engine-context-host';
 import { I18nCatalog, interpolateMessage } from '../i18n/i18n-catalog';
 import type { ThemeContribution } from '../types/contributions';
-import type { EngineActionHost, TimetableListEntry } from './engine/engine-action-host';
+import type { EngineActionHost } from './engine/engine-action-host';
+import type { ChronosActions, TimetableDetailsPatch } from '../types/actions';
+import type { ChronosEngineState, TimetableSummary } from '../types/state';
 import { createEngineActionHost } from './engine/create-action-host';
 import { planRevertToDefaultThemes } from './engine/revert-default-themes';
 import { EngineTimeKeeper } from './engine/engine-time-keeper';
@@ -42,7 +44,7 @@ export interface ChronosEngineOptions {
 	onNotification?: (message: string, type: 'info' | 'warn' | 'error') => void;
 }
 
-export class ChronosEngine implements EngineContextHost, Disposable {
+export class ChronosEngine implements EngineContextHost, ChronosActions, Disposable {
 	readonly env: ChronosEnv;
 	readonly events: EventPipeline;
 	readonly slots: HierarchicalSlotRegistry;
@@ -55,7 +57,7 @@ export class ChronosEngine implements EngineContextHost, Disposable {
 	private _onNotification?: (message: string, type: 'info' | 'warn' | 'error') => void;
 
 	private _currentTimetable: Timetable | null = null;
-	private _timetables: TimetableListEntry[] = [];
+	private _timetables: TimetableSummary[] = [];
 	private _activeWeek = 1;
 	private _currentPeriodIndex: number | null = null;
 	private _activeThemeId: string | null = null;
@@ -135,8 +137,8 @@ export class ChronosEngine implements EngineContextHost, Disposable {
 			rescheduleDayClock: () => this.timeKeeper.reschedule(),
 			emitIconThemeChanged: () => this.emitIconThemeChanged(),
 			switchTimetable: (id) => this.timetableActions.switchTimetable(id),
-			saveCurrentTimetableDetails: (patch) =>
-				this.timetableActions.saveCurrentTimetableDetails(patch),
+			updateTimetableDetails: (id, patch) =>
+				this.timetableActions.updateTimetableDetails(id, patch),
 			updatePreferences: (patch) => this.updatePreferences(patch),
 			emit: (event, payload) => {
 				this.events.emit(event, payload);
@@ -218,7 +220,7 @@ export class ChronosEngine implements EngineContextHost, Disposable {
 		return key;
 	}
 
-	get state() {
+	get state(): ChronosEngineState {
 		const now = this.timeKeeper.now();
 		return {
 			currentTimetable: this._currentTimetable,
@@ -230,17 +232,18 @@ export class ChronosEngine implements EngineContextHost, Disposable {
 			userPreferences: this._userPreferences,
 			now,
 			todayIso: todayIsoDate(now),
-			clockFrozen: this.timeKeeper.isFrozen()
+			clockFrozen: this.timeKeeper.isFrozen(),
+			locale: this._locale
 		};
 	}
 
-	get actions(): EngineContextHost['actions'] {
+	get actions(): ChronosActions {
 		return {
 			createTimetable: this.createTimetable.bind(this),
 			importTimetable: this.importTimetable.bind(this),
 			switchTimetable: this.switchTimetable.bind(this),
 			deleteTimetable: this.deleteTimetable.bind(this),
-			saveCurrentTimetableDetails: this.saveCurrentTimetableDetails.bind(this),
+			updateTimetableDetails: this.updateTimetableDetails.bind(this),
 			saveCourse: this.saveCourse.bind(this),
 			updateCourse: this.updateCourse.bind(this),
 			deleteCourse: this.deleteCourse.bind(this),
@@ -300,8 +303,8 @@ export class ChronosEngine implements EngineContextHost, Disposable {
 		return this.timetableActions.deleteTimetable(timetableId);
 	}
 
-	async saveCurrentTimetableDetails(patch: Partial<Timetable>): Promise<void> {
-		return this.timetableActions.saveCurrentTimetableDetails(patch);
+	async updateTimetableDetails(timetableId: string, patch: TimetableDetailsPatch): Promise<void> {
+		return this.timetableActions.updateTimetableDetails(timetableId, patch);
 	}
 
 	async saveCourse(course: Course): Promise<void> {

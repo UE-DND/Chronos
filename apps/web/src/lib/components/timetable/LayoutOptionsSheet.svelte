@@ -21,7 +21,9 @@
 	const viewPrefs = $derived(localPrefs ?? persistedPrefs);
 
 	const saver = createViewPrefsSaver(async (prefs) => {
-		await getAppController().saveCurrentTimetableDetails({ viewPrefs: prefs });
+		const timetableId = shell.controller.currentTimetable?.id;
+		if (!timetableId) return;
+		await getAppController().updateTimetableDetails(timetableId, { viewPrefs: prefs });
 	});
 
 	function setPref<K extends keyof TimetableViewPrefs>(key: K, next: boolean) {

@@ -1,40 +1,6 @@
-import type { Timetable } from '../../domain/timetable';
-import type { UserPreferences } from '../../domain/preferences';
-import type { ChronosEvents } from '../../types/context';
-import type { IStorageService } from '../../types/services';
-import type { BadgeManager } from '../badge-manager';
-import type { EventPipeline } from '../event-pipeline';
-import type { ThemeRegistry } from '../theme-registry';
-import type { EngineActionHost, TimetableListEntry } from './engine-action-host';
+import type { EngineActionHost } from './engine-action-host';
 
-export interface EngineActionHostSource {
-	readonly storage: IStorageService;
-	readonly events: EventPipeline;
-	readonly badges: BadgeManager;
-	readonly themes: ThemeRegistry;
-
-	getCurrentTimetable(): Timetable | null;
-	setCurrentTimetable(timetable: Timetable | null): void;
-	getTimetables(): TimetableListEntry[];
-	setTimetables(timetables: TimetableListEntry[]): void;
-	getUserPreferences(): UserPreferences;
-	setUserPreferences(preferences: UserPreferences): void;
-	getActiveThemeId(): string | null;
-	setActiveThemeId(themeId: string | null): void;
-	getLocale(): string;
-	setLocale(locale: string): void;
-
-	refreshTimetables(): Promise<void>;
-	updateTime(now?: Date): void;
-	rescheduleDayClock(): void;
-	emitIconThemeChanged(): void;
-	switchTimetable(timetableId: string): Promise<void>;
-	saveCurrentTimetableDetails(patch: Partial<Timetable>): Promise<void>;
-	updatePreferences(patch: Partial<UserPreferences>): Promise<void>;
-	emit<E extends keyof ChronosEvents>(event: E, payload: ChronosEvents[E]): void;
-}
-
-export function createEngineActionHost(source: EngineActionHostSource): EngineActionHost {
+export function createEngineActionHost(source: EngineActionHost): EngineActionHost {
 	return {
 		storage: source.storage,
 		events: source.events,
@@ -55,7 +21,7 @@ export function createEngineActionHost(source: EngineActionHostSource): EngineAc
 		rescheduleDayClock: () => source.rescheduleDayClock(),
 		emitIconThemeChanged: () => source.emitIconThemeChanged(),
 		switchTimetable: (id) => source.switchTimetable(id),
-		saveCurrentTimetableDetails: (patch) => source.saveCurrentTimetableDetails(patch),
+		updateTimetableDetails: (id, patch) => source.updateTimetableDetails(id, patch),
 		updatePreferences: (patch) => source.updatePreferences(patch),
 		emit: (event, payload) => source.emit(event, payload)
 	};

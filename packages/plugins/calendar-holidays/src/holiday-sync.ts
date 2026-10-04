@@ -1,7 +1,6 @@
 import {
 	type CalendarHoliday,
 	inferYearsFromAcademicConfig,
-	clearHolidayCalendarFromStorage,
 	type ChronosContext,
 	type HolidayCalendarConfig,
 	IHttpService,
@@ -14,7 +13,17 @@ const syncInFlightByTimetableId = new Map<string, Promise<boolean>>();
 const AUTO_RETRY_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 export async function clearHolidayCalendarFromAllTimetables(ctx: ChronosContext): Promise<number> {
-	return clearHolidayCalendarFromStorage(ctx.service(IStorageService));
+	const storage = ctx.service(IStorageService);
+	let clearedCount = 0;
+	for (const summary of await storage.listTimetables()) {
+		const timetable = await storage.getTimetable(summary.id);
+		if (!timetable?.academicConfig.holidayCalendar) continue;
+		await ctx.actions.updateTimetableDetails(summary.id, {
+			academicConfig: { holidayCalendar: undefined }
+		});
+		clearedCount += 1;
+	}
+	return clearedCount;
 }
 
 export function needsHolidaySync(
@@ -128,23 +137,7 @@ async function performHolidaySync(
 		lastAttemptedAt: Date.now()
 	};
 
-	const updatedAcademicConfig = {
-		...latest.academicConfig,
-		holidayCalendar
-	};
-
-	if (ctx.state.currentTimetable?.id === timetableId) {
-		await ctx.actions.saveCurrentTimetableDetails({
-			academicConfig: updatedAcademicConfig
-		});
-	} else {
-		const updated: Timetable = {
-			...latest,
-			academicConfig: updatedAcademicConfig,
-			updatedAt: Date.now()
-		};
-		await storage.saveTimetable(updated);
-	}
+	await ctx.actions.updateTimetableDetails(timetableId, { academicConfig: { holidayCalendar } });
 
 	if (!hasRequiredYearData) {
 		const missingYears = requiredYears.filter((year) => sourceByYear[year] === 'unavailable');

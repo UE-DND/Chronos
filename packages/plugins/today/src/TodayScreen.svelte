@@ -43,7 +43,7 @@
 
 	const timetable = $derived(ui.current.currentTimetable);
 	const periodTimes = $derived(timetable?.academicConfig.periodTimes ?? []);
-	const todayIso = $derived(ui.current.clockTodayIso || screen.today);
+	const todayIso = $derived(ui.current.todayIso || screen.today);
 	const academicWeek = $derived(
 		timetable ? calendarService.calculateAcademicWeek(todayIso, timetable.academicConfig) : 1
 	);
@@ -59,7 +59,7 @@
 
 	function formatHeaderDate(iso: string): string {
 		const date = new Date(`${iso}T12:00:00`);
-		const weekday = date.toLocaleDateString(appLocaleToBcp47(ui.current.currentLocale), {
+		const weekday = date.toLocaleDateString(appLocaleToBcp47(ui.current.locale), {
 			weekday: 'short'
 		});
 		return `${formatCompactDate(iso)} ${weekday}`;

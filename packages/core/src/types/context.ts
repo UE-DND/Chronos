@@ -1,6 +1,7 @@
-import type { Course } from '../domain/course';
-import type { AcademicConfig, Timetable } from '../domain/timetable';
+import type { Timetable } from '../domain/timetable';
 import type { UserPreferences } from '../domain/preferences';
+import type { ChronosActions } from './actions';
+import type { ChronosState, TimetableSummary } from './state';
 import type { Disposable, ServiceIdentifier } from './services';
 import type {
 	ChronosSlotMap,
@@ -71,39 +72,10 @@ export interface ChronosContext<Config extends object = Record<string, unknown>>
 	};
 
 	/** Read-only core state snapshot */
-	readonly state: {
-		readonly currentTimetable: Readonly<Timetable> | null;
-		readonly activeWeek: number;
-		readonly currentPeriodIndex: number | null;
-		readonly activeThemeId: string | null;
-		readonly activeIconThemeId: string;
-		readonly userPreferences: Readonly<UserPreferences>;
-		readonly now: Date;
-		readonly todayIso: string;
-		readonly clockFrozen: boolean;
-	};
+	readonly state: ChronosState;
 
 	/** Domain action dispatcher */
-	readonly actions: {
-		createTimetable(name: string, config?: Partial<AcademicConfig>): Promise<Timetable>;
-		importTimetable(
-			timetable: Timetable,
-			options?: { overwriteActive?: boolean }
-		): Promise<Timetable>;
-		switchTimetable(timetableId: string): Promise<void>;
-		deleteTimetable(timetableId: string): Promise<void>;
-		saveCurrentTimetableDetails(patch: Partial<Timetable>): Promise<void>;
-
-		saveCourse(course: Course): Promise<void>;
-		updateCourse(courseId: string, patch: Partial<Course>): Promise<void>;
-		deleteCourse(courseId: string): Promise<void>;
-
-		setTheme(themeId: string): void;
-		updatePreferences(patch: Partial<UserPreferences>): Promise<void>;
-		revertToDefaultThemes(): Promise<void>;
-		notify(message: string, type?: 'info' | 'warn' | 'error'): void;
-		setVirtualNow(now: Date | null): void;
-	};
+	readonly actions: ChronosActions;
 
 	/** Declarative hierarchical slot registration (auto-tracked and revoked on unload) */
 	registerSlot<K extends Exclude<keyof ChronosSlotMap, 'import.source.tab'>>(
@@ -133,7 +105,7 @@ export interface ChronosEvents {
 	'timetable:switched': { previousId: string | null; currentId: string; timetable: Timetable };
 	'timetable:updated': { timetable: Timetable };
 	'timetables:updated': {
-		timetables: Array<{ id: string; name: string; courseCount?: number; updatedAt: number }>;
+		timetables: TimetableSummary[];
 	};
 	'preferences:updated': { preferences: UserPreferences };
 	'time:tick': {

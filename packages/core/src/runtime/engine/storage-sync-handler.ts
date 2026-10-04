@@ -2,7 +2,8 @@ import { DEFAULT_USER_PREFERENCES } from '../../domain/preferences';
 import type { Timetable } from '../../domain/timetable';
 import type { StorageChangeEvent } from '../../types/env';
 import type { Disposable } from '../../types/services';
-import type { EngineActionHost, TimetableListEntry } from './engine-action-host';
+import type { EngineActionHost } from './engine-action-host';
+import type { TimetableSummary } from '../../types/state';
 import type { EngineTimeKeeper } from './engine-time-keeper';
 
 /** Hydrates engine state from storage and handles cross-tab sync events. */
@@ -117,7 +118,7 @@ export class StorageSyncHandler {
 		this.host.emit('preferences:updated', { preferences: this.host.getUserPreferences() });
 	}
 
-	private applyTimetableList(list: TimetableListEntry[], generation: number): boolean {
+	private applyTimetableList(list: TimetableSummary[], generation: number): boolean {
 		if (this.disposed || generation !== this.listGeneration) return false;
 		this.host.setTimetables(list);
 		this.listHydrated = true;

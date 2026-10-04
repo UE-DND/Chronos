@@ -8,9 +8,11 @@ import type {
 	CourseBadge,
 	Course,
 	AcademicConfig,
-	ChronosContext
+	ChronosContext,
+	TimetableDetailsPatch,
+	TimetableSummary
 } from '@chronos/core';
-import { todayIsoDate } from '@chronos/core';
+import { todayIsoDate, DEFAULT_USER_PREFERENCES } from '@chronos/core';
 import { writable, type Readable, type Writable } from 'svelte/store';
 import type { ChronosUiController, ChronosUiSnapshot } from './chronos-ui-controller';
 import type { OverlayHistoryPort } from '../overlay/history-overlay';
@@ -32,17 +34,15 @@ export class ReactiveChronosController implements ChronosUiController {
 
 	// Svelte 5 Runes reactive core state
 	currentTimetable = $state.raw<Timetable | null>(null);
-	timetables = $state.raw<
-		Array<{ id: string; name: string; courseCount?: number; updatedAt: number }>
-	>([]);
+	timetables = $state.raw<TimetableSummary[]>([]);
 	activeWeek = $state<number>(1);
 	currentPeriodIndex = $state<number | null>(null);
 	activeThemeId = $state<string | null>(null);
 	activeIconThemeId = $state<string>('host-default');
-	userPreferences = $state<UserPreferences | null>(null);
-	currentLocale = $state<string>('zh-cn');
-	clockNow = $state<Date>(new Date());
-	clockTodayIso = $state<string>(todayIsoDate());
+	userPreferences = $state<UserPreferences>({ ...DEFAULT_USER_PREFERENCES });
+	locale = $state<string>('zh-cn');
+	now = $state<Date>(new Date());
+	todayIso = $state<string>(todayIsoDate());
 	clockFrozen = $state(false);
 
 	// Slot reactivity version signal (increments on slot changes or locale switches)
@@ -71,17 +71,10 @@ export class ReactiveChronosController implements ChronosUiController {
 				this.currentTimetable = timetable;
 				this.pushSnapshot();
 			}),
-			this.engine.on(
-				'timetables:updated',
-				({
-					timetables
-				}: {
-					timetables: Array<{ id: string; name: string; courseCount?: number; updatedAt: number }>;
-				}) => {
-					this.timetables = timetables;
-					this.pushSnapshot();
-				}
-			),
+			this.engine.on('timetables:updated', ({ timetables }: { timetables: TimetableSummary[] }) => {
+				this.timetables = timetables;
+				this.pushSnapshot();
+			}),
 			this.engine.on('preferences:updated', ({ preferences }: { preferences: UserPreferences }) => {
 				this.userPreferences = preferences;
 				this.pushSnapshot();
@@ -103,8 +96,8 @@ export class ReactiveChronosController implements ChronosUiController {
 				}) => {
 					this.activeWeek = currentWeek;
 					this.currentPeriodIndex = currentPeriod;
-					this.clockNow = now;
-					this.clockTodayIso = todayIso;
+					this.now = now;
+					this.todayIso = todayIso;
 					this.clockFrozen = frozen;
 					this.pushSnapshot();
 				}
@@ -118,7 +111,7 @@ export class ReactiveChronosController implements ChronosUiController {
 				this.pushSnapshot();
 			}),
 			this.engine.on('i18n:localeChanged', ({ locale }: { locale: string }) => {
-				this.currentLocale = locale;
+				this.locale = locale;
 				this.slotVersion++;
 				this.pushSnapshot();
 			}),
@@ -197,9 +190,9 @@ export class ReactiveChronosController implements ChronosUiController {
 			activeThemeId: this.activeThemeId,
 			activeIconThemeId: this.activeIconThemeId,
 			userPreferences: this.userPreferences,
-			currentLocale: this.currentLocale,
-			clockNow: this.clockNow,
-			clockTodayIso: this.clockTodayIso,
+			locale: this.locale,
+			now: this.now,
+			todayIso: this.todayIso,
 			clockFrozen: this.clockFrozen,
 			slotVersion: this.slotVersion,
 			courseBadges: this.courseBadges,
@@ -215,9 +208,9 @@ export class ReactiveChronosController implements ChronosUiController {
 		this.activeThemeId = this.engine.state.activeThemeId;
 		this.activeIconThemeId = this.engine.state.activeIconThemeId;
 		this.userPreferences = this.engine.state.userPreferences;
-		this.currentLocale = this.engine.locale;
-		this.clockNow = this.engine.now();
-		this.clockTodayIso = todayIsoDate(this.clockNow);
+		this.locale = this.engine.locale;
+		this.now = this.engine.now();
+		this.todayIso = todayIsoDate(this.now);
 		this.clockFrozen = this.engine.state.clockFrozen;
 		this.courseBadges = this.engine.badges.getAll();
 		this.slotVersion++;
@@ -237,8 +230,8 @@ export class ReactiveChronosController implements ChronosUiController {
 		return this.engine.deleteTimetable(timetableId);
 	}
 
-	async saveCurrentTimetableDetails(patch: Partial<Timetable>): Promise<void> {
-		return this.engine.saveCurrentTimetableDetails(patch);
+	async updateTimetableDetails(timetableId: string, patch: TimetableDetailsPatch): Promise<void> {
+		return this.engine.updateTimetableDetails(timetableId, patch);
 	}
 
 	async saveCourse(course: Course): Promise<void> {

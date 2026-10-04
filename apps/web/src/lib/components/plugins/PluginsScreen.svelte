@@ -157,7 +157,7 @@
 		}
 	}
 
-	const activeLocale = $derived(appController.currentLocale);
+	const activeLocale = $derived(appController.locale);
 
 	const groupedCatalogManifests = $derived.by(() => {
 		const locale = activeLocale;
@@ -165,7 +165,7 @@
 	});
 
 	const tabSegments = $derived.by(() => {
-		void appController.currentLocale;
+		void appController.locale;
 		void appController.slotVersion;
 		return [
 			{

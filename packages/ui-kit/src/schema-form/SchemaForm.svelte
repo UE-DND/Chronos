@@ -35,9 +35,7 @@
 
 	const entries = $derived(Object.entries(schema) as Array<[string, SchemaField<unknown>]>);
 	const resolvedValue = $derived(value ?? {});
-	const resolvedDateFieldLocale = $derived(
-		dateFieldLocale ?? appLocaleToBcp47(controller?.currentLocale)
-	);
+	const resolvedDateFieldLocale = $derived(dateFieldLocale ?? appLocaleToBcp47(controller?.locale));
 
 	function updateField(key: string, nextValue: unknown) {
 		const next = {

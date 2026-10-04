@@ -14,7 +14,7 @@
 	const markdownContent = $derived(hostT('developer.markdown'));
 	let htmlContent = $state('');
 
-	const activeLocale = $derived(normalizeAppLocale(controller.currentLocale));
+	const activeLocale = $derived(normalizeAppLocale(controller.locale));
 
 	$effect(() => {
 		const markdown = markdownContent;

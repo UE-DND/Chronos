@@ -53,7 +53,7 @@
 	);
 	const pluginRail = $derived(pluginScreenSlot?.landscapeRail);
 	const pluginTitle = $derived(
-		resolveLocalizedText(pluginScreenSlot?.title, '', controller.currentLocale)
+		resolveLocalizedText(pluginScreenSlot?.title, '', controller.locale)
 	);
 	const dropActive = $derived(
 		Boolean(

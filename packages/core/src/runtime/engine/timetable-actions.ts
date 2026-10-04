@@ -1,8 +1,16 @@
 import { createTimetable, type AcademicConfig, type Timetable } from '../../domain/timetable';
+import type { ChronosActions, TimetableDetailsPatch } from '../../types/actions';
 import type { EngineActionHost } from './engine-action-host';
 
 /** Timetable CRUD for ChronosEngine. */
-export class TimetableActions {
+export class TimetableActions implements Pick<
+	ChronosActions,
+	| 'createTimetable'
+	| 'importTimetable'
+	| 'switchTimetable'
+	| 'deleteTimetable'
+	| 'updateTimetableDetails'
+> {
 	constructor(private readonly host: EngineActionHost) {}
 
 	async createTimetable(name: string, config?: Partial<AcademicConfig>): Promise<Timetable> {
@@ -82,29 +90,23 @@ export class TimetableActions {
 		}
 	}
 
-	async saveCurrentTimetableDetails(patch: Partial<Timetable>): Promise<void> {
-		const current = this.host.getCurrentTimetable();
-		if (!current) {
-			throw new Error('No active timetable to update');
-		}
-
+	async updateTimetableDetails(timetableId: string, patch: TimetableDetailsPatch): Promise<void> {
+		const current = await this.host.storage.getTimetable(timetableId);
+		if (!current) throw new Error(`Timetable not found: ${timetableId}`);
 		const updated: Timetable = {
 			...current,
 			...patch,
-			...(patch.academicConfig
-				? {
-						academicConfig: {
-							...current.academicConfig,
-							...patch.academicConfig
-						}
-					}
-				: {}),
+			id: current.id,
+			schemaVersion: current.schemaVersion,
+			createdAt: current.createdAt,
+			academicConfig: { ...current.academicConfig, ...patch.academicConfig },
+			viewPrefs: { ...current.viewPrefs, ...patch.viewPrefs },
 			updatedAt: Date.now()
 		};
-
 		await this.host.storage.saveTimetable(updated);
-		this.host.setCurrentTimetable(updated);
 		await this.host.refreshTimetables();
+		if (this.host.getCurrentTimetable()?.id !== timetableId) return;
+		this.host.setCurrentTimetable(updated);
 		this.host.updateTime();
 		this.host.rescheduleDayClock();
 		await this.host.badges.recalculate(updated.courses);

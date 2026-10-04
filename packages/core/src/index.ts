@@ -53,6 +53,8 @@ export type {
 } from './types/contributions';
 export type { PlatformType, ChronosEnv } from './types/env';
 export * from './types/context';
+export * from './types/actions';
+export * from './types/state';
 export * from './types/plugin-server';
 export * from './types/official-plugins';
 export * from './types/result';

@@ -35,7 +35,7 @@
 	} = $props();
 
 	const controller = getAppController();
-	const resolvedLocale = $derived(locale ?? appLocaleToBcp47(controller.currentLocale));
+	const resolvedLocale = $derived(locale ?? appLocaleToBcp47(controller.locale));
 	const resolvedLabels = $derived<DateFieldLabels>(labels ?? createHostDateFieldLabels());
 </script>
 
