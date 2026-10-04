@@ -27,8 +27,7 @@ function validDate(value: string): boolean {
  * Actual course occurrences, in date order. Range endpoints are inclusive; omitting
  * the range queries the whole semester. Invalid academic configuration has no
  * schedule. Invalid query ranges throw RangeError. Display-week clamping is not used.
- * Holiday and period rules belong here; clock times, locale sorting and reminders
- * belong to consumers. Course objects are borrowed from the supplied timetable.
+ * Course objects are borrowed from the supplied timetable.
  */
 export function queryTimetableCourseOccurrences(
 	timetable: Timetable,
