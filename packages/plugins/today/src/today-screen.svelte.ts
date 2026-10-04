@@ -4,7 +4,6 @@ import {
 	currentTimeMinutes,
 	DEFAULT_USER_PREFERENCES,
 	findCurrentPeriodIndex,
-	isCoursePeriodVisible,
 	ICoursePresentationService,
 	IStorageService,
 	normalizedCourseName,
@@ -50,10 +49,10 @@ export function createTodayScreenController(): TodayScreenController {
 	let paintsDirty = false;
 	let queued: Promise<void> | undefined;
 	function now() {
-		return snapshot?.clockNow ?? new Date();
+		return snapshot?.now ?? new Date();
 	}
 	function today() {
-		return snapshot?.clockTodayIso || todayIsoDate();
+		return snapshot?.todayIso || todayIsoDate();
 	}
 	function periods() {
 		return snapshot?.currentTimetable?.academicConfig.periodTimes ?? [];
@@ -72,12 +71,12 @@ export function createTodayScreenController(): TodayScreenController {
 	}
 	function updateStatuses() {
 		courseEntries = attachCourseStatuses(
-			hits.filter((hit) => isCoursePeriodVisible(hit.course, periods().length)),
+			hits,
 			periods(),
 			currentTimeMinutes(now()),
 			currentPeriod(),
 			prepareReminderMinutes(),
-			appLocaleToBcp47(snapshot?.currentLocale)
+			appLocaleToBcp47(snapshot?.locale)
 		);
 	}
 	async function refreshPaints() {

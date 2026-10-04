@@ -191,6 +191,12 @@ core 导出 `PREPARE_REMINDER_MINUTES_OPTIONS` 和 `isPrepareReminderMinutes`，
 
 课程颜色通过 `ICoursePresentationService` 获取。颜色分配以整张课表为准。不要只给当前可见的课程重新分配颜色，否则同一门课可能在不同页面显示不同颜色。
 
+### 实际课程安排
+
+需要判断某天是否有课时，使用 core 的 `queryTimetableCoursesForDate(timetable, dateIso)`；查询多天或整个学期时，使用 `queryTimetableCourseOccurrences(timetable, range?)`。范围端点包含，不传范围表示整个学期。两个纯函数统一处理学期边界、周次、星期、已同步的节假日和可见节次；不会把学期外日期夹到首周或末周，也不会推测缺失的开学日期。课程时刻和通知提前量由调用方处理。
+
+`IStorageService.queryCourses` 用于查找保存的课程记录，不判断某个日期实际有课。宿主暴露的服务、状态、操作、事件、插槽和 UI 接口清单见[宿主接口清单](docs/plugin-host-api.md)。
+
 ### 样式与资源
 
 UI 插件在 `bundle/entry.ts` 中导入 `bundle/styles.css`。样式文件需要导入 `@chronos/ui-kit/theme/plugin-tailwind.css`，并用 `@source` 指定插件自己的源码目录。插件只生成 Tailwind 工具类，不包含 Preflight 样式重置。宿主不会扫描业务插件的源码。
@@ -246,16 +252,16 @@ Bundle、Manifest 和 Catalog 都由构建生成，不需要提交到版本库�
 
 端口是宿主提供给引擎和插件的平台接口。方法定义见 [services.ts](packages/core/src/types/services.ts)。宿主传入这些能力的方式见 [env.ts](packages/core/src/types/env.ts)。
 
-| 端口                                        | 职责                                                                             |
-| ------------------------------------------- | -------------------------------------------------------------------------------- |
-| `IStorageService`                           | 读写课表、偏好和插件 KV，并查询多个课表中的课程。今日插件已使用 `queryCourses`。 |
-| `IHttpService`                              | 发起请求、调用服务端代理和检查服务端能力。                                       |
-| `IHostHttpSessionService`                   | 向原生插件 handler 提供受限来源的 HTTP session 和 Cookie 生命周期管理。          |
-| `IRuntimeService`                           | 提供平台标识和 SHA-256 计算。                                                    |
-| `IVaultService`                             | 可选的凭据加密存储。Web 端未实现。                                               |
-| `IAnalyticsService`、`IErrorCaptureService` | 提供可选的产品统计和错误捕获。                                                   |
-| `IHostNavigation`、`IHostLinks`             | 提供可选的宿主课程编辑器导航和公开导入链接查询。                                 |
-| `ICoursePresentationService`                | 查询课程调色板，以及按课表获取课程颜色。                                         |
+| 端口                                        | 职责                                                                                    |
+| ------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `IStorageService`                           | 读写课表、偏好和插件 KV，并查询多个课表中的课程。实际日期课程使用 core 的课程安排 API。 |
+| `IHttpService`                              | 发起请求、调用服务端代理和检查服务端能力。                                              |
+| `IHostHttpSessionService`                   | 向原生插件 handler 提供受限来源的 HTTP session 和 Cookie 生命周期管理。                 |
+| `IRuntimeService`                           | 提供平台标识和 SHA-256 计算。                                                           |
+| `IVaultService`                             | 可选的凭据加密存储。Web 端未实现。                                                      |
+| `IAnalyticsService`、`IErrorCaptureService` | 提供可选的产品统计和错误捕获。                                                          |
+| `IHostNavigation`、`IHostLinks`             | 提供可选的宿主课程编辑器导航和公开导入链接查询。                                        |
+| `ICoursePresentationService`                | 查询课程调色板，以及按课表获取课程颜色。                                                |
 
 插件 KV 支持 JSON 和二进制数据。二进制数据可以写入 `Blob` 或 `Uint8Array`，读取时统一返回 `Blob`。同一个键只能保存一种数据。写入 JSON 会替换原有二进制数据，反之亦然。详情见 [ADR 0036](.agents/docs/adr/0036-plugin-kv-binary-storage.md)。
 

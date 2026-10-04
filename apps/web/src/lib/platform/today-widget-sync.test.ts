@@ -90,10 +90,17 @@ describe('today widget sync service', () => {
 		expect(initial.validUntilIso).toBe('2026-03-15');
 		expect(initial.prepareReminderMinutes).toBe(30);
 
+		fake.timetable.academicConfig.holidayCalendar = {
+			holidays: [{ date: today, label: '休息日' }]
+		};
+		fake.emit('timetable:updated', { timetable: fake.timetable } as never);
+		await vi.waitFor(() => expect(updateTodayWidgetSnapshot).toHaveBeenCalledTimes(2));
+		expect(updateTodayWidgetSnapshot.mock.calls[1]?.[0].days[today].courses).toEqual([]);
+
 		today = '2026-03-03';
 		fake.emit('time:tick', { todayIso: '2026-03-03' } as never);
-		await vi.waitFor(() => expect(updateTodayWidgetSnapshot).toHaveBeenCalledTimes(2));
-		expect(updateTodayWidgetSnapshot.mock.calls[1]?.[0].validFromIso).toBe('2026-03-03');
+		await vi.waitFor(() => expect(updateTodayWidgetSnapshot).toHaveBeenCalledTimes(3));
+		expect(updateTodayWidgetSnapshot.mock.calls[2]?.[0].validFromIso).toBe('2026-03-03');
 
 		service.dispose();
 		expect(fake.handlerCount('timetable:updated')).toBe(0);

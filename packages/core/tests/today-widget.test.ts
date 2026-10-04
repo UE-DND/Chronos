@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import {
-	buildTodayWidgetSnapshot,
-	projectTimetableCoursesForDate
-} from '../src/algorithms/today-widget';
+import { buildTodayWidgetSnapshot, queryTimetableCoursesForDate } from '../src/index';
 import { createTimetable } from '../src/domain/timetable';
 
 function timetable() {
@@ -75,22 +72,34 @@ function timetable() {
 }
 
 describe('today widget projection', () => {
+	it('keeps holiday days empty while preserving academic weeks and ordinary dates', () => {
+		const active = timetable();
+		active.academicConfig.holidayCalendar = { holidays: [{ date: '2026-03-02', label: '休息日' }] };
+		expect(queryTimetableCoursesForDate(active, '2026-03-02')).toEqual([]);
+		const snapshot = buildTodayWidgetSnapshot({
+			timetable: active,
+			startDateIso: '2026-03-02',
+			prepareReminderMinutes: 30
+		});
+		expect(snapshot.days['2026-03-02']).toEqual({ academicWeek: 1, courses: [] });
+		expect(snapshot.days['2026-03-03']?.courses.map((course) => course.id)).toEqual(['tuesday']);
+	});
 	it('projects the active timetable using Today scope day, week, visibility, and sort rules', () => {
 		const active = timetable();
 		expect(
-			projectTimetableCoursesForDate(active, '2026-03-02').map(({ course }) => course.id)
+			queryTimetableCoursesForDate(active, '2026-03-02').map(({ course }) => course.id)
 		).toEqual(['monday', 'monday-late']);
 		expect(
-			projectTimetableCoursesForDate(active, '2026-03-03').map(({ course }) => course.id)
+			queryTimetableCoursesForDate(active, '2026-03-03').map(({ course }) => course.id)
 		).toEqual(['tuesday']);
 		expect(
-			projectTimetableCoursesForDate(active, '2026-03-09').map(({ course }) => course.id)
+			queryTimetableCoursesForDate(active, '2026-03-09').map(({ course }) => course.id)
 		).toEqual([]);
 		expect(
-			projectTimetableCoursesForDate(active, '2026-03-16').map(({ course }) => course.id)
+			queryTimetableCoursesForDate(active, '2026-03-16').map(({ course }) => course.id)
 		).toEqual(['monday', 'monday-late']);
 		expect(
-			projectTimetableCoursesForDate(active, '2026-03-23').map(({ course }) => course.id)
+			queryTimetableCoursesForDate(active, '2026-03-23').map(({ course }) => course.id)
 		).toEqual(['future']);
 	});
 

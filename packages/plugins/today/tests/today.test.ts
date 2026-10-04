@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vite-plus/test';
+import { describe, it, expect } from 'vite-plus/test';
 import {
 	ChronosEngine,
 	createCourse,
@@ -73,8 +73,8 @@ describe('today plugin', () => {
 		const mockController = {
 			currentTimetable: null,
 			coursePalette: null,
-			clockNow: new Date(),
-			clockTodayIso: '2026-03-02',
+			now: new Date(),
+			todayIso: '2026-03-02',
 			currentPeriodIndex: null,
 			getPluginContext: (id: string) => engine.getPluginContext(id)
 		} as unknown as ReactiveChronosController;
@@ -145,8 +145,8 @@ describe('today plugin', () => {
 			snapshot: {
 				subscribe: (listener: (value: unknown) => void) => {
 					listener({
-						clockNow: new Date('2026-03-02T10:00:00'),
-						clockTodayIso: '2026-03-02',
+						now: new Date('2026-03-02T10:00:00'),
+						todayIso: '2026-03-02',
 						currentTimetable: timetable,
 						coursePaletteRevision: 0
 					});
@@ -155,15 +155,6 @@ describe('today plugin', () => {
 			},
 			getPluginContext: (id: string) => engine.getPluginContext(id)
 		} as unknown as ReactiveChronosController;
-
-		const storage = engine.getPluginContext('tool-today').service(IStorageService);
-		vi.spyOn(storage, 'queryCourses').mockResolvedValue([
-			{
-				timetableId: timetable.id,
-				timetableName: timetable.name,
-				course: courseA
-			}
-		]);
 
 		const screen = createTodayScreenController();
 		await screen.init(mockController, 'tool-today');
@@ -176,6 +167,36 @@ describe('today plugin', () => {
 });
 
 describe('today-courses', () => {
+	it('excludes only holiday timetables in active and all scopes and restores cleared dates', async () => {
+		const main = createTimetable({
+			id: 'main',
+			name: 'Main',
+			academicConfig: {
+				termStartDate: '2026-03-02',
+				startWeek: 1,
+				endWeek: 20,
+				periodTimes: [{ index: 1, startTime: '08:00', endTime: '08:45' }],
+				holidayCalendar: { holidays: [{ date: '2026-03-02', label: '休息日' }] }
+			}
+		});
+		main.courses = [
+			createCourse({ id: 'main', name: 'Main', dayOfWeek: 1, startPeriod: 1, endPeriod: 1 })
+		];
+		const other = createTimetable({ ...main, id: 'other' });
+		delete other.academicConfig.holidayCalendar;
+		const storage = {
+			listTimetables: async () => [main, other],
+			getTimetable: async (id: string) => (id === main.id ? main : other)
+		} as unknown as IStorageService;
+		const query = (scope: 'active' | 'all') =>
+			queryTodayCourses(storage, { todayIso: '2026-03-02', scope, timetable: main });
+		expect(await query('active')).toEqual([]);
+		expect((await query('all')).map((hit) => hit.timetableId)).toEqual(['other']);
+		other.academicConfig.holidayCalendar = main.academicConfig.holidayCalendar;
+		expect(await query('all')).toEqual([]);
+		main.academicConfig.holidayCalendar = { holidays: [] };
+		expect((await query('active')).map((hit) => hit.timetableId)).toEqual(['main']);
+	});
 	const periodTimes = [
 		{ index: 1, startTime: '08:00', endTime: '08:45' },
 		{ index: 2, startTime: '08:55', endTime: '09:40' },
@@ -324,7 +345,7 @@ describe('today-courses', () => {
 		expect(entries[1]?.minutesUntilStart).toBe(30);
 	});
 
-	it('queryTodayCourses uses active timetable filter when scope is active', async () => {
+	it('queryTodayCourses projects the active timetable without reading raw storage', async () => {
 		const timetable = createTimetable({
 			id: 't1',
 			name: 'Main',
@@ -346,10 +367,7 @@ describe('today-courses', () => {
 			]
 		});
 
-		const queryCourses = vi.fn(async () => [
-			{ timetableId: 't1', timetableName: 'Main', course: timetable.courses[0]! }
-		]);
-		const storage = { queryCourses } as unknown as IStorageService;
+		const storage = {} as IStorageService;
 
 		const hits = await queryTodayCourses(storage, {
 			todayIso: '2026-03-02',
@@ -358,62 +376,40 @@ describe('today-courses', () => {
 		});
 
 		expect(hits.map(({ course }) => course.id)).toEqual(['today']);
-		expect(queryCourses).toHaveBeenCalledWith({ dayOfWeek: 1, week: 1, timetableIds: ['t1'] });
 	});
 
-	it('queryTodayCourses queries each timetable with its own week when scope is all', async () => {
-		const timetable1 = createTimetable({
-			id: 't1',
-			name: 'Main',
-			academicConfig: {
-				termStartDate: '2026-03-02',
-				startWeek: 1,
-				endWeek: 20,
-				periodTimes: []
-			}
-		});
-		const timetable2 = createTimetable({
-			id: 't2',
-			name: 'Other',
-			academicConfig: {
-				termStartDate: '2026-09-01',
-				startWeek: 1,
-				endWeek: 20,
-				periodTimes: []
-			}
-		});
-
-		const queryCourses = vi.fn(async () => []);
-		const listTimetables = vi.fn(async () => [
-			{ id: 't1', name: 'Main', updatedAt: 0 },
-			{ id: 't2', name: 'Other', updatedAt: 0 }
-		]);
-		const getTimetable = vi.fn(async (id: string) => {
-			if (id === 't1') return timetable1;
-			if (id === 't2') return timetable2;
-			return null;
-		});
-		const storage = { queryCourses, listTimetables, getTimetable } as unknown as IStorageService;
-
-		await queryTodayCourses(storage, {
+	it('queryTodayCourses uses each timetable semester and period configuration in all scope', async () => {
+		const make = (id: string, termStartDate: string, weeks: number[]) =>
+			createTimetable({
+				id,
+				name: id,
+				academicConfig: {
+					termStartDate,
+					startWeek: 1,
+					endWeek: 20,
+					periodTimes: [{ index: 1, startTime: '08:00', endTime: '08:45' }]
+				},
+				courses: [createCourse({ id, name: id, dayOfWeek: 1, startPeriod: 1, endPeriod: 1, weeks })]
+			});
+		const entries = [
+			make('t1', '2026-03-02', [1]),
+			make('t2', '2026-02-23', [2]),
+			make('future', '2026-09-01', [1])
+		];
+		const storage = {
+			listTimetables: async () => entries,
+			getTimetable: async (id: string) => entries.find((entry) => entry.id === id) ?? null
+		} as unknown as IStorageService;
+		const hits = await queryTodayCourses(storage, {
 			todayIso: '2026-03-02',
 			scope: 'all',
-			timetable: timetable1
+			timetable: entries[0]!
 		});
-
-		expect(listTimetables).toHaveBeenCalled();
-		expect(getTimetable).toHaveBeenCalledTimes(2);
-		expect(queryCourses).toHaveBeenCalledTimes(1);
-		expect(queryCourses).toHaveBeenCalledWith({
-			dayOfWeek: 1,
-			week: 1,
-			timetableIds: ['t1', 't2']
-		});
+		expect(hits.map((hit) => hit.timetableId)).toEqual(['t1', 't2']);
 	});
 
 	it('queryTodayCourses returns empty array without timetable', async () => {
-		const queryCourses = vi.fn(async () => []);
-		const storage = { queryCourses } as unknown as IStorageService;
+		const storage = {} as IStorageService;
 
 		const hits = await queryTodayCourses(storage, {
 			todayIso: '2026-03-02',
@@ -422,6 +418,5 @@ describe('today-courses', () => {
 		});
 
 		expect(hits).toEqual([]);
-		expect(queryCourses).not.toHaveBeenCalled();
 	});
 });

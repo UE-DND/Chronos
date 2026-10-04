@@ -91,6 +91,21 @@ describe('class notification controller', () => {
 		expect(vi.mocked(h.adapter.replacePlan).mock.calls.at(-1)![0][0]!.courses[0]!.key).toContain(
 			'other'
 		);
+		h.controller.start();
+		const dateIso = vi.mocked(h.adapter.replacePlan).mock.calls.at(-1)![0][0]!.dateIso;
+		await h.engine.updateTimetableDetails(other.id, {
+			academicConfig: {
+				...other.academicConfig,
+				holidayCalendar: { holidays: [{ date: dateIso, label: '休息日' }] }
+			}
+		});
+		await vi.waitFor(() => expect(h.adapter.replacePlan).toHaveBeenLastCalledWith([]));
+		await h.engine.updateTimetableDetails(other.id, {
+			academicConfig: { ...other.academicConfig, holidayCalendar: { holidays: [] } }
+		});
+		await vi.waitFor(() =>
+			expect(vi.mocked(h.adapter.replacePlan).mock.calls.at(-1)![0]).toHaveLength(1)
+		);
 		await h.controller.clearData();
 		expect(h.adapter.clearData).toHaveBeenCalledOnce();
 		expect(h.adapter.replacePlan).toHaveBeenLastCalledWith([]);

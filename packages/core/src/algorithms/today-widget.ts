@@ -1,12 +1,11 @@
 import type { Course } from '../domain/course';
 import { isPrepareReminderMinutes } from '../domain/preferences';
 import type { PeriodTime, Timetable } from '../domain/timetable';
-import { matchesCourseQuery } from '../domain/course-query';
 import type { CourseQueryHit } from '../types/course-query';
 import { AcademicCalendarService } from './calendar';
-import { addDays, dayOfWeekFromIso, formatIsoDate, parseIsoDate } from './date';
-import { isCoursePeriodVisible } from './display-models';
+import { addDays, formatIsoDate, parseIsoDate } from './date';
 import { normalizedCourseName } from './palette';
+import { queryTimetableCourseOccurrences } from './course-schedule';
 
 export const TODAY_WIDGET_SNAPSHOT_VERSION = 1 as const;
 export const TODAY_WIDGET_SNAPSHOT_DAYS = 14;
@@ -64,37 +63,6 @@ function sortCourseHits(hits: CourseQueryHit[], locale: string): CourseQueryHit[
 	});
 }
 
-/** Applies the Today plugin's shared visibility and ordering rules to query results. */
-export function projectTodayCourseHits(
-	hits: CourseQueryHit[],
-	periodCount: number,
-	locale = 'zh-CN'
-): CourseQueryHit[] {
-	return sortCourseHits(
-		hits.filter(({ course }) => isCoursePeriodVisible(course, periodCount)),
-		locale
-	);
-}
-
-/** Courses visible in the Today plugin's active-timetable scope for one date. */
-export function projectTimetableCoursesForDate(
-	timetable: Timetable,
-	dateIso: string,
-	locale = 'zh-CN'
-): CourseQueryHit[] {
-	const calendar = new AcademicCalendarService();
-	const week = calendar.calculateAcademicWeek(dateIso, timetable.academicConfig);
-	const dayOfWeek = dayOfWeekFromIso(dateIso);
-	const hits = timetable.courses
-		.filter(
-			(course) =>
-				matchesCourseQuery(course, { dayOfWeek, week }) &&
-				isCoursePeriodVisible(course, timetable.academicConfig.periodTimes.length)
-		)
-		.map((course) => ({ timetableId: timetable.id, timetableName: timetable.name, course }));
-	return projectTodayCourseHits(hits, timetable.academicConfig.periodTimes.length, locale);
-}
-
 function projectCourse(
 	course: Course,
 	periodTimes: readonly PeriodTime[],
@@ -139,18 +107,29 @@ export function buildTodayWidgetSnapshot(options: {
 	const calendar = new AcademicCalendarService();
 	const startDate = parseIsoDate(startDateIso);
 	const days: Record<string, TodayWidgetDay> = {};
+	const validUntilIso = formatIsoDate(addDays(startDate, TODAY_WIDGET_SNAPSHOT_DAYS - 1));
+	const hitsByDate = new Map<string, CourseQueryHit[]>();
+	if (timetable) {
+		for (const hit of queryTimetableCourseOccurrences(timetable, {
+			startDateIso,
+			endDateIso: validUntilIso
+		})) {
+			const hits = hitsByDate.get(hit.dateIso) ?? [];
+			hits.push(hit);
+			hitsByDate.set(hit.dateIso, hits);
+		}
+	}
 	for (let offset = 0; offset < TODAY_WIDGET_SNAPSHOT_DAYS; offset += 1) {
 		const dateIso = formatIsoDate(addDays(startDate, offset));
 		days[dateIso] = timetable
 			? {
 					academicWeek: calendar.calculateAcademicWeek(dateIso, timetable.academicConfig),
-					courses: projectTimetableCoursesForDate(timetable, dateIso, locale).map(({ course }) =>
+					courses: sortCourseHits(hitsByDate.get(dateIso) ?? [], locale).map(({ course }) =>
 						projectCourse(course, timetable.academicConfig.periodTimes, colorsByCourseName)
 					)
 				}
 			: { academicWeek: null, courses: [] };
 	}
-	const validUntilIso = formatIsoDate(addDays(startDate, TODAY_WIDGET_SNAPSHOT_DAYS - 1));
 	return {
 		version: TODAY_WIDGET_SNAPSHOT_VERSION,
 		generatedAt,

@@ -1,13 +1,11 @@
 import {
-	AcademicCalendarService,
 	type Course,
 	type CourseQueryHit,
 	type IStorageService,
 	type PeriodTime,
 	type Timetable,
-	dayOfWeekFromIso,
 	parsePeriodRanges,
-	projectTodayCourseHits
+	queryTimetableCoursesForDate
 } from '@chronos/core';
 import type { TodayScope } from './constants';
 
@@ -20,8 +18,6 @@ export interface TodayCourseEntry {
 	status: CourseTimeStatus;
 	minutesUntilStart: number | null;
 }
-
-const calendarService = new AcademicCalendarService();
 
 export function resolvePeriodTimeRange(
 	periodTimes: PeriodTime[],
@@ -118,34 +114,8 @@ export async function queryTodayCourses(
 	const { todayIso, scope, timetable } = options;
 	if (!timetable) return [];
 
-	const dayOfWeek = dayOfWeekFromIso(todayIso);
-
-	if (scope === 'active') {
-		const week = calendarService.calculateAcademicWeek(todayIso, timetable.academicConfig);
-		const hits = await storage.queryCourses({ dayOfWeek, week, timetableIds: [timetable.id] });
-		return projectTodayCourseHits(hits, timetable.academicConfig.periodTimes.length);
-	}
-
+	if (scope === 'active') return queryTimetableCoursesForDate(timetable, todayIso);
 	const summaries = await storage.listTimetables();
-	if (summaries.length === 0) return [];
-
-	const entries = (
-		await Promise.all(summaries.map((summary) => storage.getTimetable(summary.id)))
-	).filter((entry): entry is Timetable => entry != null);
-
-	const weekGroups = new Map<number, string[]>();
-	for (const entry of entries) {
-		const week = calendarService.calculateAcademicWeek(todayIso, entry.academicConfig);
-		const ids = weekGroups.get(week) ?? [];
-		ids.push(entry.id);
-		weekGroups.set(week, ids);
-	}
-
-	const hitGroups = await Promise.all(
-		[...weekGroups.entries()].map(([week, timetableIds]) =>
-			storage.queryCourses({ dayOfWeek, week, timetableIds })
-		)
-	);
-
-	return hitGroups.flat();
+	const entries = await Promise.all(summaries.map((summary) => storage.getTimetable(summary.id)));
+	return entries.flatMap((entry) => (entry ? queryTimetableCoursesForDate(entry, todayIso) : []));
 }

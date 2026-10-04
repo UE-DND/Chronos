@@ -9,6 +9,7 @@ export * from './domain/preferences';
 // Engine
 export * from './algorithms/date';
 export * from './algorithms/calendar';
+export * from './algorithms/course-schedule';
 export * from './algorithms/holiday-calendar';
 export * from './algorithms/slot-key';
 export * from './algorithms/grid';

@@ -29,6 +29,12 @@ function timetable() {
 }
 const now = new Date('2026-03-01T00:00:00');
 describe('class notification plan', () => {
+	it('skips holiday course dates including reminders on the preceding evening', () => {
+		const t = timetable();
+		t.academicConfig.holidayCalendar = { holidays: [{ date: '2026-03-02', label: '休息日' }] };
+		const plan = buildClassNotificationPlan({ timetable: t, prepareReminderMinutes: 30, now });
+		expect(plan.map((batch) => batch.dateIso)).toEqual(['2026-03-09']);
+	});
 	it('expands actual semester dates, reminds a continuous class once, and crosses midnight', () => {
 		const plan = buildClassNotificationPlan({
 			timetable: timetable(),
