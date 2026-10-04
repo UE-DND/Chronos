@@ -4,6 +4,7 @@ import {
 	type IStorageService,
 	type PeriodTime,
 	type Timetable,
+	findCurrentPeriodIndex,
 	parsePeriodRanges,
 	queryTimetableCoursesForDate
 } from '@chronos/core';
@@ -13,8 +14,13 @@ export type { TodayScope };
 
 export type CourseTimeStatus = 'past' | 'current' | 'preparing' | 'upcoming';
 
+export interface TodayCourseHit extends CourseQueryHit {
+	periodTimes: PeriodTime[];
+}
+
 export interface TodayCourseEntry {
 	hit: CourseQueryHit;
+	timeRange: ReturnType<typeof resolvePeriodTimeRange>;
 	status: CourseTimeStatus;
 	minutesUntilStart: number | null;
 }
@@ -30,7 +36,7 @@ export function resolvePeriodTimeRange(
 	return { startTime: start.startTime, endTime: end.endTime };
 }
 
-export function sortCourseHits(hits: CourseQueryHit[], locale: string): CourseQueryHit[] {
+export function sortCourseHits<T extends CourseQueryHit>(hits: T[], locale: string): T[] {
 	return [...hits].sort((left, right) => {
 		const startDiff = left.course.startPeriod - right.course.startPeriod;
 		if (startDiff !== 0) return startDiff;
@@ -83,23 +89,26 @@ export function resolveCourseTimeStatus(
 }
 
 export function attachCourseStatuses(
-	hits: CourseQueryHit[],
-	periodTimes: PeriodTime[],
+	hits: TodayCourseHit[],
 	nowMinutes: number,
-	currentPeriodIndex: number | null,
 	prepareReminderMinutes: number,
 	locale: string
 ): TodayCourseEntry[] {
 	return sortCourseHits(hits, locale).map((hit) => ({
 		hit,
+		timeRange: resolvePeriodTimeRange(
+			hit.periodTimes,
+			hit.course.startPeriod,
+			hit.course.endPeriod
+		),
 		status: resolveCourseTimeStatus(
 			hit.course,
-			periodTimes,
+			hit.periodTimes,
 			nowMinutes,
-			currentPeriodIndex,
+			findCurrentPeriodIndex(parsePeriodRanges(hit.periodTimes), nowMinutes),
 			prepareReminderMinutes
 		),
-		minutesUntilStart: resolveMinutesUntilCourseStart(hit.course, periodTimes, nowMinutes)
+		minutesUntilStart: resolveMinutesUntilCourseStart(hit.course, hit.periodTimes, nowMinutes)
 	}));
 }
 
@@ -110,12 +119,17 @@ export async function queryTodayCourses(
 		scope: TodayScope;
 		timetable: Timetable | null;
 	}
-): Promise<CourseQueryHit[]> {
+): Promise<TodayCourseHit[]> {
 	const { todayIso, scope, timetable } = options;
 	if (!timetable) return [];
 
-	if (scope === 'active') return queryTimetableCoursesForDate(timetable, todayIso);
+	const query = (entry: Timetable): TodayCourseHit[] =>
+		queryTimetableCoursesForDate(entry, todayIso).map((hit) => ({
+			...hit,
+			periodTimes: entry.academicConfig.periodTimes
+		}));
+	if (scope === 'active') return query(timetable);
 	const summaries = await storage.listTimetables();
 	const entries = await Promise.all(summaries.map((summary) => storage.getTimetable(summary.id)));
-	return entries.flatMap((entry) => (entry ? queryTimetableCoursesForDate(entry, todayIso) : []));
+	return entries.flatMap((entry) => (entry ? query(entry) : []));
 }

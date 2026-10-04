@@ -338,7 +338,12 @@ describe('today-courses', () => {
 			}
 		];
 
-		const entries = attachCourseStatuses(hits, periodTimes, 9 * 60 + 30, 2, 30, 'zh-cn');
+		const entries = attachCourseStatuses(
+			hits.map((hit) => ({ ...hit, periodTimes })),
+			9 * 60 + 30,
+			30,
+			'zh-cn'
+		);
 		expect(entries.map((entry) => entry.hit.course.id)).toEqual(['c1', 'c2']);
 		expect(entries[0]?.status).toBe('past');
 		expect(entries[1]?.status).toBe('preparing');

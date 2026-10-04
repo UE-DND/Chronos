@@ -4,14 +4,14 @@ import {
 	ChronosEngine,
 	createCourse,
 	createTimetable,
-	type CoursePaletteEntry,
-	type CourseQueryHit
+	type CoursePaletteEntry
 } from '@chronos/core';
 import { createMockEnv } from '@chronos/core/test-utils';
 import type { ChronosUiController, ChronosUiSnapshot } from '@chronos/ui-kit';
 import { createTodayPlugin } from '../src/index';
 import { createTodayScreenController } from '../src/today-screen.svelte';
 import * as todayCourses from '../src/today-courses';
+import type { TodayCourseHit } from '../src/today-courses';
 afterEach(() => vi.restoreAllMocks());
 async function harness() {
 	const paints = vi.fn(
@@ -53,7 +53,17 @@ async function harness() {
 		{ snapshot, getPluginContext: () => ctx } as unknown as ChronosUiController,
 		'tool-today'
 	);
-	return { engine, screen, snapshot, query, course, paints, ctx, timetables };
+	return {
+		engine,
+		screen,
+		snapshot,
+		query,
+		course,
+		paints,
+		ctx,
+		timetables,
+		periodTimes: timetable.academicConfig.periodTimes
+	};
 }
 async function settle() {
 	for (let i = 0; i < 20; i++) await Promise.resolve();
@@ -105,23 +115,60 @@ describe('Today relevant input refresh', () => {
 		screen.dispose();
 		engine.dispose();
 	});
-	it('keeps all-scope courses visible according to their own timetable periods', async () => {
-		const { engine, screen, course, timetables } = await harness();
+	it.each([1, 2])('uses each timetable clock for all-scope period %i', async (startPeriod) => {
+		const { engine, screen, snapshot, query, course, timetables } = await harness();
 		const other = createTimetable({
 			id: 'other',
 			name: 'Other',
 			academicConfig: {
 				...engine.state.currentTimetable!.academicConfig,
 				periodTimes: [
-					{ index: 1, startTime: '08:00', endTime: '08:45' },
-					{ index: 2, startTime: '09:00', endTime: '09:45' }
+					...(startPeriod === 2 ? [{ index: 1, startTime: '08:00', endTime: '08:45' }] : []),
+					{ index: startPeriod, startTime: '09:00', endTime: '09:45' }
 				]
 			},
-			courses: [{ ...course, id: 'second', startPeriod: 2, endPeriod: 2 }]
+			courses: [{ ...course, id: 'other-course', startPeriod, endPeriod: startPeriod }]
 		});
 		timetables.set(other.id, other);
 		await screen.persistScope('all');
-		expect(screen.courseEntries.map((entry) => entry.hit.course.id)).toEqual(['a', 'second']);
+		expect(screen.courseEntries.map((entry) => entry.hit.course.id)).toEqual(['a', 'other-course']);
+		for (const [time, status, minutesUntilStart] of [
+			['08:50', 'preparing', 10],
+			['09:10', 'current', null],
+			['10:00', 'past', null]
+		] as const) {
+			snapshot.update((s) => ({ ...s, now: new Date(`2026-03-02T${time}:00`) }));
+			await settle();
+			expect(screen.courseEntries.find((entry) => entry.hit.timetableId === 'other')).toMatchObject(
+				{
+					status,
+					minutesUntilStart,
+					timeRange: { startTime: '09:00', endTime: '09:45' }
+				}
+			);
+		}
+		expect(query).toHaveBeenCalledTimes(2);
+		other.academicConfig.periodTimes = other.academicConfig.periodTimes.map((period) =>
+			period.index === startPeriod ? { ...period, startTime: '11:00', endTime: '11:45' } : period
+		);
+		snapshot.update((s) => ({
+			...s,
+			timetables: [{ id: other.id, name: other.name, updatedAt: other.updatedAt + 1 }]
+		}));
+		await settle();
+		expect(screen.courseEntries.find((entry) => entry.hit.timetableId === 'other')).toMatchObject({
+			status: 'upcoming',
+			minutesUntilStart: 60,
+			timeRange: { startTime: '11:00', endTime: '11:45' }
+		});
+		await screen.persistScope('active');
+		expect(screen.courseEntries).toMatchObject([
+			{
+				hit: { timetableId: 't' },
+				status: 'past',
+				timeRange: { startTime: '08:00', endTime: '08:45' }
+			}
+		]);
 		screen.dispose();
 		engine.dispose();
 	});
@@ -160,11 +207,12 @@ describe('Today relevant input refresh', () => {
 		engine.dispose();
 	});
 	it('locale changes re-sort same-period courses without querying again', async () => {
-		const { engine, screen, snapshot, query, course } = await harness();
+		const { engine, screen, snapshot, query, course, periodTimes } = await harness();
 		query.mockResolvedValue(
 			['张', '李'].map((name) => ({
 				timetableId: 't',
 				timetableName: 'T',
+				periodTimes,
 				course: { ...course, id: name, name }
 			}))
 		);
@@ -181,8 +229,8 @@ describe('Today relevant input refresh', () => {
 		engine.dispose();
 	});
 	it('newer date result wins even when an older query completes last, and disposal invalidates pending work', async () => {
-		const { engine, screen, snapshot, query, course } = await harness();
-		let release!: (hits: CourseQueryHit[]) => void;
+		const { engine, screen, snapshot, query, course, periodTimes } = await harness();
+		let release!: (hits: TodayCourseHit[]) => void;
 		query.mockImplementationOnce(
 			() =>
 				new Promise((resolve) => {
@@ -192,11 +240,13 @@ describe('Today relevant input refresh', () => {
 		snapshot.update((s) => ({ ...s, todayIso: '2026-03-03' }));
 		await settle();
 		query.mockResolvedValue([
-			{ timetableId: 't', timetableName: 'T', course: { ...course, name: 'Newest' } }
+			{ timetableId: 't', timetableName: 'T', periodTimes, course: { ...course, name: 'Newest' } }
 		]);
 		snapshot.update((s) => ({ ...s, todayIso: '2026-03-04' }));
 		await settle();
-		release([{ timetableId: 't', timetableName: 'T', course: { ...course, name: 'Stale' } }]);
+		release([
+			{ timetableId: 't', timetableName: 'T', periodTimes, course: { ...course, name: 'Stale' } }
+		]);
 		await settle();
 		expect(screen.courseEntries[0].hit.course.name).toBe('Newest');
 		query.mockImplementationOnce(

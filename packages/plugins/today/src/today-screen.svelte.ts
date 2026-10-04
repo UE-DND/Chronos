@@ -3,17 +3,19 @@ import { appLocaleToBcp47, haptic } from '@chronos/ui-kit';
 import {
 	currentTimeMinutes,
 	DEFAULT_USER_PREFERENCES,
-	findCurrentPeriodIndex,
 	ICoursePresentationService,
 	IStorageService,
 	normalizedCourseName,
-	parsePeriodRanges,
 	todayIsoDate,
-	type CoursePaletteEntry,
-	type CourseQueryHit
+	type CoursePaletteEntry
 } from '@chronos/core';
 import type { TodayScope } from './constants';
-import { attachCourseStatuses, queryTodayCourses, type TodayCourseEntry } from './today-courses';
+import {
+	attachCourseStatuses,
+	queryTodayCourses,
+	type TodayCourseEntry,
+	type TodayCourseHit
+} from './today-courses';
 
 export function coursePaintKey(timetableId: string, courseName: string): string {
 	return `${timetableId}\0${normalizedCourseName(courseName)}`;
@@ -25,7 +27,6 @@ export interface TodayScreenController {
 	readonly prepareReminderMinutes: number;
 	readonly courseEntries: TodayCourseEntry[];
 	readonly paintByCourseKey: ReadonlyMap<string, CoursePaletteEntry>;
-	readonly currentPeriodIndex: number | null;
 	init(controller: ChronosUiController, pluginId: string): Promise<void>;
 	dispose(): void;
 	persistScope(nextScope: TodayScope): Promise<void>;
@@ -37,7 +38,7 @@ export function createTodayScreenController(): TodayScreenController {
 	let scope = $state<TodayScope>('active');
 	let courseEntries = $state.raw<TodayCourseEntry[]>([]);
 	let paintByCourseKey = $state.raw<Map<string, CoursePaletteEntry>>(new Map());
-	let hits: CourseQueryHit[] = [];
+	let hits: TodayCourseHit[] = [];
 	let disposed = false;
 	let unsubscribeSnapshot: (() => void) | undefined;
 	let unsubscribeConfig: (() => void) | undefined;
@@ -54,15 +55,6 @@ export function createTodayScreenController(): TodayScreenController {
 	function today() {
 		return snapshot?.todayIso || todayIsoDate();
 	}
-	function periods() {
-		return snapshot?.currentTimetable?.academicConfig.periodTimes ?? [];
-	}
-	function currentPeriod() {
-		const parsed = parsePeriodRanges(periods());
-		return parsed.length
-			? findCurrentPeriodIndex(parsed, currentTimeMinutes(now()))
-			: (snapshot?.currentPeriodIndex ?? null);
-	}
 	function prepareReminderMinutes() {
 		return (
 			snapshot?.userPreferences?.prepareReminderMinutes ??
@@ -72,9 +64,7 @@ export function createTodayScreenController(): TodayScreenController {
 	function updateStatuses() {
 		courseEntries = attachCourseStatuses(
 			hits,
-			periods(),
 			currentTimeMinutes(now()),
-			currentPeriod(),
 			prepareReminderMinutes(),
 			appLocaleToBcp47(snapshot?.locale)
 		);
@@ -229,9 +219,6 @@ export function createTodayScreenController(): TodayScreenController {
 		},
 		get paintByCourseKey() {
 			return paintByCourseKey;
-		},
-		get currentPeriodIndex() {
-			return currentPeriod();
 		},
 		init,
 		dispose,

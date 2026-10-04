@@ -20,7 +20,6 @@
 	import { TODAY_MESSAGES } from './messages';
 	import { TODAY_PLUGIN_ID } from './constants';
 	import { TODAY_ANALYTICS } from './analytics';
-	import { resolvePeriodTimeRange } from './today-courses';
 	import { coursePaintKey, createTodayScreenController } from './today-screen.svelte';
 
 	interface Props {
@@ -42,7 +41,6 @@
 	let hasTrackedPreparingStatus = false;
 
 	const timetable = $derived(ui.current.currentTimetable);
-	const periodTimes = $derived(timetable?.academicConfig.periodTimes ?? []);
 	const todayIso = $derived(ui.current.todayIso || screen.today);
 	const academicWeek = $derived(
 		timetable ? calendarService.calculateAcademicWeek(todayIso, timetable.academicConfig) : 1
@@ -181,11 +179,7 @@
 					<ul class="divide-y divide-outline/10">
 						{#each screen.courseEntries as entry (`${entry.hit.timetableId}-${entry.hit.course.id}`)}
 							{@const paint = resolvePaint(entry.hit)}
-							{@const timeRange = resolvePeriodTimeRange(
-								periodTimes,
-								entry.hit.course.startPeriod,
-								entry.hit.course.endPeriod
-							)}
+							{@const timeRange = entry.timeRange}
 							{@const periodLabel =
 								entry.hit.course.startPeriod === entry.hit.course.endPeriod
 									? pt('screen.course.periodSingle', {
