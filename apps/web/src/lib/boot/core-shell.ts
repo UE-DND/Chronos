@@ -99,7 +99,7 @@ function registerCoreShellSlots(
 		icon: 'palette',
 		iconTone: 'secondary',
 		keywords: keywordList(t, 'item.display.keywords'),
-		order: 10
+		order: 20
 	});
 
 	ctx.registerSlot('mine.item', {
@@ -119,7 +119,7 @@ function registerCoreShellSlots(
 		icon: 'vibrate',
 		iconTone: 'tertiary',
 		keywords: keywordList(t, 'item.feedback.keywords'),
-		order: 20
+		order: 10
 	});
 
 	ctx.registerSlot('mine.item', {
