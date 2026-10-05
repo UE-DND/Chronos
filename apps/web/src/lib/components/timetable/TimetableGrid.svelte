@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { tick } from 'svelte';
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import {
@@ -42,11 +41,8 @@
 		timetableSolidBgClass,
 		timetableTopTextClass
 	} from '@chronos/ui-kit';
-	import { rearrangeCourseSchedule } from '$lib/timetable/course-reorder';
-	import {
-		type TimetableDragSession,
-		type TimetableInteraction
-	} from '$lib/timetable/timetable-interaction.svelte';
+	import type { TimetableDropController } from '$lib/timetable/timetable-drop.svelte';
+	import { type TimetableInteraction } from '$lib/timetable/timetable-interaction.svelte';
 	import { haptic } from '$lib/haptic/haptic';
 	import { getHostPlatform } from '$lib/platform/host-platform';
 
@@ -88,6 +84,7 @@
 		onCourseClick?: (course: Course) => void;
 		onRequestWeekDelete?: (course: Course, week: number) => void;
 		interaction: TimetableInteraction;
+		drop: TimetableDropController;
 		active?: boolean;
 	}
 
@@ -108,6 +105,7 @@
 		onCourseClick,
 		onRequestWeekDelete,
 		interaction,
+		drop,
 		active = true
 	}: Props = $props();
 
@@ -124,16 +122,7 @@
 	let centeredFor = $state<string | null>(null);
 	let internalExpandedSlots = $state(new Set<string>());
 
-	interface DragSettlePreview {
-		concealedCourseId: string;
-		targetColIndex: number;
-		targetDayOfWeek: number;
-		targetStartPeriod: number;
-		course: Course;
-		placed: PlacedCourseCapsule;
-	}
-
-	let settling = $state<DragSettlePreview | null>(null);
+	const settling = $derived(drop.state.preview?.week === displayedWeek ? drop.state.preview : null);
 
 	function isCourseConcealed(courseId: string): boolean {
 		if (dragState?.course.id === courseId) return true;
@@ -331,8 +320,7 @@
 		event: PointerEvent,
 		options: { hapticOnStart?: boolean; persistAfterDrop?: boolean; waitForMove?: boolean } = {}
 	) {
-		settling = null;
-		if (!placed.displayModel.isInDisplayedWeek) return;
+		if (drop.state.busy || !placed.displayModel.isInDisplayedWeek) return;
 
 		const { hapticOnStart = true, persistAfterDrop = true, waitForMove = false } = options;
 		if (hapticOnStart) {
@@ -446,82 +434,6 @@
 		if (!dragFrame) dragFrame = requestAnimationFrame(flushDragFrame);
 	}
 
-	function buildDragUpdate(current: TimetableDragSession): {
-		updatedCourses: Course[];
-		settling: DragSettlePreview;
-	} | null {
-		const academicConfig = controller.currentTimetable?.academicConfig;
-		const totalWeeks = academicConfig
-			? { startWeek: academicConfig.startWeek ?? 1, endWeek: academicConfig.endWeek ?? 20 }
-			: undefined;
-
-		const updatedCourses = rearrangeCourseSchedule({
-			currentCourses: controller.currentTimetable?.courses ?? [],
-			draggedCourseId: current.course.id,
-			targetDayOfWeek: current.targetDayOfWeek,
-			targetStartPeriod: current.targetStartPeriod,
-			currentWeek: displayedWeek,
-			totalWeeks,
-			displayedPeriodCount: gridModel.displayedPeriodCount
-		});
-
-		if (!updatedCourses) return null;
-
-		const span = Math.max(1, current.course.endPeriod - current.course.startPeriod + 1);
-		const clampedStart = Math.max(
-			1,
-			Math.min(current.targetStartPeriod, gridModel.displayedPeriodCount - span + 1)
-		);
-
-		const targetColIndex = gridModel.visibleDays.findIndex(
-			(day) => day.dayOfWeek === current.targetDayOfWeek
-		);
-
-		const targetCourse = updatedCourses.find(
-			(course) =>
-				(course.id === current.course.id || course.name === current.course.name) &&
-				course.dayOfWeek === current.targetDayOfWeek &&
-				course.startPeriod === clampedStart &&
-				(course.weeks.length === 0 || course.weeks.includes(displayedWeek))
-		) ?? {
-			...current.course,
-			dayOfWeek: current.targetDayOfWeek,
-			startPeriod: clampedStart,
-			endPeriod: clampedStart + span - 1
-		};
-
-		return {
-			updatedCourses,
-			settling: {
-				concealedCourseId: current.course.id,
-				targetColIndex: targetColIndex >= 0 ? targetColIndex : current.targetColIndex,
-				targetDayOfWeek: current.targetDayOfWeek,
-				targetStartPeriod: clampedStart,
-				course: targetCourse,
-				placed: current.placed
-			}
-		};
-	}
-
-	async function commitDragSession(update: {
-		updatedCourses: Course[];
-		settling: DragSettlePreview;
-	}) {
-		try {
-			const timetableId = controller.currentTimetable?.id;
-			if (!timetableId) return;
-			await controller.updateTimetableDetails(timetableId, { courses: update.updatedCourses });
-			trackEvent('timetable_course_reorder');
-		} catch {
-			settling = null;
-		} finally {
-			if (settling) {
-				await tick();
-				settling = null;
-			}
-		}
-	}
-
 	function handleWindowPointerUp(event: PointerEvent) {
 		if (!dragState || event.pointerId !== dragState.pointerId) return;
 		cancelDragFrame();
@@ -533,15 +445,8 @@
 			return;
 		}
 
-		const update = buildDragUpdate(session);
-		if (!update) {
-			interaction.endDrag();
-			return;
-		}
-
-		settling = update.settling;
-		interaction.endDrag();
-		void commitDragSession(update);
+		const current = interaction.endDrag();
+		if (current) void drop.submit(current, gridModel.displayedPeriodCount);
 	}
 
 	function handleWindowPointerCancel(event: PointerEvent) {
@@ -558,30 +463,6 @@
 			}
 		})
 	);
-
-	$effect(() => {
-		if (!settling) return;
-		const currentSettling = settling;
-
-		const matched = placements.some((item) => {
-			if (item.kind === 'course') {
-				return (
-					item.course.dayOfWeek === currentSettling.targetDayOfWeek &&
-					item.course.startPeriod === currentSettling.targetStartPeriod &&
-					item.course.name === currentSettling.course.name
-				);
-			}
-			if (item.kind === 'overlap-placeholder') {
-				return (
-					item.key.startsWith(`${currentSettling.targetDayOfWeek}:`) &&
-					item.geometry.startPeriod <= currentSettling.targetStartPeriod &&
-					currentSettling.targetStartPeriod <= item.geometry.endPeriod
-				);
-			}
-			return false;
-		});
-		if (matched) settling = null;
-	});
 
 	$effect(() => {
 		if (!dragState) return;

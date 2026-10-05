@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { createCourse } from '@chronos/core';
-import { rearrangeCourseSchedule } from './course-reorder';
+import { rearrangeCourseSchedule } from '../src/domain/course-reorder';
 
 describe('rearrangeCourseSchedule', () => {
 	const courseA = createCourse({
@@ -38,14 +38,15 @@ describe('rearrangeCourseSchedule', () => {
 
 	it('moves course in currentWeek without affecting other weeks', () => {
 		const courses = [courseA, courseB];
-		const result = rearrangeCourseSchedule({
-			currentCourses: courses,
-			draggedCourseId: 'course-a',
-			targetDayOfWeek: 4,
-			targetStartPeriod: 5,
-			currentWeek: 2,
-			displayedPeriodCount: 10
-		});
+		const result =
+			rearrangeCourseSchedule({
+				currentCourses: courses,
+				draggedCourseId: 'course-a',
+				targetDayOfWeek: 4,
+				targetStartPeriod: 5,
+				currentWeek: 2,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 
 		expect(result).not.toBeNull();
 		// Original course-a retained for weeks [1, 3, 4] at original slot
@@ -73,14 +74,15 @@ describe('rearrangeCourseSchedule', () => {
 			endPeriod: 2,
 			weeks: [2]
 		});
-		const result = rearrangeCourseSchedule({
-			currentCourses: [singleWeekCourse],
-			draggedCourseId: 'course-single',
-			targetDayOfWeek: 4,
-			targetStartPeriod: 5,
-			currentWeek: 2,
-			displayedPeriodCount: 10
-		});
+		const result =
+			rearrangeCourseSchedule({
+				currentCourses: [singleWeekCourse],
+				draggedCourseId: 'course-single',
+				targetDayOfWeek: 4,
+				targetStartPeriod: 5,
+				currentWeek: 2,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 
 		expect(result).not.toBeNull();
 		expect(result!.length).toBe(1);
@@ -94,14 +96,15 @@ describe('rearrangeCourseSchedule', () => {
 
 	it('stacks courses in currentWeek without swapping when periods match', () => {
 		const courses = [courseA, courseB];
-		const result = rearrangeCourseSchedule({
-			currentCourses: courses,
-			draggedCourseId: 'course-a',
-			targetDayOfWeek: 2,
-			targetStartPeriod: 3,
-			currentWeek: 2,
-			displayedPeriodCount: 10
-		});
+		const result =
+			rearrangeCourseSchedule({
+				currentCourses: courses,
+				draggedCourseId: 'course-a',
+				targetDayOfWeek: 2,
+				targetStartPeriod: 3,
+				currentWeek: 2,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 
 		expect(result).not.toBeNull();
 
@@ -128,14 +131,15 @@ describe('rearrangeCourseSchedule', () => {
 
 	it('does not swap if the target course has a different span', () => {
 		const courses = [courseA, courseC]; // A has span 2, C has span 3
-		const result = rearrangeCourseSchedule({
-			currentCourses: courses,
-			draggedCourseId: 'course-a',
-			targetDayOfWeek: 3,
-			targetStartPeriod: 5,
-			currentWeek: 2,
-			displayedPeriodCount: 10
-		});
+		const result =
+			rearrangeCourseSchedule({
+				currentCourses: courses,
+				draggedCourseId: 'course-a',
+				targetDayOfWeek: 3,
+				targetStartPeriod: 5,
+				currentWeek: 2,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 
 		expect(result).not.toBeNull();
 		const origA = result!.find((c) => c.id === 'course-a')!;
@@ -157,14 +161,15 @@ describe('rearrangeCourseSchedule', () => {
 
 	it('returns null when dropped at the identical slot', () => {
 		const courses = [courseA, courseB];
-		const result = rearrangeCourseSchedule({
-			currentCourses: courses,
-			draggedCourseId: 'course-a',
-			targetDayOfWeek: 1,
-			targetStartPeriod: 1,
-			currentWeek: 2,
-			displayedPeriodCount: 10
-		});
+		const result =
+			rearrangeCourseSchedule({
+				currentCourses: courses,
+				draggedCourseId: 'course-a',
+				targetDayOfWeek: 1,
+				targetStartPeriod: 1,
+				currentWeek: 2,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 
 		expect(result).toBeNull();
 	});
@@ -178,14 +183,15 @@ describe('rearrangeCourseSchedule', () => {
 			endPeriod: 2,
 			weeks: [2]
 		});
-		const result = rearrangeCourseSchedule({
-			currentCourses: [singleWeekCourse],
-			draggedCourseId: 'course-single',
-			targetDayOfWeek: 1,
-			targetStartPeriod: 15, // Out of bounds for 10 periods
-			currentWeek: 2,
-			displayedPeriodCount: 10
-		});
+		const result =
+			rearrangeCourseSchedule({
+				currentCourses: [singleWeekCourse],
+				draggedCourseId: 'course-single',
+				targetDayOfWeek: 1,
+				targetStartPeriod: 15, // Out of bounds for 10 periods
+				currentWeek: 2,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 
 		expect(result).not.toBeNull();
 		const moved = result![0]!;
@@ -194,14 +200,15 @@ describe('rearrangeCourseSchedule', () => {
 	});
 
 	it('returns null if course id is not found', () => {
-		const result = rearrangeCourseSchedule({
-			currentCourses: [courseA],
-			draggedCourseId: 'non-existent',
-			targetDayOfWeek: 2,
-			targetStartPeriod: 1,
-			currentWeek: 2,
-			displayedPeriodCount: 10
-		});
+		const result =
+			rearrangeCourseSchedule({
+				currentCourses: [courseA],
+				draggedCourseId: 'non-existent',
+				targetDayOfWeek: 2,
+				targetStartPeriod: 1,
+				currentWeek: 2,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 
 		expect(result).toBeNull();
 	});
@@ -215,14 +222,15 @@ describe('rearrangeCourseSchedule', () => {
 			endPeriod: 2,
 			weeks: [5, 6, 7]
 		});
-		const result = rearrangeCourseSchedule({
-			currentCourses: [futureCourse, courseB],
-			draggedCourseId: 'course-future',
-			targetDayOfWeek: 4,
-			targetStartPeriod: 5,
-			currentWeek: 2,
-			displayedPeriodCount: 10
-		});
+		const result =
+			rearrangeCourseSchedule({
+				currentCourses: [futureCourse, courseB],
+				draggedCourseId: 'course-future',
+				targetDayOfWeek: 4,
+				targetStartPeriod: 5,
+				currentWeek: 2,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 
 		expect(result).toBeNull();
 	});
@@ -236,41 +244,44 @@ describe('rearrangeCourseSchedule', () => {
 			endPeriod: 2,
 			weeks: [5]
 		});
-		const result = rearrangeCourseSchedule({
-			currentCourses: [otherWeekCourse],
-			draggedCourseId: 'course-w5',
-			targetDayOfWeek: 3,
-			targetStartPeriod: 3,
-			currentWeek: 2,
-			displayedPeriodCount: 10
-		});
+		const result =
+			rearrangeCourseSchedule({
+				currentCourses: [otherWeekCourse],
+				draggedCourseId: 'course-w5',
+				targetDayOfWeek: 3,
+				targetStartPeriod: 3,
+				currentWeek: 2,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 
 		expect(result).toBeNull();
 	});
 
 	it('restores original id and weeks when a peeled week is dragged back', () => {
-		const movedAway = rearrangeCourseSchedule({
-			currentCourses: [courseA, courseB],
-			draggedCourseId: 'course-a',
-			targetDayOfWeek: 4,
-			targetStartPeriod: 5,
-			currentWeek: 2,
-			displayedPeriodCount: 10
-		});
+		const movedAway =
+			rearrangeCourseSchedule({
+				currentCourses: [courseA, courseB],
+				draggedCourseId: 'course-a',
+				targetDayOfWeek: 4,
+				targetStartPeriod: 5,
+				currentWeek: 2,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 		expect(movedAway).not.toBeNull();
 		const clone = movedAway!.find(
 			(course) => course.name === '高等数学' && course.id !== 'course-a'
 		);
 		expect(clone).toBeDefined();
 
-		const restored = rearrangeCourseSchedule({
-			currentCourses: movedAway!,
-			draggedCourseId: clone!.id,
-			targetDayOfWeek: 1,
-			targetStartPeriod: 1,
-			currentWeek: 2,
-			displayedPeriodCount: 10
-		});
+		const restored =
+			rearrangeCourseSchedule({
+				currentCourses: movedAway!,
+				draggedCourseId: clone!.id,
+				targetDayOfWeek: 1,
+				targetStartPeriod: 1,
+				currentWeek: 2,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 
 		expect(restored).not.toBeNull();
 		expect(restored).toHaveLength(2);
@@ -296,28 +307,30 @@ describe('rearrangeCourseSchedule', () => {
 			weeks: []
 		});
 		const totalWeeks = { startWeek: 1, endWeek: 4 };
-		const movedAway = rearrangeCourseSchedule({
-			currentCourses: [allWeeksCourse],
-			draggedCourseId: 'course-all',
-			targetDayOfWeek: 5,
-			targetStartPeriod: 3,
-			currentWeek: 2,
-			totalWeeks,
-			displayedPeriodCount: 10
-		});
+		const movedAway =
+			rearrangeCourseSchedule({
+				currentCourses: [allWeeksCourse],
+				draggedCourseId: 'course-all',
+				targetDayOfWeek: 5,
+				targetStartPeriod: 3,
+				currentWeek: 2,
+				totalWeeks,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 		expect(movedAway).not.toBeNull();
 		const clone = movedAway!.find((course) => course.id !== 'course-all');
 		expect(clone).toBeDefined();
 
-		const restored = rearrangeCourseSchedule({
-			currentCourses: movedAway!,
-			draggedCourseId: clone!.id,
-			targetDayOfWeek: 3,
-			targetStartPeriod: 1,
-			currentWeek: 2,
-			totalWeeks,
-			displayedPeriodCount: 10
-		});
+		const restored =
+			rearrangeCourseSchedule({
+				currentCourses: movedAway!,
+				draggedCourseId: clone!.id,
+				targetDayOfWeek: 3,
+				targetStartPeriod: 1,
+				currentWeek: 2,
+				totalWeeks,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 
 		expect(restored).toHaveLength(1);
 		expect(restored![0]).toMatchObject({
@@ -330,24 +343,26 @@ describe('rearrangeCourseSchedule', () => {
 	});
 
 	it('merges a later peeled week into an existing same-slot clone', () => {
-		const afterWeek2 = rearrangeCourseSchedule({
-			currentCourses: [courseA],
-			draggedCourseId: 'course-a',
-			targetDayOfWeek: 4,
-			targetStartPeriod: 5,
-			currentWeek: 2,
-			displayedPeriodCount: 10
-		});
+		const afterWeek2 =
+			rearrangeCourseSchedule({
+				currentCourses: [courseA],
+				draggedCourseId: 'course-a',
+				targetDayOfWeek: 4,
+				targetStartPeriod: 5,
+				currentWeek: 2,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 		expect(afterWeek2).not.toBeNull();
 
-		const afterWeek3 = rearrangeCourseSchedule({
-			currentCourses: afterWeek2!,
-			draggedCourseId: 'course-a',
-			targetDayOfWeek: 4,
-			targetStartPeriod: 5,
-			currentWeek: 3,
-			displayedPeriodCount: 10
-		});
+		const afterWeek3 =
+			rearrangeCourseSchedule({
+				currentCourses: afterWeek2!,
+				draggedCourseId: 'course-a',
+				targetDayOfWeek: 4,
+				targetStartPeriod: 5,
+				currentWeek: 3,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 
 		expect(afterWeek3).not.toBeNull();
 		expect(afterWeek3).toHaveLength(2);
@@ -385,14 +400,15 @@ describe('rearrangeCourseSchedule', () => {
 			weeks: [1, 2, 3, 4]
 		});
 
-		const result = rearrangeCourseSchedule({
-			currentCourses: [lab, theory],
-			draggedCourseId: 'db-lab',
-			targetDayOfWeek: 4,
-			targetStartPeriod: 5,
-			currentWeek: 2,
-			displayedPeriodCount: 10
-		});
+		const result =
+			rearrangeCourseSchedule({
+				currentCourses: [lab, theory],
+				draggedCourseId: 'db-lab',
+				targetDayOfWeek: 4,
+				targetStartPeriod: 5,
+				currentWeek: 2,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 
 		expect(result).not.toBeNull();
 		expect(result).toHaveLength(3);
@@ -404,18 +420,80 @@ describe('rearrangeCourseSchedule', () => {
 	});
 
 	it('does not merge different course names occupying the same slot', () => {
-		const result = rearrangeCourseSchedule({
-			currentCourses: [courseA, courseB],
-			draggedCourseId: 'course-a',
-			targetDayOfWeek: 2,
-			targetStartPeriod: 3,
-			currentWeek: 2,
-			displayedPeriodCount: 10
-		});
+		const result =
+			rearrangeCourseSchedule({
+				currentCourses: [courseA, courseB],
+				draggedCourseId: 'course-a',
+				targetDayOfWeek: 2,
+				targetStartPeriod: 3,
+				currentWeek: 2,
+				displayedPeriodCount: 10
+			})?.courses ?? null;
 
 		expect(result).not.toBeNull();
 		const tuesday = result!.filter((course) => course.dayOfWeek === 2 && course.startPeriod === 3);
 		expect(tuesday).toHaveLength(2);
 		expect(tuesday.map((course) => course.name).sort()).toEqual(['大学物理', '高等数学']);
+	});
+});
+
+describe('canonical moved course identity', () => {
+	it.each(['teacher', 'location', 'remark'] as const)(
+		'does not confuse same-name offerings with different %s',
+		(field) => {
+			const source = createCourse({
+				id: 'source',
+				name: 'A',
+				teacher: 'T',
+				location: 'L',
+				remark: 'R',
+				dayOfWeek: 1,
+				startPeriod: 1,
+				endPeriod: 2,
+				weeks: [1, 2]
+			});
+			const destination = {
+				...source,
+				id: 'existing',
+				dayOfWeek: 2,
+				startPeriod: 3,
+				endPeriod: 4,
+				weeks: [1],
+				[field]: 'different'
+			};
+			const result = rearrangeCourseSchedule({
+				currentCourses: [source, destination],
+				draggedCourseId: source.id,
+				targetDayOfWeek: 2,
+				targetStartPeriod: 3,
+				currentWeek: 2,
+				displayedPeriodCount: 10
+			})!;
+			expect(result.courses).toContain(result.movedCourse);
+			expect(result.movedCourse[field]).toBe(source[field]);
+			expect(result.movedCourse.id).not.toBe(destination.id);
+		}
+	);
+	it('returns the surviving identity when a split offering merges into an existing one', () => {
+		const original = createCourse({
+			id: 'original',
+			name: 'A',
+			dayOfWeek: 1,
+			startPeriod: 1,
+			endPeriod: 2,
+			weeks: [1, 3]
+		});
+		const split = { ...original, id: 'split', dayOfWeek: 2, weeks: [2] };
+		const result = rearrangeCourseSchedule({
+			currentCourses: [original, split],
+			draggedCourseId: 'split',
+			targetDayOfWeek: 1,
+			targetStartPeriod: 1,
+			currentWeek: 2,
+			displayedPeriodCount: 10
+		})!;
+		expect(result.movedCourse).toBe(result.courses[0]);
+		expect(result.movedCourse.id).toBe('original');
+		expect(result.movedCourse.weeks).toEqual([1, 2, 3]);
 	});
 });

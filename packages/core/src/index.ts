@@ -1,7 +1,7 @@
 // Domain
 export * from './domain/course';
 export * from './domain/course-conflicts';
-export * from './domain/course-merge';
+export { mergeCompatibleOfferings, type AcademicWeekRange } from './domain/course-merge';
 export * from './domain/course-query';
 export * from './domain/timetable';
 export * from './domain/preferences';
@@ -104,3 +104,5 @@ export {
 
 export * from './types/host-update';
 export * from './algorithms/class-notifications';
+
+export { rearrangeCourseSchedule, type RearrangeCourseOptions } from './domain/course-reorder';

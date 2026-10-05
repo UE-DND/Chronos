@@ -27,6 +27,7 @@ import {
 } from './week-navigation';
 import { buildWeekViewport, createWeekLayoutCache } from './week-viewport';
 import { createTimetableInteraction } from './timetable-interaction.svelte';
+import { createTimetableDropController } from './timetable-drop.svelte';
 import { haptic } from '$lib/haptic/haptic';
 import { getHostPlatform } from '$lib/platform/host-platform';
 
@@ -65,7 +66,7 @@ function createTimetableScreen() {
 	let expandedSlots = $state(new SvelteSet<string>());
 	const interaction = createTimetableInteraction({
 		onLongPressFeedback: () => {
-			if (getHostPlatform().isNative) {
+			if (!drop.state.busy && getHostPlatform().isNative) {
 				haptic.heavy();
 			}
 		}
@@ -73,6 +74,13 @@ function createTimetableScreen() {
 	let displayedWeekMemory = $state(1);
 	let displayedWeekTimetableIdMemory = $state<string | null>(null);
 	let pendingWeekDelete = $state<{ course: Course; week: number } | null>(null);
+
+	const drop = createTimetableDropController({
+		getTimetable: currentTimetable,
+		save: (id, courses) => shellRef!.controller.updateTimetableDetails(id, { courses }),
+		onError: () => snackbarKey('transfer.error.saveFailed'),
+		onSaved: () => trackEvent('timetable_course_reorder')
+	});
 
 	const layoutCache = createWeekLayoutCache();
 
@@ -190,6 +198,7 @@ function createTimetableScreen() {
 	}
 
 	function destroy() {
+		drop.destroy();
 		shellRef = null;
 		interaction.destroy();
 	}
@@ -302,6 +311,7 @@ function createTimetableScreen() {
 		get pendingWeekDelete() {
 			return pendingWeekDelete;
 		},
+		drop,
 		init,
 		refresh,
 		destroy,

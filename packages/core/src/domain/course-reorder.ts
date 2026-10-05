@@ -1,4 +1,5 @@
-import { mergeCompatibleOfferings, type Course } from '@chronos/core';
+import type { Course } from './course';
+import { mergeOfferingsWithIdentity } from './course-merge';
 
 export interface RearrangeCourseOptions {
 	currentCourses: Course[];
@@ -31,7 +32,9 @@ function generateNewCourseId(): string {
  * Only affects the specified currentWeek without mutating other weeks' schedules.
  * Returns null if no changes are required (e.g. dropped on the same slot).
  */
-export function rearrangeCourseSchedule(options: RearrangeCourseOptions): Course[] | null {
+export function rearrangeCourseSchedule(
+	options: RearrangeCourseOptions
+): { courses: Course[]; movedCourse: Course } | null {
 	const {
 		currentCourses,
 		draggedCourseId,
@@ -57,9 +60,15 @@ export function rearrangeCourseSchedule(options: RearrangeCourseOptions): Course
 		return null;
 	}
 
+	function finish(candidates: Course[], movedId: string) {
+		const { courses, canonicalIds } = mergeOfferingsWithIdentity(candidates, totalWeeks);
+		const movedCourse = courses.find((course) => course.id === canonicalIds.get(movedId))!;
+		return { courses, movedCourse };
+	}
+
 	// If currentWeek is not specified, fall back to simple in-place mutation
 	if (currentWeek == null) {
-		return mergeCompatibleOfferings(
+		return finish(
 			currentCourses.map((course) => {
 				if (course.id === draggedCourseId) {
 					return {
@@ -71,7 +80,7 @@ export function rearrangeCourseSchedule(options: RearrangeCourseOptions): Course
 				}
 				return course;
 			}),
-			totalWeeks
+			dragged.id
 		);
 	}
 
@@ -99,7 +108,7 @@ export function rearrangeCourseSchedule(options: RearrangeCourseOptions): Course
 				result.push(course);
 			}
 		}
-		return mergeCompatibleOfferings(result, totalWeeks);
+		return finish(result, dragged.id);
 	}
 
 	// Multi-week: retain other weeks in original course
@@ -115,14 +124,15 @@ export function rearrangeCourseSchedule(options: RearrangeCourseOptions): Course
 	}
 
 	// Add single-week entry for currentWeek at target slot
+	const movedId = generateNewCourseId();
 	result.push({
 		...dragged,
-		id: generateNewCourseId(),
+		id: movedId,
 		dayOfWeek: targetDayOfWeek,
 		startPeriod: clampedStart,
 		endPeriod: clampedEnd,
 		weeks: [currentWeek]
 	});
 
-	return mergeCompatibleOfferings(result, totalWeeks);
+	return finish(result, movedId);
 }

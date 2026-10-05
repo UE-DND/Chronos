@@ -24,12 +24,17 @@ async function swipe(page: Page, start: { x: number; y: number }, dx: number, dy
 	await cdp.detach();
 }
 
-async function importTimetable(page: Page, request: APIRequestContext) {
+async function importTimetable(
+	page: Page,
+	request: APIRequestContext,
+	source = timetable as Timetable
+) {
+	const sharePayload = source === timetable ? payload : await encodeSharePayload(source);
 	await request.post('/__e2e/deploy?build=old');
 	await page.goto('/Chronos/');
 	await page.getByRole('button', { name: '跳过', exact: true }).click();
-	await page.goto(`/Chronos/s#${payload}`);
-	await expect(page.getByRole('heading', { name: timetable.name })).toBeVisible();
+	await page.goto(`/Chronos/s#${sharePayload}`);
+	await expect(page.getByRole('heading', { name: source.name })).toBeVisible();
 	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
 	await expect
 		.poll(() =>
@@ -50,7 +55,7 @@ async function importTimetable(page: Page, request: APIRequestContext) {
 					})
 			)
 		)
-		.toBe(timetable.courses.length);
+		.toBe(source.courses.length);
 	await page.goto('/Chronos/');
 	const pager = page.locator('.timetable-week-pager');
 	await expect(pager).toBeVisible();
@@ -321,4 +326,83 @@ test('cancels a touch animation on resize and when its shell tab becomes inactiv
 		})
 		.toBeLessThan(0.001);
 	await expect(indicator.locator('.indicator-dot--interpolating')).toHaveCount(0);
+});
+
+test('saves a long-press course drop for only the displayed week', async ({ page, request }) => {
+	const source = structuredClone(timetable) as Timetable;
+	source.courses = [
+		{
+			...source.courses[0]!,
+			name: '拖放验证',
+			dayOfWeek: 2,
+			startPeriod: 3,
+			endPeriod: 4,
+			weeks: []
+		}
+	];
+	const { pager, position } = await importTimetable(page, request, source);
+	const initial = await position();
+	const week = Math.round(initial) + (source.academicConfig.startWeek ?? 1);
+	const card = pager
+		.locator('.timetable-week-page')
+		.nth(Math.round(initial))
+		.locator('.course-capsule')
+		.first();
+	await expect(card).toBeVisible();
+	const rect = (await card.boundingBox())!;
+	const start = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+	const cdp = await page.context().newCDPSession(page);
+	await cdp.send('Input.dispatchTouchEvent', {
+		type: 'touchStart',
+		touchPoints: [{ ...start, id: 1 }]
+	});
+	await page.waitForTimeout(550);
+	for (let step = 1; step <= 5; step++) {
+		await cdp.send('Input.dispatchTouchEvent', {
+			type: 'touchMove',
+			touchPoints: [{ x: start.x + (rect.width * 1.3 * step) / 5, y: start.y, id: 1 }]
+		});
+	}
+	await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+	await cdp.detach();
+	const readCourses = () =>
+		page.evaluate(
+			() =>
+				new Promise<{ name: string; dayOfWeek: number; startPeriod: number; weeks: number[] }[]>(
+					(resolve, reject) => {
+						const request = indexedDB.open('chronos');
+						request.onerror = () => reject(request.error);
+						request.onsuccess = () => {
+							const db = request.result;
+							const read = db.transaction('courses').objectStore('courses').getAll();
+							read.onsuccess = () => {
+								resolve(
+									read.result.map((row) => ({
+										...row,
+										weeks: row.weeksCsv ? row.weeksCsv.split(',').map(Number) : []
+									}))
+								);
+								db.close();
+							};
+							read.onerror = () => reject(read.error);
+						};
+					}
+				)
+		);
+	await expect
+		.poll(
+			async () =>
+				(await readCourses()).filter(
+					(course) =>
+						course.name === '拖放验证' && course.dayOfWeek !== 2 && course.weeks.includes(week)
+				).length
+		)
+		.toBe(1);
+	const courses = await readCourses();
+	expect(courses.find((course) => course.dayOfWeek === 2)?.weeks).not.toContain(week);
+	await expect.poll(position).toBeCloseTo(initial, 1);
+	await expect(card).toBeVisible();
+	await page.reload();
+	await expect(pager).toBeVisible();
+	expect((await readCourses()).find((course) => course.dayOfWeek !== 2)?.weeks).toEqual([week]);
 });

@@ -6,21 +6,10 @@
 	import type { CapsuleCornerStyle, TimetableLayoutMode } from '@chronos/core';
 	import type { CoursePaletteEntry } from '@chronos/core';
 	import type { TimetableScreenController } from '$lib/timetable/timetable-screen.svelte';
-	import {
-		committedWeekFromScroll,
-		pagerPreviewWeekFromScroll,
-		scrollOffsetFromWeek,
-		shouldPaintPagerWeek,
-		WEEK_PAGER_NEIGHBOR_RADIUS
-	} from '$lib/timetable/week-navigation';
-	import { createWeekPagerSnap } from '$lib/timetable/week-pager-snap';
-	import { createWeekPagerTouch } from '$lib/timetable/week-pager-touch';
+	import { shouldPaintPagerWeek } from '$lib/timetable/week-navigation';
+	import { createWeekPagerController } from '$lib/timetable/week-pager-controller.svelte';
 	import type { CapsulePagerPreview } from '$lib/timetable/capsule-pager-preview';
 	import TimetableGrid from './TimetableGrid.svelte';
-
-	const PAGER_SETTLE_MS = 90;
-	const PAGER_SUPPRESS_MS = 150;
-	const PAINT_COLLAPSE_MS = 120;
 
 	let {
 		screen,
@@ -50,270 +39,55 @@
 	);
 	const allowPagerTouch = $derived(!screenState.isEditing);
 
-	let pagerEl = $state<HTMLDivElement | undefined>();
-	let pagerReady = $state(false);
-	let paintAdjacent = $state(false);
-	let paintGestureNeighbors = $state(false);
-	const paintRadius = $derived(
-		!active ? 0 : paintGestureNeighbors ? WEEK_PAGER_NEIGHBOR_RADIUS : 1
-	);
-
-	let pagerGesture = false;
-	let pointerHeld = $state(false);
-	let paintCollapseTimer = 0;
-	let gestureStartWeek: number | null = null;
-	let suppressScrollUntil = 0;
-	let settleTimer = 0;
-	let pagerSnap: ReturnType<typeof createWeekPagerSnap> | undefined;
-	let pagerTouch: ReturnType<typeof createWeekPagerTouch> | undefined;
-	let paintWeek = $state(0);
-
-	// 同步写入 preview，勿改 RAF 合并：与 displayedWeek 须在同一事件内到达指示器，否则点阵会先落到整数周。
-	function setPagerPreview(week: number) {
-		pagerPreview?.setPreview(week);
-	}
-
-	function clearPagerPreview() {
-		pagerPreview?.clearPreview();
-	}
-
-	function expandPaintWindow() {
-		window.clearTimeout(paintCollapseTimer);
-		paintGestureNeighbors = true;
-	}
-
-	function schedulePaintCollapse() {
-		window.clearTimeout(paintCollapseTimer);
-		if (pointerHeld || pagerGesture) return;
-		paintCollapseTimer = window.setTimeout(() => {
-			paintCollapseTimer = 0;
-			paintGestureNeighbors = false;
-		}, PAINT_COLLAPSE_MS);
-	}
-
-	function releasePagerPointer() {
-		pointerHeld = false;
-		schedulePaintCollapse();
-	}
-
-	function syncPagerScroll(node: HTMLDivElement): boolean {
-		if (pagerGesture) return true;
-		const width = node.clientWidth;
-		if (width <= 0) return false;
-		const target = scrollOffsetFromWeek(screen.state.displayedWeek, width, screen.state.startWeek);
-		if (Math.abs(node.scrollLeft - target) >= 2) {
-			suppressScrollUntil = Date.now() + PAGER_SUPPRESS_MS;
-			node.scrollTo({ left: target, behavior: 'instant' });
-		}
-		return true;
-	}
-
-	function setDisplayedWeekDuringGesture(week: number) {
-		if (week === screen.state.displayedWeek) return;
-		screen.setDisplayedWeek(week);
-	}
-
-	function settlePager(source: 'timeout' | 'scrollend') {
-		if (source === 'timeout') {
-			settleTimer = 0;
-		}
-		const wasGesture = pagerGesture;
-		const gestureStart = gestureStartWeek;
-		const node = pagerEl;
-		// timeout 路径勿清空 preview、勿重置 pagerGesture：滑动未结束时需要保留小数 preview 做点阵交叉淡变。
-		// scrollend 后再统一收尾。
-		if (source === 'scrollend') {
-			pagerGesture = false;
-			schedulePaintCollapse();
-		}
-		// 勿在 !wasGesture 时 clearPagerPreview：多余的 scrollend 会在滑动中误清 preview。
-		if (!wasGesture) {
-			return;
-		}
-		if (node) {
-			const week = committedWeekFromScroll(
-				node.scrollLeft,
-				node.clientWidth,
-				screen.state.startWeek,
-				screen.state.endWeek
-			);
-			if (week != null) {
-				setDisplayedWeekDuringGesture(week);
-				if (source === 'scrollend' && gestureStart != null && week !== gestureStart) {
-					trackEvent('timetable_week_swipe');
-				}
-			}
-		}
-		if (source === 'scrollend') {
-			gestureStartWeek = null;
-			clearPagerPreview();
-		}
-	}
-
-	function scheduleSettle() {
-		window.clearTimeout(settleTimer);
-		settleTimer = window.setTimeout(() => settlePager('timeout'), PAGER_SETTLE_MS);
-	}
-
-	function onPagerScrollEnd() {
-		if (!active) return;
-		if (pagerTouch?.isActive) return;
-		if (pagerSnap?.isAnimating) return;
-		window.clearTimeout(settleTimer);
-		settleTimer = 0;
-		settlePager('scrollend');
-	}
-
-	function onPagerScroll(event: Event) {
-		if (!active) return;
-		const node = event.currentTarget as HTMLDivElement;
-		if (Date.now() < suppressScrollUntil) return;
-
-		const { startWeek, endWeek } = screen.state;
-		const preview = pagerPreviewWeekFromScroll(
-			node.scrollLeft,
-			node.clientWidth,
-			startWeek,
-			endWeek
-		);
-		if (preview == null) return;
-		expandPaintWindow();
-
-		if (!pagerGesture) {
-			pagerGesture = true;
-			gestureStartWeek = screen.state.displayedWeek;
-			screen.interaction.notePagerFirstMove();
-		}
-
-		setPagerPreview(preview);
-		paintWeek = Math.round(preview);
-		// 滑动中同步提交整数周以更新标题/课表；点阵靠 preview 插值。勿删此行来“修跳变”，根因在 TimetableScreen 的 preview 生命周期。
-		setDisplayedWeekDuringGesture(paintWeek);
-		scheduleSettle();
-	}
-
-	const pagerAttach: Attachment<HTMLDivElement> = (node) => {
-		pagerEl = node;
-		return () => {
-			if (pagerEl === node) pagerEl = undefined;
-		};
-	};
-
+	const pager = createWeekPagerController({
+		setPreview: (week) => pagerPreview?.setPreview(week),
+		clearPreview: () => pagerPreview?.clearPreview(),
+		setDisplayedWeek: (week) => screen.setDisplayedWeek(week),
+		onFirstMove: () => screen.interaction.notePagerFirstMove(),
+		onCompleted: () => trackEvent('timetable_week_swipe')
+	});
 	$effect(() => {
-		const node = pagerEl;
-		if (!node || !active) return;
+		const context = {
+			timetableId: screenState.currentTimetable?.id ?? null,
+			startWeek: screenState.startWeek,
+			endWeek: screenState.endWeek,
+			displayedWeek: screenState.displayedWeek,
+			active,
+			allowTouch: allowPagerTouch
+		};
 		untrack(() => {
-			paintWeek = screen.state.displayedWeek;
-			if (syncPagerScroll(node)) pagerReady = true;
+			pager.sync(context);
+			screen.drop.sync({
+				timetableId: context.timetableId,
+				week: context.displayedWeek,
+				active: context.active
+			});
 		});
-		const snap = createWeekPagerSnap(node, onPagerScrollEnd);
-		pagerSnap = snap;
-		const touch = createWeekPagerTouch(node, {
-			enabled: () => allowPagerTouch,
-			suspendSnap: snap.setSuspended,
-			onSettled: onPagerScrollEnd
-		});
-		pagerTouch = touch;
-		const resizeObserver = new ResizeObserver(() => {
-			snap.cancel();
-			if (touch.isActive) {
-				touch.cancel();
-				window.clearTimeout(settleTimer);
-				settleTimer = 0;
-				pointerHeld = false;
-				pagerGesture = false;
-				gestureStartWeek = null;
-				clearPagerPreview();
-				schedulePaintCollapse();
-			}
-			if (pagerGesture) return;
-			untrack(() => syncPagerScroll(node));
-			if (node.clientWidth > 0) pagerReady = true;
-		});
-		resizeObserver.observe(node);
-		return () => {
-			resizeObserver.disconnect();
-			touch.destroy();
-			if (pagerTouch === touch) pagerTouch = undefined;
-			snap.destroy();
-			if (pagerSnap === snap) pagerSnap = undefined;
-			window.clearTimeout(settleTimer);
-			window.clearTimeout(paintCollapseTimer);
-			settleTimer = 0;
-			paintCollapseTimer = 0;
-			pointerHeld = false;
-			paintGestureNeighbors = false;
-			gestureStartWeek = null;
-			pagerGesture = false;
-			clearPagerPreview();
-		};
 	});
-
-	$effect(() => {
-		const week = screenState.displayedWeek;
-		const startWeek = screenState.startWeek;
-		void screenState.endWeek;
-		void week;
-		void startWeek;
-		const node = pagerEl;
-		// Writing scrollLeft during a fling aborts iOS momentum scrolling.
-		if (!node) return;
-		if (!active) {
-			paintWeek = week;
-			return;
-		}
-		if (pagerGesture) return;
-		paintWeek = week;
-		syncPagerScroll(node);
-	});
-
-	$effect(() => {
-		if (!active) {
-			pagerSnap?.cancel();
-			paintAdjacent = false;
-			pointerHeld = false;
-			window.clearTimeout(paintCollapseTimer);
-			paintCollapseTimer = 0;
-			paintGestureNeighbors = false;
-			return;
-		}
-		const frame = requestAnimationFrame(() => {
-			paintAdjacent = true;
+	const pagerAttach: Attachment<HTMLDivElement> = (node) =>
+		untrack(() => {
+			pager.sync({
+				timetableId: screen.state.currentTimetable?.id ?? null,
+				startWeek: screen.state.startWeek,
+				endWeek: screen.state.endWeek,
+				displayedWeek: screen.state.displayedWeek,
+				active,
+				allowTouch: allowPagerTouch
+			});
+			return pager.attach(node);
 		});
-		return () => cancelAnimationFrame(frame);
-	});
 </script>
-
-<svelte:window
-	onpointerup={pointerHeld ? releasePagerPointer : undefined}
-	onpointercancel={pointerHeld ? releasePagerPointer : undefined}
-/>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="timetable-week-pager"
 	class:timetable-week-pager-locked={!allowPagerTouch}
-	class:timetable-week-pager-pending={!pagerReady}
+	class:timetable-week-pager-pending={!pager.state.ready}
 	{@attach pagerAttach}
-	onpointerdown={() => {
-		pointerHeld = true;
-		expandPaintWindow();
-	}}
-	ontouchstart={expandPaintWindow}
-	onwheel={() => {
-		expandPaintWindow();
-		schedulePaintCollapse();
-	}}
-	onkeydown={() => {
-		expandPaintWindow();
-		schedulePaintCollapse();
-	}}
-	onscroll={onPagerScroll}
-	onscrollend={onPagerScrollEnd}
 >
 	{#each weeks as week (week)}
 		<div class="timetable-week-page">
-			{#if shouldPaintPagerWeek(week, paintWeek || screenState.displayedWeek, paintAdjacent, paintRadius)}
+			{#if shouldPaintPagerWeek(week, pager.state.paintWeek || screenState.displayedWeek, pager.state.paintAdjacent, pager.state.paintRadius)}
 				{@const gridModel = screenState.weekGridModels.get(week)}
 				{@const courseModels = screenState.weekCourseDisplayModels.get(week) ?? []}
 				{#if gridModel}
@@ -325,6 +99,7 @@
 						expandedSlots={screenState.expandedSlots}
 						onExpandSlot={(slotKey) => screen.expandSlot(slotKey)}
 						interaction={screen.interaction}
+						drop={screen.drop}
 						{active}
 						{gridModel}
 						courseDisplayModels={courseModels}

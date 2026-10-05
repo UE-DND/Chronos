@@ -28,8 +28,10 @@ export function createWeekPagerTouch(
 	let startPage = 0;
 	let savedSnapType = '';
 	let frame = 0;
+	let animationGeneration = 0;
 
 	function stopAnimation() {
+		animationGeneration++;
 		if (frame) cancelAnimationFrame(frame);
 		frame = 0;
 	}
@@ -61,8 +63,10 @@ export function createWeekPagerTouch(
 			onSettled();
 			return;
 		}
+		const task = animationGeneration;
 		const started = performance.now();
 		function step(now: number) {
+			if (task !== animationGeneration) return;
 			const t = Math.min(1, (now - started) / duration);
 			node.scrollLeft = from + distance * (1 - (1 - t) ** 2.25);
 			if (t < 1) {
@@ -71,6 +75,7 @@ export function createWeekPagerTouch(
 				node.scrollLeft = target;
 				// Let the final scroll event update the week and indicator before clearing preview.
 				frame = requestAnimationFrame(() => {
+					if (task !== animationGeneration) return;
 					frame = 0;
 					restoreSnap();
 					onSettled();
