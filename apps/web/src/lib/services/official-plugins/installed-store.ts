@@ -254,12 +254,17 @@ export class OfficialPluginInstalledStore {
 		this.broadcast({ transition: update.target.buildId });
 		this.notify();
 	}
-	async cancelPreparation(token: string) {
+	async cancelPreparation(token: string): Promise<PreparedPluginUpdate | undefined> {
+		let cancelled: PreparedPluginUpdate | undefined;
 		this.state = await this.repository.transaction((state) => {
-			if (state.prepared?.token === token) delete state.prepared;
+			if (state.prepared?.token === token) {
+				cancelled = state.prepared;
+				delete state.prepared;
+			}
 		});
 		this.broadcast({ cancelled: token });
 		this.notify();
+		return cancelled;
 	}
 	async persist() {
 		await this.load();

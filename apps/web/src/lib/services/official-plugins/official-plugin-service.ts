@@ -420,9 +420,8 @@ export class OfficialPluginService implements Disposable {
 
 	async cancelHostPreparation(token: string): Promise<void> {
 		await this.installedStore.load();
-		const prepared = this.installedStore.prepared;
-		await this.installedStore.cancelPreparation(token);
-		if (prepared?.token === token) {
+		const prepared = await this.installedStore.cancelPreparation(token);
+		if (prepared) {
 			const retained = new Set(
 				this.installedStore.getCache().map((record) => record.wallpaperAssetId)
 			);

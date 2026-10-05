@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach, type Mock } from 'vite-plus/test';
+import type { ImageRepository } from '$lib/storage/image-repository';
 import { HOST_BUILD } from '$lib/config/app-meta';
 
 const environment = vi.hoisted(() => ({ dev: false }));
@@ -109,7 +110,8 @@ function createMockEnv(httpRequest: HttpMock = vi.fn()) {
 function createService(
 	engine: ChronosEngine,
 	hostVersion = '0.4.1',
-	hostBuild?: typeof HOST_BUILD
+	hostBuild?: typeof HOST_BUILD,
+	images?: ImageRepository
 ): OfficialPluginService {
 	const installedStore = new OfficialPluginInstalledStore(engine);
 	const runtimeActivator = new OfficialPluginRuntimeActivator(engine, (pluginId) =>
@@ -121,7 +123,8 @@ function createService(
 		installedStore,
 		runtimeActivator,
 		hostVersion,
-		hostBuild
+		hostBuild,
+		images
 	});
 }
 
@@ -829,6 +832,60 @@ describe('OfficialPluginService', () => {
 		expect(engine.isPluginLoaded('test-plugin')).toBe(false);
 		service.dispose();
 	});
+
+	it.each(['cancel', 'adopt', 'replace'] as const)(
+		'cleans only transaction-cancelled wallpaper assets during %s',
+		async (scenario) => {
+			const assets = new Set(['retained', 'future']);
+			const images = {
+				delete: vi.fn(async (id: string) => {
+					assets.delete(id);
+				})
+			} as unknown as ImageRepository;
+			service = createService(engine, '0.4.1', undefined, images);
+			const store = service.installationStore;
+			const target = { ...HOST_BUILD, buildId: 'c'.repeat(64) };
+			const record = (id: string, wallpaperAssetId: string) =>
+				({
+					manifest: { id },
+					origin: { kind: 'user' },
+					installedAt: 1,
+					wallpaperAssetId
+				}) as import('./official-plugin-types').InstalledOfficialPluginRecord;
+			await store.upsert(record('theme', 'retained'));
+			await store.prepare({
+				target,
+				revision: store.revision,
+				records: [record('theme', 'future')],
+				token: 'old',
+				until: Date.now() + 10000
+			});
+			const other = new OfficialPluginInstalledStore(engine);
+			const cancel = store.cancelPreparation.bind(store);
+			vi.spyOn(store, 'cancelPreparation').mockImplementationOnce(async (token) => {
+				if (scenario === 'adopt') await other.startHost(target);
+				if (scenario === 'replace') {
+					await other.cancelPreparation('old');
+					await other.load();
+					await other.prepare({
+						target,
+						revision: other.revision,
+						records: [record('theme', 'future')],
+						token: 'new',
+						until: Date.now() + 10000
+					});
+				}
+				return cancel(token);
+			});
+			await service.cancelHostPreparation('old');
+			expect(assets.has('retained')).toBe(true);
+			expect(assets.has('future')).toBe(scenario !== 'cancel');
+			if (scenario === 'adopt') expect(store.find('theme')?.wallpaperAssetId).toBe('future');
+			if (scenario === 'replace') expect(store.prepared?.token).toBe('new');
+			service.dispose();
+			other.dispose();
+		}
+	);
 
 	it('prepares installed official plugins for the next Web host without executing their code', async () => {
 		const hash = await engine.runtime.sha256(SAMPLE_BUNDLE);
