@@ -217,7 +217,7 @@
 				align-items: center;
 				justify-content: center;
 				padding: 1.5rem;
-				padding-top: calc(env(safe-area-inset-top, 0px) + 1.5rem);
+				padding-top: calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 1.5rem);
 				background: var(--color-canvas, Canvas);
 				color: var(--color-on-surface, CanvasText);
 				font-family:

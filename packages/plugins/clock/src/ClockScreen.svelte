@@ -148,7 +148,7 @@
 
 	<div use:appShellScroll class="secondary-scroll relative z-0 min-h-0 flex-1 overflow-y-auto">
 		<div
-			class="mx-auto flex w-full max-w-lg flex-col gap-4 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+			class="mx-auto flex w-full max-w-lg flex-col gap-4 p-4 pb-[max(1rem,var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))]"
 		>
 			{#if compactLandscape.current}
 				<section class="ui-section-surface ui-section-surface--comfortable">

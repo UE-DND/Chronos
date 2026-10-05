@@ -374,7 +374,7 @@
 		:global(.bottom-sheet-content[data-dialog-content]) {
 			inset-inline-end: var(--shell-tab-bar-inline-size, 0px);
 			max-width: min(32rem, calc(100vw - var(--shell-tab-bar-inline-size, 0px)));
-			max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 0.5rem);
+			max-height: calc(100dvh - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) - 0.5rem);
 			margin-inline: auto;
 		}
 	}

@@ -101,8 +101,8 @@
 	}
 
 	:root {
-		--topbar-safe: env(safe-area-inset-top, 0px);
-		--tabbar-block-safe: env(safe-area-inset-bottom, 0px);
+		--topbar-safe: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+		--tabbar-block-safe: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 		--tabbar-inline-safe: 0px;
 		--spacing-topbar: 4.5rem;
 		--spacing-tabbar: 4.25rem;
@@ -134,7 +134,7 @@
 	@media (orientation: landscape) and (max-height: 500px) {
 		:root {
 			--tabbar-block-safe: 0px;
-			--tabbar-inline-safe: env(safe-area-inset-right, 0px);
+			--tabbar-inline-safe: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
 			--shell-tab-bar-block-size: 0px;
 			--shell-tab-bar-inline-size: calc(4.5rem + var(--tabbar-inline-safe));
 		}

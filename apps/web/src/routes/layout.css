@@ -357,7 +357,7 @@
 
 	@media (orientation: landscape) and (max-height: 500px) {
 		.shell-page {
-			padding-inline-start: env(safe-area-inset-left, 0px);
+			padding-inline-start: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
 		}
 
 		.shell-wallpaper {
@@ -372,7 +372,7 @@
 		}
 
 		.secondary-page {
-			padding-inline-start: env(safe-area-inset-left, 0px);
+			padding-inline-start: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
 			padding-inline-end: var(--shell-tab-bar-inline-size);
 		}
 
@@ -381,8 +381,10 @@
 			align-items: center;
 			border-top: none;
 			border-inline-start: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
-			padding-block-start: calc(env(safe-area-inset-top, 0px) + 0.5rem);
-			padding-block-end: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+			padding-block-start: calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 0.5rem);
+			padding-block-end: calc(
+				var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 0.5rem
+			);
 			padding-inline-start: 0;
 			padding-inline-end: var(--tabbar-inline-safe);
 		}
@@ -493,7 +495,7 @@
 		:root:has(.shell-root:not(.invisible) .shell-tab-bar:not(.hidden)) .shell-snackbar,
 		:root:has(.secondary-root:not(.is-blocked):not(.invisible) .secondary-page) .shell-snackbar {
 			right: calc(var(--shell-tab-bar-inline-size) + 1rem);
-			bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+			bottom: calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 0.75rem);
 		}
 	}
 
