@@ -353,13 +353,14 @@ export class PWAInstallController {
 		return this.installPromptGate?.() ?? false;
 	}
 
-	async init() {
-		if (typeof window === 'undefined') return;
+	async init(isActive: () => boolean = () => true) {
+		if (typeof window === 'undefined' || !isActive()) return;
 
 		this.checkEnvironment();
 		if (this.isStandalone) return;
 
 		await this.detectInstalledLocally();
+		if (!isActive()) return;
 
 		if (this.isInstalledLocally) {
 			this.scheduleDialog();

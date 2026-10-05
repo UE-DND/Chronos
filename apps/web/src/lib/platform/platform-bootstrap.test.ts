@@ -87,6 +87,7 @@ describe('createPlatformBootstrap', () => {
 		coursePalette: []
 	};
 	const shell = {
+		destroy: vi.fn(),
 		init: vi.fn(),
 		classNotifications: { start: vi.fn(), sync: vi.fn(), dispose: vi.fn() },
 		appearance,
@@ -98,6 +99,7 @@ describe('createPlatformBootstrap', () => {
 	};
 	const timetableScreen = {
 		init: vi.fn(),
+		destroy: vi.fn(),
 		jumpToCurrentWeek: vi.fn(),
 		state: {
 			hasLoadedAppState: false,
@@ -124,6 +126,48 @@ describe('createPlatformBootstrap', () => {
 		vi.unstubAllGlobals();
 	});
 
+	it('does not start resources after release while engine readiness is pending', async () => {
+		const { ensureEngineReady } = await import('$lib/services/app-engine');
+		let resolve!: (engine: Awaited<ReturnType<typeof ensureEngineReady>>) => void;
+		const engine = await ensureEngineReady();
+		vi.mocked(ensureEngineReady).mockReturnValueOnce(
+			new Promise((done) => {
+				resolve = done;
+			})
+		);
+		const teardown = createPlatformBootstrap(deps).init();
+		teardown();
+		resolve(engine);
+		await new Promise((done) => setTimeout(done, 0));
+		expect(shell.init).not.toHaveBeenCalled();
+		expect(mocks.pwaInstallInit).not.toHaveBeenCalled();
+		expect(window.__chronosHideBootFallback).not.toHaveBeenCalled();
+	});
+	it('does not let an old disposer release a subsequent mount', async () => {
+		const platform = createPlatformBootstrap(deps);
+		const old = platform.init();
+		await vi.waitFor(() => expect(shell.init).toHaveBeenCalledTimes(1));
+		old();
+		const next = platform.init();
+		await vi.waitFor(() => expect(shell.init).toHaveBeenCalledTimes(2));
+		old();
+		expect(shell.destroy).toHaveBeenCalledTimes(1);
+		next();
+		next();
+		expect(shell.destroy).toHaveBeenCalledTimes(2);
+	});
+	it('releases resources acquired before startup fails', async () => {
+		shell.init.mockImplementationOnce(() => {
+			throw new Error('shell failed');
+		});
+		const platform = createPlatformBootstrap(deps);
+		const teardown = platform.init();
+		await vi.waitFor(() => expect(shell.destroy).toHaveBeenCalledOnce());
+		expect(mocks.connectivityDestroy).toHaveBeenCalledOnce();
+		expect(timetableScreen.init).not.toHaveBeenCalled();
+		teardown();
+		expect(shell.destroy).toHaveBeenCalledOnce();
+	});
 	it('runs startup sequence in order', async () => {
 		const platform = createPlatformBootstrap(deps);
 		const teardown = platform.init();
@@ -146,7 +190,7 @@ describe('createPlatformBootstrap', () => {
 
 		teardown();
 		expect(mocks.connectivityDestroy).toHaveBeenCalled();
-		expect(appearance.destroy).toHaveBeenCalled();
+		expect(shell.destroy).toHaveBeenCalled();
 	});
 
 	it('is idempotent on repeated init', () => {

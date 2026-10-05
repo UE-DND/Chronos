@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import type { PreparedPluginUpdate } from '$lib/services/official-plugins/installed-store';
 import type { HostBuildIdentity } from '@chronos/core';
 
 const mocks = vi.hoisted(() => ({
@@ -7,7 +8,8 @@ const mocks = vi.hoisted(() => ({
 	apply: vi.fn(),
 	identity: vi.fn(),
 	registration: vi.fn(),
-	feed: vi.fn()
+	feed: vi.fn(),
+	prepared: undefined as PreparedPluginUpdate | undefined
 }));
 const current: HostBuildIdentity = {
 	version: '1.0.2',
@@ -24,7 +26,12 @@ vi.mock('$lib/config/app-meta', () => ({
 vi.mock('$lib/services/app-engine', () => ({
 	ensureEngineFullyReady: vi.fn(),
 	getOfficialPluginService: () => ({
-		installationStore: { load: vi.fn(), prepared: undefined },
+		installationStore: {
+			load: vi.fn(),
+			get prepared() {
+				return mocks.prepared;
+			}
+		},
 		prepareHostUpdate: mocks.prepare,
 		cancelHostPreparation: mocks.cancel
 	})
@@ -36,8 +43,22 @@ vi.mock('./pwa-sw', () => ({
 	applyUpdateAndReload: mocks.apply,
 	readWorkerIdentity: mocks.identity
 }));
-import { applyPreparedWebUpdate } from './web-host-update';
+vi.mock('$app/environment', () => ({ dev: false }));
+import { applyPreparedWebUpdate, recoverInterruptedWebUpdate } from './web-host-update';
 
+beforeEach(() => {
+	mocks.prepared = undefined;
+	mocks.prepare.mockImplementation(async () => {
+		mocks.prepared = {
+			target,
+			token: 'prepared-token',
+			records: [],
+			revision: 0,
+			until: Date.now() + 180000
+		};
+		return 'prepared-token';
+	});
+});
 afterEach(() => {
 	vi.clearAllMocks();
 	vi.unstubAllGlobals();
@@ -59,4 +80,68 @@ describe('prepared Web update recovery', () => {
 			else expect(mocks.cancel).not.toHaveBeenCalled();
 		}
 	);
+	it.each(['waiting', 'installing', 'active', 'absent', 'unknown'] as const)(
+		'recovers prepared snapshot with %s worker',
+		async (state) => {
+			mocks.prepared = {
+				target,
+				token: 'existing',
+				revision: 0,
+				records: [],
+				until: Date.now() + 180000
+			};
+			vi.stubGlobal('navigator', { serviceWorker: { getRegistration: mocks.registration } });
+			const reload = vi.fn();
+			vi.stubGlobal('window', { location: { reload } });
+			mocks.registration.mockResolvedValue({
+				waiting: state === 'waiting' ? {} : undefined,
+				installing: state === 'installing' ? {} : undefined,
+				active: state === 'active' || state === 'unknown' ? {} : undefined
+			});
+			mocks.identity.mockImplementation(async () => {
+				if (state === 'unknown') throw new Error('identity unavailable');
+				return target;
+			});
+			if (state === 'unknown')
+				await expect(recoverInterruptedWebUpdate()).rejects.toThrow('identity unavailable');
+			else await recoverInterruptedWebUpdate();
+			expect(mocks.cancel).toHaveBeenCalledTimes(state === 'absent' ? 1 : 0);
+			expect(reload).toHaveBeenCalledTimes(state === 'active' ? 1 : 0);
+		}
+	);
+	it('reuses an existing preparation without fetching or downloading plugins', async () => {
+		mocks.prepared = {
+			target,
+			token: 'existing',
+			revision: 0,
+			records: [],
+			until: Date.now() + 180000
+		};
+		vi.stubGlobal('navigator', { serviceWorker: { getRegistration: mocks.registration } });
+		mocks.registration.mockResolvedValue({ waiting: {} });
+		mocks.apply.mockResolvedValue(undefined);
+		await applyPreparedWebUpdate();
+		expect(mocks.prepare).not.toHaveBeenCalled();
+		expect(mocks.feed).not.toHaveBeenCalled();
+		expect(mocks.apply).toHaveBeenCalledWith(
+			expect.objectContaining({ targetBuildId: target.buildId })
+		);
+	});
+	it('merges applications and postpones recovery while preparation is pending', async () => {
+		const gate = Promise.withResolvers<string>();
+		mocks.prepare.mockReturnValueOnce(gate.promise);
+		vi.stubGlobal('navigator', { serviceWorker: { getRegistration: mocks.registration } });
+		mocks.registration.mockResolvedValue({});
+		mocks.apply.mockResolvedValue(undefined);
+		mocks.feed.mockResolvedValue({ ok: true, value: { hostUpdate: { host: target } } });
+		const first = applyPreparedWebUpdate();
+		await vi.waitFor(() => expect(mocks.prepare).toHaveBeenCalledOnce());
+		const second = applyPreparedWebUpdate();
+		const recovery = recoverInterruptedWebUpdate();
+		expect(mocks.cancel).not.toHaveBeenCalled();
+		gate.resolve('prepared-token');
+		await Promise.all([first, second, recovery]);
+		expect(mocks.prepare).toHaveBeenCalledOnce();
+		expect(mocks.apply).toHaveBeenCalledOnce();
+	});
 });

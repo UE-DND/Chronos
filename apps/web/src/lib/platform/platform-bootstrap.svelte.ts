@@ -32,150 +32,187 @@ export type PlatformBootstrapController = {
 };
 
 export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBootstrapController {
-	let started = false;
-	let disposeEffects: (() => void) | null = null;
-	let disposeOfflineUx: (() => void) | null = null;
-	let disposePlatform: (() => void) | null = null;
-	let disposeScrollBoundaryFeedback: (() => void) | null = null;
-	let todayWidgetSync: TodayWidgetSyncService | null = null;
+	let current: { alive: boolean } | null = null;
 
 	function init(): () => void {
-		if (started) return () => {};
-		started = true;
-
-		const platform = getHostPlatform();
-		if (
-			(platform.isNative && platform.platformType === 'android') ||
-			(!platform.isNative && isPwaStandalone())
-		) {
-			disposeScrollBoundaryFeedback = installScrollBoundaryFeedback();
+		if (current) return () => {};
+		const session = { alive: true };
+		current = session;
+		const cleanups: (() => void)[] = [];
+		let todayWidgetSync: TodayWidgetSyncService | null = null;
+		function own(cleanup: (() => void) | void | null) {
+			if (cleanup) cleanups.push(cleanup);
+		}
+		function teardown() {
+			if (!session.alive) return;
+			session.alive = false;
+			if (current === session) current = null;
+			for (const cleanup of cleanups.splice(0).reverse()) {
+				try {
+					cleanup();
+				} catch (error) {
+					console.error('[bootstrap] Failed to release resource', error);
+				}
+			}
 		}
 
-		disposePlatform =
-			platform.init?.({
-				onSystemBack: () => dispatchSystemBack(),
-				onDeepLink: (url) => {
-					if (url.protocol === 'chronos:' && url.hostname === 'today') {
-						void ensureEngineFullyReady()
-							.then(() => {
-								const hasTodayTab = getAppController()
-									.getSlots('shell.bottom-bar.tab')
-									.some((tab) => tab.id === 'today');
-								deps.shellTab.setActiveTab(hasTodayTab ? 'today' : 'timetable');
-								if (!hasTodayTab) deps.timetableScreen.jumpToCurrentWeek();
-								return import('$lib/navigation/nav-coordinator');
+		const platform = getHostPlatform();
+		function failed(error: unknown) {
+			if (!session.alive) return;
+			teardown();
+			console.error('[bootstrap] Failed to initialize profile', error);
+			platform.hideBootSplash?.();
+			window.__chronosShowBootFailure?.();
+		}
+		try {
+			if (
+				(platform.isNative && platform.platformType === 'android') ||
+				(!platform.isNative && isPwaStandalone())
+			) {
+				own(installScrollBoundaryFeedback());
+			}
+
+			own(
+				platform.init?.({
+					onSystemBack: () => {
+						return session.alive ? dispatchSystemBack() : 'consumed';
+					},
+					onDeepLink: (url) => {
+						if (!session.alive) return;
+						if (url.protocol === 'chronos:' && url.hostname === 'today') {
+							void ensureEngineFullyReady()
+								.then(async () => {
+									if (!session.alive) return;
+									const hasTodayTab = getAppController()
+										.getSlots('shell.bottom-bar.tab')
+										.some((tab) => tab.id === 'today');
+									deps.shellTab.setActiveTab(hasTodayTab ? 'today' : 'timetable');
+									if (!hasTodayTab) deps.timetableScreen.jumpToCurrentWeek();
+									const { navigateForward } = await import('$lib/navigation/nav-coordinator');
+									if (session.alive) await navigateForward('/', { replace: true });
+								})
+								.catch((error) =>
+									console.error('[platform] Failed to open today widget link', error)
+								);
+							return;
+						}
+						const path =
+							url.hostname === 's' || url.pathname.startsWith('/s') ? '/s' : url.pathname;
+						const target = `${path}${url.search}${url.hash}`;
+						void import('$lib/navigation/nav-coordinator')
+							.then(({ navigateForward }) => {
+								if (session.alive) void navigateForward(target);
 							})
-							.then(({ navigateForward }) => navigateForward('/', { replace: true }))
-							.catch((error) =>
-								console.error('[platform] Failed to open today widget link', error)
-							);
-						return;
+							.catch(console.error);
+					},
+					onAppResume: () => {
+						if (!session.alive) return;
+						void checkAppUpdateOnResume();
+						void ensureEngineReady()
+							.then((engine) => {
+								if (!session.alive) return;
+								engine.refreshSystemTime();
+								void deps.shell.classNotifications.sync(true);
+								void todayWidgetSync?.sync();
+								void getOfficialPluginService().retryPendingUpdates();
+							})
+							.catch(console.error);
 					}
-					const path = url.hostname === 's' || url.pathname.startsWith('/s') ? '/s' : url.pathname;
-					const target = `${path}${url.search}${url.hash}`;
-					void import('$lib/navigation/nav-coordinator').then(({ navigateForward }) => {
-						void navigateForward(target);
-					});
-				},
-				onAppResume: () => {
-					void checkAppUpdateOnResume();
-					void ensureEngineReady().then((engine) => {
-						engine.refreshSystemTime();
-						void deps.shell.classNotifications.sync(true);
-						void todayWidgetSync?.sync();
-						void getOfficialPluginService().retryPendingUpdates();
-					});
-				}
-			}) ?? null;
+				})
+			);
 
-		registerHyperellipse();
-		connectivity.init();
-		const retry = () => {
-			if (navigator.onLine) void getOfficialPluginService().retryPendingUpdates();
-			void import('$lib/client/web-host-update')
-				.then((module) => module.recoverInterruptedWebUpdate())
-				.catch(console.error);
-		};
-		const resume = () => {
-			if (document.visibilityState === 'visible') retry();
-		};
-		window.addEventListener('online', retry);
-		document.addEventListener('visibilitychange', resume);
-
-		void ensureEngineReady()
-			.then((engine) => {
-				configureHostI18n({
-					onLocaleChanged: (handler) => engine.events.on('i18n:localeChanged', handler)
-				});
+			registerHyperellipse();
+			own(() => connectivity.destroy());
+			connectivity.init();
+			const retry = () => {
+				if (!session.alive) return;
+				if (navigator.onLine) void getOfficialPluginService().retryPendingUpdates();
 				void import('$lib/client/web-host-update')
-					.then((module) => module.recoverInterruptedWebUpdate())
+					.then((module) => {
+						if (session.alive) return module.recoverInterruptedWebUpdate();
+					})
 					.catch(console.error);
-				deps.shell.init();
-				deps.shell.classNotifications.start();
-				deps.timetableScreen.init(deps.shell);
-				todayWidgetSync?.dispose();
-				todayWidgetSync = createTodayWidgetSyncService(engine, platform, {
-					visibilityTarget: document
-				});
-				todayWidgetSync.start();
-				// Gate first so the async install init cannot auto-popup behind onboarding.
-				if (!platform.supportsPwaInstall) {
-					pwaInstallController.setInstallPromptGate(() => true);
-				} else {
-					pwaInstallController.setInstallPromptGate(() => onboardingController.state.open);
-				}
-				void pwaInstallController.init();
-				initAnalytics();
-				window.__chronosHideBootFallback?.();
-				platform.hideBootSplash?.();
-
-				disposeOfflineUx = attachOfflineUx(connectivity);
-
-				disposeEffects = $effect.root(() => {
-					$effect(() => {
-						if (deps.timetableScreen.state.hasLoadedAppState) {
-							onboardingController.maybeShow(Boolean(deps.timetableScreen.state.currentTimetable));
-						}
-					});
-
-					$effect(() => {
-						if (onboardingController.state.open) {
-							pwaInstallController.cancelScheduledDialog();
-							pwaInstallController.dismiss({ track: false });
-						} else {
-							pwaInstallController.tryScheduleInstallDialog();
-						}
-					});
-
-					$effect(() => {
-						platform.syncTheme?.(deps.shell.state.isDark);
-					});
-				});
-			})
-			.catch((error) => {
-				console.error('[bootstrap] Failed to initialize profile', error);
-				platform.hideBootSplash?.();
-				window.__chronosShowBootFailure?.();
+			};
+			const resume = () => {
+				if (document.visibilityState === 'visible') retry();
+			};
+			window.addEventListener('online', retry);
+			document.addEventListener('visibilitychange', resume);
+			own(() => {
+				window.removeEventListener('online', retry);
+				document.removeEventListener('visibilitychange', resume);
 			});
 
-		return () => {
-			window.removeEventListener('online', retry);
-			document.removeEventListener('visibilitychange', resume);
-			disposeEffects?.();
-			disposeEffects = null;
-			deps.shell.appearance.destroy();
-			deps.shell.classNotifications.dispose();
-			disposeOfflineUx?.();
-			disposeOfflineUx = null;
-			todayWidgetSync?.dispose();
-			todayWidgetSync = null;
-			connectivity.destroy();
-			disposeScrollBoundaryFeedback?.();
-			disposeScrollBoundaryFeedback = null;
-			disposePlatform?.();
-			disposePlatform = null;
-			started = false;
-		};
+			void ensureEngineReady()
+				.then((engine) => {
+					if (!session.alive) return;
+					configureHostI18n({
+						onLocaleChanged: (handler) => engine.events.on('i18n:localeChanged', handler)
+					});
+					void import('$lib/client/web-host-update')
+						.then((module) => {
+							if (session.alive) return module.recoverInterruptedWebUpdate();
+						})
+						.catch(console.error);
+					own(() => deps.shell.destroy());
+					deps.shell.init();
+					own(() => deps.timetableScreen.destroy());
+					deps.timetableScreen.init(deps.shell);
+
+					todayWidgetSync = createTodayWidgetSyncService(engine, platform, {
+						visibilityTarget: document
+					});
+					own(() => todayWidgetSync?.dispose());
+					todayWidgetSync.start();
+					// Gate first so the async install init cannot auto-popup behind onboarding.
+					if (!platform.supportsPwaInstall) {
+						pwaInstallController.setInstallPromptGate(() => true);
+					} else {
+						pwaInstallController.setInstallPromptGate(() => onboardingController.state.open);
+					}
+					own(() => {
+						pwaInstallController.cancelScheduledDialog();
+						pwaInstallController.dismiss({ track: false });
+						pwaInstallController.setInstallPromptGate(() => true);
+					});
+					void pwaInstallController.init(() => session.alive).catch(console.error);
+					initAnalytics();
+					window.__chronosHideBootFallback?.();
+					platform.hideBootSplash?.();
+
+					own(attachOfflineUx(connectivity));
+
+					own(
+						$effect.root(() => {
+							$effect(() => {
+								if (deps.timetableScreen.state.hasLoadedAppState) {
+									onboardingController.maybeShow(
+										Boolean(deps.timetableScreen.state.currentTimetable)
+									);
+								}
+							});
+
+							$effect(() => {
+								if (onboardingController.state.open) {
+									pwaInstallController.cancelScheduledDialog();
+									pwaInstallController.dismiss({ track: false });
+								} else {
+									pwaInstallController.tryScheduleInstallDialog();
+								}
+							});
+
+							$effect(() => {
+								platform.syncTheme?.(deps.shell.state.isDark);
+							});
+						})
+					);
+				})
+				.catch(failed);
+		} catch (error) {
+			failed(error);
+		}
+
+		return teardown;
 	}
 
 	return { init };

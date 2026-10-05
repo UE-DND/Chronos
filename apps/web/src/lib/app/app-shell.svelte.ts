@@ -38,9 +38,9 @@ export function createAppShell() {
 	const appearance = createAppearance(getSharedCoursePaletteRef(), notifyCoursePaletteChanged);
 	const controller = getAppController();
 	const engine = getAppEngine();
-	const classNotifications = createClassNotificationsController(
-		engine,
-		getHostPlatform().classNotifications
+	let notificationsDisposed = false;
+	let classNotifications = $state.raw(
+		createClassNotificationsController(engine, getHostPlatform().classNotifications)
 	);
 
 	const themeMode = $derived(controller.userPreferences?.themeMode ?? 'auto');
@@ -78,6 +78,14 @@ export function createAppShell() {
 	});
 
 	function init() {
+		if (notificationsDisposed) {
+			classNotifications = createClassNotificationsController(
+				engine,
+				getHostPlatform().classNotifications
+			);
+			notificationsDisposed = false;
+		}
+		classNotifications.start();
 		if (typeof window !== 'undefined' && !mediaQueryCleanup) {
 			const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 			systemPrefersDark = mediaQuery.matches;
@@ -173,6 +181,10 @@ export function createAppShell() {
 	}
 
 	function destroy() {
+		if (!notificationsDisposed) {
+			notificationsDisposed = true;
+			classNotifications.dispose();
+		}
 		mediaQueryCleanup?.();
 		mediaQueryCleanup = null;
 		landscapeQueryCleanup?.();
@@ -282,7 +294,9 @@ export function createAppShell() {
 			return controller;
 		},
 		wallpaper,
-		classNotifications,
+		get classNotifications() {
+			return classNotifications;
+		},
 		init,
 		destroy,
 		updatePreferences,

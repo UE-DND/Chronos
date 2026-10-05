@@ -14,6 +14,10 @@ const mocks = vi.hoisted(() => ({
 	setTheme: vi.fn()
 }));
 
+vi.mock('$lib/platform/class-notifications.svelte', () => ({
+	createClassNotificationsController: () => ({ start: vi.fn(), dispose: vi.fn(), sync: vi.fn() })
+}));
+
 vi.mock('$lib/appearance/appearance.svelte', () => ({
 	createAppearance: () => ({ apply: mocks.applyAppearance, destroy: vi.fn() })
 }));
@@ -97,6 +101,17 @@ describe('app shell timetable layout in compact landscape', () => {
 
 	afterEach(() => vi.unstubAllGlobals());
 
+	it('recreates notification lifetime after a complete shell release', () => {
+		const shell = createAppShell();
+		shell.init();
+		const first = shell.classNotifications;
+		shell.destroy();
+		shell.init();
+		expect(shell.classNotifications).not.toBe(first);
+		expect(first.dispose).toHaveBeenCalledOnce();
+		expect(shell.classNotifications.start).toHaveBeenCalledOnce();
+		shell.destroy();
+	});
 	it('uses scrolling in compact landscape and restores the saved fit mode in portrait', async () => {
 		const shell = createAppShell();
 		shell.init();
