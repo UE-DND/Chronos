@@ -63,6 +63,7 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 		id: 'theme-arknights',
 		type: 'theme',
 		sourceDir: 'theme-arknights',
+		entry: resolve(root, 'packages/plugins/theme-arknights/src/index.ts'),
 		tailwindSource: false,
 		name: { 'zh-CN': 'Arknights', en: 'Arknights' },
 		description: {

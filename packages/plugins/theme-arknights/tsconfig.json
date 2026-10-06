@@ -1,0 +1,11 @@
+{
+	"extends": "../../../tsconfig.json",
+	"compilerOptions": {
+		"types": ["node", "vite/client"],
+		"resolveJsonModule": true,
+		"paths": {
+			"@chronos/core": ["../../../packages/core/src/index.ts"]
+		}
+	},
+	"include": ["src/**/*", "tests/**/*", "*.json"]
+}

@@ -33,21 +33,32 @@ describe('official-plugin-build compile', () => {
 		};
 	}
 
-	it.each(['theme-arknights', 'theme-yumemita'])(
-		'builds %s JSON assets without a JS bundle',
-		async (pluginId) => {
-			const themePlugin = OFFICIAL_PLUGINS.find((p) => p.id === pluginId);
-			expect(themePlugin).toBeDefined();
+	it.each(['theme-yumemita'])('builds %s JSON assets without a JS bundle', async (pluginId) => {
+		const themePlugin = OFFICIAL_PLUGINS.find((p) => p.id === pluginId);
+		expect(themePlugin).toBeDefined();
 
-			const result = await buildOfficialPluginAssets(themePlugin!, createDevBuildOptions());
+		const result = await buildOfficialPluginAssets(themePlugin!, createDevBuildOptions());
 
-			expect(result.colorsJson).toBeTruthy();
-			expect(result.iconThemeJson).toBeTruthy();
-			expect(result.code).toBeNull();
-			expect(result.cssCode).toBeNull();
-			expect(result.wallpaperBytes).toBeTruthy();
-		}
-	);
+		expect(result.colorsJson).toBeTruthy();
+		expect(result.iconThemeJson).toBeTruthy();
+		expect(result.code).toBeNull();
+		expect(result.cssCode).toBeNull();
+		expect(result.wallpaperBytes).toBeTruthy();
+	});
+
+	it('packages ArKnights colors, icons, wallpaper and scoped CSS together', async () => {
+		const plugin = OFFICIAL_PLUGINS.find((p) => p.id === 'theme-arknights')!;
+		const result = await buildOfficialPluginAssets(plugin, createDevBuildOptions());
+		expect(result.code).toBeTruthy();
+		expect(result.colorsJson).toBeTruthy();
+		expect(result.iconThemeJson).toBeTruthy();
+		expect(result.wallpaperBytes).toBeTruthy();
+		expect(result.cssCode).toContain('.chronos-theme-arknights');
+		expect(result.cssCode).toContain('radial-gradient');
+		expect(result.cssCode).toContain('data:image/jpeg;base64,');
+		expect(result.cssCode).not.toMatch(/:root|@font-face|https?:/);
+		expect(result.code).not.toMatch(/import\s*['"][^'"]+\.css['"]/);
+	}, 60_000);
 
 	it('compiles today plugin CSS with Chronos tokens and no preflight', async () => {
 		const todayPlugin = OFFICIAL_PLUGINS.find((p) => p.id === 'tool-today');

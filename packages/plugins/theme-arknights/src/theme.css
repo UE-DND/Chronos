@@ -1,0 +1,209 @@
+/* Scoped adaptation of the ak-ui system language. All rules leave with the theme. */
+.chronos-theme-arknights {
+	--font-sans: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+	--font-command: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+	--font-mono: 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
+	--radius-dialog: 0px;
+	--radius-sheet-top: 0px;
+	--radius-section-surface: 0px;
+	--radius-section-item: 0px;
+	--radius-leading-icon: 0px;
+	--radius-capsule: 0px;
+	--radius-card: 0px;
+	--radius-inset: 0px;
+	--radius-control: 0px;
+	--radius-search-field: 0px;
+	--radius-switch-track: 0px;
+	--radius-switch-thumb: 0px;
+	--radius-time-field-segment: 0px;
+	--shadow-raised: none;
+	--shadow-raised-dark: none;
+	--shadow-overlay: 6px 6px 0 color-mix(in srgb, var(--color-shadow) 20%, transparent);
+	--font-weight-headline-medium: 700;
+	--font-weight-headline-small: 700;
+	--font-weight-title-large: 700;
+	--font-weight-label-large: 600;
+	--ak-surface-panel: var(--color-surface);
+	--ak-text-primary: var(--color-on-surface);
+	--ak-signal-info: var(--color-primary);
+	--ak-line: var(--color-outline-variant);
+	--ak-motion-fast: 120ms;
+	--ak-halftone: radial-gradient(
+		circle at 1px 1px,
+		color-mix(in srgb, var(--color-on-primary) 14%, transparent) 0.7px,
+		transparent 0.8px
+	);
+}
+
+.chronos-theme-arknights .mine-menu-background,
+.chronos-theme-arknights .secondary-scroll {
+	background-color: var(--color-canvas);
+	background-image:
+		linear-gradient(
+			color-mix(in srgb, var(--color-canvas) 92%, transparent),
+			color-mix(in srgb, var(--color-canvas) 82%, transparent)
+		),
+		url('./menu-background.jpg');
+	background-size: cover;
+	background-position: center;
+}
+
+.chronos-theme-arknights .text-page-title {
+	font-weight: 750;
+	letter-spacing: 0.025em;
+	border-inline-start: 3px solid var(--ak-signal-info);
+	padding-inline-start: 0.75rem;
+}
+
+.chronos-theme-arknights .ui-section-title {
+	font-weight: 650;
+	letter-spacing: 0.04em;
+}
+
+.chronos-theme-arknights .ui-section-surface {
+	border-color: var(--ak-line);
+	border-block-start: 2px solid var(--color-on-surface);
+	background-color: var(--ak-surface-panel);
+}
+
+.chronos-theme-arknights .ui-section-surface > * + a::before,
+.chronos-theme-arknights .ui-section-surface > * + label::before,
+.chronos-theme-arknights .ui-section-surface > * + button::before,
+.chronos-theme-arknights .ui-section-surface.divide-y > * + div::before {
+	left: 0.5rem;
+	right: 0.5rem;
+	background-color: var(--ak-line);
+}
+
+.chronos-theme-arknights .ui-btn {
+	font-weight: 650;
+	letter-spacing: 0.025em;
+	transition:
+		background-color var(--ak-motion-fast) ease,
+		border-color var(--ak-motion-fast) ease,
+		box-shadow var(--ak-motion-fast) ease;
+}
+
+/* Small dots live on the action plate, rather than over course labels or body copy. */
+.chronos-theme-arknights .ui-btn-filled {
+	background-image: var(--ak-halftone);
+	background-size: 4px 4px;
+	color: var(--color-on-primary);
+	background-color: var(--color-primary);
+	border-color: var(--color-primary-dim);
+	box-shadow: 3px 3px 0 var(--color-primary-container);
+}
+
+.chronos-theme-arknights .ui-btn-filled:hover:not(:disabled) {
+	background-color: var(--color-primary-dim);
+	box-shadow: 1px 1px 0 var(--color-primary-container);
+	opacity: 1;
+}
+
+.chronos-theme-arknights .ui-btn-filled:active:not(:disabled) {
+	background-color: var(--color-primary-dim);
+	box-shadow: none;
+}
+
+.chronos-theme-arknights .ui-btn-outlined:hover:not(:disabled),
+.chronos-theme-arknights .ui-btn-text:hover:not(:disabled) {
+	border-color: var(--color-primary);
+	background-color: var(--color-primary-container);
+}
+
+.chronos-theme-arknights .ui-btn:focus-visible,
+.chronos-theme-arknights [role='tab']:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 3px;
+}
+
+.chronos-theme-arknights .ui-btn:focus:not(:focus-visible),
+.chronos-theme-arknights [role='tab']:focus:not(:focus-visible) {
+	outline: none;
+}
+
+.chronos-theme-arknights [role='tab'] .tab-icon-shell {
+	border-radius: var(--radius-control);
+	border-block-end: 2px solid transparent;
+}
+
+.chronos-theme-arknights [role='tab'][aria-selected='true'] .tab-icon-shell {
+	border-block-end-color: var(--color-primary);
+}
+
+.chronos-theme-arknights [data-dialog-content],
+.chronos-theme-arknights [data-sheet-content] {
+	border: 1px solid var(--ak-line);
+	border-block-start: 3px solid var(--ak-signal-info);
+}
+
+.chronos-theme-arknights .course-capsule {
+	border-inline-start-width: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.chronos-theme-arknights .ui-btn {
+		transition: none;
+	}
+}
+
+.chronos-theme-arknights.reduce-motion .ui-btn {
+	transition: none;
+}
+
+/* Command type is reserved for headings; navigation and numbers use the data face. */
+.chronos-theme-arknights .ui-shell-top-bar h1 {
+	font-weight: 700;
+	letter-spacing: 0.035em;
+}
+
+.chronos-theme-arknights .ui-segmented-track {
+	padding: 0;
+	border-color: var(--ak-line);
+	background-color: var(--color-surface-container-low);
+}
+
+.chronos-theme-arknights .ui-segmented-thumb {
+	display: none;
+}
+
+.chronos-theme-arknights .ui-segmented-tab {
+	min-height: 2.75rem;
+	padding: 0.65rem 0.75rem;
+	font-family: var(--font-mono);
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	color: var(--color-on-surface-variant);
+	border-block-end: 3px solid transparent;
+	transition: none;
+}
+
+.chronos-theme-arknights .ui-segmented-tab + .ui-segmented-tab {
+	border-inline-start: 1px solid var(--ak-line);
+}
+
+.chronos-theme-arknights .ui-segmented-tab[aria-selected='true'] {
+	color: var(--color-inverse-on-surface);
+	background-color: var(--color-inverse-surface);
+	border-block-end-color: var(--color-primary);
+}
+
+.chronos-theme-arknights .ui-segmented-tab:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: -3px;
+	box-shadow: none;
+}
+
+.chronos-theme-arknights .ui-segmented-tab:focus:not(:focus-visible) {
+	outline: none;
+}
+
+.chronos-theme-arknights .tab-label {
+	font-family: var(--font-mono);
+	letter-spacing: 0.04em;
+}
+
+.chronos-theme-arknights [role='tab'][aria-selected='true'] .tab-label {
+	font-weight: 800;
+	color: var(--color-on-surface);
+}

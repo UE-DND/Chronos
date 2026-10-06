@@ -177,7 +177,7 @@
 					role="tab"
 					aria-selected={active}
 					aria-label={resolveLocalizedText(tab.label)}
-					class="flex min-h-0 cursor-pointer flex-col items-center justify-center border-0 bg-transparent py-0.5 text-on-surface-variant transition-colors hover:text-on-surface sm:py-1"
+					class="flex min-h-0 cursor-pointer flex-col items-center justify-center border-0 bg-transparent py-0.5 text-on-surface-variant transition-colors outline-none hover:text-on-surface focus:outline-none sm:py-1"
 					onclick={(e) => handleTabClick(e, tab)}
 				>
 					<span

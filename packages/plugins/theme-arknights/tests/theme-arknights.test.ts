@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vite-plus/test';
 import {
 	WORKBENCH_COLOR_KEYS,
@@ -19,19 +21,19 @@ describe('@chronos/plugin-theme-arknights', () => {
 		const expectedKeys = [...WORKBENCH_COLOR_KEYS].sort();
 		expect(Object.keys(themeContribution.workbenchColors.light).sort()).toEqual(expectedKeys);
 		expect(Object.keys(themeContribution.workbenchColors.dark).sort()).toEqual(expectedKeys);
-		expect(themeContribution.workbenchColors.light['color.canvas']).toBe('#E9EDF2');
-		expect(themeContribution.workbenchColors.dark['color.canvas']).toBe('#1A1C20');
-		expect(themeContribution.workbenchColors.dark['color.primary']).toBe('#3F72AF');
-		expect(themeContribution.workbenchColors.dark['color.warning']).toBe('#E08E45');
+		expect(themeContribution.workbenchColors.light['color.canvas']).toBe('#E9E9E5');
+		expect(themeContribution.workbenchColors.dark['color.canvas']).toBe('#171B1E');
+		expect(themeContribution.workbenchColors.dark['color.primary']).toBe('#4AABEA');
+		expect(themeContribution.workbenchColors.dark['color.warning']).toBe('#F1C644');
 		expect(themeContribution.workbenchColors.light['shell.bottomTab.activeBackground']).toBe(
-			'transparent'
+			'#24282B'
 		);
 		expect(themeContribution.workbenchColors.light['timetable.period.activeBackground']).toBe(
-			'#3F72AF'
+			'#006A93'
 		);
-		expect(themeContribution.workbenchColors.dark['timetable.period.activeBackgroundImage']).toBe(
-			'none'
-		);
+		expect(
+			themeContribution.workbenchColors.dark['timetable.period.activeBackgroundImage']
+		).toContain('radial-gradient');
 	});
 
 	it('exposes six readable course colors in both modes', () => {
@@ -47,17 +49,61 @@ describe('@chronos/plugin-theme-arknights', () => {
 		}
 	});
 
+	it('keeps text readable on navigation, actions, surfaces and courses', () => {
+		const luminance = (hex: string) => {
+			const channels = hex
+				.slice(1)
+				.match(/../g)!
+				.map((channel) => {
+					const value = parseInt(channel, 16) / 255;
+					return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+				});
+			return channels[0]! * 0.2126 + channels[1]! * 0.7152 + channels[2]! * 0.0722;
+		};
+		const contrast = (foreground: string, background: string) => {
+			const values = [luminance(foreground), luminance(background)].sort((a, b) => a - b);
+			return (values[1]! + 0.05) / (values[0]! + 0.05);
+		};
+		for (const mode of ['light', 'dark'] as const) {
+			const colors = colorsJson.variants[mode].colors;
+			for (const [foreground, background] of [
+				[colors['color.on-surface'], colors['color.surface']],
+				[colors['color.on-surface-variant'], colors['color.surface-container-low']],
+				[colors['color.on-primary'], colors['color.primary']],
+				[colors['color.on-tertiary'], colors['color.tertiary']],
+				[colors['color.on-tertiary'], colors['color.tertiary-dim']],
+				[colors['color.inverse-on-surface'], colors['color.inverse-surface']],
+				[colors['shell.bottomTab.activeForeground'], colors['shell.bottomTab.activeBackground']],
+				...colorsJson.coursePalette[mode].map(({ foreground, background }) => [
+					foreground,
+					background
+				])
+			]) {
+				expect(
+					contrast(foreground!, background!),
+					`${mode}: ${foreground} on ${background}`
+				).toBeGreaterThanOrEqual(4.5);
+			}
+		}
+	});
+
 	it('recommends the matching icon theme', () => {
 		expect(themeContribution.id).toBe(THEME_ID);
+		expect(themeContribution.className).toBe('chronos-theme-arknights');
 		expect(themeContribution.recommendedIconTheme).toBe(THEME_ID);
 		expect(iconThemeContribution.id).toBe(THEME_ID);
 	});
 
-	it('defines the theme wallpaper', () => {
+	it('preserves the original theme wallpaper', () => {
 		expect(colorsJson.wallpaper).toEqual({
 			url: './wallpaper.jpg',
 			sha256: '2aeb0c4ae37521c3d242a1bda8c930f7551d3c5f13185d1bbd3e0173d6c37ecc'
 		});
+		expect(
+			createHash('sha256')
+				.update(readFileSync(new URL('../wallpaper.jpg', import.meta.url)))
+				.digest('hex')
+		).toBe(colorsJson.wallpaper.sha256);
 	});
 
 	it('ships safe original line icons for each supported bottom tab', () => {

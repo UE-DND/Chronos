@@ -1,0 +1,9 @@
+Create an original 3:4 portrait contemporary editorial wallpaper for a timetable application. Cool gray substrate #E9E9E5, pure one-ink charcoal #30343A. Flat front-facing printed image, mechanical ink density only, no additional ink. This is a functional text-free background asset: no lettering, labels, logos or branding.
+
+Editorial cover composition with balanced tension. One focal event: an extreme cropped architectural monolith occupying the bottom-right 60% of the image, reaching beyond the right and bottom edges. Leave the upper-left 40% as quiet exposed clean gray paper for live interface content. Asymmetric geometry, one diagonal architectural edge, no panels or framing.
+
+Abstract symbol extraction of a brutalist observation tower: three identity anchors are stacked cantilevered concrete slabs, a deep narrow vertical opening, and a stair-like silhouette. Simplify to bold structural masses and open contours. Medium halftone reproduction with clearly visible regular printed dots; exposed paper cuts through the tower highlights and fades the distant surfaces. Sparse but strong, not a photorealistic cityscape.
+
+Typography is deliberately absent because real accessible application text will be overlaid by the app. Reserve generous quiet space and avoid any invented microcopy. The building itself carries the large-scale visual hierarchy.
+
+Clean contemporary screen-print reproduction, restrained ink bleed only. No aged paper, sepia, grunge, gradient color washes, glossy 3D, cinematic lighting, neon, game characters, game logos, borders, interface mockups, UI cards, text, watermarks or signatures.
