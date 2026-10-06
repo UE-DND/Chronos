@@ -137,6 +137,8 @@
 			--tabbar-inline-safe: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
 			--shell-tab-bar-block-size: 0px;
 			--shell-tab-bar-inline-size: calc(4.5rem + var(--tabbar-inline-safe));
+			/* The rail replaces the bottom bar, but not the system gesture area. */
+			--bottom-bar-height: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 		}
 	}
 

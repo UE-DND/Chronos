@@ -1,4 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
+import timetable from '../../packages/core/tests/fixtures/timetable.json' with { type: 'json' };
+import { encodeSharePayload } from '../../packages/plugins/codec-share/src/share-link/chronos-share-link-codec.ts';
+import type { Timetable } from '../../packages/core/src/domain/timetable';
+
+const payload = await encodeSharePayload(timetable as Timetable);
 
 test.use({ viewport: { width: 430, height: 932 }, isMobile: true, hasTouch: true });
 
@@ -63,4 +68,56 @@ test('native safe areas move between edges on rotation even when WebView env val
 	});
 	await expect(rail).toHaveCSS('padding-bottom', '16px');
 	await cdp.detach();
+});
+
+test('landscape timetable and secondary pages avoid the status bar, cutout and gesture bar together', async ({
+	page,
+	request
+}) => {
+	await request.post('/__e2e/deploy?build=old');
+	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await page.goto(`/Chronos/s#${payload}`);
+	await expect(page.getByRole('heading', { name: timetable.name })).toBeVisible();
+	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
+	await expect(page).toHaveURL(/\/Chronos\/$/);
+	const pager = page.locator('.timetable-week-pager');
+	await expect(pager).toBeVisible();
+	await setNativeInsets(page, 32, 0, 16, 0);
+	await page.setViewportSize({ width: 932, height: 430 });
+	// Android can retain a top status bar while the physical cutout moves sideways.
+	await setNativeInsets(page, 24, 0, 16, 32);
+	await expect.poll(async () => (await pager.boundingBox())?.y).toBe(24);
+	let bounds = (await pager.boundingBox())!;
+	expect(bounds.x).toBe(32);
+	expect(bounds.y + bounds.height).toBe(414);
+	await expect(page.locator('.timetable-week-top-bar')).not.toBeVisible();
+
+	await setNativeInsets(page, 24, 32, 16, 0);
+	await expect.poll(async () => (await pager.boundingBox())?.x).toBe(0);
+	bounds = (await pager.boundingBox())!;
+	expect(bounds.y).toBe(24);
+	expect(bounds.x + bounds.width).toBeLessThanOrEqual(900);
+
+	await setNativeInsets(page, 0, 32, 0, 0);
+	await expect.poll(async () => (await pager.boundingBox())?.y).toBe(0);
+	bounds = (await pager.boundingBox())!;
+	expect(bounds.y + bounds.height).toBe(430);
+
+	await setNativeInsets(page, 24, 0, 16, 32);
+	await page.getByRole('tab', { name: '我的', exact: true }).click();
+	await page.getByText('显示设置', { exact: true }).click();
+	const content = page.locator('.secondary-page > .secondary-scroll-host');
+	await expect(content).toBeVisible();
+	await expect.poll(async () => (await content.boundingBox())?.y).toBe(24);
+	bounds = (await content.boundingBox())!;
+	expect(bounds.x).toBe(32);
+	expect(bounds.y + bounds.height).toBe(414);
+	await expect(page.locator('.secondary-page > .ui-shell-top-bar')).not.toBeVisible();
+
+	await page.getByRole('button', { name: '返回', exact: true }).click();
+	await page.getByRole('tab', { name: '课表', exact: true }).click();
+	await page.setViewportSize({ width: 430, height: 932 });
+	await setNativeInsets(page, 32, 0, 16, 0);
+	await expect(page.locator('.timetable-week-top-bar')).toBeVisible();
+	await expect(page.locator('.timetable-week-top-bar')).toHaveCSS('padding-top', '32px');
 });
