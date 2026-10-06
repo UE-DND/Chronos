@@ -170,7 +170,10 @@ describe('Android automatic APK update detection', () => {
 		expect(appUpdateNotice.hasUpdate).toBe(true);
 		expect(mocks.applyUpdate).not.toHaveBeenCalled();
 		await getAppUpdateState().installUpdate();
-		expect(mocks.applyUpdate).toHaveBeenCalledWith(getAppUpdateState().state.latestRelease);
+		expect(mocks.applyUpdate).toHaveBeenCalledWith(
+			getAppUpdateState().state.latestRelease,
+			expect.objectContaining({ onProgress: expect.any(Function) })
+		);
 	});
 
 	it('pauses in the background, then checks an expired result through the native resume callback', async () => {

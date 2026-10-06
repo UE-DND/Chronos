@@ -1,4 +1,9 @@
-import type { ClassNotificationBatch, PlatformType, TodayWidgetSnapshot } from '@chronos/core';
+import type {
+	ClassNotificationBatch,
+	PlatformType,
+	TodayWidgetSnapshot,
+	SelectedAndroidUpdate
+} from '@chronos/core';
 import {
 	createWebClassNotifications,
 	initWebClassNotificationLinks
@@ -28,6 +33,8 @@ export interface NativeUpdateState {
 	targetVersion?: string;
 	sizeBytes?: number;
 	errorCode?: string;
+	update?: SelectedAndroidUpdate;
+	preparationToken?: string;
 }
 
 export interface NativeUpdateAction {

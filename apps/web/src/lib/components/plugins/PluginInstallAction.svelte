@@ -8,6 +8,7 @@
 	let {
 		manifest,
 		installed = false,
+		disabled = false,
 		needsUpdate = false,
 		task,
 		onInstall,
@@ -16,6 +17,7 @@
 	}: {
 		manifest: PluginManifest;
 		installed?: boolean;
+		disabled?: boolean;
 		needsUpdate?: boolean;
 		task?: PluginInstallTask;
 		onInstall: () => void;
@@ -122,6 +124,7 @@
 			<Button
 				variant="outlined"
 				class="h-7.5 border-error/50 px-2.5 text-xs text-error hover:bg-error/10 active:bg-error/20"
+				{disabled}
 				onclick={onRetry}
 			>
 				<Refresh class="mr-1 size-3" />
@@ -129,7 +132,9 @@
 			</Button>
 		</div>
 	{:else if installed && needsUpdate}
-		<Button variant="outlined" onclick={onInstall}>{hostT('plugins.action.update')}</Button>
+		<Button variant="outlined" {disabled} onclick={onInstall}
+			>{hostT('plugins.action.update')}</Button
+		>
 	{:else if installed}
 		<span
 			class="text-label-large inline-flex h-7 min-h-7 min-w-24 shrink-0 items-center justify-center gap-1 rounded-full border border-transparent bg-primary-container/50 px-2.5 text-primary"
@@ -141,6 +146,7 @@
 		<Button
 			variant="filled"
 			class="text-label-large h-7 !min-h-7 min-w-24 shrink-0 px-2.5"
+			{disabled}
 			onclick={onInstall}
 		>
 			{hostT('plugins.action.install')}

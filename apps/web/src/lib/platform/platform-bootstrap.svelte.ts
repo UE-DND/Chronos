@@ -114,7 +114,8 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 								engine.refreshSystemTime();
 								void deps.shell.classNotifications.sync(true);
 								void todayWidgetSync?.sync();
-								void getOfficialPluginService().retryPendingUpdates();
+								if (!platform.isNative) void getOfficialPluginService().retryPendingUpdates();
+								else void platform.getUpdateAction?.()?.native?.getState().catch(console.error);
 							})
 							.catch(console.error);
 					}
@@ -126,7 +127,10 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 			connectivity.init();
 			const retry = () => {
 				if (!session.alive) return;
-				if (navigator.onLine) void getOfficialPluginService().retryPendingUpdates();
+				if (navigator.onLine && !platform.isNative)
+					void getOfficialPluginService().retryPendingUpdates();
+				if (platform.isNative)
+					void platform.getUpdateAction?.()?.native?.getState().catch(console.error);
 				void import('$lib/client/web-host-update')
 					.then((module) => {
 						if (session.alive) return module.recoverInterruptedWebUpdate();

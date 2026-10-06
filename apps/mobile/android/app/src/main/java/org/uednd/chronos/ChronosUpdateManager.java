@@ -112,7 +112,8 @@ final class ChronosUpdateManager {
             snapshot.put("canCancel", active() && !record.optBoolean("committed"));
             if (record.has("taskId")) snapshot.put("taskId", record.getString("taskId"));
             JSONObject update = record.optJSONObject("update");
-            if (update != null) snapshot.put("targetVersion", update.getJSONObject("host").getString("version")).put("sizeBytes", update.getLong("sizeBytes"));
+            if (update != null) snapshot.put("targetVersion", update.getJSONObject("host").getString("version")).put("sizeBytes", update.getLong("sizeBytes")).put("update", update);
+            if (record.has("preparationToken")) snapshot.put("preparationToken", record.getString("preparationToken"));
             if (!record.isNull("errorCode")) snapshot.put("errorCode", record.optString("errorCode"));
         } catch (Exception error) { throw new IllegalStateException(error); }
         return snapshot;
@@ -153,11 +154,12 @@ final class ChronosUpdateManager {
         AndroidUpdateRules.require("mobile".equals(host.getString("target")) && installed.versionName.equals(host.getString("version")), "invalid_descriptor");
         AndroidUpdateRules.validate(artifact, context.getPackageName(), certificate(installed), host.getString("profileId"), code(installed));
     }
-    synchronized JSONObject start(JSONObject update) throws Exception {
+    synchronized JSONObject start(JSONObject update, String preparationToken) throws Exception {
         reconcile();
         if (active()) return snapshot(); // The already authorized target wins over a changing feed.
         AndroidUpdateRules.Artifact artifact = artifact(update);
         validateInstalled(artifact);
+        AndroidUpdateRules.require(preparationToken != null && !preparationToken.isEmpty(), "invalid_descriptor");
         JSONArray events = record.optJSONArray("events");
         boolean reuse = record.optJSONObject("update") != null &&
             record.getJSONObject("update").optString("sha256").equals(artifact.sha256) && record.optBoolean("privateReady") && privateApk().isFile();
@@ -169,6 +171,7 @@ final class ChronosUpdateManager {
         record = emptyRecord();
         if (events != null) put("events", events);
         put("taskId", UUID.randomUUID().toString()); put("update", new JSONObject(update.toString()));
+        put("preparationToken", preparationToken);
         put("downloadId", -1L); put("sessionId", -1); put("committed", false);
         if (reuse) {
             File destination = privateApk();
@@ -235,6 +238,7 @@ final class ChronosUpdateManager {
     synchronized void reconcile() {
         if (!active()) return;
         try {
+            AndroidUpdateRules.require(!record.optString("preparationToken").isEmpty(), "invalid_descriptor");
             AndroidUpdateRules.Artifact target = artifact(record.getJSONObject("update"));
             PackageInfo installed = installedInfo();
             if (code(installed) >= target.versionCode) {
@@ -290,8 +294,8 @@ final class ChronosUpdateManager {
         else if (phase().equals("awaiting-confirmation") && confirmation == null) {
             abandon(); prepare(record.optBoolean("privateReady") && privateApk().isFile());
         } else if (phase().equals("failed")) {
-            JSONObject update = record.optJSONObject("update");
-            if (update != null) return start(update);
+            // A failed task must return to the WebView to prepare plugins before retrying.
+            throw new AndroidUpdateRules.Rejected("plugin_prepare_failed");
         }
         return snapshot();
     }

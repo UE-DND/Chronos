@@ -65,7 +65,7 @@ public class ChronosUpdaterPlugin extends Plugin {
         try {
             JSObject update = call.getObject("update");
             if (update == null) throw new AndroidUpdateRules.Rejected("invalid_descriptor");
-            JSONObject snapshot = manager().start(update);
+            JSONObject snapshot = manager().start(update, call.getString("preparationToken"));
             if (snapshot.optString("phase").equals("awaiting-permission")) openPermission();
             resolve(call, snapshot);
         } catch (Exception error) { reject(call, error); }

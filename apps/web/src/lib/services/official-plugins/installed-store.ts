@@ -10,7 +10,8 @@ export interface PreparedPluginUpdate {
 	revision: number;
 	records: InstalledOfficialPluginRecord[];
 	token: string;
-	until: number;
+	/** null keeps a native task locked until reconciliation or adoption. */
+	until: number | null;
 }
 export interface PluginInstallationState {
 	records: InstalledOfficialPluginRecord[];
@@ -56,7 +57,10 @@ export function parseInstallationState(value: unknown): PluginInstallationState 
 				!state.prepared.target?.buildId ||
 				!Number.isSafeInteger(state.prepared.revision) ||
 				typeof state.prepared.token !== 'string' ||
-				!Number.isFinite(state.prepared.until)))
+				!(
+					Number.isFinite(state.prepared.until) ||
+					(state.prepared.until === null && state.prepared.target.target === 'mobile')
+				)))
 	)
 		throw new Error('Invalid plugin installation state; reset development data manually');
 	return state;
@@ -156,7 +160,10 @@ export class OfficialPluginInstalledStore {
 		return this.state.generation;
 	}
 	get isFrozen() {
-		return Boolean(this.state.prepared && this.state.prepared.until > Date.now());
+		return Boolean(
+			this.state.prepared &&
+			(this.state.prepared.until === null || this.state.prepared.until > Date.now())
+		);
 	}
 	get hostChanged() {
 		return Boolean(this.generation && this.state.generation !== this.generation);
@@ -196,7 +203,7 @@ export class OfficialPluginInstalledStore {
 		this.state = await this.repository.transaction((state) => {
 			if (
 				state.generation !== this.generation ||
-				(state.prepared && state.prepared.until > Date.now())
+				(state.prepared && (state.prepared.until === null || state.prepared.until > Date.now()))
 			)
 				throw new Error('Application update in progress; reload before changing plugins');
 			change(state);
@@ -245,7 +252,7 @@ export class OfficialPluginInstalledStore {
 				throw new Error('Installed plugins changed; retry update');
 			if (
 				state.prepared &&
-				state.prepared.until > Date.now() &&
+				(state.prepared.until === null || state.prepared.until > Date.now()) &&
 				state.prepared.token !== update.token
 			)
 				throw new Error('Update is already running in another window');

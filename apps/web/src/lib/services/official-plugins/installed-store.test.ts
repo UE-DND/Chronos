@@ -236,4 +236,50 @@ describe('OfficialPluginInstalledStore', () => {
 		await expect(store.remove('a')).rejects.toThrow('Application update in progress');
 		expect(updated.find('a')).toBeDefined();
 	});
+	it('holds a native preparation across time and process recreation, adopts once, and protects token ownership', async () => {
+		const host = {
+			version: '1.2.2',
+			buildId: 'old',
+			sourceCommit: 'commit',
+			profileId: 'chronos-default',
+			deploymentId: 'mobile',
+			target: 'mobile' as const
+		};
+		await store.startHost(host);
+		await store.upsert({
+			manifest: { id: 'optional', version: '1.2.2' } as never,
+			code: 'old',
+			origin: { kind: 'user' },
+			installedAt: 1
+		});
+		const target = { ...host, version: '1.2.3', buildId: 'next' };
+		await store.prepare({
+			target,
+			revision: store.revision,
+			records: [
+				{
+					...store.find('optional')!,
+					manifest: { id: 'optional', version: '1.2.3' } as never,
+					code: 'new'
+				}
+			],
+			token: 'owner',
+			until: null
+		});
+		const later = new OfficialPluginInstalledStore(engine);
+		await later.startHost(host);
+		vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 7 * 86400000);
+		expect(later.isFrozen).toBe(true);
+		await expect(later.remove('optional')).rejects.toThrow('Application update in progress');
+		await later.cancelPreparation('someone-else');
+		expect(later.prepared?.token).toBe('owner');
+		await later.startHost(target);
+		expect(later.find('optional')?.code).toBe('new');
+		expect(later.prepared).toBeUndefined();
+		const revision = later.revision;
+		await later.startHost(target);
+		expect(later.revision).toBe(revision);
+		await later.remove('optional');
+		expect(later.has('optional')).toBe(false);
+	});
 });

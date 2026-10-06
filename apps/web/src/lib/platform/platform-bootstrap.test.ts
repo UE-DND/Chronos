@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
 	checkAppUpdateOnResume: vi.fn(async () => {}),
 	refreshSystemTime: vi.fn(),
 	retryPendingUpdates: vi.fn(),
+	listenWindow: vi.fn<(name: string, listener: EventListener) => void>(),
+	listenDocument: vi.fn<(name: string, listener: EventListener) => void>(),
 	onboardingState: { open: false } as { open: boolean },
 	tabIds: ['today'] as string[]
 }));
@@ -113,11 +115,14 @@ describe('createPlatformBootstrap', () => {
 		vi.clearAllMocks();
 		mocks.tabIds = ['today'];
 		mocks.onboardingState.open = false;
-		vi.stubGlobal('document', { addEventListener: vi.fn(), removeEventListener: vi.fn() });
+		vi.stubGlobal('document', {
+			addEventListener: mocks.listenDocument,
+			removeEventListener: vi.fn()
+		});
 		vi.stubGlobal('window', {
 			location: { href: 'https://chronos.example/' },
 			__chronosHideBootFallback: vi.fn(),
-			addEventListener: vi.fn(),
+			addEventListener: mocks.listenWindow,
 			removeEventListener: vi.fn()
 		});
 	});
@@ -220,6 +225,13 @@ describe('createPlatformBootstrap', () => {
 			callbacks?.onAppResume?.();
 			expect(mocks.checkAppUpdateOnResume).toHaveBeenCalledOnce();
 			await vi.waitFor(() => expect(mocks.refreshSystemTime).toHaveBeenCalledOnce());
+			const online = mocks.listenWindow.mock.calls.find(([name]) => name === 'online')?.[1];
+			const visible = mocks.listenDocument.mock.calls.find(
+				([name]) => name === 'visibilitychange'
+			)?.[1];
+			if (typeof online === 'function') online(new Event('online'));
+			if (typeof visible === 'function') visible(new Event('visibilitychange'));
+			expect(mocks.retryPendingUpdates).not.toHaveBeenCalled();
 		} finally {
 			teardown();
 			resetHostPlatform();

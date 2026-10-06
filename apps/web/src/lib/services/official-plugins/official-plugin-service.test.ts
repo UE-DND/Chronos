@@ -887,73 +887,108 @@ describe('OfficialPluginService', () => {
 		}
 	);
 
-	it('prepares installed official plugins for the next Web host without executing their code', async () => {
-		const hash = await engine.runtime.sha256(SAMPLE_BUNDLE);
-		const manifest: PluginManifest = {
-			id: 'test-plugin',
-			name: { en: 'Test' },
-			description: { en: '' },
-			author: 'Chronos',
-			version: '0.4.1',
-			type: 'tool',
-			toolGroup: 'utility',
-			bundleFormat: 'esm',
-			bundleUrl: 'https://ue-dnd.github.io/Chronos/plugins/releases/0.4.2/bundles/test.bundle.js',
-			sha256: hash
-		};
-		await engine.storage.setPluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY, {
-			records: [
-				{
-					manifest,
-					code: SAMPLE_BUNDLE,
-					origin: { kind: 'user' },
-					installedAt: 1,
-					manifestUrl: OFFICIAL_MANIFEST_URL
-				}
-			],
-			removed: [],
-			seeded: true,
-			revision: 0,
-			generation: ''
-		});
-		const url =
-			'https://ue-dnd.github.io/Chronos/plugins/releases/0.4.2/manifests/abc/test-plugin.manifest.json';
-		httpRequest.mockImplementation(async (path) => {
-			if (path.endsWith('/catalog.json'))
+	it.each(['web', 'mobile', 'missing', 'integrity', 'canceled', 'changed'] as const)(
+		'prepares future plugins without executing them (%s)',
+		async (scenario) => {
+			const hash = await engine.runtime.sha256(SAMPLE_BUNDLE);
+			const manifest: PluginManifest = {
+				id: 'test-plugin',
+				name: { en: 'Test' },
+				description: { en: '' },
+				author: 'Chronos',
+				version: '0.4.1',
+				type: 'tool',
+				toolGroup: 'utility',
+				bundleFormat: 'esm',
+				bundleUrl: 'https://ue-dnd.github.io/Chronos/plugins/releases/0.4.2/bundles/test.bundle.js',
+				sha256: hash
+			};
+			await engine.storage.setPluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY, {
+				records: [
+					{
+						manifest,
+						code: SAMPLE_BUNDLE,
+						origin: { kind: 'user' },
+						installedAt: 1,
+						manifestUrl: OFFICIAL_MANIFEST_URL
+					}
+				],
+				removed: [],
+				seeded: true,
+				revision: 0,
+				generation: ''
+			});
+			const url =
+				'https://ue-dnd.github.io/Chronos/plugins/releases/0.4.2/manifests/abc/test-plugin.manifest.json';
+			httpRequest.mockImplementation(async (path) => {
+				if (path.endsWith('/catalog.json'))
+					return httpResponse({
+						json: async <T>() =>
+							({ version: 1, updatedAt: 1, manifests: scenario === 'missing' ? [] : [url] }) as T
+					});
+				if (path === url)
+					return httpResponse({ json: async <T>() => ({ ...manifest, version: '0.4.2' }) as T });
 				return httpResponse({
-					json: async <T>() => ({ version: 1, updatedAt: 1, manifests: [url] }) as T
+					text: async () => {
+						if (scenario === 'changed') await service.installationStore.remove('test-plugin');
+						return scenario === 'integrity' ? 'wrong bytes' : SAMPLE_BUNDLE;
+					}
 				});
-			if (path === url)
-				return httpResponse({ json: async <T>() => ({ ...manifest, version: '0.4.2' }) as T });
-			return httpResponse({ text: async () => SAMPLE_BUNDLE });
-		});
-		const load = vi.spyOn(engine, 'loadPlugin');
-		const target = {
-			version: '0.4.2',
-			buildId: 'a'.repeat(64),
-			sourceCommit: 'b'.repeat(40),
-			profileId: 'chronos-default',
-			deploymentId: 'pages',
-			target: 'pages' as const
-		};
-		await service.prepareHostUpdate({
-			formatVersion: 1,
-			host: target,
-			release: { tagName: 'v0.4.2', name: '', body: '', publishedAt: '' },
-			requiredPluginIds: [],
-			pluginCatalogUrl: 'https://ue-dnd.github.io/Chronos/plugins/releases/0.4.2/catalog.json'
-		});
-		expect(load).not.toHaveBeenCalled();
-		expect(service.getInstalled('test-plugin')?.manifest.version).toBe('0.4.1');
-		expect(service.installationStore.prepared?.records).toHaveLength(1);
-		await expect(service.installationStore.remove('test-plugin')).rejects.toThrow(
-			'Application update in progress'
-		);
-		expect(load).not.toHaveBeenCalled();
-		await service.installationStore.startHost(target);
-		expect(service.getInstalled('test-plugin')?.manifest.version).toBe('0.4.2');
-		expect(service.getInstalled('test-plugin')).toBeDefined();
-	});
+			});
+			const load = vi.spyOn(engine, 'loadPlugin');
+			const target = {
+				version: '0.4.2',
+				buildId: 'a'.repeat(64),
+				sourceCommit: 'b'.repeat(40),
+				profileId: 'chronos-default',
+				deploymentId: 'pages',
+				target: scenario === 'mobile' ? ('mobile' as const) : ('pages' as const)
+			};
+			const controller = new AbortController();
+			if (scenario === 'canceled') controller.abort();
+			const preparing = service.prepareHostUpdate(
+				{
+					host: target,
+					requiredPluginIds: [],
+					pluginCatalogUrl: 'https://ue-dnd.github.io/Chronos/plugins/releases/0.4.2/catalog.json'
+				},
+				undefined,
+				{ signal: controller.signal }
+			);
+			if (!['web', 'mobile'].includes(scenario)) {
+				await expect(preparing).rejects.toThrow();
+				expect(service.installationStore.prepared).toBeUndefined();
+				expect(load).not.toHaveBeenCalled();
+				expect(service.getInstalled('test-plugin')?.manifest.version).toBe(
+					scenario === 'changed' ? undefined : '0.4.1'
+				);
+				return;
+			}
+			await preparing;
+			expect(service.installationStore.prepared?.until === null).toBe(scenario === 'mobile');
+			expect(load).not.toHaveBeenCalled();
+			expect(service.getInstalled('test-plugin')?.manifest.version).toBe('0.4.1');
+			expect(service.installationStore.prepared?.records).toHaveLength(1);
+			await expect(service.resetAfterFactoryClear()).rejects.toThrow();
+			expect(service.getInstalled('test-plugin')?.manifest.version).toBe('0.4.1');
+			await expect(service.installationStore.remove('test-plugin')).rejects.toThrow(
+				'Application update in progress'
+			);
+			expect(load).not.toHaveBeenCalled();
+			if (scenario === 'mobile') {
+				const next = createService(engine, target.version, target);
+				httpRequest.mockClear().mockRejectedValue(new Error('offline'));
+				await next.init();
+				expect(httpRequest).not.toHaveBeenCalled();
+				expect(next.isPluginActive('test-plugin')).toBe(true);
+				expect(next.getInstalled('test-plugin')?.manifest.version).toBe('0.4.2');
+				next.dispose();
+				await service.installationStore.load();
+			} else await service.installationStore.startHost(target);
+			expect(service.getInstalled('test-plugin')?.manifest.version).toBe('0.4.2');
+			expect(service.getInstalled('test-plugin')).toBeDefined();
+		}
+	);
 
 	it('installs plugin through installQueue with progress and state transitions', async () => {
 		const queuedBundle = SAMPLE_BUNDLE.replace(/test-plugin/g, 'queued-plugin');

@@ -36,6 +36,7 @@
 	const officialPlugins = getOfficialPluginService();
 	const appController = getAppController();
 
+	let installationFrozen = $state(false);
 	let activeTab = $state<'installed' | 'official'>('installed');
 	const edgeActions = $derived.by((): EdgeBarAction[] =>
 		activeTab === 'official'
@@ -45,6 +46,7 @@
 						label: hostT('plugins.link.open'),
 						icon: DownloadFill,
 						variant: 'outlined',
+						disabled: installationFrozen,
 						onClick: promptLinkInstall
 					}
 				]
@@ -94,6 +96,7 @@
 	const linkInstallSource = $derived(describeInstallSource(manifestUrlInput.trim()));
 
 	function refreshInstalled() {
+		installationFrozen = officialPlugins.installationStore.isFrozen;
 		installedRecords = [...officialPlugins.listInstalled()];
 		updateStatuses = Object.fromEntries(
 			installedRecords.map((record) => [
@@ -192,6 +195,7 @@
 	}
 
 	function handleInstall(manifest: PluginManifest, manifestUrl?: string) {
+		if (installationFrozen) return;
 		officialPlugins.installQueue.enqueue(manifest, manifestUrl);
 	}
 
@@ -200,6 +204,7 @@
 	}
 
 	function handleRetry(pluginId: string) {
+		if (installationFrozen) return;
 		officialPlugins.installQueue.retry(pluginId);
 	}
 
@@ -209,6 +214,7 @@
 	}
 
 	async function confirmLinkInstall() {
+		if (installationFrozen) return;
 		const url = manifestUrlInput.trim();
 		if (!url) {
 			snackbarKey('snackbar.manifestRequired');
@@ -243,6 +249,7 @@
 	}
 
 	async function confirmUninstall() {
+		if (installationFrozen) return;
 		const targetId = uninstallTarget.id;
 		if (!targetId) return;
 		uninstallDialogOpen = false;
@@ -295,6 +302,9 @@
 {/snippet}
 
 <FormScreenLayout class="text-on-surface" header={tabHeader} actions={edgeActions}>
+	{#if installationFrozen}<p role="status" class="text-body-medium px-4 text-on-surface-variant">
+			{hostT('plugins.update.locked')}
+		</p>{/if}
 	{#if activeTab === 'installed'}
 		{#if preinstallFailures.length}
 			<section class="ui-section">
@@ -333,6 +343,7 @@
 								{/if}
 							</div>
 							<PluginInstallAction
+								disabled={installationFrozen}
 								{manifest}
 								installed={isInstalled(manifest.id)}
 								{task}
@@ -414,12 +425,15 @@
 									{#if update.status === 'confirmation-required'}
 										<Button
 											variant="outlined"
-											disabled={isBusy}
+											disabled={isBusy || installationFrozen}
 											onclick={() => handleConfirmCompatibility(record.manifest.id)}
 											>{hostT('plugins.action.confirmCompatibility')}</Button
 										>
 									{:else if update.status !== 'downloading'}
-										<Button variant="outlined" onclick={() => officialPlugins.retryPendingUpdates()}
+										<Button
+											variant="outlined"
+											disabled={installationFrozen}
+											onclick={() => officialPlugins.retryPendingUpdates()}
 											>{hostT('plugins.action.retry')}</Button
 										>
 									{/if}
@@ -452,7 +466,7 @@
 										variant="text"
 										tone="danger"
 										class="text-caption h-6 shrink-0 px-1.5"
-										disabled={isBusy}
+										disabled={isBusy || installationFrozen}
 										onclick={() => promptUninstall(record.manifest.id, name)}
 									>
 										{hostT('common.uninstall')}
@@ -547,6 +561,7 @@
 
 										<div class="flex shrink-0 flex-col items-end gap-1">
 											<PluginInstallAction
+												disabled={installationFrozen}
 												{manifest}
 												{installed}
 												needsUpdate={installedRecords.some(
@@ -631,7 +646,11 @@
 		>
 			{hostT('common.cancel')}
 		</Button>
-		<Button variant="filled" disabled={linkInstallInProgress} onclick={confirmLinkInstall}>
+		<Button
+			variant="filled"
+			disabled={linkInstallInProgress || installationFrozen}
+			onclick={confirmLinkInstall}
+		>
 			{linkInstallInProgress ? hostT('plugins.action.installing') : hostT('plugins.link.confirm')}
 		</Button>
 	{/snippet}

@@ -33,7 +33,8 @@ public class ChronosUpdateManagerTest {
         try (InputStream input = context.getAssets().open("public/version.json")) {
             host = new JSONObject(ChronosUpdateManager.readText(input)).getJSONObject("host");
         }
-        String version = "1.1.3";
+        String[] currentVersion = host.getString("version").split("\\.");
+        String version = currentVersion[0] + "." + currentVersion[1] + "." + (Integer.parseInt(currentVersion[2]) + 1);
         host.put("version", version).put("buildId", repeat("b", 64));
         PackageInfo info = context.getPackageManager().getPackageInfo(context.getPackageName(), android.os.Build.VERSION.SDK_INT >= 28 ? PackageManager.GET_SIGNING_CERTIFICATES : PackageManager.GET_SIGNATURES);
         return new JSONObject().put("host", host).put("packageId", context.getPackageName())
@@ -50,14 +51,26 @@ public class ChronosUpdateManagerTest {
     }
     private JSONObject record(JSONObject update, String phase, String taskId) throws Exception {
         return new JSONObject().put("formatVersion", 1).put("update", update).put("phase", phase)
-            .put("taskId", taskId).put("downloadId", -1).put("sessionId", -1).put("committed", false).put("events", new JSONArray()).put("privateReady", true);
+            .put("preparationToken", "prepared-fixture").put("taskId", taskId).put("downloadId", -1).put("sessionId", -1).put("committed", false).put("events", new JSONArray()).put("privateReady", true);
     }
     @Test public void a_rejectsInvalidIdentityBeforeCreatingDownload() throws Exception {
         persist(new JSONObject().put("formatVersion", 1).put("phase", "idle").put("events", new JSONArray()));
         JSONObject update = descriptor().put("signingCertificateSha256", repeat("f", 64));
-        try { manager.start(update); fail("Expected signature rejection"); }
+        try { manager.start(update, "prepared-fixture"); fail("Expected signature rejection"); }
         catch (AndroidUpdateRules.Rejected rejected) { assertEquals("signature_mismatch", rejected.code); }
         assertEquals("idle", manager.snapshot().getString("phase"));
+    }
+    @Test public void a_rejectsMissingPreparationBeforeCreatingDownload() throws Exception {
+        persist(new JSONObject().put("formatVersion", 1).put("phase", "idle").put("events", new JSONArray()));
+        try { manager.start(descriptor(), null); fail("Expected preparation rejection"); }
+        catch (AndroidUpdateRules.Rejected rejected) { assertEquals("invalid_descriptor", rejected.code); }
+        assertEquals("idle", manager.snapshot().getString("phase"));
+    }
+    @Test public void a_failedRetryRequiresPluginPreparation() throws Exception {
+        persist(record(descriptor(), "failed", UUID.randomUUID().toString()));
+        try { manager.continueUpdate(); fail("Expected preparation requirement"); }
+        catch (AndroidUpdateRules.Rejected rejected) { assertEquals("plugin_prepare_failed", rejected.code); }
+        assertEquals("failed", manager.snapshot().getString("phase"));
     }
     @Test public void b_recoversSystemDownloadAndIgnoresForgedOrDuplicateBroadcasts() throws Exception {
         JSONObject update = descriptor(); String taskId = UUID.randomUUID().toString();
@@ -68,7 +81,9 @@ public class ChronosUpdateManagerTest {
             persist(record(update, "downloading", taskId).put("downloadId", id));
             JSONObject restored = manager.snapshot();
             assertEquals(taskId, restored.getString("taskId"));
-            assertEquals("1.1.3", restored.getString("targetVersion"));
+            assertEquals(update.getJSONObject("host").getString("version"), restored.getString("targetVersion"));
+            assertEquals("prepared-fixture", restored.getString("preparationToken"));
+            assertEquals(update.toString(), restored.getJSONObject("update").toString());
             manager.downloadCompleted(id + 1000000);
             manager.installationResult("forged-task", 123, android.content.pm.PackageInstaller.STATUS_SUCCESS, null);
             manager.downloadCompleted(id); manager.downloadCompleted(id);

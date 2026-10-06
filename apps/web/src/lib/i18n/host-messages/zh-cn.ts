@@ -116,6 +116,7 @@ export const zhCn = {
 	'plugins.action.install': '安装',
 	'plugins.action.installing': '安装中…',
 	'plugins.action.update': '更新',
+	'plugins.update.locked': '应用更新进行中，插件安装变更已暂停，更新结束或取消后恢复。',
 	'plugins.update.pending': '等待适配当前应用版本',
 	'plugins.update.downloading': '正在下载更新',
 	'plugins.update.confirmation-required': '应用已更新，确认兼容后才能运行此插件',
@@ -477,6 +478,8 @@ export const zhCn = {
 	'about.update.android.install': '下载并更新',
 	'about.update.android.continue': '继续安装',
 	'about.update.android.cancel': '取消更新',
+	'about.update.android.error.plugin_prepare_failed':
+		'插件准备失败，应用尚未更新，请检查网络后重试',
 	'about.update.android.error.permission_denied': '请允许 Chronos 安装应用后重试',
 	'about.update.android.error.storage_full': '存储空间不足，请清理后重试',
 	'about.update.android.error.integrity_mismatch': '更新文件不完整或摘要不符，请重新下载',

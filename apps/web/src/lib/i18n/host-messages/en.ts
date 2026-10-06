@@ -118,6 +118,8 @@ export const en = {
 	'plugins.action.install': 'Install',
 	'plugins.action.installing': 'Installing…',
 	'plugins.action.update': 'Update',
+	'plugins.update.locked':
+		'An app update is in progress. Plugin installation changes are paused until it finishes or is canceled.',
 	'plugins.update.pending': 'Waiting for a matching version',
 	'plugins.update.downloading': 'Downloading update',
 	'plugins.update.confirmation-required':
@@ -494,6 +496,8 @@ export const en = {
 	'about.update.android.install': 'Download and update',
 	'about.update.android.continue': 'Continue installation',
 	'about.update.android.cancel': 'Cancel update',
+	'about.update.android.error.plugin_prepare_failed':
+		'Could not prepare plugins. The app has not been updated. Check your network and retry.',
 	'about.update.android.error.permission_denied': 'Allow Chronos to install apps, then retry.',
 	'about.update.android.error.storage_full': 'Not enough storage. Free some space and retry.',
 	'about.update.android.error.integrity_mismatch':

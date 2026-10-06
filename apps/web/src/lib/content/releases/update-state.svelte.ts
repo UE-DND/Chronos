@@ -317,7 +317,12 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 				if (nativeState?.phase === 'failed' && !latestRelease) {
 					applyNativeState(await platformUpdateAction.native.continueUpdate());
 				} else {
-					await platformUpdateAction.applyUpdate(latestRelease);
+					await platformUpdateAction.applyUpdate(latestRelease, {
+						onProgress: (progress) => {
+							installPhase = progress.phase;
+							installPercent = progress.percent;
+						}
+					});
 				}
 				applyNativeState(await platformUpdateAction.native.getState());
 			} catch (error) {

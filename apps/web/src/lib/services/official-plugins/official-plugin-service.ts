@@ -7,7 +7,7 @@ import type { ChronosEngine, ChronosProfile, Disposable, PluginManifest } from '
 import { PLUGIN_CONFIG_STORAGE_KEY, validateProfile } from '@chronos/core';
 import { db, type ChronosDB } from '$lib/storage/db';
 import { createPluginInstallationRepository } from '$lib/storage/plugin-installation-repository';
-import type { HostBuildIdentity, WebHostUpdate } from '@chronos/core';
+import type { HostBuildIdentity } from '@chronos/core';
 import { APP_VERSION, HOST_BUILD } from '$lib/config/app-meta';
 import { isAbortError } from './abort-utils';
 import { mergeAbortSignals } from '$lib/utils/abort-signal';
@@ -35,6 +35,12 @@ import {
 	isOfficialCatalogManifestUrl,
 	assertOfficialManifestVersion
 } from './market-config';
+
+export interface HostPluginPreparation {
+	host: HostBuildIdentity;
+	pluginCatalogUrl: string;
+	requiredPluginIds: string[];
+}
 
 export type { InstalledOfficialPluginRecord } from './official-plugin-types';
 export type {
@@ -232,7 +238,7 @@ export class OfficialPluginService implements Disposable {
 		await this.activateInstalledFromCache();
 		this.initialized = true;
 		this.installedStore.notify();
-		void this.retryPendingUpdates();
+		if (this.hostBuild?.target !== 'mobile') void this.retryPendingUpdates();
 		this.storeSubscription = this.installedStore.onChanged(() => {
 			if (this.installedStore.hostChanged) {
 				this.dispose();
@@ -252,6 +258,18 @@ export class OfficialPluginService implements Disposable {
 	private async loadInstalledStore(): Promise<void> {
 		if (this.loaded) return;
 		await this.installedStore.load();
+		if (this.hostBuild?.target === 'mobile') {
+			const { getHostPlatform } = await import('$lib/platform/host-platform');
+			// Recover an orphaned native lock before profile installation can write the store.
+			await getHostPlatform()
+				.getUpdateAction?.()
+				?.native?.getState()
+				.catch((error) => {
+					// Unknown ownership keeps the lock; cached old-host functionality remains usable.
+					console.error('[plugin-update] Native preparation recovery unavailable', error);
+				});
+			await this.installedStore.load();
+		}
 		const generation = this.installedStore.hostGeneration;
 		if (this.hostBuild) {
 			if (
@@ -314,7 +332,7 @@ export class OfficialPluginService implements Disposable {
 		return this.installedStore;
 	}
 	async retryPendingUpdates(): Promise<void> {
-		if (this.disposed) return;
+		if (this.disposed || this.installedStore.isFrozen) return;
 		if (this.syncPromise) return this.syncPromise;
 		const signal = this.lifecycle.signal;
 		const operation: Promise<void> = this.syncWithHostCatalog()
@@ -352,14 +370,20 @@ export class OfficialPluginService implements Disposable {
 	}
 	private activeVersions = new Map<string, number | undefined>();
 	async prepareHostUpdate(
-		update: WebHostUpdate,
-		progress?: (percent: number) => void
+		update: HostPluginPreparation,
+		progress?: (percent: number) => void,
+		options?: { signal?: AbortSignal }
 	): Promise<string> {
 		await this.loadInstalledStore();
 		await this.operations.waitForAllSettled();
 		if (this.syncPromise) await this.syncPromise.catch(() => {});
 		await this.installedStore.load();
 		const revision = this.installedStore.revision;
+		const merged = mergeAbortSignals([
+			this.lifecycle.signal,
+			...(options?.signal ? [options.signal] : [])
+		]);
+		const signal = merged.signal;
 		const installed = this.listInstalled().filter(
 			(record) =>
 				isOfficialCatalogManifestUrl(record.manifestUrl, record.manifest.id) &&
@@ -368,10 +392,12 @@ export class OfficialPluginService implements Disposable {
 		const prepared: InstalledOfficialPluginRecord[] = [];
 		const wallpaperIds: string[] = [];
 		try {
+			signal.throwIfAborted();
 			const catalog = installed.length
 				? await this.catalogClient.fetchCatalog(update.pluginCatalogUrl)
 				: undefined;
 			for (const [index, record] of installed.entries()) {
+				signal.throwIfAborted();
 				const url = catalog?.manifests.find((url) =>
 					url.endsWith(`/${record.manifest.id}.manifest.json`)
 				);
@@ -382,7 +408,9 @@ export class OfficialPluginService implements Disposable {
 				if (manifest.id !== record.manifest.id || manifest.version !== update.host.version)
 					throw new Error('Target plugin identity mismatch');
 				const assets = await this.assetPipeline.download(manifest, url, {
-					signal: this.lifecycle.signal
+					signal,
+					onProgress: ({ percent }) =>
+						progress?.(Math.round(((index + percent / 100) / installed.length) * 100))
 				});
 				let wallpaperAssetId: string | undefined;
 				if (assets.wallpaper) {
@@ -403,18 +431,21 @@ export class OfficialPluginService implements Disposable {
 				});
 				progress?.(Math.round(((index + 1) / installed.length) * 100));
 			}
+			signal.throwIfAborted();
 			const token = crypto.randomUUID();
 			await this.installedStore.prepare({
 				target: update.host,
 				revision,
 				records: prepared,
 				token,
-				until: Date.now() + 180_000
+				until: update.host.target === 'mobile' ? null : Date.now() + 180_000
 			});
 			return token;
 		} catch (error) {
 			await Promise.all(wallpaperIds.map((id) => this.images.delete(id)));
 			throw error;
+		} finally {
+			merged.dispose();
 		}
 	}
 
@@ -693,6 +724,8 @@ export class OfficialPluginService implements Disposable {
 		if (!options?.system) this.assertUserRemoval(manifest.id);
 
 		await this.installedStore.load();
+		if (this.installedStore.isFrozen || this.installedStore.hostChanged)
+			throw new Error('Application update in progress; reload before changing plugins');
 		const existingSnapshot = this.installedStore.find(manifest.id);
 		const expectedRevision = existingSnapshot?.revision ?? -1;
 		const mergedSignal = mergeAbortSignals(
@@ -709,6 +742,8 @@ export class OfficialPluginService implements Disposable {
 
 			signal?.throwIfAborted?.();
 			await this.installedStore.load();
+			if (this.installedStore.isFrozen || this.installedStore.hostChanged)
+				throw new Error('Application update in progress; reload before changing plugins');
 			if ((this.installedStore.find(manifest.id)?.revision ?? -1) !== expectedRevision)
 				throw new Error('Plugin changed during download; retry');
 			options?.onProgress?.({ stage: 'installing', percent: 88 });
@@ -829,6 +864,8 @@ export class OfficialPluginService implements Disposable {
 	}
 
 	async resetAfterFactoryClear(): Promise<void> {
+		await this.installedStore.load();
+		if (this.installedStore.isFrozen) throw new Error(hostT('plugins.update.locked'));
 		this.lifecycle.abort();
 		this.storeSubscription?.dispose();
 		this.storeSubscription = undefined;

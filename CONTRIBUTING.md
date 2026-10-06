@@ -127,7 +127,7 @@ deployment = "chronos-default"
 
 `vp run mobile:build` 使用 `mobile` target 和 `mobile` 发行项，然后同步 Capacitor 工程。移动端不运行 Web 服务端处理器；带原生实现的动作通过静态注册表在 APK 内执行，Profile 策略可禁用对应动作。target 定义见 [deploy-targets.ts](apps/web/src/lib/config/deploy-targets.ts)，profile 和 deployment 组合见 [distributions.toml](apps/web/config/distributions.toml)。
 
-Web 的软件更新使用 Service Worker；移动端构建关闭 PWA。Web 在准备完已安装可选官方插件后才授权新 Worker 接管，所有窗口随接管刷新。Android 检查独立的就绪 feed，匹配实际包名、签名与 Profile 后，由原生更新器下载并安装固定 GitHub APK；应用更新后后台恢复可选官方插件。具体约束见 [ADR 0047](.agents/docs/adr/0047-host-update-transactions.md) 和 [ADR 0048](.agents/docs/adr/0048-android-native-self-update.md)。
+Web 的软件更新使用 Service Worker；移动端构建关闭 PWA。Web 在准备完已安装可选官方插件后才授权新 Worker 接管，所有窗口随接管刷新。Android 检查独立的就绪 feed，匹配实际包名、签名与 Profile 后，由原生更新器下载并安装固定 GitHub APK；下载 APK 前准备已安装可选官方插件，全部校验成功后才启动原生更新任务；新版启动直接采用准备快照，不自动后台补装。具体约束见 [ADR 0047](.agents/docs/adr/0047-host-update-transactions.md) 和 [ADR 0048](.agents/docs/adr/0048-android-native-self-update.md)。
 
 Web 与 Android 共用自动检查调度：启动时检查，在线前台每 5 分钟检查，回前台检查过期结果，联网恢复立即检查，离线与后台暂停。检查失败按 10 秒、30 秒、60 秒、5 分钟退避重试，发现更新后停止轮询。自动检查和软件更新页共享更新状态与进行中的请求；检测结果显示在“我的→关于→软件更新”入口，不自动下载或弹窗。Android 不注册或监听 Service Worker 更新。
 
@@ -307,7 +307,7 @@ Manifest 中的 `downloadSizeBytes` 只用于显示下载大小。它的值是�
 
 ### Android 自更新验证
 
-应用内更新由 `ChronosUpdater` 的原生任务管理。更新按钮授权本次下载及安装，离开页面不取消任务；系统可能要求安装权限或再次确认。Android 12 起尝试免确认自更新，Android 7–11 使用系统确认。首次安装含更新器的新版本仍需手动完成。
+应用内更新由 `ChronosUpdater` 的原生任务管理。更新按钮授权插件准备与本次 APK 下载及安装，离开页面不取消任务；插件准备需要应用进程存活，中断后可重试。准备成功后 APK 由原生任务继续后台下载；系统可能要求安装权限或再次确认。Android 12 起尝试免确认自更新，Android 7–11 使用系统确认。首次安装含更新器的新版本仍需手动完成。
 
 修改更新器后，除 `vp run check`、`vp run test` 与 `vp run mobile:build` 外，在配置了 JDK 21、Android SDK 的环境运行：
 
