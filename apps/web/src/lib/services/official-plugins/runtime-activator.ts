@@ -48,6 +48,7 @@ export class OfficialPluginRuntimeActivator {
 		const wallpaper = record.colorsJson
 			? parseColorThemeJson(JSON.parse(record.colorsJson)).wallpaper
 			: undefined;
+		let verifiedWallpaper: Blob | undefined;
 		if (record.wallpaperAssetId || wallpaper) {
 			const blob = record.wallpaperAssetId
 				? await this.images.get(record.wallpaperAssetId)
@@ -60,6 +61,7 @@ export class OfficialPluginRuntimeActivator {
 				).toLowerCase() !== wallpaper.sha256.toLowerCase()
 			)
 				throw new Error('Cached wallpaper integrity mismatch');
+			verifiedWallpaper = blob;
 		}
 		await this.deactivate(manifest.id);
 
@@ -88,6 +90,15 @@ export class OfficialPluginRuntimeActivator {
 				) {
 					throw new Error(
 						'ESM theme must register the same colors and identity as its static resource'
+					);
+				}
+				if (verifiedWallpaper) {
+					// Preserve ESM behavior while attaching the host-verified offline image.
+					disposables.push(
+						this.engine.themes.registerTheme(
+							{ ...theme, wallpaper: verifiedWallpaper },
+							manifest.id
+						)
 					);
 				}
 			}
