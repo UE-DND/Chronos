@@ -83,47 +83,6 @@
 	}
 }
 
-/* Native / Real-DOM fallback secondary page transitions */
-@keyframes native-slide-in {
-	from {
-		transform: translateX(100%);
-		opacity: 0.95;
-	}
-	to {
-		transform: translateX(0);
-		opacity: 1;
-	}
-}
-
-@keyframes native-slide-out {
-	from {
-		transform: translateX(0);
-		opacity: 1;
-	}
-	to {
-		transform: translateX(100%);
-		opacity: 0.95;
-	}
-}
-
-.secondary-root.native-slide-enter {
-	animation: 260ms cubic-bezier(0.05, 0.7, 0.1, 1) both native-slide-in;
-	will-change: transform;
-}
-
-.secondary-root.native-slide-exit {
-	animation: 220ms cubic-bezier(0.3, 0, 0.8, 0.15) both native-slide-out;
-	will-change: transform;
-	pointer-events: none;
-}
-
-.shell-root.native-shell-motion {
-	transition:
-		transform var(--native-shell-duration, 260ms) cubic-bezier(0.05, 0.7, 0.1, 1),
-		opacity var(--native-shell-duration, 260ms) cubic-bezier(0.05, 0.7, 0.1, 1);
-	will-change: transform, opacity;
-}
-
 :root.nav-forward::view-transition-group(page-root),
 :root.nav-back::view-transition-group(page-root) {
 	animation: none;
@@ -237,15 +196,6 @@
 		transform: none;
 		opacity: 1;
 	}
-
-	.secondary-root.native-slide-enter,
-	.secondary-root.native-slide-exit {
-		animation: none !important;
-	}
-
-	.shell-root.native-shell-motion {
-		transition: none !important;
-	}
 }
 
 :root.reduce-motion.nav-forward::view-transition-group(page-root),
@@ -264,15 +214,6 @@
 :root.reduce-motion .shell-root.is-receded {
 	transform: none;
 	opacity: 1;
-}
-
-:root.reduce-motion .secondary-root.native-slide-enter,
-:root.reduce-motion .secondary-root.native-slide-exit {
-	animation: none !important;
-}
-
-:root.reduce-motion .shell-root.native-shell-motion {
-	transition: none !important;
 }
 
 @layer components {

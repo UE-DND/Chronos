@@ -1,7 +1,3 @@
-export const NATIVE_SLIDE_ENTER_CLASS = 'native-slide-enter';
-export const NATIVE_SLIDE_EXIT_CLASS = 'native-slide-exit';
-export const NATIVE_SHELL_MOTION_CLASS = 'native-shell-motion';
-
 export interface RouteMotionElements {
 	secondaryRoot?: HTMLElement | null;
 	shellRoot?: HTMLElement | null;
@@ -23,123 +19,75 @@ export function createRouteMotionController(
 	}
 ) {
 	let activeGeneration = 0;
-	let activeTimeout: ReturnType<typeof setTimeout> | null = null;
+	let activeAnimations: Animation[] = [];
 
-	function nextGeneration(): number {
-		if (activeTimeout) {
-			clearTimeout(activeTimeout);
-			activeTimeout = null;
-		}
-		return ++activeGeneration;
+	function cancelMotion(): void {
+		++activeGeneration;
+		for (const animation of activeAnimations) animation.cancel();
+		activeAnimations = [];
 	}
 
-	function clearClasses(elements = resolveElements()): void {
-		if (elements.secondaryRoot) {
-			elements.secondaryRoot.classList.remove(NATIVE_SLIDE_ENTER_CLASS, NATIVE_SLIDE_EXIT_CLASS);
-		}
-		if (elements.shellRoot) {
-			elements.shellRoot.classList.remove(NATIVE_SHELL_MOTION_CLASS);
-			elements.shellRoot.style.removeProperty('--native-shell-duration');
-		}
-	}
-
-	function cancelMotion(generation?: number): void {
-		if (generation != null && generation !== activeGeneration) return;
-		if (activeTimeout) {
-			clearTimeout(activeTimeout);
-			activeTimeout = null;
-		}
-		clearClasses();
-	}
-
-	async function animateBackExit(
-		onStartOrDuration?: (() => void) | number,
-		maybeDuration?: number
-	): Promise<void> {
-		const onStart = typeof onStartOrDuration === 'function' ? onStartOrDuration : undefined;
-		const durationMs =
-			typeof onStartOrDuration === 'number' ? onStartOrDuration : (maybeDuration ?? 220);
-
-		if (isReducedMotionActive()) {
+	async function animate(
+		direction: 'forward' | 'back',
+		onStart?: () => void,
+		animateShell = true
+	): Promise<boolean> {
+		cancelMotion();
+		const generation = activeGeneration;
+		const { secondaryRoot, shellRoot } = resolveElements();
+		if (isReducedMotionActive() || !secondaryRoot) {
 			onStart?.();
-			return;
-		}
-		const generation = nextGeneration();
-		const elements = resolveElements();
-		clearClasses(elements);
-
-		if (!elements.secondaryRoot) {
-			onStart?.();
-			return;
+			return true;
 		}
 
-		elements.secondaryRoot.classList.add(NATIVE_SLIDE_EXIT_CLASS);
-		if (elements.shellRoot) {
-			elements.shellRoot.style.setProperty('--native-shell-duration', `${durationMs}ms`);
-			elements.shellRoot.classList.add(NATIVE_SHELL_MOTION_CLASS);
+		const forward = direction === 'forward';
+		const duration = forward ? 260 : 220;
+		const secondaryFrames = forward
+			? [
+					{ transform: 'translateX(100%)', opacity: 0.95 },
+					{ transform: 'translateX(0)', opacity: 1 }
+				]
+			: [
+					{ transform: 'translateX(0)', opacity: 1 },
+					{ transform: 'translateX(100%)', opacity: 0.95 }
+				];
+		activeAnimations.push(
+			secondaryRoot.animate(secondaryFrames, {
+				duration,
+				easing: forward ? 'cubic-bezier(0.05, 0.7, 0.1, 1)' : 'cubic-bezier(0.3, 0, 0.8, 0.15)',
+				fill: 'both'
+			})
+		);
+		if (animateShell && shellRoot) {
+			const shellFrames = [
+				{ transform: 'translateX(0)', opacity: 1 },
+				{ transform: 'translateX(-25%)', opacity: 0.55 }
+			];
+			activeAnimations.push(
+				shellRoot.animate(forward ? shellFrames : shellFrames.toReversed(), {
+					duration,
+					easing: 'cubic-bezier(0.05, 0.7, 0.1, 1)',
+					fill: 'both'
+				})
+			);
 		}
 
+		// Register rejection handlers before onStart can trigger cancellation.
+		const finished = Promise.all(activeAnimations.map((animation) => animation.finished)).then(
+			() => generation === activeGeneration,
+			() => false
+		);
 		onStart?.();
-
-		await new Promise<void>((resolve) => {
-			activeTimeout = setTimeout(() => {
-				activeTimeout = null;
-				if (generation === activeGeneration) {
-					clearClasses(elements);
-				}
-				resolve();
-			}, durationMs);
-		});
-	}
-
-	async function animateForwardEnter(
-		onStartOrDuration?: (() => void) | number,
-		maybeDuration?: number
-	): Promise<void> {
-		const onStart = typeof onStartOrDuration === 'function' ? onStartOrDuration : undefined;
-		const durationMs =
-			typeof onStartOrDuration === 'number' ? onStartOrDuration : (maybeDuration ?? 260);
-
-		if (isReducedMotionActive()) {
-			onStart?.();
-			return;
-		}
-		const generation = nextGeneration();
-		const elements = resolveElements();
-		clearClasses(elements);
-
-		if (!elements.secondaryRoot) {
-			onStart?.();
-			return;
-		}
-
-		elements.secondaryRoot.classList.add(NATIVE_SLIDE_ENTER_CLASS);
-		if (elements.shellRoot) {
-			elements.shellRoot.style.setProperty('--native-shell-duration', `${durationMs}ms`);
-			elements.shellRoot.classList.add(NATIVE_SHELL_MOTION_CLASS);
-		}
-
-		onStart?.();
-
-		await new Promise<void>((resolve) => {
-			activeTimeout = setTimeout(() => {
-				activeTimeout = null;
-				if (generation === activeGeneration) {
-					clearClasses(elements);
-				}
-				resolve();
-			}, durationMs);
-		});
+		// Keep the final frame until the router commits and releases the motion.
+		return finished;
 	}
 
 	return {
-		get activeGeneration(): number {
-			return activeGeneration;
-		},
-		animateBackExit,
-		animateForwardEnter,
-		cancelMotion,
-		clearClasses
+		animateBackExit: (onStart?: () => void, animateShell = true) =>
+			animate('back', onStart, animateShell),
+		animateForwardEnter: (onStart?: () => void, animateShell = true) =>
+			animate('forward', onStart, animateShell),
+		cancelMotion
 	};
 }
 

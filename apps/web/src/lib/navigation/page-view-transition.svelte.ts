@@ -209,14 +209,22 @@ export function createSecondaryTransitionGate() {
 		revealForSnapshot = !toSecondary;
 	}
 
+	function prepareRealDomTransition(crossShell: boolean): void {
+		transitioning = true;
+		previewPaintReady = true;
+		revealForSnapshot = false;
+		if (crossShell) frozen = false;
+	}
+
 	function beginRealDomTransition(
 		direction: SecondaryTransitionDirection,
 		toSecondary = false
 	): void {
 		transitioning = true;
-		previewPaintReady = false;
+		previewPaintReady = true;
 		revealForSnapshot = false;
 		if (direction === 'back') {
+			if (!toSecondary) frozen = false;
 			receded = toSecondary;
 		} else {
 			receded = true;
@@ -269,6 +277,7 @@ export function createSecondaryTransitionGate() {
 		settleOnRoute,
 		syncRoute,
 		beginTransition,
+		prepareRealDomTransition,
 		beginRealDomTransition,
 		finishTransition
 	};
@@ -288,7 +297,10 @@ export function setupSecondaryPageViewTransition(
 	gate: SecondaryTransitionGate = secondaryTransitionGate,
 	motion: RouteMotionController = routeMotionController
 ): void {
+	let navigationGeneration = 0;
 	onNavigate((navigation) => {
+		const generation = ++navigationGeneration;
+		motion.cancelMotion();
 		const toPath = navigation.to?.url.pathname ?? '';
 		const fromPath = getPendingTraversal()?.from ?? navigation.from?.url.pathname ?? '';
 		const direction = getTransitionDirection();
@@ -296,19 +308,22 @@ export function setupSecondaryPageViewTransition(
 		const crossShell = isSecondaryRoute(fromPath) !== toSecondary;
 		const viewNav = toViewTransitionNavigation(navigation);
 
+		const settle = (secondary: boolean) => {
+			if (generation !== navigationGeneration) return;
+			flushSync(() => gate.finishTransition(secondary));
+			motion.cancelMotion();
+		};
+		const finish = () => settle(toSecondary);
+		const fail = () => settle(isSecondaryRoute(fromPath));
+
 		if (direction !== 'forward' && direction !== 'back') {
 			clearSuppressedTransition();
-			void navigation.complete.then(() => {
-				gate.syncRoute(toPath);
-			});
+			void navigation.complete.then(finish, fail);
 			return;
 		}
 
 		if (consumeSuppressedTransition()) {
-			motion.cancelMotion();
-			void navigation.complete.then(() => {
-				gate.syncRoute(toPath);
-			});
+			void navigation.complete.then(finish, fail);
 			return;
 		}
 
@@ -316,60 +331,55 @@ export function setupSecondaryPageViewTransition(
 			gate.beginTransition(direction, toSecondary);
 
 			return new Promise<void>((resolve) => {
-				const generation = beginNavDirectionTransition(direction, crossShell);
+				const viewGeneration = beginNavDirectionTransition(direction, crossShell);
 				void document
 					.startViewTransition(async () => {
 						resolve();
 						await navigation.complete;
 						if (!toSecondary) flushSync();
 					})
-					.finished.finally(() => {
-						endNavDirectionTransition(generation);
-						gate.finishTransition(toSecondary);
-					});
+					.finished.then(
+						() => {
+							endNavDirectionTransition(viewGeneration);
+							finish();
+						},
+						() => {
+							endNavDirectionTransition(viewGeneration);
+							resolve();
+							fail();
+						}
+					);
 			});
 		}
 
-		// Real-DOM fallback transition (e.g. Android native or non-ViewTransition browsers)
-		return new Promise<void>((resolve) => {
-			if (direction === 'back') {
+		// Stage the gate before the route commit can run shell effects.
+		flushSync(() => gate.prepareRealDomTransition(crossShell));
+		const startMotion = () => {
+			flushSync(() => gate.beginRealDomTransition(direction, toSecondary));
+		};
+
+		if (direction === 'back') {
+			return new Promise<void>((resolve) => {
 				void motion
-					.animateBackExit(() => {
-						flushSync(() => {
-							gate.beginRealDomTransition('back', toSecondary);
-						});
-					})
+					.animateBackExit(startMotion, crossShell)
 					.then(() => {
 						resolve();
 						return navigation.complete;
 					})
-					.then(() => {
-						if (!toSecondary) flushSync();
-						gate.finishTransition(toSecondary);
-					})
+					.then(finish)
 					.catch(() => {
-						motion.cancelMotion();
-						gate.finishTransition(toSecondary);
+						resolve();
+						fail();
 					});
-			} else {
-				// forward enter
-				resolve();
-				void navigation.complete
-					.then(() =>
-						motion.animateForwardEnter(() => {
-							flushSync(() => {
-								gate.beginRealDomTransition('forward', toSecondary);
-							});
-						})
-					)
-					.then(() => {
-						gate.finishTransition(toSecondary);
-					})
-					.catch(() => {
-						motion.cancelMotion();
-						gate.finishTransition(toSecondary);
-					});
-			}
-		});
+			});
+		}
+
+		void navigation.complete
+			.then(() => {
+				if (generation !== navigationGeneration) return;
+				return motion.animateForwardEnter(startMotion, crossShell);
+			})
+			.then(finish)
+			.catch(fail);
 	});
 }

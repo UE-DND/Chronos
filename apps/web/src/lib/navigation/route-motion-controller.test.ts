@@ -1,52 +1,35 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import {
-	createRouteMotionController,
-	NATIVE_SHELL_MOTION_CLASS,
-	NATIVE_SLIDE_ENTER_CLASS,
-	NATIVE_SLIDE_EXIT_CLASS
-} from './route-motion-controller.svelte';
+import { createRouteMotionController } from './route-motion-controller.svelte';
 
-function createMockElement() {
-	const classes = new Set<string>();
-	const styles: Record<string, string> = {};
-	return {
-		classList: {
-			add: (c: string) => classes.add(c),
-			remove: (...cs: string[]) => cs.forEach((c) => classes.delete(c)),
-			contains: (c: string) => classes.has(c)
-		},
-		style: {
-			setProperty: (prop: string, val: string) => {
-				styles[prop] = val;
-			},
-			removeProperty: (prop: string) => {
-				delete styles[prop];
-			},
-			getPropertyValue: (prop: string) => styles[prop] ?? ''
-		}
-	} as unknown as HTMLElement;
+function createElement() {
+	const animations: ReturnType<typeof createAnimation>[] = [];
+	const animate = vi.fn(() => {
+		const animation = createAnimation();
+		animations.push(animation);
+		return animation;
+	});
+	return { animations, animate, element: { animate } as unknown as HTMLElement };
 }
 
-describe('createRouteMotionController', () => {
-	let secondaryRoot: HTMLElement;
-	let shellRoot: HTMLElement;
-	let docClasses: Set<string>;
+function createAnimation() {
+	let finish!: () => void;
+	let reject!: (error: Error) => void;
+	return {
+		finished: new Promise<void>((resolve, fail) => {
+			finish = resolve;
+			reject = fail;
+		}),
+		finish: () => finish(),
+		cancel: vi.fn(() => reject(new Error('Animation canceled')))
+	};
+}
 
+describe('route motion lifecycle', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
-		secondaryRoot = createMockElement();
-		shellRoot = createMockElement();
-		docClasses = new Set<string>();
-
-		vi.stubGlobal('window', {
-			matchMedia: vi.fn().mockReturnValue({ matches: false })
-		});
+		vi.stubGlobal('window', { matchMedia: () => ({ matches: false }) });
 		vi.stubGlobal('document', {
-			documentElement: {
-				classList: {
-					contains: (c: string) => docClasses.has(c)
-				}
-			}
+			documentElement: { classList: { contains: () => false } }
 		});
 	});
 
@@ -55,123 +38,109 @@ describe('createRouteMotionController', () => {
 		vi.unstubAllGlobals();
 	});
 
-	it('animates forward entrance and clears classes on completion', async () => {
-		const controller = createRouteMotionController(() => ({ secondaryRoot, shellRoot }));
-
-		let onStartInvoked = false;
-		const animPromise = controller.animateForwardEnter(() => {
-			onStartInvoked = true;
-			expect(secondaryRoot.classList.contains(NATIVE_SLIDE_ENTER_CLASS)).toBe(true);
-			expect(shellRoot.classList.contains(NATIVE_SHELL_MOTION_CLASS)).toBe(true);
-		}, 200);
-
-		expect(onStartInvoked).toBe(true);
-		expect(secondaryRoot.classList.contains(NATIVE_SLIDE_ENTER_CLASS)).toBe(true);
-		expect(shellRoot.classList.contains(NATIVE_SHELL_MOTION_CLASS)).toBe(true);
-
-		vi.advanceTimersByTime(200);
-		await animPromise;
-
-		expect(secondaryRoot.classList.contains(NATIVE_SLIDE_ENTER_CLASS)).toBe(false);
-		expect(shellRoot.classList.contains(NATIVE_SHELL_MOTION_CLASS)).toBe(false);
+	it('waits for actual animation completion even when rendering starts late', async () => {
+		const secondary = createElement();
+		const shell = createElement();
+		const motion = createRouteMotionController(() => ({
+			secondaryRoot: secondary.element,
+			shellRoot: shell.element
+		}));
+		let settled = false;
+		const pending = motion.animateForwardEnter().then((completed) => {
+			settled = true;
+			return completed;
+		});
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(settled).toBe(false);
+		secondary.animations[0].finish();
+		await Promise.resolve();
+		expect(settled).toBe(false);
+		shell.animations[0].finish();
+		expect(await pending).toBe(true);
+		// Hold the final frame until the route and gate have settled.
+		expect(secondary.animations[0].cancel).not.toHaveBeenCalled();
+		motion.cancelMotion();
+		expect(secondary.animations[0].cancel).toHaveBeenCalledOnce();
 	});
 
-	it('animates back exit and clears classes on completion', async () => {
-		const controller = createRouteMotionController(() => ({ secondaryRoot, shellRoot }));
-
-		let onStartInvoked = false;
-		const animPromise = controller.animateBackExit(() => {
-			onStartInvoked = true;
-			expect(secondaryRoot.classList.contains(NATIVE_SLIDE_EXIT_CLASS)).toBe(true);
-			expect(shellRoot.classList.contains(NATIVE_SHELL_MOTION_CLASS)).toBe(true);
-		}, 180);
-
-		expect(onStartInvoked).toBe(true);
-		expect(secondaryRoot.classList.contains(NATIVE_SLIDE_EXIT_CLASS)).toBe(true);
-		expect(shellRoot.classList.contains(NATIVE_SHELL_MOTION_CLASS)).toBe(true);
-
-		vi.advanceTimersByTime(180);
-		await animPromise;
-
-		expect(secondaryRoot.classList.contains(NATIVE_SLIDE_EXIT_CLASS)).toBe(false);
-		expect(shellRoot.classList.contains(NATIVE_SHELL_MOTION_CLASS)).toBe(false);
+	it('settles a superseded motion without canceling its replacement', async () => {
+		const secondary = createElement();
+		const motion = createRouteMotionController(() => ({ secondaryRoot: secondary.element }));
+		const entering = motion.animateForwardEnter();
+		const exiting = motion.animateBackExit();
+		expect(await entering).toBe(false);
+		expect(secondary.animations[1].cancel).not.toHaveBeenCalled();
+		secondary.animations[1].finish();
+		expect(await exiting).toBe(true);
 	});
 
-	it('cancels motion when newer animation supersedes previous one', async () => {
-		const controller = createRouteMotionController(() => ({ secondaryRoot, shellRoot }));
-
-		void controller.animateBackExit(200);
-		const gen1 = controller.activeGeneration;
-
-		void controller.animateForwardEnter(200);
-		const gen2 = controller.activeGeneration;
-		expect(gen2).toBeGreaterThan(gen1);
-
-		// Advancing time for gen1 should not clear classes set by gen2
-		vi.advanceTimersByTime(100);
-		expect(secondaryRoot.classList.contains(NATIVE_SLIDE_ENTER_CLASS)).toBe(true);
-
-		vi.advanceTimersByTime(100);
-		expect(secondaryRoot.classList.contains(NATIVE_SLIDE_ENTER_CLASS)).toBe(false);
+	it('settles canceled exits so router callbacks can release navigation', async () => {
+		const secondary = createElement();
+		const motion = createRouteMotionController(() => ({ secondaryRoot: secondary.element }));
+		const exiting = motion.animateBackExit();
+		motion.cancelMotion();
+		expect(await exiting).toBe(false);
 	});
 
-	it('skips animations when reduce-motion class is present', async () => {
-		docClasses.add('reduce-motion');
-		const controller = createRouteMotionController(() => ({ secondaryRoot, shellRoot }));
-
-		await controller.animateForwardEnter(200);
-		expect(secondaryRoot.classList.contains(NATIVE_SLIDE_ENTER_CLASS)).toBe(false);
-
-		await controller.animateBackExit(200);
-		expect(secondaryRoot.classList.contains(NATIVE_SLIDE_EXIT_CLASS)).toBe(false);
+	it('installs independent animations before reactive route classes change', async () => {
+		const secondary = createElement();
+		const shell = createElement();
+		const motion = createRouteMotionController(() => ({
+			secondaryRoot: secondary.element,
+			shellRoot: shell.element
+		}));
+		const pending = motion.animateBackExit(() => {
+			expect(shell.animate).toHaveBeenCalledWith(
+				[
+					{ transform: 'translateX(-25%)', opacity: 0.55 },
+					{ transform: 'translateX(0)', opacity: 1 }
+				],
+				expect.objectContaining({ duration: 220, fill: 'both' })
+			);
+		});
+		secondary.animations[0].finish();
+		shell.animations[0].finish();
+		expect(await pending).toBe(true);
 	});
 
-	it('cancelMotion explicitly clears all active classes immediately', () => {
-		const controller = createRouteMotionController(() => ({ secondaryRoot, shellRoot }));
-		void controller.animateForwardEnter(200);
-
-		expect(secondaryRoot.classList.contains(NATIVE_SLIDE_ENTER_CLASS)).toBe(true);
-		controller.cancelMotion();
-		expect(secondaryRoot.classList.contains(NATIVE_SLIDE_ENTER_CLASS)).toBe(false);
-		expect(shellRoot.classList.contains(NATIVE_SHELL_MOTION_CLASS)).toBe(false);
+	it('does not move the shell between two secondary pages', async () => {
+		const secondary = createElement();
+		const shell = createElement();
+		const motion = createRouteMotionController(() => ({
+			secondaryRoot: secondary.element,
+			shellRoot: shell.element
+		}));
+		const pending = motion.animateForwardEnter(undefined, false);
+		expect(shell.animate).not.toHaveBeenCalled();
+		secondary.animations[0].finish();
+		expect(await pending).toBe(true);
 	});
 
-	it('sets --native-shell-duration matching animation duration and clears on finish', async () => {
-		const controller = createRouteMotionController(() => ({ secondaryRoot, shellRoot }));
-
-		const animPromise = controller.animateBackExit(180);
-		expect(shellRoot.style.getPropertyValue('--native-shell-duration')).toBe('180ms');
-
-		vi.advanceTimersByTime(180);
-		await animPromise;
-
-		expect(shellRoot.style.getPropertyValue('--native-shell-duration')).toBe('');
+	it('skips motion and invokes the route update when reduced motion is active', async () => {
+		vi.stubGlobal('window', { matchMedia: () => ({ matches: true }) });
+		const secondary = createElement();
+		const onStart = vi.fn();
+		const motion = createRouteMotionController(() => ({ secondaryRoot: secondary.element }));
+		expect(await motion.animateForwardEnter(onStart)).toBe(true);
+		expect(await motion.animateBackExit(onStart)).toBe(true);
+		expect(onStart).toHaveBeenCalledTimes(2);
+		expect(secondary.animate).not.toHaveBeenCalled();
 	});
 
-	it('ensures native-shell-motion is applied before is-receded and maintained throughout motion', async () => {
-		const controller = createRouteMotionController(() => ({ secondaryRoot, shellRoot }));
+	it('also respects the application reduce-motion preference', async () => {
+		vi.stubGlobal('document', {
+			documentElement: { classList: { contains: (name: string) => name === 'reduce-motion' } }
+		});
+		const secondary = createElement();
+		const motion = createRouteMotionController(() => ({ secondaryRoot: secondary.element }));
+		expect(await motion.animateForwardEnter()).toBe(true);
+		expect(secondary.animate).not.toHaveBeenCalled();
+	});
 
-		let motionClassPresentWhenRecededAdded = false;
-		const animPromise = controller.animateForwardEnter(() => {
-			motionClassPresentWhenRecededAdded = shellRoot.classList.contains(NATIVE_SHELL_MOTION_CLASS);
-			shellRoot.classList.add('is-receded');
-		}, 260);
-
-		expect(motionClassPresentWhenRecededAdded).toBe(true);
-		expect(shellRoot.classList.contains('is-receded')).toBe(true);
-		expect(shellRoot.classList.contains(NATIVE_SHELL_MOTION_CLASS)).toBe(true);
-
-		// Halfway through animation (130ms), both classes are still active
-		vi.advanceTimersByTime(130);
-		expect(shellRoot.classList.contains('is-receded')).toBe(true);
-		expect(shellRoot.classList.contains(NATIVE_SHELL_MOTION_CLASS)).toBe(true);
-
-		// Animation completes (260ms)
-		vi.advanceTimersByTime(130);
-		await animPromise;
-
-		// native-shell-motion cleared, but is-receded remains
-		expect(shellRoot.classList.contains(NATIVE_SHELL_MOTION_CLASS)).toBe(false);
-		expect(shellRoot.classList.contains('is-receded')).toBe(true);
+	it('updates the route even if there is no secondary root', async () => {
+		const onStart = vi.fn();
+		const motion = createRouteMotionController(() => ({}));
+		expect(await motion.animateBackExit(onStart)).toBe(true);
+		expect(onStart).toHaveBeenCalledOnce();
 	});
 });

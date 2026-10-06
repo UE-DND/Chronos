@@ -264,7 +264,7 @@ describe('createSecondaryTransitionGate', () => {
 		expect(gate.frozen).toBe(true);
 	});
 
-	it('handles secondary -> shell back transition in real-DOM gate: un-recedes shell but keeps frozen until finish', () => {
+	it('handles secondary -> shell back transition in real-DOM gate: reveals and unfreezes shell before motion', () => {
 		const gate = createSecondaryTransitionGate();
 		gate.syncRoute('/');
 		gate.syncRoute('/about');
@@ -278,10 +278,11 @@ describe('createSecondaryTransitionGate', () => {
 		// Begin real-DOM back transition to shell (toSecondary = false)
 		gate.beginRealDomTransition('back', false);
 
-		// revealForSnapshot MUST stay false so skipPaint stays true (content-visibility stays hidden)
+		// Real DOM motion must render the shell from its first frame.
 		expect(gate.revealForSnapshot).toBe(false);
-		expect(gate.frozen).toBe(true);
-		expect(gate.skipPaint).toBe(true);
+		expect(gate.frozen).toBe(false);
+		expect(gate.skipPaint).toBe(false);
+		expect(gate.previewPaintReady).toBe(true);
 		// isReceded becomes false to animate .shell-root from -25% to 0
 		expect(gate.receded).toBe(false);
 		expect(gate.isReceded).toBe(false);
@@ -339,5 +340,18 @@ describe('createSecondaryTransitionGate', () => {
 		expect(gate.frozen).toBe(true);
 		expect(gate.isReceded).toBe(true);
 		expect(gate.skipPaint).toBe(true);
+	});
+	it('prepares real DOM motion before the destination route effect can freeze the shell', () => {
+		const gate = createSecondaryTransitionGate();
+		gate.syncRoute('/');
+		gate.prepareRealDomTransition(true);
+		gate.syncRoute('/about');
+		expect(gate.frozen).toBe(false);
+		expect(gate.receded).toBe(false);
+		expect(gate.previewPaintReady).toBe(true);
+		gate.beginRealDomTransition('forward', true);
+		expect(gate.previewPaintReady).toBe(true);
+		gate.finishTransition(true);
+		expect(gate.frozen).toBe(true);
 	});
 });
