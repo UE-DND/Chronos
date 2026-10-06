@@ -24,6 +24,53 @@ async function setNativeInsets(
 	);
 }
 
+test('clock summary below the host toolbar does not add the native top inset again', async ({
+	page,
+	context,
+	request
+}, testInfo) => {
+	await request.post('/__e2e/deploy?build=old');
+	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await context.route('https://ue-dnd.github.io/Chronos/plugins/releases/**', async (route) => {
+		const url = new URL(route.request().url());
+		const path = url.pathname.replace('/Chronos/plugins/releases/', '/__e2e/market/');
+		const response = await route.fetch({ url: `http://127.0.0.1:4179${path}${url.search}` });
+		await route.fulfill({ response });
+	});
+	await page.goto('/Chronos/plugins');
+	await page.getByRole('tab', { name: '插件市场', exact: true }).click();
+	const row = page
+		.locator('div.flex.items-center.justify-between')
+		.filter({ has: page.getByText('自定义时间', { exact: true }) })
+		.last();
+	await row.getByRole('button', { name: '安装', exact: true }).click();
+	await expect(row.getByText('已安装', { exact: true })).toBeVisible();
+	await page.goto('/Chronos/plugins/tool-clock');
+	const toolbar = page.locator('.secondary-page > .ui-shell-top-bar');
+	const summary = page.locator('.secondary-page header:not(.ui-shell-top-bar)');
+	await expect(summary).toContainText('课表按引擎时间运行');
+	const summaryPadding = await page.evaluate(
+		() => `${parseFloat(getComputedStyle(document.documentElement).fontSize) * 1.5}px`
+	);
+	for (const top of [0, 32, 64]) {
+		await setNativeInsets(page, top, 0, 16, 0);
+		await expect(toolbar).toHaveCSS('padding-top', `${top}px`);
+		await expect(summary).toHaveCSS('padding-top', summaryPadding);
+		const toolbarBounds = (await toolbar.boundingBox())!;
+		const summaryBounds = (await summary.boundingBox())!;
+		expect(summaryBounds.y).toBeCloseTo(toolbarBounds.y + toolbarBounds.height, 0);
+	}
+	await page.getByRole('button', { name: '时间', exact: true }).click();
+	await expect(page.getByRole('listbox', { name: '时间时', exact: true })).toBeVisible();
+	await page.getByRole('button', { name: '取消', exact: true }).click();
+	await expect(page.locator('[role="dialog"]')).toBeHidden();
+	await page.screenshot({ path: testInfo.outputPath('clock-portrait.png') });
+	await page.setViewportSize({ width: 932, height: 430 });
+	await setNativeInsets(page, 24, 0, 16, 32);
+	await expect(summary).toHaveCount(0);
+	await expect(page.getByRole('button', { name: '时间', exact: true })).toBeVisible();
+});
+
 test('native safe areas move between edges on rotation even when WebView env values are stale', async ({
 	page,
 	request

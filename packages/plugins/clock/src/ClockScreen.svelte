@@ -140,7 +140,7 @@
 <div class="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
 	{#if !compactLandscape.current}
 		<header
-			class="ui-safe-area-top--comfortable relative z-10 shrink-0 border-b border-outline/10 bg-surface/90 px-4 pb-4 backdrop-blur-sm"
+			class="relative z-10 shrink-0 border-b border-outline/10 bg-surface/90 px-4 pt-6 pb-4 backdrop-blur-sm"
 		>
 			{@render statusContent()}
 		</header>
