@@ -76,7 +76,7 @@
 					role="tab"
 					aria-selected={isSelected}
 					tabindex={isSelected ? 0 : -1}
-					class="text-label-large rounded-pill relative flex shrink-0 items-center gap-1.5 px-4 py-2 text-center transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 {isSelected
+					class="ui-segmented-tab text-label-large relative flex shrink-0 items-center gap-1.5 rounded-control px-4 py-2 text-center transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 {isSelected
 						? 'bg-secondary-container font-medium text-on-secondary-container'
 						: 'bg-surface-variant/40 text-on-surface-variant hover:bg-surface-variant/70 hover:text-on-surface'}"
 					onclick={() => handleSourceChange(slot.id)}
@@ -84,7 +84,7 @@
 					<span>{title}</span>
 					{#if badge}
 						<span
-							class="text-label-small rounded-full px-1.5 py-0.5 text-[10px] leading-none {isSelected
+							class="text-label-small rounded-control px-1.5 py-0.5 text-[10px] leading-none {isSelected
 								? 'bg-primary text-on-primary'
 								: 'bg-outline-variant text-on-surface-variant'}"
 						>

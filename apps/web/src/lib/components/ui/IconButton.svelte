@@ -40,7 +40,7 @@
 	);
 
 	const baseClass = $derived(
-		`inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors outline-none focus-visible:ring-2 ${focusRingClass}`
+		`inline-flex shrink-0 cursor-pointer items-center justify-center rounded-control transition-colors outline-none focus-visible:ring-2 ${focusRingClass}`
 	);
 </script>
 

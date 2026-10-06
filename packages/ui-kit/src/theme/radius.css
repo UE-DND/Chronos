@@ -13,6 +13,12 @@
 	--radius-leading-icon: 0.875rem;
 	--radius-capsule: 0.75rem;
 	--radius-time-field-segment: 0.25rem;
+	--radius-card: 1.5rem;
+	--radius-inset: 0.75rem;
+	--radius-control: var(--radius-full);
+	--radius-search-field: var(--radius-full);
+	--radius-switch-track: var(--radius-full);
+	--radius-switch-thumb: var(--radius-full);
 }
 
 @layer utilities {

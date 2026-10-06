@@ -126,7 +126,7 @@
 				<span>{hostT('pwa.guide.chrome.install')}</span>
 			</Button>
 
-			<div class="rounded-xl bg-surface-container-high/60 p-3.5 text-on-surface-variant">
+			<div class="rounded-inset bg-surface-container-high/60 p-3.5 text-on-surface-variant">
 				<p class="text-body-large text-on-surface">
 					{hostT('pwa.guide.chrome.hint.title')}
 				</p>

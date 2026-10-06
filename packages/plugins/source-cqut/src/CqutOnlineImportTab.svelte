@@ -62,7 +62,7 @@
 <div class="ui-section-surface ui-section-surface--comfortable">
 	<div class="flex flex-col gap-4">
 		{#if !isOnline}
-			<div class="flex items-center gap-2 rounded-xl bg-error-container/40 p-3 text-error">
+			<div class="flex items-center gap-2 rounded-inset bg-error-container/40 p-3 text-error">
 				<span class="text-body-small">{offlineMessage}</span>
 			</div>
 		{/if}
@@ -96,7 +96,7 @@
 					/>
 					<button
 						type="button"
-						class="flex size-11 shrink-0 items-center justify-center rounded-full text-on-surface-variant outline-none focus-visible:ring-2 focus-visible:ring-brand"
+						class="flex size-11 shrink-0 items-center justify-center rounded-control text-on-surface-variant outline-none focus-visible:ring-2 focus-visible:ring-brand"
 						onclick={() => (passwordVisible = !passwordVisible)}
 						aria-label={passwordToggleLabel}
 					>

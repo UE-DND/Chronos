@@ -1,6 +1,7 @@
 /* Chronos typography scale — @theme bridge + text-* utilities */
 
 @theme {
+	--font-command: var(--font-sans);
 	--text-headline-medium-size: 1.75rem;
 	--text-headline-medium-line-height: 1.286;
 	--font-weight-headline-medium: 400;
@@ -55,18 +56,21 @@
 }
 
 .text-headline-medium {
+	font-family: var(--font-command);
 	font-size: var(--text-headline-medium-size);
 	line-height: var(--text-headline-medium-line-height);
 	font-weight: var(--font-weight-headline-medium);
 }
 
 .text-headline-small {
+	font-family: var(--font-command);
 	font-size: var(--text-headline-small-size);
 	line-height: var(--text-headline-small-line-height);
 	font-weight: var(--font-weight-headline-small);
 }
 
 .text-title-large {
+	font-family: var(--font-command);
 	font-size: var(--text-title-large-size);
 	line-height: var(--text-title-large-line-height);
 	font-weight: var(--font-weight-title-large);
@@ -127,6 +131,7 @@
 }
 
 .text-page-title {
+	font-family: var(--font-command);
 	margin: 0;
 	padding: 0 0.5rem;
 	color: var(--color-on-surface);

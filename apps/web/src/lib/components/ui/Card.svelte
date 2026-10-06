@@ -25,7 +25,7 @@
 <div
 	{...props}
 	class={[
-		'w-full rounded-3xl transition-shadow',
+		'w-full rounded-card transition-shadow',
 		!flush && 'p-4',
 		variantClasses[variant],
 		className
