@@ -6,7 +6,15 @@ export interface AcademicWeekRange {
 }
 
 function offeringMergeKey(course: Course): string {
-	return `${course.name}|${course.teacher}|${course.location}|${course.dayOfWeek}|${course.startPeriod}|${course.endPeriod}|${course.remark ?? ''}`;
+	return JSON.stringify([
+		course.name,
+		course.teacher,
+		course.location,
+		course.dayOfWeek,
+		course.startPeriod,
+		course.endPeriod,
+		course.remark ?? ''
+	]);
 }
 
 function sortedWeeks(weeks: readonly number[]): number[] {

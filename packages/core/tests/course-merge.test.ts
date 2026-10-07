@@ -1,8 +1,59 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { createCourse } from '../src/domain/course';
-import { mergeCompatibleOfferings } from '../src/domain/course-merge';
+import { rearrangeCourseSchedule } from '../src/domain/course-reorder';
+import { mergeOfferingsWithIdentity, mergeCompatibleOfferings } from '../src/domain/course-merge';
 
 describe('mergeCompatibleOfferings', () => {
+	it('keeps delimiter-containing identities distinct when an unrelated course moves', () => {
+		const first = createCourse({
+			dayOfWeek: 1,
+			startPeriod: 1,
+			endPeriod: 2,
+			id: 'first',
+			name: '选修|甲',
+			teacher: '乙',
+			weeks: [1]
+		});
+		const second = createCourse({
+			dayOfWeek: 1,
+			startPeriod: 1,
+			endPeriod: 2,
+			id: 'second',
+			name: '选修',
+			teacher: '甲|乙',
+			weeks: [2]
+		});
+		const duplicate = { ...first, id: 'duplicate', weeks: [3] };
+		const { courses, canonicalIds } = mergeOfferingsWithIdentity([first, second, duplicate]);
+		expect(courses).toEqual([{ ...first, weeks: [1, 3] }, second]);
+		expect([...canonicalIds]).toEqual([
+			['first', 'first'],
+			['second', 'second'],
+			['duplicate', 'first']
+		]);
+		const unrelated = createCourse({
+			dayOfWeek: 1,
+			startPeriod: 1,
+			endPeriod: 2,
+			id: 'unrelated',
+			name: '其他课程',
+			weeks: [1]
+		});
+		const moved = rearrangeCourseSchedule({
+			currentCourses: [first, second, unrelated],
+			draggedCourseId: unrelated.id,
+			targetDayOfWeek: 5,
+			targetStartPeriod: 3,
+			currentWeek: 1,
+			displayedPeriodCount: 10
+		});
+		expect(moved?.courses).toEqual([
+			first,
+			second,
+			expect.objectContaining({ id: unrelated.id, dayOfWeek: 5 })
+		]);
+	});
+
 	it('unions weeks and keeps the first id for the same slot identity', () => {
 		const remnant = createCourse({
 			id: 'course-a',
