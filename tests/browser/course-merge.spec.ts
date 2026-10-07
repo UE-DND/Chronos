@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import fixture from '../../packages/core/tests/fixtures/timetable.json' with { type: 'json' };
 import type { Timetable } from '../../packages/core/src/domain/timetable';
 import { encodeSharePayload } from '../../packages/plugins/codec-share/src/share-link/chronos-share-link-codec.ts';
+import { TIMETABLE_CLICK_GUARD_MS } from '../../apps/web/src/lib/timetable/timetable-interaction-types';
 
 const source: Timetable = {
 	...fixture,
@@ -77,6 +78,8 @@ test('shortening a semester, dragging away and back, then extending does not res
 	await page.mouse.move(origin.x + original.width + 16, origin.y, { steps: 12 });
 	await page.mouse.up();
 	await expect.poll(() => storedCourses(page)).toHaveLength(2);
+	// A completed drag suppresses new pointer gestures until the click guard expires.
+	await page.clock.runFor(TIMETABLE_CLICK_GUARD_MS + 1);
 	const moved = (await card.boundingBox())!;
 	await page.mouse.move(moved.x + moved.width / 2, moved.y + 20);
 	await page.mouse.down();

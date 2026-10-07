@@ -300,6 +300,7 @@ test('timetable details save displays progress and recovers after a write failur
 	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
 	await expect(page.locator('.timetable-week-pager')).toBeVisible();
 	await page.goto('/Chronos/timetable/details');
+	await expect(page.locator('#chronos-boot-fallback')).toBeHidden();
 	await expect(page.getByRole('button', { name: '保存', exact: true })).toBeEnabled();
 	await holdStorage(page);
 	await page.getByRole('button', { name: '保存', exact: true }).click();
@@ -311,6 +312,7 @@ test('timetable details save displays progress and recovers after a write failur
 	await releaseStorage(page);
 	await expect(page.locator('.timetable-week-pager')).toBeVisible();
 	await page.goto('/Chronos/timetable/details');
+	await expect(page.locator('#chronos-boot-fallback')).toBeHidden();
 	await expect(page.getByRole('button', { name: '保存', exact: true })).toBeEnabled();
 	await page.evaluate(() => {
 		IDBObjectStore.prototype.put = function () {
