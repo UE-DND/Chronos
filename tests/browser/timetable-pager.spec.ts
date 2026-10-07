@@ -406,3 +406,24 @@ test('saves a long-press course drop for only the displayed week', async ({ page
 	await expect(pager).toBeVisible();
 	expect((await readCourses()).find((course) => course.dayOfWeek !== 2)?.weeks).toEqual([week]);
 });
+
+test('returning to the current week interrupts an unfinished swipe', async ({ page, request }) => {
+	await page.clock.install({ time: new Date('2026-04-22T10:15:00+08:00') });
+	const { pager, position } = await importTimetable(page, request);
+	await expect.poll(position).toBeCloseTo(7, 1);
+	const rect = (await pager.boundingBox())!;
+	await swipe(page, { x: rect.x + rect.width * 0.2, y: rect.y + rect.height * 0.6 }, 260, 0);
+	await page.locator('#week-indicator').click();
+	// The canceled touch animation must not overwrite this explicit navigation.
+	await page.waitForTimeout(500);
+	await expect.poll(position).toBeCloseTo(7, 1);
+	await expect(page.locator('.week-badge')).toHaveAttribute('aria-label', '第 8 周 周三');
+	await expect(page.locator('#week-indicator')).toHaveAttribute('aria-valuenow', '8');
+
+	await swipe(page, { x: rect.x + rect.width * 0.2, y: rect.y + rect.height * 0.6 }, 260, 0);
+	await expect.poll(position).toBeCloseTo(6, 1);
+	await expect(page.locator('.week-badge')).toHaveAttribute('aria-label', '第 7 周');
+	await page.getByRole('tab', { name: '我的', exact: true }).click();
+	await page.getByRole('tab', { name: '课表', exact: true }).click();
+	await expect.poll(position).toBeCloseTo(6, 1);
+});

@@ -135,6 +135,8 @@ export function createWeekPagerController(options: {
 			(previous.timetableId !== next.timetableId ||
 				previous.startWeek !== next.startWeek ||
 				previous.endWeek !== next.endWeek ||
+				// publish() updates context before echoing a pager-driven week.
+				previous.displayedWeek !== next.displayedWeek ||
 				(previous.active && !next.active) ||
 				(previous.allowTouch && !next.allowTouch));
 		if (changed) interrupt();

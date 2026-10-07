@@ -134,6 +134,22 @@ describe('week pager lifecycle', () => {
 		expect(h.complete).toHaveBeenCalledOnce();
 		h.detach();
 	});
+	it('honors an external week jump while the touch animation is settling', () => {
+		const h = harness();
+		h.pointer('pointerdown');
+		h.pointer('pointermove', -100);
+		h.scroll(h.node.scrollLeft);
+		h.pointer('pointerup', -100);
+		h.sync({ displayedWeek: 1 });
+		expect(h.node.scrollLeft).toBe(0);
+		const calls = [...h.calls];
+		vi.advanceTimersByTime(500);
+		h.node.dispatchEvent(new Event('scrollend'));
+		expect(h.node.scrollLeft).toBe(0);
+		expect(h.calls).toEqual(calls);
+		expect(h.complete).not.toHaveBeenCalled();
+		h.detach();
+	});
 	it('keeps the latest preview when direction reverses and does not count a return to the starting week', () => {
 		const h = harness();
 		h.scroll(700);
