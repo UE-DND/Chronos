@@ -68,7 +68,7 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 		name: { 'zh-CN': 'Arknights', en: 'Arknights' },
 		description: {
 			'zh-CN': 'Arknights 主题',
-			en: 'An unofficial color and icon theme inspired by tactical terminal interfaces'
+			en: 'Arknights theme'
 		},
 		colorsJson: resolve(root, 'packages/plugins/theme-arknights/theme-arknights.colors.json'),
 		iconsJson: resolve(root, 'packages/plugins/theme-arknights/theme-arknights.icons.json')

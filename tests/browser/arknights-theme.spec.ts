@@ -29,6 +29,9 @@ for (const viewport of [
 			await expect(row.getByText('已安装', { exact: true })).toBeVisible();
 		}
 		await page.goto('/Chronos/wallpaper');
+		await expect(page.getByText('Arknights 主题', { exact: true })).toBeVisible();
+		await expect(page.getByText('Material 3 主题', { exact: false })).toBeVisible();
+		await expect(page.getByText('纸白与石墨表面', { exact: false })).toHaveCount(0);
 		await page
 			.locator('label')
 			.filter({ has: page.getByText('ArKnights', { exact: true }) })

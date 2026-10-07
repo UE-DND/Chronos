@@ -4,10 +4,6 @@
 		"zh-CN": "ArKnights",
 		"en": "ArKnights"
 	},
-	"description": {
-		"zh-CN": "纸白与石墨表面、蓝色信号及战术行动强调的主题",
-		"en": "A tactical theme with paper and graphite surfaces, blue signals and tactical action accents"
-	},
 	"recommendedIconTheme": "arknights",
 	"wallpaper": {
 		"url": "./wallpaper.jpg",
