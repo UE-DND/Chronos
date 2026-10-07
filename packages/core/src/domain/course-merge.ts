@@ -26,13 +26,6 @@ function unionWeeks(left: readonly number[], right: readonly number[]): number[]
 	return sortedWeeks([...new Set([...left, ...right])]);
 }
 
-function coversAcademicWeeks(weeks: readonly number[], totalWeeks: AcademicWeekRange): boolean {
-	const { startWeek, endWeek } = totalWeeks;
-	const expectedLength = endWeek - startWeek + 1;
-	if (expectedLength <= 0 || weeks.length !== expectedLength) return false;
-	return weeks.every((week, index) => week === startWeek + index);
-}
-
 function cloneOffering(course: Course, weeks: number[]): Course {
 	return {
 		...course,
@@ -43,12 +36,13 @@ function cloneOffering(course: Course, weeks: number[]): Course {
 
 /**
  * Merges offerings that share name, teacher, location, slot, and remark.
+ * Explicit weeks stay explicit, even when they cover the academic range.
  * Empty `weeks` means every academic week. The first row in each group keeps its id
  * and relative position; the timetable is not re-sorted.
  */
 export function mergeOfferingsWithIdentity(
 	courses: readonly Course[],
-	totalWeeks?: AcademicWeekRange
+	_totalWeeks?: AcademicWeekRange
 ): { courses: Course[]; canonicalIds: Map<string, string> } {
 	const canonicalIds = new Map<string, string>();
 	const indexByKey = new Map<string, number>();
@@ -66,12 +60,7 @@ export function mergeOfferingsWithIdentity(
 
 		const existing = result[existingIndex]!;
 		canonicalIds.set(course.id, existing.id);
-		const mergedWeeks = unionWeeks(existing.weeks, course.weeks);
-		const weeks =
-			totalWeeks && mergedWeeks.length > 0 && coversAcademicWeeks(mergedWeeks, totalWeeks)
-				? []
-				: mergedWeeks;
-		result[existingIndex] = cloneOffering(existing, weeks);
+		result[existingIndex] = cloneOffering(existing, unionWeeks(existing.weeks, course.weeks));
 	}
 
 	return { courses: result, canonicalIds };

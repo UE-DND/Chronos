@@ -110,7 +110,7 @@ describe('mergeCompatibleOfferings', () => {
 		expect(merged[0]!.weeks).toEqual([]);
 	});
 
-	it('collapses weeks that cover the academic range after a merge', () => {
+	it('preserves explicit weeks that cover the academic range after a merge', () => {
 		const remnant = createCourse({
 			id: 'course-a',
 			name: '高等数学',
@@ -135,7 +135,24 @@ describe('mergeCompatibleOfferings', () => {
 		const merged = mergeCompatibleOfferings([remnant, clone], { startWeek: 1, endWeek: 4 });
 		expect(merged).toHaveLength(1);
 		expect(merged[0]!.id).toBe('course-a');
-		expect(merged[0]!.weeks).toEqual([]);
+		expect(merged[0]!.weeks).toEqual([1, 2, 3, 4]);
+	});
+
+	it.each([false, true])('keeps a genuine all-weeks input when it comes first: %s', (allFirst) => {
+		const explicit = createCourse({
+			id: 'explicit',
+			name: '课程',
+			dayOfWeek: 1,
+			startPeriod: 1,
+			endPeriod: 2,
+			weeks: [1, 2]
+		});
+		const all = { ...explicit, id: 'all', weeks: [] };
+		const result = mergeOfferingsWithIdentity(allFirst ? [all, explicit] : [explicit, all], {
+			startWeek: 1,
+			endWeek: 2
+		});
+		expect(result.courses).toEqual([{ ...(allFirst ? all : explicit), weeks: [] }]);
 	});
 
 	it('does not merge different locations or names in the same slot', () => {

@@ -295,7 +295,42 @@ describe('rearrangeCourseSchedule', () => {
 		expect(restored!.some((course) => course.id === clone!.id)).toBe(false);
 	});
 
-	it('restores empty weeks after dragging an all-weeks course away and back', () => {
+	it('does not resurrect removed weeks after shortening, moving away and back, then extending', () => {
+		const shortened = { ...courseA, weeks: [1, 2] };
+		const options = {
+			currentWeek: 2,
+			totalWeeks: { startWeek: 1, endWeek: 2 },
+			displayedPeriodCount: 10
+		};
+		const away = rearrangeCourseSchedule({
+			...options,
+			currentCourses: [shortened],
+			draggedCourseId: shortened.id,
+			targetDayOfWeek: 5,
+			targetStartPeriod: 3
+		})!;
+		const back = rearrangeCourseSchedule({
+			...options,
+			currentCourses: away.courses,
+			draggedCourseId: away.movedCourse.id,
+			targetDayOfWeek: 1,
+			targetStartPeriod: 1
+		})!;
+		expect(back.courses).toEqual([shortened]);
+		expect(back.movedCourse.id).toBe(shortened.id);
+		const removedWeekMove = rearrangeCourseSchedule({
+			...options,
+			totalWeeks: { startWeek: 1, endWeek: 4 },
+			currentWeek: 3,
+			currentCourses: back.courses,
+			draggedCourseId: back.movedCourse.id,
+			targetDayOfWeek: 5,
+			targetStartPeriod: 3
+		});
+		expect(removedWeekMove).toBeNull();
+	});
+
+	it('keeps materialized weeks after dragging an all-weeks course away and back', () => {
 		const allWeeksCourse = createCourse({
 			id: 'course-all',
 			name: '形势与政策5',
@@ -338,7 +373,7 @@ describe('rearrangeCourseSchedule', () => {
 			dayOfWeek: 3,
 			startPeriod: 1,
 			endPeriod: 2,
-			weeks: []
+			weeks: [1, 2, 3, 4]
 		});
 	});
 
