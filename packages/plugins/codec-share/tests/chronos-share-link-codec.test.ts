@@ -174,6 +174,36 @@ describe('chronos-share-binary', () => {
 		expect(decoded.courses[0]?.location).toBe('两江校区 弘远楼D0429');
 	});
 
+	it.each<{ name: string; locations: string[] }>([
+		{ name: 'split then full', locations: ['两江校区 弘远楼A0401', '两江操场14'] },
+		{ name: 'full then split', locations: ['两江操场14', '两江校区 弘远楼A0401'] },
+		{ name: 'split then empty', locations: ['两江校区 弘远楼A0401', ''] },
+		{ name: 'empty then split', locations: ['', '两江校区 弘远楼A0401'] },
+		{
+			name: 'all kinds',
+			locations: ['两江操场14', '两江校区 弘远楼A0401', '', '两江校区 弘远楼D0429']
+		},
+		{
+			name: 'all kinds reversed',
+			locations: ['两江校区 弘远楼D0429', '', '两江校区 弘远楼A0401', '两江操场14']
+		}
+	])('preserves mixed locations: $name', ({ locations }) => {
+		const timetable = createTimetable({
+			...sampleTimetable(),
+			courses: locations.map((location, index) =>
+				course(`c-${index}`, `课程${index}`, '李老师', {
+					location,
+					dayOfWeek: index + 1
+				})
+			)
+		});
+
+		const decoded = decodeBinaryToTimetable(encodeTimetableToBinary(timetable));
+		expect(decoded.courses.map(({ name, location }) => ({ name, location }))).toEqual(
+			timetable.courses.map(({ name, location }) => ({ name, location }))
+		);
+	});
+
 	it('deduplicates shared teachers in the string table', () => {
 		const timetable = createTimetable({
 			id: 't1',

@@ -301,7 +301,10 @@ export function encodeTimetableToBinary(timetable: Timetable): Uint8Array {
 
 	let singleBuildingIdx = -1;
 	for (const course of encodedCourses) {
-		if (!course.isSplitLocation || course.buildingIdx === NO_BUILDING) continue;
+		if (!course.isSplitLocation || course.buildingIdx === NO_BUILDING) {
+			singleBuildingIdx = -1;
+			break;
+		}
 		if (singleBuildingIdx === -1) {
 			singleBuildingIdx = course.buildingIdx;
 		} else if (singleBuildingIdx !== course.buildingIdx) {
