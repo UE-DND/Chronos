@@ -173,6 +173,47 @@ describe('codec-qrcode high-compression serialization & slot execution', () => {
 		expect(importedTimetable.courses[0]?.teacher).toBe('李老师');
 	});
 
+	it('preserves whole-semester and explicit weeks through exported PNG import', async () => {
+		const { env } = createMockEnv();
+		const engine = new ChronosEngine({ env });
+		await engine.init();
+		await engine.loadPlugin(createQrCodecPlugin());
+		const exportSlot = engine.slots.getSlotItem('export.action', 'qrcode')!;
+		const importSlot = engine.slots.getSlotItem('import.source.tab', 'qrcode')!;
+		const sample = createTimetable({
+			id: 't-qr-weeks',
+			name: '整学期二维码课表',
+			academicConfig: {
+				termStartDate: '2026-03-02',
+				startWeek: 1,
+				endWeek: 24,
+				periodTimes: []
+			},
+			courses: [[], [1], [3, 5, 24]].map((weeks, index) =>
+				createCourse({
+					id: `c-${index}`,
+					name: `课程${index}`,
+					dayOfWeek: index + 1,
+					startPeriod: 1,
+					endPeriod: 2,
+					weeks
+				})
+			)
+		});
+
+		const exported = await exportSlot.export(sample);
+		expect(exported.mimeType).toBe('image/png');
+		expect(exported.content).toBeInstanceOf(Uint8Array);
+		const content = extractChronosQrFromPng(exported.content as Uint8Array);
+		expect(content).toMatch(/^chronos-qr:v1:/);
+		const imported = await importSlot.executeImport({ content });
+
+		expect(imported.academicConfig).toEqual(sample.academicConfig);
+		expect(imported.courses.map(({ name, weeks }) => ({ name, weeks }))).toEqual(
+			sample.courses.map(({ name, weeks }) => ({ name, weeks }))
+		);
+	});
+
 	it('throws descriptive error on empty or invalid import inputs', async () => {
 		const { env } = createMockEnv();
 		const engine = new ChronosEngine({ env });

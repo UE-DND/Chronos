@@ -125,7 +125,6 @@ export async function deserializeTimetableFromQr(
 			const startPeriod = tuple[4] ?? 1;
 			const endPeriod = tuple[5] ?? 1;
 			const weeks = bitmaskToWeeks(tuple[6] ?? 1);
-			const safeWeeks = weeks.length > 0 ? weeks : [1];
 			const remark = tuple[7] !== undefined && tuple[7] >= 0 ? pool[tuple[7]] : undefined;
 
 			return createCourse({
@@ -136,7 +135,7 @@ export async function deserializeTimetableFromQr(
 				dayOfWeek,
 				startPeriod,
 				endPeriod,
-				weeks: safeWeeks,
+				weeks,
 				remark
 			});
 		});
