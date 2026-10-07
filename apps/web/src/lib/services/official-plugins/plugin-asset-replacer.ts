@@ -10,6 +10,7 @@ export interface PluginAssetReplacerDeps {
 }
 
 export interface ReplacePluginAssetsOptions {
+	expectedRevision?: number;
 	preserveInstalledAt?: boolean;
 	revertThemesOnDeactivate?: boolean;
 	signal?: AbortSignal;
@@ -26,6 +27,10 @@ export async function replacePluginAssets(
 ): Promise<InstalledOfficialPluginRecord> {
 	const pluginId = candidate.manifest.id;
 	const existing = deps.installedStore.find(pluginId);
+	const currentRevision = existing ? (existing.revision ?? 0) : -1;
+	const expectedRevision = options?.expectedRevision ?? currentRevision;
+	if (currentRevision !== expectedRevision)
+		throw new Error('Plugin changed during download; retry');
 	const hadActiveRuntime = deps.runtimeActivator.isActive(pluginId);
 
 	const record: InstalledOfficialPluginRecord = {
@@ -47,7 +52,10 @@ export async function replacePluginAssets(
 					revertThemes: options?.revertThemesOnDeactivate ?? true
 				});
 				if (existing && hadActiveRuntime && !deps.isDisposed()) {
-					await deps.runtimeActivator.activate(existing);
+					await deps.installedStore.load();
+					const retained = deps.installedStore.find(pluginId);
+					if (retained && retained.revision === existing.revision)
+						await deps.runtimeActivator.activate(existing);
 				}
 			} catch (rollbackErr) {
 				rollbackErrors.push(rollbackErr);
@@ -82,7 +90,7 @@ export async function replacePluginAssets(
 
 		if (deps.isDisposed()) throw new DOMException('Aborted', 'AbortError');
 		deps.validate?.();
-		await deps.installedStore.upsert(record, existing?.revision ?? -1);
+		await deps.installedStore.upsert(record, expectedRevision);
 		runtimeTouched = false;
 		return record;
 	} catch (err: unknown) {

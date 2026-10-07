@@ -191,6 +191,25 @@ describe('OfficialPluginInstalledStore', () => {
 		await store.load();
 		expect(store.has('a')).toBe(false);
 	});
+	it('rejects the previous installation revision after uninstall and reinstall', async () => {
+		const record = {
+			manifest: { id: 'plugin' } as never,
+			origin: { kind: 'user' as const },
+			installedAt: 1
+		};
+		await store.upsert(record);
+		const previousRevision = store.find('plugin')!.revision;
+		await store.remove('plugin');
+		await store.upsert({ ...record, code: 'replacement' });
+
+		await expect(store.upsert({ ...record, code: 'stale' }, previousRevision)).rejects.toThrow(
+			'Plugin changed'
+		);
+		await store.load();
+		expect(store.find('plugin')?.code).toBe('replacement');
+		expect(store.find('plugin')?.revision).toBeGreaterThan(previousRevision!);
+	});
+
 	it('freezes writes only for a complete snapshot and prevents old host writes after takeover', async () => {
 		const host = {
 			version: '1.0.2',

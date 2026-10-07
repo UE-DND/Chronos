@@ -607,6 +607,7 @@ export class OfficialPluginService implements Disposable {
 						: undefined;
 				signal.throwIfAborted();
 				return this.replacePluginAssets(candidate, {
+					expectedRevision: existing.revision ?? 0,
 					wallpaper,
 					preserveInstalledAt: true,
 					signal,
@@ -620,6 +621,7 @@ export class OfficialPluginService implements Disposable {
 	private async replacePluginAssets(
 		candidate: InstalledOfficialPluginRecord,
 		options?: {
+			expectedRevision?: number;
 			preserveInstalledAt?: boolean;
 			revertThemesOnDeactivate?: boolean;
 			signal?: AbortSignal;
@@ -627,6 +629,8 @@ export class OfficialPluginService implements Disposable {
 		}
 	): Promise<InstalledOfficialPluginRecord> {
 		const previous = this.installedStore.find(candidate.manifest.id);
+		const expectedRevision =
+			options?.expectedRevision ?? (previous ? (previous.revision ?? 0) : -1);
 		const id = options?.wallpaper
 			? `theme:${candidate.manifest.id}:${crypto.randomUUID()}`
 			: undefined;
@@ -647,7 +651,7 @@ export class OfficialPluginService implements Disposable {
 						validate: required ? () => this.engine.validateDefaultTheme(required) : undefined
 					},
 					next,
-					options
+					{ ...options, expectedRevision }
 				);
 			result = required
 				? await this.engine.withPluginReplacement(candidate.manifest.id, replace)
@@ -696,6 +700,7 @@ export class OfficialPluginService implements Disposable {
 		options?: {
 			silent?: boolean;
 			system?: boolean;
+			expectedInstalledRevision?: number;
 			preinstall?: { profileId: string; config?: Record<string, unknown> };
 			signal?: AbortSignal;
 			onProgress?: (progress: {
@@ -727,7 +732,13 @@ export class OfficialPluginService implements Disposable {
 		if (this.installedStore.isFrozen || this.installedStore.hostChanged)
 			throw new Error('Application update in progress; reload before changing plugins');
 		const existingSnapshot = this.installedStore.find(manifest.id);
-		const expectedRevision = existingSnapshot?.revision ?? -1;
+		// A catalog refresh may have queued behind an uninstall or a newer install.
+		if (
+			options?.expectedInstalledRevision !== undefined &&
+			(!existingSnapshot || (existingSnapshot.revision ?? 0) !== options.expectedInstalledRevision)
+		)
+			return;
+		const expectedRevision = existingSnapshot ? (existingSnapshot.revision ?? 0) : -1;
 		const mergedSignal = mergeAbortSignals(
 			options?.signal ? [options.signal, this.lifecycle.signal] : [this.lifecycle.signal]
 		);
@@ -744,7 +755,8 @@ export class OfficialPluginService implements Disposable {
 			await this.installedStore.load();
 			if (this.installedStore.isFrozen || this.installedStore.hostChanged)
 				throw new Error('Application update in progress; reload before changing plugins');
-			if ((this.installedStore.find(manifest.id)?.revision ?? -1) !== expectedRevision)
+			const current = this.installedStore.find(manifest.id);
+			if ((current ? (current.revision ?? 0) : -1) !== expectedRevision)
 				throw new Error('Plugin changed during download; retry');
 			options?.onProgress?.({ stage: 'installing', percent: 88 });
 
@@ -771,6 +783,7 @@ export class OfficialPluginService implements Disposable {
 			options?.onProgress?.({ stage: 'installing', percent: 96 });
 
 			await this.replacePluginAssets(record, {
+				expectedRevision,
 				wallpaper: assets.wallpaper,
 				preserveInstalledAt: Boolean(existingSnapshot),
 				revertThemesOnDeactivate: false,

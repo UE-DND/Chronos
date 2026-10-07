@@ -53,10 +53,15 @@ async function setup() {
 	};
 	const nextBlob = new Blob(['new']);
 	const download = vi.fn().mockResolvedValue({ colorsJson: '{}', wallpaper: nextBlob });
+	let active = true;
 	const runtime = {
-		isActive: () => true,
-		activate: vi.fn().mockResolvedValue(undefined),
-		deactivate: vi.fn().mockResolvedValue(undefined)
+		isActive: () => active,
+		activate: vi.fn(async () => {
+			active = true;
+		}),
+		deactivate: vi.fn(async () => {
+			active = false;
+		})
 	};
 	const service = new OfficialPluginService(engine, {
 		installedStore: store,
@@ -65,7 +70,7 @@ async function setup() {
 		assetPipeline: { download } as unknown as OfficialPluginAssetPipeline,
 		catalogClient: {} as OfficialPluginCatalogClient
 	});
-	return { service, store, previous, blobs, images, nextBlob, runtime, persist, download };
+	return { engine, service, store, previous, blobs, images, nextBlob, runtime, persist, download };
 }
 describe('theme image replacement lifecycle', () => {
 	it('keeps old resources until persistence succeeds, then retires only the old theme image', async () => {
@@ -81,6 +86,62 @@ describe('theme image replacement lifecycle', () => {
 		await service.uninstall(manifest.id);
 		expect([...blobs.keys()]).toEqual(['custom-wallpaper']);
 	});
+	it.each([
+		{ stage: 'wallpaper', reinstall: false },
+		{ stage: 'wallpaper', reinstall: true },
+		{ stage: 'activation', reinstall: false },
+		{ stage: 'activation', reinstall: true }
+	])(
+		'rejects a stale install after another window removes it during $stage (reinstall=$reinstall)',
+		async ({ stage, reinstall }) => {
+			const { engine, service, store, previous, blobs, images, runtime } = await setup();
+			const other = new OfficialPluginInstalledStore(engine);
+			const started = Promise.withResolvers<void>();
+			const release = Promise.withResolvers<void>();
+			if (stage === 'wallpaper') {
+				const put = images.put.getMockImplementation()!;
+				images.put.mockImplementationOnce(async (id, blob) => {
+					started.resolve();
+					await release.promise;
+					await put(id, blob);
+				});
+			} else {
+				const activate = runtime.activate.getMockImplementation()!;
+				runtime.activate.mockImplementationOnce(async () => {
+					await activate();
+					started.resolve();
+					await release.promise;
+				});
+			}
+			const installing = service.install(manifest);
+			const rejected = expect(installing).rejects.toThrow('Plugin changed');
+			await started.promise;
+			try {
+				await other.remove(manifest.id);
+				blobs.delete('old-image');
+				if (reinstall) {
+					blobs.set('replacement-image', new Blob(['replacement']));
+					await other.upsert({
+						...previous,
+						manifest: { ...manifest, version: '2.0.0' },
+						wallpaperAssetId: 'replacement-image'
+					});
+				}
+				await store.load();
+				store.notify();
+			} finally {
+				release.resolve();
+			}
+			await rejected;
+			await store.load();
+			expect(store.find(manifest.id)).toEqual(other.find(manifest.id));
+			expect([...blobs.keys()]).toEqual(
+				reinstall ? ['custom-wallpaper', 'replacement-image'] : ['custom-wallpaper']
+			);
+			if (stage === 'activation') expect(runtime.isActive()).toBe(false);
+		}
+	);
+
 	it.each(['activation', 'persistence', 'download'])(
 		'preserves the old theme and image on %s failure',
 		async (failure) => {

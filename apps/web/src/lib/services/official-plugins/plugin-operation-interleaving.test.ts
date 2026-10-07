@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, type Mock } from 'vite-plus/test';
+import { describe, expect, it, vi, beforeEach, afterEach, type Mock } from 'vite-plus/test';
 import {
 	ChronosEngine,
 	DEFAULT_USER_PREFERENCES,
@@ -123,6 +123,153 @@ describe('PluginOperationCoordinator interleaving in OfficialPluginService', () 
 		});
 		await engine.init();
 		service = createService(engine);
+	});
+
+	afterEach(() => {
+		service.dispose();
+		engine.dispose();
+		vi.restoreAllMocks();
+	});
+
+	async function seedStaleOfficialPlugin() {
+		const manifest: PluginManifest = {
+			id: 'test-plugin',
+			name: { en: 'Test' },
+			version: '0.4.1',
+			description: { en: 'Test' },
+			author: 'Chronos',
+			type: 'tool',
+			toolGroup: 'utility',
+			bundleFormat: 'esm',
+			bundleUrl: '/test.bundle.js',
+			sha256: await engine.runtime.sha256(SAMPLE_BUNDLE)
+		};
+		const manifestUrl = '/official-plugins/manifests/test-plugin.manifest.json';
+		await service.installationStore.upsert({
+			manifest: { ...manifest, version: '0.4.0' },
+			manifestUrl,
+			code: SAMPLE_BUNDLE,
+			origin: { kind: 'user' },
+			installedAt: 1
+		});
+		return { manifest, manifestUrl };
+	}
+
+	it.each(['catalog', 'manifest', 'other-window manifest'])(
+		'does not reinstall a plugin uninstalled while host sync awaits its %s',
+		async (stage) => {
+			const { manifest, manifestUrl } = await seedStaleOfficialPlugin();
+			const started = Promise.withResolvers<void>();
+			const release = Promise.withResolvers<void>();
+			httpRequest.mockImplementation(async (url) => {
+				if (url.endsWith(`${stage === 'catalog' ? 'catalog' : 'test-plugin.manifest'}.json`)) {
+					started.resolve();
+					await release.promise;
+				}
+				if (url.endsWith('catalog.json'))
+					return httpResponse({
+						json: async <T>() => ({ version: 1, manifests: [manifestUrl] }) as T
+					});
+				if (url === manifestUrl) return httpResponse({ json: async <T>() => manifest as T });
+				return httpResponse({ text: async () => SAMPLE_BUNDLE });
+			});
+			const sync = service.retryPendingUpdates();
+			await started.promise;
+			try {
+				if (stage === 'other-window manifest') {
+					const other = createService(engine);
+					try {
+						await other.uninstall(manifest.id);
+						expect(service.getInstalled(manifest.id)).toBeDefined();
+					} finally {
+						other.dispose();
+					}
+				} else await service.uninstall(manifest.id);
+			} finally {
+				release.resolve();
+			}
+			await sync;
+			await service.installationStore.load();
+
+			expect(service.getInstalled(manifest.id)).toBeUndefined();
+			expect(service.isPluginActive(manifest.id)).toBe(false);
+			expect(engine.isPluginLoaded(manifest.id)).toBe(false);
+			expect(service.installationStore.getRemoved()).toContain(manifest.id);
+			expect(httpRequest.mock.calls.some(([url]) => url.includes('test.bundle.js'))).toBe(false);
+		}
+	);
+
+	it('does not replace a new installation with an old host-sync snapshot after uninstall and reinstall', async () => {
+		const { manifest, manifestUrl } = await seedStaleOfficialPlugin();
+		const started = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		httpRequest.mockImplementation(async (url) => {
+			if (url.endsWith('catalog.json')) {
+				started.resolve();
+				await release.promise;
+				return httpResponse({
+					json: async <T>() => ({ version: 1, manifests: [manifestUrl] }) as T
+				});
+			}
+			if (url === manifestUrl) return httpResponse({ json: async <T>() => manifest as T });
+			return httpResponse({ text: async () => SAMPLE_BUNDLE });
+		});
+		const sync = service.retryPendingUpdates();
+		await started.promise;
+		try {
+			await service.uninstall(manifest.id);
+			await service.install({ ...manifest, name: { en: 'New installation' } }, manifestUrl);
+		} finally {
+			release.resolve();
+		}
+		const replacement = structuredClone(service.getInstalled(manifest.id));
+		await sync;
+		await service.installationStore.load();
+
+		expect(service.getInstalled(manifest.id)).toEqual(replacement);
+		expect(httpRequest.mock.calls.filter(([url]) => url.includes('test.bundle.js'))).toHaveLength(
+			1
+		);
+		expect(service.isPluginActive(manifest.id)).toBe(true);
+	});
+
+	it('rechecks a host refresh queued behind an unfinished uninstall', async () => {
+		const { manifest, manifestUrl } = await seedStaleOfficialPlugin();
+		await engine.loadPlugin({ id: manifest.id, name: () => 'Test', version: '0.4.0', apply() {} });
+		const started = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		const unload = engine.unloadPlugin.bind(engine);
+		vi.spyOn(engine, 'unloadPlugin').mockImplementationOnce(async (id) => {
+			started.resolve();
+			await release.promise;
+			await unload(id);
+		});
+		httpRequest.mockImplementation(async (url) => {
+			if (url.endsWith('catalog.json'))
+				return httpResponse({
+					json: async <T>() => ({ version: 1, manifests: [manifestUrl] }) as T
+				});
+			if (url === manifestUrl) return httpResponse({ json: async <T>() => manifest as T });
+			return httpResponse({ text: async () => SAMPLE_BUNDLE });
+		});
+		const install = vi.spyOn(service, 'install');
+		const uninstall = service.uninstall(manifest.id);
+		await started.promise;
+		const sync = service.retryPendingUpdates();
+		try {
+			await vi.waitFor(() => expect(install).toHaveBeenCalledOnce());
+			expect(service.getInstalled(manifest.id)).toBeDefined();
+		} finally {
+			release.resolve();
+		}
+		await Promise.all([uninstall, sync]);
+		await service.installationStore.load();
+
+		expect(service.getInstalled(manifest.id)).toBeUndefined();
+		expect(service.isPluginActive(manifest.id)).toBe(false);
+		expect(engine.isPluginLoaded(manifest.id)).toBe(false);
+		expect(service.installationStore.getRemoved()).toContain(manifest.id);
+		expect(httpRequest.mock.calls.some(([url]) => url.includes('test.bundle.js'))).toBe(false);
 	});
 
 	it('aborts in-flight install when uninstall is called concurrently, preventing resurrection', async () => {

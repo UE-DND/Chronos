@@ -62,7 +62,7 @@ export interface SyncInstalledPluginsOptions {
 	install: (
 		manifest: PluginManifest,
 		manifestUrl: string,
-		options?: { silent?: boolean }
+		options?: { silent?: boolean; expectedInstalledRevision?: number }
 	) => Promise<void>;
 }
 
@@ -117,6 +117,10 @@ export async function syncInstalledPluginsWithHost(
 				}
 			);
 			for (const record of records) {
+				const current = options
+					.getInstalledRecords()
+					.find((installed) => installed.manifest.id === record.manifest.id);
+				if (!current || current.revision !== record.revision) continue;
 				const entry = map.get(record.manifest.id);
 				if (!entry) {
 					options.onStatus?.(record.manifest.id, 'failed', 'Target plugin unavailable');
@@ -124,7 +128,10 @@ export async function syncInstalledPluginsWithHost(
 				}
 				try {
 					options.onStatus?.(record.manifest.id, 'downloading');
-					await options.install(entry.manifest, entry.manifestUrl, { silent: true });
+					await options.install(entry.manifest, entry.manifestUrl, {
+						silent: true,
+						expectedInstalledRevision: record.revision ?? 0
+					});
 				} catch (error) {
 					options.onStatus?.(record.manifest.id, 'failed', String(error));
 					console.error('[sync-installed-plugins] Failed to sync plugin:', error);

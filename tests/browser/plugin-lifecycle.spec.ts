@@ -89,6 +89,47 @@ test.beforeEach(async ({ page, request, context }) => {
 	});
 });
 
+for (const stage of ['catalog', 'manifest']) {
+	test(`uninstall during host-sync ${stage} does not resurrect the plugin`, async ({
+		page,
+		context
+	}) => {
+		await installClock(page);
+		const record = (await installation(page)).records.find(
+			(record) => record.manifest.id === 'tool-clock'
+		)!;
+		const bundlePath = new URL(record.manifest.bundleUrl!, record.manifestUrl).pathname;
+		await installation(page, { id: 'tool-clock' });
+		const started = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		let downloads = 0;
+		const pattern = stage === 'catalog' ? '**/catalog.json' : '**/tool-clock.manifest.json';
+		await context.route(pattern, async (route) => {
+			started.resolve();
+			await release.promise;
+			await route.fallback();
+		});
+		page.on('request', (request) => {
+			if (new URL(request.url()).pathname === bundlePath) downloads++;
+		});
+		try {
+			await page.reload();
+			await started.promise;
+			await uninstall(page, '自定义时间', 'tool-clock');
+		} finally {
+			release.resolve();
+		}
+		await page.waitForLoadState('networkidle');
+		expect(downloads).toBe(0);
+		expect(
+			(await installation(page)).records.some((record) => record.manifest.id === 'tool-clock')
+		).toBe(false);
+		expect((await installation(page)).removed).toContain('tool-clock');
+		await page.reload();
+		await expect(pluginRow(page, '自定义时间')).toHaveCount(0);
+	});
+}
+
 for (const confirm of [false, true]) {
 	test(`unrelated uninstall preserves a pending external theme, and uninstalling its ${confirm ? 'confirmed' : 'pending'} owner reverts`, async ({
 		page,

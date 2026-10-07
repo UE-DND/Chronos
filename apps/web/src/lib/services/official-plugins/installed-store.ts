@@ -222,9 +222,10 @@ export class OfficialPluginInstalledStore {
 		await this.mutate((state) => {
 			const index = state.records.findIndex((old) => old.manifest.id === record.manifest.id);
 			const old = state.records[index];
-			if (expected !== undefined && (old?.revision ?? -1) !== expected)
+			if (expected !== undefined && (old ? (old.revision ?? 0) : -1) !== expected)
 				throw new Error('Plugin changed during download; retry');
-			const next = { ...record, revision: (old?.revision ?? 0) + 1 };
+			// State revisions do not reset when a plugin is uninstalled and reinstalled.
+			const next = { ...record, revision: state.revision + 1 };
 			if (index >= 0) state.records[index] = next;
 			else state.records.push(next);
 			state.removed = state.removed.filter((id) => id !== record.manifest.id);
@@ -243,7 +244,7 @@ export class OfficialPluginInstalledStore {
 			if ((record.revision ?? -1) !== expectedRevision)
 				throw new Error('Plugin changed during compatibility confirmation; retry');
 			record.acceptedHostVersion = hostVersion;
-			record.revision = (record.revision ?? 0) + 1;
+			record.revision = state.revision + 1;
 		});
 	}
 	async prepare(update: PreparedPluginUpdate): Promise<void> {
