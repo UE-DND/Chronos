@@ -92,11 +92,15 @@ export class OfficialPluginRuntimeActivator {
 						'ESM theme must register the same colors and identity as its static resource'
 					);
 				}
-				if (verifiedWallpaper) {
-					// Preserve ESM behavior while attaching the host-verified offline image.
+				if (verifiedWallpaper || !theme.description) {
+					// Preserve ESM behavior while attaching the host-verified offline image and market description.
 					disposables.push(
 						this.engine.themes.registerTheme(
-							{ ...theme, wallpaper: verifiedWallpaper },
+							{
+								...theme,
+								description: theme.description ?? manifest.description,
+								...(verifiedWallpaper ? { wallpaper: verifiedWallpaper } : {})
+							},
 							manifest.id
 						)
 					);
@@ -141,6 +145,7 @@ export class OfficialPluginRuntimeActivator {
 				this.engine.themes.registerTheme(
 					{
 						...colorTheme,
+						description: colorTheme.description ?? manifest.description,
 						...(wallpaper ? { wallpaper } : {})
 					},
 					manifest.id

@@ -6,7 +6,7 @@
 		type WallpaperSource
 	} from '@chronos/core';
 	import type { AppShellController } from '$lib/app/app-shell.svelte';
-	import { getAppEngine } from '$lib/services/app-engine';
+	import { getAppEngine, getOfficialPluginService } from '$lib/services/app-engine';
 	import { normalizeAppLocale } from '$lib/i18n/locale-sync';
 	import { trackEvent } from '$lib/client/analytics';
 	import { haptic } from '$lib/haptic/haptic';
@@ -50,23 +50,38 @@
 		void shell.controller.slotVersion;
 		void activeLocale;
 
-		return getAppEngine()
-			.themes.getThemes()
-			.map((theme) => ({
-				id: theme.id,
-				label: resolveLocalizedText(theme.name, theme.id, activeLocale),
-				description: [
-					theme.id === getAppEngine().defaultThemeId ? hostT('wallpaper.theme.default') : '',
-					resolveLocalizedText(theme.description, '', activeLocale)
-				]
-					.filter(Boolean)
-					.join(' · '),
-				disabled: typeof theme.disabled === 'function' ? theme.disabled() : Boolean(theme.disabled)
-			}))
+		const engine = getAppEngine();
+		let pluginService: ReturnType<typeof getOfficialPluginService> | undefined;
+		try {
+			pluginService = getOfficialPluginService();
+		} catch {
+			// fallback in test envs without official plugin service
+		}
+
+		return engine.themes
+			.getThemes()
+			.map((theme) => {
+				const ownerPluginId =
+					engine.slots.resolveOwner('theme.definition', theme.id) ??
+					(pluginService?.getInstalled(`theme-${theme.id}`) ? `theme-${theme.id}` : undefined);
+				const pluginRecord = ownerPluginId ? pluginService?.getInstalled(ownerPluginId) : undefined;
+				const marketDescription = pluginRecord?.manifest.description;
+
+				return {
+					id: theme.id,
+					label: resolveLocalizedText(theme.name, theme.id, activeLocale),
+					description: [
+						theme.id === engine.defaultThemeId ? hostT('wallpaper.theme.default') : '',
+						resolveLocalizedText(marketDescription ?? theme.description, '', activeLocale)
+					]
+						.filter(Boolean)
+						.join(' · '),
+					disabled:
+						typeof theme.disabled === 'function' ? theme.disabled() : Boolean(theme.disabled)
+				};
+			})
 			.sort(
-				(a, b) =>
-					Number(b.id === getAppEngine().defaultThemeId) -
-					Number(a.id === getAppEngine().defaultThemeId)
+				(a, b) => Number(b.id === engine.defaultThemeId) - Number(a.id === engine.defaultThemeId)
 			);
 	});
 
