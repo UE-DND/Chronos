@@ -1,0 +1,26 @@
+{
+	"id": "source-cqut",
+	"name": {
+		"zh-CN": "重庆理工大学",
+		"en": "CQUT"
+	},
+	"version": "1.2.3",
+	"description": {
+		"zh-CN": "在线课表及正方教务导入支持",
+		"en": "Online timetable and ZF educational system import support"
+	},
+	"author": "Chronos",
+	"type": "source",
+	"bundleFormat": "esm",
+	"optionalServerCapabilities": [
+		{
+			"pluginId": "source-cqut",
+			"action": "preview"
+		}
+	],
+	"downloadSizeBytes": 99808,
+	"bundleUrl": "../../bundles/source-cqut/3106da4b33a7464d4eba4716/bundle.js",
+	"sha256": "bd2865f74a31043591070237171750178ffab5db4a8b2eab0af5e4f526056c3b",
+	"cssUrl": "../../bundles/source-cqut/3106da4b33a7464d4eba4716/bundle.css",
+	"cssSha256": "f0c4d9dc3075521c18799e2b94676726d1ec46df1bfb288538371387aa655d8e"
+}
