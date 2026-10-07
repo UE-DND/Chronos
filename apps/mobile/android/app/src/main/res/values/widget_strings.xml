@@ -14,5 +14,4 @@
     </plurals>
     <string name="widget_status_current">Now</string>
     <string name="widget_status_preparing">Get ready</string>
-    <string name="widget_status_upcoming">Upcoming</string>
 </resources>

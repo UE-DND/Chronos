@@ -12,7 +12,6 @@
         <item quantity="one">共 %d 节</item>
         <item quantity="other">共 %d 节</item>
     </plurals>
-    <string name="widget_status_current">进行中</string>
+    <string name="widget_status_current">上课中</string>
     <string name="widget_status_preparing">准备上课</string>
-    <string name="widget_status_upcoming">下一节</string>
 </resources>

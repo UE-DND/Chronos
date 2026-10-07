@@ -173,7 +173,7 @@ final class TodayWidgetData {
 		switch (status) {
 			case CURRENT: return context.getString(R.string.widget_status_current);
 			case PREPARING: return context.getString(R.string.widget_status_preparing);
-			default: return context.getString(R.string.widget_status_upcoming);
+			default: return null;
 		}
 	}
 
@@ -183,9 +183,12 @@ final class TodayWidgetData {
 		row.setTextViewText(R.id.widget_course_time, course.timeLabel(context));
 		row.setTextViewText(R.id.widget_course_name, course.name);
 		row.setTextViewText(R.id.widget_course_location, course.location);
-		if (course.showStatus) {
+		String label = statusLabel(context, course.status);
+		if (course.showStatus && label != null) {
 			row.setViewVisibility(R.id.widget_course_status, View.VISIBLE);
-			row.setTextViewText(R.id.widget_course_status, statusLabel(context, course.status));
+			row.setTextViewText(R.id.widget_course_status, label);
+		} else {
+			row.setViewVisibility(R.id.widget_course_status, View.GONE);
 		}
 		row.setOnClickFillInIntent(R.id.widget_course_row, new Intent());
 		return row;
