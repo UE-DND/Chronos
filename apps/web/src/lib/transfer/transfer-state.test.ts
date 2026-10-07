@@ -169,6 +169,32 @@ describe('createTransferState', () => {
 		);
 	});
 
+	it('requires another confirmation if the target changes during finalization', async () => {
+		const importTimetable = vi.fn();
+		const mockEngine = { importTimetable, state: { currentTimetable: { id: 'a' } } };
+		let finish!: (preview: { name: string }) => void;
+		finalizePreview.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					finish = resolve;
+				})
+		);
+		slotImportHandlers.set('finalize-slot', async () => ({
+			name: 'Imported',
+			courses: [{ id: 'c' }]
+		}));
+		const controller = createTransferState(mockEngine as never);
+		await controller.previewWithSlot('finalize-slot', {});
+		controller.setImportMode(ImportMode.OVERWRITE_CURRENT);
+		const pending = controller.confirmImport();
+		mockEngine.state.currentTimetable = { id: 'b' };
+		finish({ name: 'Finalized' });
+		expect(await pending).toBe(false);
+		expect(importTimetable).not.toHaveBeenCalled();
+		expect(controller.state.errorMessage).toBe('transfer.confirm.targetChanged');
+		expect(controller.state.preview).not.toBeNull();
+	});
+
 	it('persists preview and confirms import through engine', async () => {
 		const importTimetable = vi.fn().mockResolvedValue(undefined);
 		const mockEngine = {

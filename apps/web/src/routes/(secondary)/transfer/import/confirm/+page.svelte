@@ -14,7 +14,7 @@
 	const engine = getAppEngine();
 	const transfer = createTransferState(engine);
 	const controller = getAppController();
-	let currentTimetableName = $state<string | null>(null);
+	const currentTimetableName = $derived(controller.currentTimetable?.name ?? null);
 	let ready = $state(false);
 
 	onMount(async () => {
@@ -24,7 +24,6 @@
 			navigateBack({ kind: 'route', href: '/transfer/import' });
 			return;
 		}
-		currentTimetableName = controller.currentTimetable?.name ?? null;
 		if (!currentTimetableName && transfer.state.importMode === ImportMode.OVERWRITE_CURRENT) {
 			transfer.setImportMode(ImportMode.AS_NEW);
 		}

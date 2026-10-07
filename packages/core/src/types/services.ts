@@ -102,7 +102,8 @@ export interface IStorageService {
 	// Timetable persistence
 	getTimetable(id: string): Promise<Timetable | null>;
 	listTimetables(): Promise<TimetableSummary[]>;
-	saveTimetable(timetable: Timetable): Promise<void>;
+	/** requireExisting must be checked atomically with the write. */
+	saveTimetable(timetable: Timetable, options?: { requireExisting?: boolean }): Promise<void>;
 	deleteTimetable(id: string): Promise<void>;
 	getActiveTimetableId(): Promise<string | null>;
 	setActiveTimetableId(id: string): Promise<void>;

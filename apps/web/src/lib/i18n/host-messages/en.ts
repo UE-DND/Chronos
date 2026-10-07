@@ -190,6 +190,8 @@ export const en = {
 	'transfer.export.exporting': 'Exporting…',
 	'transfer.export.noMethod': 'No export method available',
 	'transfer.confirm.noOverwrite': 'No timetable available to overwrite',
+	'transfer.confirm.targetChanged':
+		'The current timetable changed. Review the overwrite target and confirm again.',
 	'transfer.confirm.success': 'Import successful',
 	'transfer.confirm.importing': 'Importing…',
 	'transfer.confirm.asNew': 'Import as new timetable',

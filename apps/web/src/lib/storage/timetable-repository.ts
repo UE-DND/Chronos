@@ -93,7 +93,10 @@ export class TimetableRepository {
 		}
 	}
 
-	async saveTimetable(timetable: Timetable): Promise<void> {
+	async saveTimetable(
+		timetable: Timetable,
+		options?: { requireExisting?: boolean }
+	): Promise<void> {
 		const row = timetableToRow(timetable);
 		const courseRows = timetable.courses.map((course) => courseToRow(course, timetable.id));
 
@@ -102,6 +105,9 @@ export class TimetableRepository {
 			this.database.timetables,
 			this.database.courses,
 			async () => {
+				if (options?.requireExisting && !(await this.database.timetables.get(timetable.id))) {
+					throw new Error(`Timetable not found: ${timetable.id}`);
+				}
 				await this.database.timetables.put(row);
 
 				const persistedIds = new Set(

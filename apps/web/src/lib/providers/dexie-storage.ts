@@ -1,4 +1,5 @@
 import { ImageRepository } from '$lib/storage/image-repository';
+import { PREFERENCE_STORAGE_KEYS } from '@chronos/core';
 import type {
 	Disposable,
 	IStorageService,
@@ -39,7 +40,9 @@ export class DexieStorageProvider implements IStorageService {
 
 		if (typeof window !== 'undefined') {
 			this.storageListener = (e: StorageEvent) => {
-				if (e.key?.startsWith('chronos_preferences:')) {
+				if (e.key === PREFERENCE_STORAGE_KEYS.currentTimetableId) {
+					this.notifyChange({ type: 'timetable', key: e.key });
+				} else if (e.key?.startsWith('chronos_preferences:')) {
 					this.notifyChange({ type: 'preferences', key: e.key });
 				}
 			};
@@ -95,9 +98,12 @@ export class DexieStorageProvider implements IStorageService {
 		return this.timetables.queryCourses(filter);
 	}
 
-	async saveTimetable(timetable: Timetable): Promise<void> {
+	async saveTimetable(
+		timetable: Timetable,
+		options?: { requireExisting?: boolean }
+	): Promise<void> {
 		await this.withStorageNotify({ type: 'timetable', key: timetable.id }, 'save timetable', () =>
-			this.timetables.saveTimetable(timetable)
+			this.timetables.saveTimetable(timetable, options)
 		);
 	}
 

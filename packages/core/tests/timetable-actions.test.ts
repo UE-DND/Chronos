@@ -14,6 +14,37 @@ async function harness() {
 	return { engine, env, timetables, a, b };
 }
 
+describe('overwrite import', () => {
+	it('does not recreate a target deleted by another tab', async () => {
+		const { engine, timetables } = await harness();
+		try {
+			timetables.delete('a');
+			await expect(
+				engine.importTimetable(createTimetable({ id: 'preview', name: 'Imported' }), {
+					overwriteActive: true
+				})
+			).rejects.toThrow('Timetable not found: a');
+			expect(timetables.has('a')).toBe(false);
+			expect(timetables.get('b')?.name).toBe('B');
+		} finally {
+			engine.dispose();
+		}
+	});
+	it('uses the engine selection when another tab changed the stored active id', async () => {
+		const { engine, env, timetables } = await harness();
+		try {
+			await env.storage.setActiveTimetableId('b');
+			await engine.importTimetable(createTimetable({ id: 'preview', name: 'Imported' }), {
+				overwriteActive: true
+			});
+			expect(timetables.get('a')?.name).toBe('Imported');
+			expect(timetables.get('b')?.name).toBe('B');
+		} finally {
+			engine.dispose();
+		}
+	});
+});
+
 describe('updateTimetableDetails', () => {
 	it('updates an inactive timetable and refreshes its summary without changing selection', async () => {
 		const { engine, timetables } = await harness();

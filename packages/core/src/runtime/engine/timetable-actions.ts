@@ -48,13 +48,8 @@ export class TimetableActions implements Pick<
 		options: { overwriteActive?: boolean } = {}
 	): Promise<Timetable> {
 		const importId = createTimetableId();
-		let id = importId;
-		if (options.overwriteActive) {
-			const activeId = await this.host.storage.getActiveTimetableId();
-			if (activeId) {
-				id = activeId;
-			}
-		}
+		const overwriteId = options.overwriteActive ? this.host.getCurrentTimetable()?.id : undefined;
+		const id = overwriteId ?? importId;
 
 		// Codec IDs belong to the preview; persisted courses need globally unique IDs.
 		const toSave = {
@@ -66,7 +61,8 @@ export class TimetableActions implements Pick<
 			}))
 		};
 
-		await this.host.storage.saveTimetable(toSave);
+		if (overwriteId) await this.host.storage.saveTimetable(toSave, { requireExisting: true });
+		else await this.host.storage.saveTimetable(toSave);
 		await this.host.refreshTimetables();
 		await this.host.switchTimetable(toSave.id);
 		return toSave;

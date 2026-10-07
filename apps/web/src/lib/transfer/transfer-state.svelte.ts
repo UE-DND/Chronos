@@ -211,6 +211,8 @@ export function createTransferState(engine?: ChronosEngine) {
 				}
 			}
 
+			const overwriteTargetId = engine?.state.currentTimetable?.id;
+			const overwriteActive = importMode === ImportMode.OVERWRITE_CURRENT;
 			let finalPreview = preview;
 			if (tab?.finalizePreview) {
 				const ctx = controller.getPluginContextForSlot('import.source.tab', previewSlotId);
@@ -220,9 +222,11 @@ export function createTransferState(engine?: ChronosEngine) {
 			if (!engine) {
 				throw new Error('ChronosEngine is required for ingest');
 			}
-			await engine.importTimetable(finalPreview, {
-				overwriteActive: importMode === ImportMode.OVERWRITE_CURRENT
-			});
+			if (overwriteActive && engine.state.currentTimetable?.id !== overwriteTargetId) {
+				errorMessage = hostT('transfer.confirm.targetChanged');
+				return false;
+			}
+			await engine.importTimetable(finalPreview, { overwriteActive });
 			clearPreview();
 			return true;
 		} catch (err) {

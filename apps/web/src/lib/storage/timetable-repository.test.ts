@@ -56,10 +56,27 @@ function createMockDb(): ChronosDB {
 }
 
 describe('TimetableRepository', () => {
+	it('checks overwrite existence inside the write transaction', async () => {
+		const database = createMockDb();
+		const repo = new TimetableRepository(database);
+		const original = createTimetable({ id: 'a', name: 'Original' });
+		await repo.saveTimetable(original);
+		vi.spyOn(database, 'transaction').mockImplementationOnce((async (
+			_mode: string,
+			...args: unknown[]
+		) => {
+			await database.timetables.delete('a');
+			return (args.at(-1) as () => Promise<void>)();
+		}) as typeof database.transaction);
+		await expect(
+			repo.saveTimetable({ ...original, name: 'Replacement' }, { requireExisting: true })
+		).rejects.toThrow('Timetable not found: a');
+		expect(await repo.getTimetable('a')).toBeNull();
+	});
 	it('keeps other timetables and courses intact during new and overwrite imports', async () => {
 		const repo = new TimetableRepository(createMockDb());
 		const { env } = createMockEnv();
-		env.storage.saveTimetable = (timetable) => repo.saveTimetable(timetable);
+		env.storage.saveTimetable = (timetable, options) => repo.saveTimetable(timetable, options);
 		env.storage.getTimetable = (id) => repo.getTimetable(id);
 		env.storage.listTimetables = () => repo.listTimetables();
 		const engine = new ChronosEngine({ env });

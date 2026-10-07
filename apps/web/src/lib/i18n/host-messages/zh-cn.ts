@@ -185,6 +185,7 @@ export const zhCn = {
 	'transfer.export.exporting': '导出中…',
 	'transfer.export.noMethod': '暂无可用的导出方式',
 	'transfer.confirm.noOverwrite': '当前没有可覆盖的课程表',
+	'transfer.confirm.targetChanged': '当前课程表已更改，请检查覆盖目标后重新确认',
 	'transfer.confirm.success': '导入成功',
 	'transfer.confirm.importing': '导入中…',
 	'transfer.confirm.asNew': '导入为新课程表',

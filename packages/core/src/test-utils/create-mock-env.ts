@@ -37,7 +37,9 @@ export function createMockEnv(options: MockEnvOptions = {}) {
 					name: t.name,
 					updatedAt: t.updatedAt
 				})),
-			saveTimetable: async (t: Timetable) => {
+			saveTimetable: async (t: Timetable, options?: { requireExisting?: boolean }) => {
+				if (options?.requireExisting && !timetables.has(t.id))
+					throw new Error(`Timetable not found: ${t.id}`);
 				timetables.set(t.id, t);
 			},
 			deleteTimetable: async (id: string) => {
