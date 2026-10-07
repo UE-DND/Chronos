@@ -76,6 +76,12 @@ export function createCourseEditor(
 
 	function syncFromRoute() {
 		const courseId = getCourseId();
+		const currentTimetable = shell.controller.currentTimetable;
+		if (courseId && !currentTimetable) {
+			syncedCourseKey = null;
+			draft = null;
+			return;
+		}
 		const key = courseId ?? '__new__';
 		if (syncedCourseKey === key) return;
 		syncedCourseKey = key;
@@ -84,10 +90,8 @@ export function createCourseEditor(
 			draft = emptyDraft();
 			return;
 		}
-		const course = shell.controller.currentTimetable?.courses.find(
-			(entry) => entry.id === courseId
-		);
-		draft = course && timetable ? courseToDraft(course) : null;
+		const course = currentTimetable?.courses.find((entry) => entry.id === courseId);
+		draft = course ? courseToDraft(course) : null;
 	}
 
 	async function save() {
@@ -142,6 +146,9 @@ export function createCourseEditor(
 		},
 		get canSave() {
 			return canSave;
+		},
+		get isLoading() {
+			return !shell.state.initialized;
 		},
 		get timetable() {
 			return timetable;

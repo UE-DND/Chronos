@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { createTimetable, type Timetable } from '@chronos/core';
 import { createCourseEditor } from './course-editor.svelte';
+import type { AppShellController } from '$lib/app/app-shell.svelte';
 
 const mocks = vi.hoisted(() => ({
 	updateTimetableDetails: vi.fn(),
@@ -42,13 +43,14 @@ function timetable(patch: Partial<Timetable> = {}): Timetable {
 	});
 }
 
-function shellWith(currentTimetable: Timetable) {
+function shellWith(currentTimetable: Timetable | null) {
 	return {
+		state: { initialized: currentTimetable !== null },
 		controller: {
 			currentTimetable,
 			todayIso: '2026-03-16'
 		}
-	} as never;
+	} as unknown as AppShellController;
 }
 
 describe('createCourseEditor', () => {
@@ -71,6 +73,55 @@ describe('createCourseEditor', () => {
 			endPeriod: null
 		});
 		expect(editor.canSave).toBe(false);
+	});
+
+	it('loads an existing course after startup and preserves subsequent draft edits', () => {
+		const existing = {
+			id: 'delayed-course',
+			name: '高等数学',
+			teacher: '',
+			location: '',
+			dayOfWeek: 1,
+			startPeriod: 1,
+			endPeriod: 2,
+			weeks: [1],
+			remark: ''
+		};
+		const shell = shellWith(null);
+		const editor = createCourseEditor(shell, () => existing.id, vi.fn());
+		editor.syncFromRoute();
+		expect(editor.isLoading).toBe(true);
+		expect(editor.draft).toBeNull();
+		shell.controller.currentTimetable = timetable({ courses: [existing] });
+		shell.state.initialized = true;
+		editor.syncFromRoute();
+		expect(editor.isLoading).toBe(false);
+		expect(editor.draft?.name).toBe('高等数学');
+		editor.draft!.name = '未保存的名称';
+		editor.syncFromRoute();
+		expect(editor.draft?.name).toBe('未保存的名称');
+	});
+
+	it('keeps a missing course empty after the timetable loads', () => {
+		const shell = shellWith(null);
+		const editor = createCourseEditor(shell, () => 'missing-course', vi.fn());
+		editor.syncFromRoute();
+		shell.controller.currentTimetable = timetable();
+		shell.state.initialized = true;
+		editor.syncFromRoute();
+		expect(editor.draft).toBeNull();
+		expect(editor.canSave).toBe(false);
+	});
+
+	it('preserves a new course draft when the timetable finishes loading', () => {
+		const shell = shellWith(null);
+		const editor = createCourseEditor(shell, () => null, vi.fn());
+		editor.syncFromRoute();
+		editor.draft!.name = '新课程';
+		shell.controller.currentTimetable = timetable();
+		shell.state.initialized = true;
+		editor.syncFromRoute();
+		expect(editor.draft?.name).toBe('新课程');
 	});
 
 	it('requires at least one week in selected-week mode', () => {

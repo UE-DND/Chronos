@@ -5,6 +5,7 @@
 	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
 	import CourseEditorForm from '$lib/components/timetable/CourseEditorForm.svelte';
 	import FormScreenLayout from '$lib/components/ui/FormScreenLayout.svelte';
+	import LoadingIndicator from '$lib/components/ui/LoadingIndicator.svelte';
 	import type { EdgeBarAction } from '@chronos/ui-kit';
 	import { Check, DeleteFill } from '$lib/icons';
 
@@ -63,6 +64,8 @@
 			{/snippet}
 		</BottomSheet>
 	{/if}
+{:else if editor.isLoading}
+	<LoadingIndicator class="p-4" />
 {:else}
 	<p class="text-body-medium p-4 text-on-surface-variant">
 		{hostT('course.editor.notFound')}
