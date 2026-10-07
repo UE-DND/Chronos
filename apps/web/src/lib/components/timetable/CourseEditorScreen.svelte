@@ -22,6 +22,7 @@
 						label: hostT('course.editor.delete'),
 						icon: DeleteFill,
 						variant: 'danger' as const,
+						disabled: editor.isSaving || editor.isDeleting,
 						onClick: () => {
 							deleteDialogOpen = true;
 						}
@@ -30,8 +31,9 @@
 			: []),
 		{
 			id: 'save',
-			label: hostT('course.editor.save'),
+			label: hostT(editor.isSaving ? 'common.saving' : 'course.editor.save'),
 			icon: Check,
+			loading: editor.isSaving,
 			disabled: !editor.canSave,
 			onClick: () => void editor.save()
 		}
@@ -55,11 +57,20 @@
 			description={hostT('course.editor.delete.desc', { name: draft.name })}
 		>
 			{#snippet footer()}
-				<Button variant="text" onclick={() => (deleteDialogOpen = false)}>
+				<Button
+					variant="text"
+					disabled={editor.isDeleting}
+					onclick={() => (deleteDialogOpen = false)}
+				>
 					{hostT('common.cancel')}
 				</Button>
-				<Button variant="filled" onclick={confirmDelete}>
-					{hostT('common.delete')}
+				<Button
+					variant="filled"
+					disabled={editor.isSaving || editor.isDeleting}
+					aria-busy={editor.isDeleting}
+					onclick={confirmDelete}
+				>
+					{hostT(editor.isDeleting ? 'common.deleting' : 'common.delete')}
 				</Button>
 			{/snippet}
 		</BottomSheet>

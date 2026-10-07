@@ -11,13 +11,13 @@
 	import { haptic } from '$lib/haptic/haptic';
 
 	let { shell }: { shell: AppShellController } = $props();
-	const themeMode = $derived(shell.controller.userPreferences?.themeMode ?? 'auto');
-	const layoutMode = $derived(shell.state.effectiveTimetableLayoutMode);
+	let themeMode = $derived(shell.controller.userPreferences?.themeMode ?? 'auto');
+	let layoutMode = $derived(shell.state.effectiveTimetableLayoutMode);
 	const compactLandscape = $derived(shell.state.compactLandscape);
-	const capsuleCornerStyle = $derived(
+	let capsuleCornerStyle = $derived(
 		shell.controller.userPreferences?.capsuleCornerStyle ?? 'sharp'
 	);
-	const currentPeriodHighlightEnabled = $derived(
+	let currentPeriodHighlightEnabled = $derived(
 		shell.controller.userPreferences?.currentPeriodHighlightEnabled ?? false
 	);
 
@@ -61,27 +61,56 @@
 	});
 
 	async function selectThemeMode(mode: ThemeMode) {
+		if (themeMode === mode) return;
 		haptic.light();
 		trackEvent('settings_theme_change', { mode });
-		await shell.setThemeMode(mode);
+		const previous = themeMode;
+		themeMode = mode;
+		try {
+			await shell.setThemeMode(mode);
+		} catch {
+			themeMode = previous;
+			shell.controller.notify(hostT('wallpaper.settings.saveFailed'), 'error');
+		}
 	}
 
 	async function selectLayoutMode(mode: TimetableLayoutMode) {
 		if (layoutMode === mode || (compactLandscape && mode === 'compact')) return;
 		haptic.light();
 		trackEvent('settings_layout_change', { mode });
-		await shell.setTimetableLayoutMode(mode);
+		const previous = layoutMode;
+		layoutMode = mode;
+		try {
+			await shell.setTimetableLayoutMode(mode);
+		} catch {
+			layoutMode = previous;
+			shell.controller.notify(hostT('wallpaper.settings.saveFailed'), 'error');
+		}
 	}
 
 	async function selectCapsuleCornerStyle(style: CapsuleCornerStyle) {
+		if (capsuleCornerStyle === style) return;
 		haptic.light();
 		trackEvent('settings_capsule_corner_change', { style });
-		await shell.setCapsuleCornerStyle(style);
+		const previous = capsuleCornerStyle;
+		capsuleCornerStyle = style;
+		try {
+			await shell.setCapsuleCornerStyle(style);
+		} catch {
+			capsuleCornerStyle = previous;
+			shell.controller.notify(hostT('wallpaper.settings.saveFailed'), 'error');
+		}
 	}
 
 	async function toggleCurrentPeriodHighlight(checked: boolean) {
 		trackEvent('settings_period_highlight_change', { enabled: checked });
-		await shell.setCurrentPeriodHighlightEnabled(checked);
+		try {
+			await shell.setCurrentPeriodHighlightEnabled(checked);
+		} catch {
+			currentPeriodHighlightEnabled =
+				shell.controller.userPreferences?.currentPeriodHighlightEnabled ?? false;
+			shell.controller.notify(hostT('wallpaper.settings.saveFailed'), 'error');
+		}
 	}
 </script>
 
@@ -89,7 +118,7 @@
 	<MineSection title={hostT('display.section.themeMode')}>
 		{#each themeOptions as option (option.mode)}
 			{@const selected = themeMode === option.mode}
-			<MineRow label={true} title={option.label} onclick={() => selectThemeMode(option.mode)}>
+			<MineRow label={true} title={option.label}>
 				{#snippet trailing()}
 					<Radio
 						name="theme-mode"
@@ -111,7 +140,6 @@
 					? hostT('display.layout.compact.landscapeUnavailable')
 					: option.description}
 				aria-disabled={compactLandscape && option.mode === 'compact'}
-				onclick={() => selectLayoutMode(option.mode)}
 			>
 				{#snippet trailing()}
 					<Radio
@@ -129,7 +157,7 @@
 		<MineRow label title={hostT('display.periodHighlight.label')}>
 			{#snippet trailing()}
 				<Switch
-					checked={currentPeriodHighlightEnabled}
+					bind:checked={currentPeriodHighlightEnabled}
 					onCheckedChange={toggleCurrentPeriodHighlight}
 				/>
 			{/snippet}
@@ -139,11 +167,7 @@
 	<MineSection title={hostT('display.section.capsule')}>
 		{#each capsuleCornerOptions as option (option.mode)}
 			{@const selected = capsuleCornerStyle === option.mode}
-			<MineRow
-				label={true}
-				title={option.label}
-				onclick={() => selectCapsuleCornerStyle(option.mode)}
-			>
+			<MineRow label={true} title={option.label}>
 				{#snippet trailing()}
 					<Radio
 						name="capsule-corner-style"

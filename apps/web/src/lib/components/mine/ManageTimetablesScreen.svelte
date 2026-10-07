@@ -9,6 +9,7 @@
 	import type { EdgeBarAction } from '@chronos/ui-kit';
 	import SelectableOption from '$lib/components/ui/SelectableOption.svelte';
 	import { DeleteFill } from '$lib/icons';
+	import { snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
 
 	let {
 		shell
@@ -23,6 +24,9 @@
 	);
 
 	let deleteDialogOpen = $state(false);
+	let switchingId = $state<string | null>(null);
+	let isDeleting = $state(false);
+	const busy = $derived(switchingId !== null || isDeleting);
 	const actions = $derived.by((): EdgeBarAction[] =>
 		timetables.length > 0
 			? [
@@ -31,7 +35,7 @@
 						label: hostT('timetable.manage.delete'),
 						icon: DeleteFill,
 						variant: 'danger',
-						disabled: !currentTimetableId,
+						disabled: !currentTimetableId || busy,
 						onClick: () => {
 							deleteDialogOpen = true;
 						}
@@ -41,15 +45,30 @@
 	);
 
 	async function handleSwitch(id: string) {
-		trackEvent('timetable_switch');
-		await shell.switchTimetable(id);
+		if (busy || id === currentTimetableId) return;
+		switchingId = id;
+		try {
+			await shell.switchTimetable(id);
+			trackEvent('timetable_switch');
+		} catch {
+			snackbarKey('timetable.manage.switchFailed', undefined, undefined, 4000, 'assertive');
+		} finally {
+			switchingId = null;
+		}
 	}
 
 	async function confirmDelete() {
-		if (!currentTimetableId) return;
-		trackEvent('timetable_delete');
-		await shell.deleteTimetable(currentTimetableId);
-		deleteDialogOpen = false;
+		if (!currentTimetableId || busy) return;
+		isDeleting = true;
+		try {
+			await shell.deleteTimetable(currentTimetableId);
+			trackEvent('timetable_delete');
+			deleteDialogOpen = false;
+		} catch {
+			snackbarKey('timetable.manage.deleteFailed', undefined, undefined, 4000, 'assertive');
+		} finally {
+			isDeleting = false;
+		}
 	}
 
 	function handleImportClick() {
@@ -83,16 +102,22 @@
 				</Button>
 			</div>
 		{:else}
-			<div class="flex flex-col gap-2.5">
+			<div class="flex flex-col gap-2.5" aria-busy={busy}>
+				{#if switchingId}
+					<p class="sr-only" role="status">
+						{hostT('common.switching')}
+					</p>
+				{/if}
 				{#each timetables as timetable (timetable.id)}
 					{@const isActive = currentTimetableId === timetable.id}
 					<SelectableOption
 						name="current-timetable"
 						label={timetable.name}
-						description={hostT('timetable.manage.courseCount', {
-							count: timetable.courseCount
-						})}
+						description={switchingId === timetable.id
+							? hostT('common.switching')
+							: hostT('timetable.manage.courseCount', { count: timetable.courseCount })}
 						selected={isActive}
+						disabled={busy}
 						onclick={() => handleSwitch(timetable.id)}
 					/>
 				{/each}
@@ -112,11 +137,11 @@
 		: hostT('timetable.manage.delete.descGeneric')}
 >
 	{#snippet footer()}
-		<Button variant="text" onclick={() => (deleteDialogOpen = false)}>
+		<Button variant="text" disabled={busy} onclick={() => (deleteDialogOpen = false)}>
 			{hostT('common.cancel')}
 		</Button>
-		<Button variant="filled" onclick={confirmDelete}>
-			{hostT('common.delete')}
+		<Button variant="filled" disabled={busy} aria-busy={isDeleting} onclick={confirmDelete}>
+			{hostT(isDeleting ? 'common.deleting' : 'common.delete')}
 		</Button>
 	{/snippet}
 </BottomSheet>

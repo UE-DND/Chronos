@@ -55,6 +55,7 @@ export function createCourseEditor(
 	let draft = $state<CourseDraft | null>(null);
 	let syncedCourseKey = $state<string | null>(null);
 	let isSaving = $state(false);
+	let isDeleting = $state(false);
 	let newCourseId = '';
 	const controller = getAppController();
 
@@ -71,7 +72,8 @@ export function createCourseEditor(
 	});
 	const canSave = $derived(
 		Boolean(candidate && draft?.name.trim() && draft.remark.length <= COURSE_REMARK_MAX_LENGTH) &&
-			!isSaving
+			!isSaving &&
+			!isDeleting
 	);
 
 	function syncFromRoute() {
@@ -112,7 +114,7 @@ export function createCourseEditor(
 		try {
 			await controller.updateTimetableDetails(timetable.id, { courses, viewPrefs });
 			trackEvent('course_save', { action: courseIndex === -1 ? 'create' : 'update' });
-			void onDone();
+			await onDone();
 		} catch {
 			snackbarKey('course.editor.saveFailed', undefined, undefined, 4000, 'assertive');
 		} finally {
@@ -121,10 +123,17 @@ export function createCourseEditor(
 	}
 
 	async function deleteCourse() {
-		if (!draft?.id) return;
-		await controller.deleteCourse(draft.id);
-		trackEvent('course_delete');
-		await onDone();
+		if (!draft?.id || isSaving || isDeleting) return;
+		isDeleting = true;
+		try {
+			await controller.deleteCourse(draft.id);
+			trackEvent('course_delete');
+			await onDone();
+		} catch {
+			snackbarKey('course.editor.deleteFailed', undefined, undefined, 4000, 'assertive');
+		} finally {
+			isDeleting = false;
+		}
 	}
 
 	function setRecurrenceMode(mode: CourseRecurrenceMode) {
@@ -146,6 +155,12 @@ export function createCourseEditor(
 		},
 		get canSave() {
 			return canSave;
+		},
+		get isSaving() {
+			return isSaving;
+		},
+		get isDeleting() {
+			return isDeleting;
 		},
 		get isLoading() {
 			return !shell.state.initialized;

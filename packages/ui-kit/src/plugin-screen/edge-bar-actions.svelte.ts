@@ -6,6 +6,7 @@ export interface EdgeBarAction {
 	icon: Component<{ class?: string }> | string;
 	variant?: 'filled' | 'outlined' | 'danger';
 	disabled?: boolean;
+	loading?: boolean;
 	showIconInPortrait?: boolean;
 	onClick: () => void | Promise<void>;
 }

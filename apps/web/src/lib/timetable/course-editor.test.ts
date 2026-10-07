@@ -336,4 +336,67 @@ describe('createCourseEditor', () => {
 		await deletion;
 		expect(deletionFinished).toBe(true);
 	});
+	it('exposes pending save state and blocks duplicate saves and deletion', async () => {
+		const pending = Promise.withResolvers<void>();
+		mocks.updateTimetableDetails.mockReturnValueOnce(pending.promise);
+		const onDone = vi.fn();
+		const editor = createCourseEditor(shellWith(timetable()), () => null, onDone);
+		editor.syncFromRoute();
+		Object.assign(editor.draft!, { name: '高等数学', dayOfWeek: 1, startPeriod: 1, endPeriod: 1 });
+		const save = editor.save();
+		expect(editor.isSaving).toBe(true);
+		expect(editor.canSave).toBe(false);
+		await editor.save();
+		await editor.deleteCourse();
+		expect(mocks.updateTimetableDetails).toHaveBeenCalledOnce();
+		expect(mocks.deleteCourse).not.toHaveBeenCalled();
+		pending.resolve();
+		await save;
+		expect(editor.isSaving).toBe(false);
+		expect(onDone).toHaveBeenCalledOnce();
+	});
+
+	it('keeps a failed deletion retryable and blocks overlapping actions', async () => {
+		const existing = {
+			id: 'delete-id',
+			name: '大学物理',
+			teacher: '',
+			location: '',
+			dayOfWeek: 1,
+			startPeriod: 1,
+			endPeriod: 1,
+			weeks: [],
+			remark: ''
+		};
+		const pending = Promise.withResolvers<void>();
+		mocks.deleteCourse.mockReturnValueOnce(pending.promise);
+		const onDone = vi.fn();
+		const editor = createCourseEditor(
+			shellWith(timetable({ courses: [existing] })),
+			() => existing.id,
+			onDone
+		);
+		editor.syncFromRoute();
+		const deletion = editor.deleteCourse();
+		expect(editor.isDeleting).toBe(true);
+		expect(editor.canSave).toBe(false);
+		await editor.deleteCourse();
+		await editor.save();
+		expect(mocks.deleteCourse).toHaveBeenCalledOnce();
+		expect(mocks.updateTimetableDetails).not.toHaveBeenCalled();
+		pending.reject(new Error('storage failed'));
+		await deletion;
+		expect(editor.isDeleting).toBe(false);
+		expect(editor.canSave).toBe(true);
+		expect(onDone).not.toHaveBeenCalled();
+		expect(mocks.snackbarKey).toHaveBeenCalledWith(
+			'course.editor.deleteFailed',
+			undefined,
+			undefined,
+			4000,
+			'assertive'
+		);
+		await editor.deleteCourse();
+		expect(onDone).toHaveBeenCalledOnce();
+	});
 });

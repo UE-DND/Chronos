@@ -29,14 +29,16 @@
 			label: hostT('timetable.details.reset'),
 			icon: Refresh,
 			variant: 'outlined',
+			disabled: editor.isSaving,
 			onClick: () => {
 				resetDialogOpen = true;
 			}
 		},
 		{
 			id: 'save',
-			label: hostT('timetable.details.save'),
+			label: hostT(editor.isSaving ? 'common.saving' : 'timetable.details.save'),
 			icon: Check,
+			loading: editor.isSaving,
 			disabled: !editor.canSave,
 			onClick: () => void editor.save()
 		}

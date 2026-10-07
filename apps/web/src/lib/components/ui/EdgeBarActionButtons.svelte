@@ -12,8 +12,18 @@
 	} = $props();
 </script>
 
-{#snippet actionIcon(icon: EdgeBarAction['icon'])}
-	{#if typeof icon === 'string'}
+{#snippet actionIcon(icon: EdgeBarAction['icon'], loading = false)}
+	{#if loading}
+		<svg
+			class="edge-action-spinner size-5 animate-spin motion-reduce:animate-none"
+			viewBox="0 0 24 24"
+			fill="none"
+			aria-hidden="true"
+		>
+			<circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" />
+			<path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+		</svg>
+	{:else if typeof icon === 'string'}
 		{@const resolved = resolveShellIcon(icon)}
 		{#if resolved?.kind === 'component'}
 			{@const Icon = resolved.component}
@@ -30,7 +40,8 @@
 		{#if orientation === 'vertical'}
 			<button
 				type="button"
-				disabled={action.disabled}
+				disabled={action.disabled || action.loading}
+				aria-busy={action.loading ?? false}
 				aria-label={action.label}
 				title={action.label}
 				class="edge-action-icon-button {action.variant === 'danger' ? 'danger' : ''}"
@@ -43,20 +54,21 @@
 							? 'outlined'
 							: 'filled'}"
 				>
-					{@render actionIcon(action.icon)}
+					{@render actionIcon(action.icon, action.loading)}
 				</span>
 			</button>
 		{:else}
 			<Button
 				variant={action.variant ?? 'filled'}
-				disabled={action.disabled}
+				disabled={action.disabled || action.loading}
+				aria-busy={action.loading ?? false}
 				aria-label={action.label}
 				title={action.label}
 				class="min-w-0 flex-1"
 				onclick={() => void action.onClick()}
 			>
-				{#if action.showIconInPortrait}
-					{@render actionIcon(action.icon)}
+				{#if action.showIconInPortrait || action.loading}
+					{@render actionIcon(action.icon, action.loading)}
 				{/if}
 				{action.label}
 			</Button>
@@ -65,6 +77,10 @@
 </div>
 
 <style>
+	:global(:root.reduce-motion) .edge-action-spinner {
+		animation: none;
+	}
+
 	.edge-actions.vertical {
 		flex-direction: column;
 		align-items: center;

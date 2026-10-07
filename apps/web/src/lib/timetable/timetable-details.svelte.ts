@@ -7,14 +7,16 @@ import { validatePeriodTimes } from '@chronos/core';
 import { getAppController } from '$lib/services/app-engine';
 import { currentWeekMonday, todayIsoDate } from '@chronos/core';
 import { defaultPeriodTimes } from '$lib/models/defaults';
+import { snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
 
 export class TimetableDetailsEditor {
 	draft = $state<TimetableSettingsDraft | null>(null);
+	isSaving = $state(false);
 	private loadedTimetableId = $state<string | null>(null);
 
 	constructor(
 		private shell: AppShellController,
-		private onDone: () => void
+		private onDone: () => void | Promise<void>
 	) {}
 
 	loadFromTimetable(timetable: Timetable | null) {
@@ -30,6 +32,7 @@ export class TimetableDetailsEditor {
 
 	get canSave() {
 		return (
+			!this.isSaving &&
 			Boolean(this.draft) &&
 			validatePeriodTimes(this.draft?.academicConfig.periodTimes ?? []).length === 0
 		);
@@ -37,20 +40,27 @@ export class TimetableDetailsEditor {
 
 	save = async () => {
 		const timetable = this.shell.controller.currentTimetable;
-		if (!timetable || !this.draft) return;
+		if (!timetable || !this.draft || !this.canSave) return;
 		const controller = getAppController();
-		await controller.updateTimetableDetails(timetable.id, {
-			name: this.draft.name,
-			academicConfig: this.draft.academicConfig,
-			importMetadata: this.draft.importMetadata?.source
-				? {
-						source: this.draft.importMetadata.source,
-						campusId: this.draft.importMetadata.campusId
-					}
-				: undefined
-		});
-		trackEvent('timetable_details_save');
-		this.onDone();
+		this.isSaving = true;
+		try {
+			await controller.updateTimetableDetails(timetable.id, {
+				name: this.draft.name,
+				academicConfig: this.draft.academicConfig,
+				importMetadata: this.draft.importMetadata?.source
+					? {
+							source: this.draft.importMetadata.source,
+							campusId: this.draft.importMetadata.campusId
+						}
+					: undefined
+			});
+			trackEvent('timetable_details_save');
+			await this.onDone();
+		} catch {
+			snackbarKey('transfer.error.saveFailed', undefined, undefined, 4000, 'assertive');
+		} finally {
+			this.isSaving = false;
+		}
 	};
 
 	private resetAcademicConfigToDefaults(today: string) {
@@ -71,7 +81,7 @@ export class TimetableDetailsEditor {
 
 export function createTimetableDetailsEditor(
 	shell: AppShellController,
-	onDone: () => void
+	onDone: () => void | Promise<void>
 ): TimetableDetailsEditor {
 	return new TimetableDetailsEditor(shell, onDone);
 }
