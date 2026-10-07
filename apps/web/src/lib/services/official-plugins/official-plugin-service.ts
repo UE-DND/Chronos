@@ -72,7 +72,7 @@ function createOfficialPluginServiceDeps(
 	);
 	const runtimeActivator = new OfficialPluginRuntimeActivator(
 		engine,
-		(pluginId) => installedStore.has(pluginId),
+		(pluginId) => installedStore.find(pluginId),
 		new ImageRepository(database)
 	);
 	return {

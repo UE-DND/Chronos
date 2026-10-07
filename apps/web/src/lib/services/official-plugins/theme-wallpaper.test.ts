@@ -155,7 +155,7 @@ describe('theme wallpaper assets', () => {
 			themes: { registerTheme }
 		} as unknown as ChronosEngine;
 		const images = { get: vi.fn().mockResolvedValue(wallpaper) } as unknown as ImageRepository;
-		const activator = new OfficialPluginRuntimeActivator(engine, () => true, images);
+		const activator = new OfficialPluginRuntimeActivator(engine, () => undefined, images);
 		await activator.activate({
 			manifest: { id: 'theme-owner', colorsUrl: '/colors.json', colorsSha256: hash } as never,
 			colorsJson: colors,

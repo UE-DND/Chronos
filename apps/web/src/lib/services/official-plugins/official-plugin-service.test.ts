@@ -115,7 +115,7 @@ function createService(
 ): OfficialPluginService {
 	const installedStore = new OfficialPluginInstalledStore(engine);
 	const runtimeActivator = new OfficialPluginRuntimeActivator(engine, (pluginId) =>
-		installedStore.has(pluginId)
+		installedStore.find(pluginId)
 	);
 	return new OfficialPluginService(engine, {
 		catalogClient: new OfficialPluginCatalogClient(engine),
@@ -1114,7 +1114,7 @@ describe('OfficialPluginService', () => {
 
 		const installedStore = new OfficialPluginInstalledStore(engine);
 		const runtimeActivator = new OfficialPluginRuntimeActivator(engine, (pluginId) =>
-			installedStore.has(pluginId)
+			installedStore.find(pluginId)
 		);
 		const rollbackService = new OfficialPluginService(engine, {
 			catalogClient: new OfficialPluginCatalogClient(engine),

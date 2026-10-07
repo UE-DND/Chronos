@@ -4,6 +4,7 @@ import type { ChronosEnv } from '@chronos/core';
 import { DEFAULT_USER_PREFERENCES } from '@chronos/core';
 import { OfficialPluginRuntimeActivator } from './runtime-activator';
 import type { ImageRepository } from '$lib/storage/image-repository';
+import type { InstalledOfficialPluginRecord } from './official-plugin-types';
 
 const SAMPLE_BUNDLE = `
 export default {
@@ -72,7 +73,11 @@ describe('OfficialPluginRuntimeActivator', () => {
 		installed = new Set();
 		engine = new ChronosEngine({ env: createMockEnv(), onNotification: vi.fn() });
 		await engine.init();
-		activator = new OfficialPluginRuntimeActivator(engine, (id) => installed.has(id));
+		activator = new OfficialPluginRuntimeActivator(engine, (id) =>
+			installed.has(id)
+				? { manifest: { id } as never, origin: { kind: 'user' }, installedAt: 1 }
+				: undefined
+		);
 	});
 
 	afterEach(() => {
@@ -149,7 +154,11 @@ describe('OfficialPluginRuntimeActivator', () => {
 		env.runtime.sha256 = async () => hash;
 		const hybridEngine = new ChronosEngine({ env });
 		const images = { get: vi.fn().mockResolvedValue(wallpaper) } as unknown as ImageRepository;
-		const hybridActivator = new OfficialPluginRuntimeActivator(hybridEngine, () => true, images);
+		const hybridActivator = new OfficialPluginRuntimeActivator(
+			hybridEngine,
+			() => undefined,
+			images
+		);
 		const colors = { light: { 'color.primary': '#123456' }, dark: { 'color.primary': '#abcdef' } };
 		try {
 			await hybridActivator.activate({
@@ -437,8 +446,12 @@ describe('OfficialPluginRuntimeActivator', () => {
 		expect(activator.isActive('theme-json')).toBe(false);
 	});
 
-	it('calls revertToDefaultThemes when deactivating installed plugin with revertThemes', async () => {
-		const revertSpy = vi.spyOn(engine, 'revertToDefaultThemes');
+	it('preserves a pending third-party theme preference when uninstalling an unrelated tool', async () => {
+		engine.themes.registerTheme(
+			{ id: 'default-theme', name: 'Default', workbenchColors: { light: {}, dark: {} } },
+			'default-plugin'
+		);
+		engine.configureDefaultTheme({ pluginId: 'default-plugin', themeId: 'default-theme' });
 		installed.add('test-plugin');
 
 		await activator.activate({
@@ -458,8 +471,119 @@ describe('OfficialPluginRuntimeActivator', () => {
 			installedAt: 1
 		});
 
-		await engine.updatePreferences({ visualThemeId: 'missing-theme' });
+		await engine.updatePreferences({
+			visualThemeId: 'third-party-theme',
+			wallpaperSource: 'theme',
+			wallpaperColorEnabled: true
+		});
+		const preferences = { ...engine.state.userPreferences };
+		expect(engine.themes.isSelectable('third-party-theme')).toBe(false);
 		await activator.deactivate('test-plugin', { revertThemes: true });
-		expect(revertSpy).toHaveBeenCalled();
+
+		expect(engine.state.userPreferences).toEqual(preferences);
+		expect(engine.state.activeThemeId).toBe('default-theme');
+		expect(engine.isPluginLoaded('test-plugin')).toBe(false);
 	});
+
+	it.each([
+		{ identity: 'manifest', failed: false },
+		{ identity: 'manifest', failed: true },
+		{ identity: 'colors', failed: false },
+		{ identity: 'colors', failed: true }
+	])(
+		'reverts an unregistered selected theme using its $identity identity (failed=$failed)',
+		async ({ identity, failed }) => {
+			engine.themes.registerTheme(
+				{ id: 'default-theme', name: 'Default', workbenchColors: { light: {}, dark: {} } },
+				'default-plugin'
+			);
+			engine.configureDefaultTheme({ pluginId: 'default-plugin', themeId: 'default-theme' });
+			const record: InstalledOfficialPluginRecord = {
+				manifest: {
+					id: 'theme-plugin',
+					name: { en: 'Test' },
+					version: '1',
+					description: { en: 'Test' },
+					author: 'Test',
+					type: 'theme',
+					bundleFormat: 'esm',
+					themeId: identity === 'manifest' ? 'theme-test' : undefined,
+					colorsUrl: '/colors.json',
+					colorsSha256: failed ? 'invalid' : 'hash'
+				},
+				colorsJson: THEME_COLORS_JSON,
+				origin: { kind: 'user' },
+				installedAt: 1
+			};
+			activator = new OfficialPluginRuntimeActivator(engine, (id) =>
+				id === record.manifest.id ? record : undefined
+			);
+			if (failed) await expect(activator.activate(record)).rejects.toThrow('integrity');
+			await engine.updatePreferences({
+				visualThemeId: 'theme-test',
+				wallpaperSource: 'theme',
+				wallpaperColorEnabled: true
+			});
+			expect(engine.slots.resolveOwner('theme.definition', 'theme-test')).toBeUndefined();
+
+			await activator.deactivate('theme-plugin', { revertThemes: true });
+
+			expect(engine.state.userPreferences).toMatchObject({
+				visualThemeId: 'default-theme',
+				wallpaperSource: 'none',
+				wallpaperColorEnabled: false
+			});
+			expect(engine.state.activeThemeId).toBe('default-theme');
+		}
+	);
+
+	it.each(['json', 'esm'])(
+		'reverts to the default when uninstalling the selected %s theme owner',
+		async (format) => {
+			engine.themes.registerTheme(
+				{ id: 'default-theme', name: 'Default', workbenchColors: { light: {}, dark: {} } },
+				'default-plugin'
+			);
+			engine.configureDefaultTheme({ pluginId: 'default-plugin', themeId: 'default-theme' });
+			installed.add('theme-plugin');
+			await activator.activate({
+				manifest: {
+					id: 'theme-plugin',
+					name: { en: 'Test' },
+					version: '1',
+					description: { en: 'Test' },
+					author: 'Test',
+					type: 'theme',
+					bundleFormat: 'esm',
+					...(format === 'json'
+						? { colorsUrl: '/colors.json', colorsSha256: 'hash' }
+						: { bundleUrl: '/theme.js', sha256: 'hash' })
+				},
+				...(format === 'json'
+					? { colorsJson: THEME_COLORS_JSON }
+					: {
+							code: `export default { id: 'theme-plugin', apply(ctx) { ctx.registerSlot('theme.definition', { id: 'theme-test', name: 'Test', workbenchColors: { light: {}, dark: {} } }); } };`
+						}),
+				origin: { kind: 'user' },
+				installedAt: 1
+			});
+			await engine.updatePreferences({
+				visualThemeId: 'theme-test',
+				wallpaperSource: 'theme',
+				wallpaperColorEnabled: true
+			});
+			engine.setTheme('theme-test');
+
+			await activator.deactivate('theme-plugin', { revertThemes: true });
+
+			expect(engine.state.userPreferences).toMatchObject({
+				visualThemeId: 'default-theme',
+				wallpaperSource: 'none',
+				wallpaperColorEnabled: false
+			});
+			expect(engine.state.activeThemeId).toBe('default-theme');
+			expect(engine.themes.getTheme('theme-test')).toBeUndefined();
+			expect(activator.isActive('theme-plugin')).toBe(false);
+		}
+	);
 });

@@ -98,7 +98,7 @@ function createMockEnv(httpRequest: HttpMock = vi.fn()) {
 function createService(engine: ChronosEngine, hostVersion = '0.4.1'): OfficialPluginService {
 	const installedStore = new OfficialPluginInstalledStore(engine);
 	const runtimeActivator = new OfficialPluginRuntimeActivator(engine, (pluginId) =>
-		installedStore.has(pluginId)
+		installedStore.find(pluginId)
 	);
 	return new OfficialPluginService(engine, {
 		catalogClient: new OfficialPluginCatalogClient(engine),

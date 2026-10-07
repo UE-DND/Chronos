@@ -20,7 +20,9 @@ export class OfficialPluginRuntimeActivator {
 
 	constructor(
 		private readonly engine: ChronosEngine,
-		private readonly isInstalled: (pluginId: string) => boolean,
+		private readonly getInstalledRecord: (
+			pluginId: string
+		) => InstalledOfficialPluginRecord | undefined,
 		private readonly images = new ImageRepository()
 	) {}
 
@@ -176,7 +178,25 @@ export class OfficialPluginRuntimeActivator {
 		return [handle];
 	}
 
+	private providesTheme(pluginId: string, themeId: string): boolean {
+		const owner = this.engine.slots.resolveOwner('theme.definition', themeId);
+		if (owner !== undefined) return owner === pluginId;
+		const record = this.getInstalledRecord(pluginId);
+		if (record?.manifest.themeId) return record.manifest.themeId === themeId;
+		if (!record?.colorsJson) return false;
+		try {
+			return parseColorThemeJson(JSON.parse(record.colorsJson)).id === themeId;
+		} catch {
+			// Corrupt theme resources must not prevent uninstalling their plugin.
+			return false;
+		}
+	}
+
 	async deactivate(pluginId: string, options?: { revertThemes?: boolean }): Promise<void> {
+		const preferred = options?.revertThemes
+			? this.engine.state.userPreferences.visualThemeId
+			: undefined;
+		const ownsPreferred = preferred && this.providesTheme(pluginId, preferred);
 		if (this.engine.isPluginLoaded(pluginId)) {
 			await this.engine.unloadPlugin(pluginId);
 		}
@@ -186,11 +206,14 @@ export class OfficialPluginRuntimeActivator {
 			this.activeHandles.delete(pluginId);
 		}
 		this.cssInjector.remove(pluginId);
-		if (options?.revertThemes && this.isInstalled(pluginId)) {
-			const preferred = this.engine.state.userPreferences.visualThemeId;
-			if (preferred && !this.engine.themes.isSelectable(preferred))
-				await this.engine.revertToDefaultThemes();
-		}
+		if (
+			options?.revertThemes &&
+			ownsPreferred &&
+			this.getInstalledRecord(pluginId) &&
+			this.engine.state.userPreferences.visualThemeId === preferred &&
+			!this.engine.themes.isSelectable(preferred)
+		)
+			await this.engine.revertToDefaultThemes();
 	}
 
 	disposeAll(): void {
