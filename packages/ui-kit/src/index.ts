@@ -1,4 +1,6 @@
 /// <reference types="svelte" />
+export { createHorizontalGesture } from './gesture/horizontal-gesture';
+export { createSinglePointerSession } from './gesture/single-pointer-session.svelte';
 export * from './reactivity/engine-controller.svelte';
 export type { ChronosUiController, ChronosUiSnapshot } from './reactivity/chronos-ui-controller';
 export { default as SchemaForm } from './schema-form/SchemaForm.svelte';
