@@ -5,6 +5,7 @@
 		ALL_CORNERS_ROUNDED,
 		placeCapsules,
 		type Course,
+		type CourseBadge,
 		type CoursePaletteEntry,
 		type PlacedCourseCapsule,
 		type TimetableCourseDisplayModel,
@@ -26,7 +27,6 @@
 		calculatePeriodCenterScrollOffset,
 		calculatePeriodOffsetByIndex
 	} from '$lib/timetable/period-scroll';
-	import { getAppController } from '$lib/services/app-engine';
 	import { trackEvent } from '$lib/client/analytics';
 
 	import {
@@ -86,6 +86,8 @@
 		interaction: TimetableInteraction;
 		drop: TimetableDropController;
 		active?: boolean;
+		interactive?: boolean;
+		courseBadges?: Record<string, CourseBadge[]>;
 	}
 
 	let {
@@ -106,14 +108,14 @@
 		onRequestWeekDelete,
 		interaction,
 		drop,
-		active = true
+		active = true,
+		interactive = true,
+		courseBadges = {}
 	}: Props = $props();
 
 	const effectivePeriodIndex = $derived(periodHighlightEnabled ? currentPeriodIndex : null);
 	const isEditing = $derived(interaction.isEditing);
 	const dragState = $derived(interaction.drag?.week === displayedWeek ? interaction.drag : null);
-
-	const controller = getAppController();
 
 	let scrollContainer = $state<HTMLDivElement | undefined>();
 	let gridBodyEl = $state<HTMLDivElement | undefined>();
@@ -465,7 +467,7 @@
 	);
 
 	$effect(() => {
-		if (!dragState) return;
+		if (!interactive || !dragState) return;
 
 		const preventTouchScroll = (e: TouchEvent) => {
 			if (e.cancelable) {
@@ -482,17 +484,18 @@
 </script>
 
 <svelte:window
-	onpointermove={dragState ? handleWindowPointerMove : undefined}
-	onpointerup={dragState ? handleWindowPointerUp : undefined}
-	onpointercancel={dragState ? handleWindowPointerCancel : undefined}
-	oncontextmenu={dragState || isEditing ? (e) => e.preventDefault() : undefined}
-	ondragstart={(e) => e.preventDefault()}
-	ondrop={(e) => e.preventDefault()}
+	onpointermove={interactive && dragState ? handleWindowPointerMove : undefined}
+	onpointerup={interactive && dragState ? handleWindowPointerUp : undefined}
+	onpointercancel={interactive && dragState ? handleWindowPointerCancel : undefined}
+	oncontextmenu={interactive && (dragState || isEditing) ? (e) => e.preventDefault() : undefined}
+	ondragstart={interactive ? (e) => e.preventDefault() : undefined}
+	ondrop={interactive ? (e) => e.preventDefault() : undefined}
 />
 
 <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
 <div
 	class="relative flex h-full w-full flex-col select-none {solidBgClass}"
+	inert={!interactive}
 	style="--row-height: {rowHeightCss}; --sidebar-width: 3.25rem"
 	onpointerdown={gridGestureHandlers.onpointerdown}
 	onpointermove={gridGestureHandlers.onpointermove}
@@ -571,7 +574,7 @@
 			<div
 				bind:this={gridBodyEl}
 				{@attach gridBodyWidthAttach}
-				class="relative min-w-0 flex-1"
+				class="timetable-grid-body relative min-w-0 flex-1"
 				style:height="calc(var(--row-height) * {gridModel.displayedPeriodCount})"
 			>
 				{#each gridModel.visibleDays as day, columnIndex (day.dayOfWeek)}
@@ -630,7 +633,7 @@
 									end: periodEnd
 								})}
 					<div
-						class="pointer-events-none absolute z-20 box-border transition-[top,left,transform] duration-100 ease-out"
+						class="timetable-drop-preview pointer-events-none absolute z-20 box-border transition-[top,left,transform] duration-100 ease-out"
 						style:top="calc(var(--row-height) * {dropPreview.targetStartPeriod - 1})"
 						style:left="{(dropPreview.targetColIndex / visibleDayCount) * 100}%"
 						style:width="{100 / visibleDayCount}%"
@@ -684,7 +687,7 @@
 		},
 		onDragStart: (_c, event) => startDrag(placed, event, { hapticOnStart: false })
 	})}
-	{@const pluginBadges = controller.courseBadges[placed.course.id] ?? []}
+	{@const pluginBadges = courseBadges[placed.course.id] ?? []}
 	{@const badgeText = placed.badgeLabel || pluginBadges[0]?.text}
 	{@const innerWidthPx = courseCapsuleInnerWidthPx(
 		columnWidthPx,

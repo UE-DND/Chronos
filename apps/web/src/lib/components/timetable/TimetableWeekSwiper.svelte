@@ -103,6 +103,7 @@
 						{active}
 						{gridModel}
 						courseDisplayModels={courseModels}
+						courseBadges={shell.controller.courseBadges}
 						{hasDynamicBackground}
 						{coursePalette}
 						paletteCourses={screenState.currentTimetable?.courses}

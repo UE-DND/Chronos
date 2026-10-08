@@ -9,7 +9,7 @@
 	import { createCapsulePagerPreview } from '$lib/timetable/capsule-pager-preview';
 	import TimetableWeekSwiper from './TimetableWeekSwiper.svelte';
 	import TimetableCapsuleIndicator from './TimetableCapsuleIndicator.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
+	import WeekDeleteConfirmation from './WeekDeleteConfirmation.svelte';
 	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
 
 	let {
@@ -144,25 +144,23 @@
 </div>
 
 {#if pendingWeekDelete}
-	<BottomSheet
-		bind:open={weekDeleteSheetOpen}
-		showHandle={false}
-		onOpenChangeComplete={(isOpen) => {
-			if (!isOpen) screen.cancelWeekDelete();
-		}}
-		title={hostT('timetable.deleteWeek.title')}
-		description={hostT('timetable.deleteWeek.desc', {
-			name: pendingWeekDelete.course.name,
-			week: pendingWeekDelete.week
-		})}
+	<WeekDeleteConfirmation
+		courseName={pendingWeekDelete.course.name}
+		week={pendingWeekDelete.week}
+		onCancel={() => (weekDeleteSheetOpen = false)}
+		onConfirm={() => void screen.confirmWeekDelete()}
 	>
-		{#snippet footer()}
-			<Button variant="text" onclick={() => (weekDeleteSheetOpen = false)}>
-				{hostT('common.cancel')}
-			</Button>
-			<Button variant="filled" onclick={() => void screen.confirmWeekDelete()}>
-				{hostT('common.delete')}
-			</Button>
+		{#snippet children({ title, description, footer })}
+			<BottomSheet
+				bind:open={weekDeleteSheetOpen}
+				showHandle={false}
+				onOpenChangeComplete={(isOpen) => {
+					if (!isOpen) screen.cancelWeekDelete();
+				}}
+				{title}
+				{description}
+				{footer}
+			/>
 		{/snippet}
-	</BottomSheet>
+	</WeekDeleteConfirmation>
 {/if}
