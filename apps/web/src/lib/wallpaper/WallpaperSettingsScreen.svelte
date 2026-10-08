@@ -29,21 +29,32 @@
 		return getAppEngine().themes.getTheme(visualThemeId);
 	});
 	const activeLocale = $derived(normalizeAppLocale(shell.controller.locale));
-	const source = $derived(
+	let source = $derived(
 		shell.controller.userPreferences?.wallpaperSource ?? DEFAULT_USER_PREFERENCES.wallpaperSource
 	);
 	const wallpaperColorsDisabled = $derived(!shell.state.wallpaperColorsAvailable);
 	const wallpaperMaskDisabled = $derived(!shell.state.hasWallpaper);
+	let savingSource = $state(false);
 	const sources = ['none', 'custom', 'theme'] as const;
 	async function selectSource(wallpaperSource: WallpaperSource) {
-		if (wallpaperSource === source || (wallpaperSource === 'theme' && !selectedTheme?.wallpaper))
+		if (
+			savingSource ||
+			wallpaperSource === source ||
+			(wallpaperSource === 'theme' && !selectedTheme?.wallpaper)
+		)
 			return;
 		haptic.light();
+		const previous = source;
+		source = wallpaperSource;
+		savingSource = true;
 		try {
 			await shell.updatePreferences({ wallpaperSource });
 			trackEvent('wallpaper_source_change', { source: wallpaperSource });
 		} catch {
+			source = previous;
 			shell.controller.notify(hostT('wallpaper.settings.saveFailed'), 'error');
+		} finally {
+			savingSource = false;
 		}
 	}
 	const colorSchemeOptions = $derived.by(() => {
@@ -163,7 +174,7 @@
 	</MineSection>
 	<MineSection title={hostT('wallpaper.source.label')}>
 		{#each sources as mode (mode)}
-			{@const disabled = mode === 'theme' && !selectedTheme?.wallpaper}
+			{@const disabled = savingSource || (mode === 'theme' && !selectedTheme?.wallpaper)}
 			<MineRow
 				label
 				title={hostT(`wallpaper.source.${mode}`)}

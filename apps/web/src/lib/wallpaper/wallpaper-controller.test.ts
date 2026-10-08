@@ -36,7 +36,8 @@ describe('host wallpaper controller', () => {
 			unsubscribe,
 			revoke,
 			created,
-			notify: (blob: Blob | null) => notify(blob)
+			notify: (blob: Blob | null) => notify(blob),
+			getNotifier: () => notify
 		};
 	}
 	it('keeps saved user images when switching themes, and observes changes from other tabs', async () => {
@@ -89,5 +90,50 @@ describe('host wallpaper controller', () => {
 		await saving;
 		expect(created).toHaveLength(0);
 		expect(controller.state.uri).toBeNull();
+	});
+	it.each(['before', 'after'] as const)(
+		'publishes only the subscribed Blob when subscription arrives %s write completion',
+		async (order) => {
+			const { controller, put, created, notify } = setup();
+			controller.select('custom');
+			const input = new Blob(['new']);
+			const stored = new Blob(['new']);
+			let finish!: () => void;
+			put.mockImplementationOnce(
+				() =>
+					new Promise<void>((resolve) => {
+						finish = resolve;
+					})
+			);
+			const saving = controller.save(input);
+			if (order === 'before') notify(stored);
+			finish();
+			await saving;
+			if (order === 'after') {
+				expect(controller.state.uri).toBeNull();
+				notify(stored);
+			}
+			expect(created).toEqual([stored]);
+			expect(controller.state.uri).toBe('blob:1');
+			controller.destroy();
+		}
+	);
+	it('clears only on subscription and rejects stale callbacks after reinitialization', async () => {
+		const { controller, notify, getNotifier, created } = setup();
+		controller.select('custom');
+		notify(new Blob(['saved']));
+		await controller.clear();
+		expect(controller.state.hasCustom).toBe(true);
+		notify(null);
+		expect(controller.state.uri).toBeNull();
+		const stale = getNotifier();
+		controller.destroy();
+		controller.init(vi.fn());
+		stale(new Blob(['stale']));
+		expect(controller.state.hasCustom).toBe(false);
+		expect(created).toHaveLength(1);
+		notify(new Blob(['external']));
+		expect(controller.state.uri).toBe('blob:2');
+		controller.destroy();
 	});
 });

@@ -7,6 +7,8 @@
 		type EdgeBarAction,
 		type EdgeBarActionsController
 	} from '@chronos/ui-kit';
+	import { getWallpaperBitmap } from './wallpaper-theme';
+	import { observeAdaptiveWallpaperText } from './adaptive-text';
 	import WallpaperCropEditor from './WallpaperCropEditor.svelte';
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
 	import type { HostMessageKey } from '$lib/i18n/host-messages';
@@ -18,6 +20,8 @@
 	const wallpaperUri = $derived(shell.state.wallpaperUri);
 	const hasWallpaper = $derived(Boolean(wallpaperUri));
 	const hasCustom = $derived(shell.wallpaper.state.hasCustom);
+	const wallpaperMaskEnabled = $derived(controller.userPreferences?.wallpaperMaskEnabled ?? true);
+	let previewEl = $state<HTMLDivElement>();
 	const timetable = $derived(controller.currentTimetable);
 	function pt(key: string) {
 		return hostT(`wallpaper.${key}` as HostMessageKey);
@@ -51,6 +55,24 @@
 	$effect(() => {
 		if (cropSource) return;
 		return edgeActions?.register('host-wallpaper', actions);
+	});
+
+	$effect(() => {
+		if (wallpaperMaskEnabled || !wallpaperUri || !previewEl) return;
+		const container = previewEl;
+		const dark = shell.state.isDark;
+		const ac = new AbortController();
+		let stop = () => {};
+		void getWallpaperBitmap(wallpaperUri, ac.signal)
+			.then((bitmap) => {
+				if (!ac.signal.aborted)
+					stop = observeAdaptiveWallpaperText(container, bitmap, dark, { wallpaper: container });
+			})
+			.catch(() => {});
+		return () => {
+			ac.abort();
+			stop();
+		};
 	});
 
 	function onPickWallpaper() {
@@ -110,11 +132,17 @@
 			{controller}
 			{edgeActions}
 			source={cropSource}
+			isDark={shell.state.isDark}
 			onConfirm={onCropConfirm}
 			onCancel={onCropCancel}
 		/>
 	{:else if hasWallpaper && timetable}
-		<div class="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+		<div
+			bind:this={previewEl}
+			class="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+			data-wallpaper-mask={wallpaperMaskEnabled ? 'true' : 'false'}
+			data-has-wallpaper="true"
+		>
 			<TimetableLivePreview
 				{controller}
 				hasDynamicBackground={true}

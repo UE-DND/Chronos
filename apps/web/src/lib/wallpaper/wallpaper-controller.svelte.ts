@@ -29,8 +29,9 @@ export function createWallpaperController(images = new ImageRepository()) {
 		init(onError: (error: unknown) => void) {
 			if (active) return;
 			active = true;
+			const task = ++generation;
 			subscription = images.watchCustom((blob) => {
-				if (!active) return;
+				if (!active || task !== generation) return;
 				custom = blob;
 				refresh();
 			}, onError);
@@ -41,18 +42,10 @@ export function createWallpaperController(images = new ImageRepository()) {
 			refresh();
 		},
 		async save(blob: Blob) {
-			const task = generation;
 			await images.put(CUSTOM_WALLPAPER_KEY, blob);
-			if (task !== generation) return;
-			custom = blob;
-			refresh();
 		},
 		async clear() {
-			const task = generation;
 			await images.delete(CUSTOM_WALLPAPER_KEY);
-			if (task !== generation) return;
-			custom = null;
-			refresh();
 		},
 		destroy() {
 			active = false;

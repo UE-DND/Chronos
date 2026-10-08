@@ -20,6 +20,8 @@
 		zoomAtPoint,
 		type CropTransform
 	} from './crop-image';
+	import { getWallpaperBitmap } from './wallpaper-theme';
+	import { observeAdaptiveWallpaperText } from './adaptive-text';
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
 	import type { HostMessageKey } from '$lib/i18n/host-messages';
 
@@ -27,11 +29,12 @@
 		controller: ChronosUiController;
 		edgeActions?: EdgeBarActionsController;
 		source: Blob | File;
+		isDark?: boolean;
 		onConfirm: (blob: Blob) => void | Promise<void>;
 		onCancel: () => void;
 	}
 
-	let { controller, edgeActions, source, onConfirm, onCancel }: Props = $props();
+	let { controller, edgeActions, source, isDark = false, onConfirm, onCancel }: Props = $props();
 
 	function pt(key: string) {
 		return hostT(`wallpaper.${key}` as HostMessageKey);
@@ -75,6 +78,9 @@
 	const gridModel = $derived(preview?.gridModel ?? null);
 	const courseDisplayModels = $derived(preview?.courseDisplayModels ?? []);
 
+	const wallpaperMaskEnabled = $derived(controller.userPreferences?.wallpaperMaskEnabled ?? true);
+	let previewImageEl = $state<HTMLImageElement>();
+	let initialized = $state(false);
 	let viewportEl: HTMLDivElement | undefined = $state();
 	let frameWidth = $state(0);
 	let frameHeight = $state(0);
@@ -84,6 +90,7 @@
 	let naturalHeight = $state(0);
 	let transform = $state<CropTransform>({ scale: 1, offsetX: 0, offsetY: 0 });
 	let confirming = $state(false);
+	const cropReady = $derived(initialized && frameWidth > 0 && frameHeight > 0);
 	const actions = $derived<EdgeBarAction[]>([
 		{
 			id: 'cancel',
@@ -97,7 +104,7 @@
 			id: 'confirm',
 			label: confirmLabel,
 			icon: 'check',
-			disabled: confirming || !imageEl || frameWidth <= 0,
+			disabled: confirming || !cropReady,
 			onClick: confirmCrop
 		}
 	]);
@@ -137,20 +144,7 @@
 			if (width !== frameWidth || height !== frameHeight) {
 				frameWidth = width;
 				frameHeight = height;
-				if (naturalWidth > 0 && naturalHeight > 0) {
-					const coverScale = computeCoverScale(naturalWidth, naturalHeight, width, height);
-					transform = clampTransform(
-						{
-							scale: Math.max(transform.scale, coverScale),
-							offsetX: transform.offsetX,
-							offsetY: transform.offsetY
-						},
-						naturalWidth,
-						naturalHeight,
-						width,
-						height
-					);
-				}
+				updateFrameTransform();
 			}
 		});
 		observer.observe(el);
@@ -159,6 +153,12 @@
 
 	$effect(() => {
 		const blob = source;
+		initialized = false;
+		naturalWidth = 0;
+		naturalHeight = 0;
+		dragStart = null;
+		activePointers.clear();
+		pinchStartDistance = 0;
 		let cancelled = false;
 		const objectUrl = URL.createObjectURL(blob);
 
@@ -170,11 +170,7 @@
 				previewUrl = objectUrl;
 				naturalWidth = image.naturalWidth || image.width;
 				naturalHeight = image.naturalHeight || image.height;
-				const coverScale =
-					frameWidth > 0 && frameHeight > 0
-						? computeCoverScale(naturalWidth, naturalHeight, frameWidth, frameHeight)
-						: 1;
-				transform = { scale: coverScale, offsetX: 0, offsetY: 0 };
+				updateFrameTransform();
 			} catch {
 				if (cancelled) return;
 				controller.notify(pt('screen.error.importFailed'), 'error');
@@ -190,13 +186,51 @@
 		};
 	});
 
+	function updateFrameTransform() {
+		if (naturalWidth <= 0 || naturalHeight <= 0 || frameWidth <= 0 || frameHeight <= 0) return;
+		const coverScale = computeCoverScale(naturalWidth, naturalHeight, frameWidth, frameHeight);
+		transform = initialized
+			? clampTransform(
+					{ ...transform, scale: Math.max(transform.scale, coverScale) },
+					naturalWidth,
+					naturalHeight,
+					frameWidth,
+					frameHeight
+				)
+			: { scale: coverScale, offsetX: 0, offsetY: 0 };
+		initialized = true;
+	}
+
+	$effect(() => {
+		if (wallpaperMaskEnabled || !initialized || !previewUrl || !viewportEl || !previewImageEl)
+			return;
+		const container = viewportEl;
+		const image = previewImageEl;
+		const dark = isDark;
+		const ac = new AbortController();
+		let stop = () => {};
+		void getWallpaperBitmap(previewUrl, ac.signal)
+			.then((bitmap) => {
+				if (!ac.signal.aborted)
+					stop = observeAdaptiveWallpaperText(container, bitmap, dark, {
+						wallpaper: container,
+						image
+					});
+			})
+			.catch(() => {});
+		return () => {
+			ac.abort();
+			stop();
+		};
+	});
+
 	function applyTransform(next: CropTransform) {
 		if (naturalWidth <= 0 || naturalHeight <= 0 || frameWidth <= 0 || frameHeight <= 0) return;
 		transform = clampTransform(next, naturalWidth, naturalHeight, frameWidth, frameHeight);
 	}
 
 	function onPointerDown(event: PointerEvent) {
-		if (confirming) return;
+		if (confirming || !cropReady) return;
 		const target = event.currentTarget as HTMLElement;
 		target.setPointerCapture(event.pointerId);
 		activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -222,7 +256,7 @@
 	}
 
 	function onPointerMove(event: PointerEvent) {
-		if (confirming || !activePointers.has(event.pointerId)) return;
+		if (!cropReady || confirming || !activePointers.has(event.pointerId)) return;
 		activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
 		if (activePointers.size >= 2) {
@@ -277,7 +311,7 @@
 	}
 
 	function onWheel(event: WheelEvent) {
-		if (confirming) return;
+		if (confirming || !cropReady) return;
 		event.preventDefault();
 		const rect = viewportEl?.getBoundingClientRect();
 		if (!rect) return;
@@ -300,7 +334,7 @@
 	}
 
 	async function confirmCrop() {
-		if (!imageEl || frameWidth <= 0 || frameHeight <= 0 || confirming) return;
+		if (!cropReady || !imageEl || confirming) return;
 		confirming = true;
 		try {
 			const blob = await exportCroppedImage(
@@ -310,6 +344,8 @@
 				{ sourceMime: source.type }
 			);
 			await onConfirm(blob);
+		} catch {
+			controller.notify(pt('screen.error.importFailed'), 'error');
 		} finally {
 			confirming = false;
 		}
@@ -327,6 +363,8 @@
 	<div
 		bind:this={viewportEl}
 		aria-label={viewportAria}
+		data-wallpaper-mask={wallpaperMaskEnabled ? 'true' : 'false'}
+		data-has-wallpaper={initialized ? 'true' : 'false'}
 		class="relative min-h-0 flex-1 touch-none overflow-hidden bg-black select-none"
 		onpointerdown={onPointerDown}
 		onpointermove={onPointerMove}
@@ -334,8 +372,9 @@
 		onpointercancel={onPointerUp}
 		onwheel={onWheel}
 	>
-		{#if previewUrl}
+		{#if previewUrl && initialized}
 			<img
+				bind:this={previewImageEl}
 				src={previewUrl}
 				alt=""
 				draggable="false"
@@ -387,7 +426,7 @@
 			<button
 				type="button"
 				class="ui-btn ui-btn-filled flex-1"
-				disabled={confirming || !imageEl || frameWidth <= 0}
+				disabled={confirming || !cropReady}
 				onclick={confirmCrop}
 			>
 				{confirmLabel}

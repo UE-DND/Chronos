@@ -94,4 +94,78 @@ describe('adaptive wallpaper text observer', () => {
 		expect(operations).toEqual(['read:first', 'read:third', 'clear:second', 'write:third']);
 		stop();
 	});
+	it('samples the local transformed image and resamples on movement, then clears tones on disposal', () => {
+		let frame: FrameRequestCallback | undefined;
+		let onMutations!: MutationCallback;
+		vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+			frame = callback;
+			return 1;
+		});
+		vi.stubGlobal('cancelAnimationFrame', vi.fn());
+		const disconnect = vi.fn();
+		vi.stubGlobal(
+			'MutationObserver',
+			class {
+				constructor(callback: MutationCallback) {
+					onMutations = callback;
+				}
+				observe() {}
+				disconnect = disconnect;
+			}
+		);
+		vi.stubGlobal(
+			'ResizeObserver',
+			class {
+				observe() {}
+				disconnect = disconnect;
+			}
+		);
+		vi.stubGlobal('window', new EventTarget());
+		const viewport = { left: 0, top: 0, right: 100, bottom: 100, width: 100, height: 100 };
+		let left = 0;
+		const image = {
+			getBoundingClientRect: () => ({ ...viewport, left, right: left + 200, width: 200 })
+		} as HTMLImageElement;
+		const text = {
+			dataset: {},
+			closest: () => null,
+			getBoundingClientRect: () => ({
+				left: 10,
+				top: 10,
+				right: 30,
+				bottom: 30,
+				width: 20,
+				height: 20
+			})
+		} as unknown as HTMLElement;
+		const container = Object.assign(new EventTarget(), {
+			closest: () => {
+				throw new Error('must not sample shell background');
+			},
+			getBoundingClientRect: () => viewport,
+			querySelectorAll: () => [text]
+		}) as unknown as HTMLElement;
+		const stop = observeAdaptiveWallpaperText(
+			container,
+			{
+				pixels: new Uint8ClampedArray([0, 0, 0, 255, 255, 255, 255, 255]),
+				width: 2,
+				height: 1
+			},
+			false,
+			{ wallpaper: container, image }
+		);
+		frame?.(0);
+		expect(text.dataset.adaptiveTone).toBe('light');
+		left = -100;
+		onMutations(
+			[{ type: 'attributes', attributeName: 'style' } as MutationRecord],
+			{} as MutationObserver
+		);
+		frame?.(1);
+		expect(text.dataset.adaptiveTone).toBe('dark');
+		stop();
+		expect(text.dataset.adaptiveTone).toBeUndefined();
+		expect(disconnect).toHaveBeenCalledTimes(2);
+	});
 });

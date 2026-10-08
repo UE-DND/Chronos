@@ -1,15 +1,23 @@
 import { createAdaptiveTextToneSelector, type AdaptiveTextTone } from '@chronos/core';
 import type { DecodedWallpaperBitmap } from './wallpaper-theme';
 
+interface WallpaperTextGeometry {
+	/** Local background viewport; defaults to the shell wallpaper. */
+	wallpaper?: HTMLElement;
+	/** A positioned, proportionally scaled crop image, rather than a cover background. */
+	image?: HTMLImageElement;
+}
+
 /** Keep text colors aligned with the wallpaper as the grid scrolls and changes size. */
 export function observeAdaptiveWallpaperText(
 	container: HTMLElement,
 	bitmap: DecodedWallpaperBitmap,
-	isDark: boolean
+	isDark: boolean,
+	geometry: WallpaperTextGeometry = {}
 ): () => void {
-	const wallpaper = container
-		.closest('.shell-page')
-		?.querySelector<HTMLElement>('[data-shell-wallpaper]');
+	const wallpaper =
+		geometry.wallpaper ??
+		container.closest('.shell-page')?.querySelector<HTMLElement>('[data-shell-wallpaper]');
 	if (!wallpaper) return () => {};
 
 	const selectTone = createAdaptiveTextToneSelector(
@@ -34,6 +42,9 @@ export function observeAdaptiveWallpaperText(
 			targets = Array.from(container.querySelectorAll<HTMLElement>('[data-adaptive-text]'));
 			targetsDirty = false;
 		}
+		const imageRect = geometry.image?.getBoundingClientRect();
+		if (imageRect && (imageRect.width <= 0 || imageRect.height <= 0)) return;
+		const samplingRect = imageRect ?? viewport;
 		const nextTones: Array<[HTMLElement, AdaptiveTextTone]> = [];
 		const nextStyled = new Set<HTMLElement>();
 		for (const element of targets) {
@@ -51,13 +62,13 @@ export function observeAdaptiveWallpaperText(
 			}
 			const tone = selectTone(
 				{
-					x: (rect.left - viewport.left) / viewport.width,
-					y: (rect.top - viewport.top) / viewport.height,
-					width: rect.width / viewport.width,
-					height: rect.height / viewport.height
+					x: (rect.left - samplingRect.left) / samplingRect.width,
+					y: (rect.top - samplingRect.top) / samplingRect.height,
+					width: rect.width / samplingRect.width,
+					height: rect.height / samplingRect.height
 				},
-				viewport.width,
-				viewport.height
+				imageRect ? bitmap.width : viewport.width,
+				imageRect ? bitmap.height : viewport.height
 			);
 			nextTones.push([element, tone]);
 			nextStyled.add(element);
@@ -90,9 +101,12 @@ export function observeAdaptiveWallpaperText(
 		attributes: true,
 		attributeFilter: ['class', 'data-adaptive-text']
 	});
+	if (geometry.image)
+		mutations.observe(geometry.image, { attributes: true, attributeFilter: ['style'] });
 	const sizes = new ResizeObserver(schedule);
 	sizes.observe(container);
 	sizes.observe(wallpaper);
+	if (geometry.image) sizes.observe(geometry.image);
 	container.addEventListener('scroll', schedule, true);
 	window.addEventListener('resize', schedule);
 	schedule();
