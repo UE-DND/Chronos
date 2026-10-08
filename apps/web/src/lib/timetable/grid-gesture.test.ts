@@ -16,6 +16,7 @@ function createMockElement(closestMatch: string | null = null) {
 
 function mockPointerEvent(init: Partial<PointerEvent> = {}): PointerEvent {
 	return {
+		isPrimary: true,
 		button: 0,
 		pointerId: 1,
 		clientX: 0,

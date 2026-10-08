@@ -53,6 +53,7 @@ function dragInput(
 
 function mockPointerEvent(init: Partial<PointerEvent> = {}): PointerEvent {
 	return {
+		isPrimary: true,
 		button: 0,
 		pointerId: 1,
 		clientX: 0,
@@ -193,6 +194,26 @@ describe('createTimetableInteraction', () => {
 			expect(onFire).not.toHaveBeenCalled();
 			vi.advanceTimersByTime(1);
 			expect(onFire).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('keeps a long press owned by its first pointer', () => {
+		vi.useFakeTimers();
+		try {
+			const interaction = createTimetableInteraction();
+			const first = vi.fn();
+			const second = vi.fn();
+			expect(interaction.watchLongPress(mockPointerEvent(), first)).toBe(true);
+			expect(
+				interaction.watchLongPress(mockPointerEvent({ pointerId: 2, isPrimary: false }), second)
+			).toBe(false);
+			interaction.notePointerUp(mockPointerEvent({ pointerId: 2, isPrimary: false }));
+			vi.advanceTimersByTime(TIMETABLE_LONG_PRESS_DELAY_MS);
+			expect(first).toHaveBeenCalledOnce();
+			expect(second).not.toHaveBeenCalled();
+			interaction.destroy();
 		} finally {
 			vi.useRealTimers();
 		}

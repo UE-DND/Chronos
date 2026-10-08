@@ -12,7 +12,7 @@ export function createCourseCardHandlers(
 	const { onCourseClick, onLongPress, onDragStart } = options;
 	return {
 		onpointerdown: (event: PointerEvent) => {
-			if (event.button !== 0) return;
+			if (event.button !== 0 || !event.isPrimary) return;
 			interaction.resetClickFlags();
 			if (interaction.mode === 'dragging' || interaction.isClickGuarded()) return;
 			if (interaction.mode !== 'view') {

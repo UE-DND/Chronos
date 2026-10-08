@@ -1,3 +1,4 @@
+import { createSinglePointerSession } from '@chronos/ui-kit';
 import {
 	TIMETABLE_LONG_PRESS_CLICK_SUPPRESS_MS,
 	type TimetableInteractionMode
@@ -22,7 +23,7 @@ export interface LongPressTracker {
 }
 
 export function createLongPressTracker(options: LongPressTrackerOptions): LongPressTracker {
-	let pendingPointerId: number | null = null;
+	const pointer = createSinglePointerSession();
 	let startX = 0;
 	let startY = 0;
 	let hasMoved = false;
@@ -53,10 +54,9 @@ export function createLongPressTracker(options: LongPressTrackerOptions): LongPr
 	}
 
 	function watchLongPress(event: PointerEvent, onFire: (event: PointerEvent) => void): boolean {
-		if (event.button !== 0) return false;
 		if (options.getMode() !== 'view') return false;
 
-		pendingPointerId = event.pointerId;
+		if (!pointer.start(event)) return false;
 		startX = event.clientX;
 		startY = event.clientY;
 		hasMoved = false;
@@ -79,8 +79,8 @@ export function createLongPressTracker(options: LongPressTrackerOptions): LongPr
 	}
 
 	function notePointerMove(event: PointerEvent) {
-		if (pendingPointerId !== null && event.pointerId !== pendingPointerId) return;
-		if (pendingPointerId === null || hasMoved) return;
+		if (pointer.id !== null && !pointer.owns(event)) return;
+		if (pointer.id === null || hasMoved) return;
 
 		const dx = Math.abs(event.clientX - startX);
 		const dy = Math.abs(event.clientY - startY);
@@ -98,9 +98,9 @@ export function createLongPressTracker(options: LongPressTrackerOptions): LongPr
 	}
 
 	function notePointerUp(event: PointerEvent) {
-		if (pendingPointerId !== null && event.pointerId !== pendingPointerId) return;
+		if (pointer.id !== null && !pointer.owns(event)) return;
 		clearTimer();
-		pendingPointerId = null;
+		pointer.end();
 		longPressCallback = null;
 		longPressEvent = null;
 		if (longPressFired) {
@@ -113,18 +113,18 @@ export function createLongPressTracker(options: LongPressTrackerOptions): LongPr
 	}
 
 	function notePointerLost(event: PointerEvent) {
-		if (pendingPointerId !== null && event.pointerId !== pendingPointerId) return;
+		if (pointer.id !== null && !pointer.owns(event)) return;
 		clearTimer();
-		pendingPointerId = null;
+		pointer.end();
 		longPressCallback = null;
 		longPressEvent = null;
 	}
 
 	function notePointerCancel(event: PointerEvent) {
-		if (pendingPointerId !== null && event.pointerId !== pendingPointerId) return;
+		if (pointer.id !== null && !pointer.owns(event)) return;
 		clearTimer();
 		clearReleaseTimer();
-		pendingPointerId = null;
+		pointer.end();
 		hasMoved = false;
 		longPressFired = false;
 		longPressCallback = null;
@@ -148,7 +148,7 @@ export function createLongPressTracker(options: LongPressTrackerOptions): LongPr
 	function clear() {
 		clearTimer();
 		clearReleaseTimer();
-		pendingPointerId = null;
+		pointer.end();
 		longPressCallback = null;
 		longPressEvent = null;
 		hasMoved = false;

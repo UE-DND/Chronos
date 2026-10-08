@@ -133,9 +133,9 @@ describe('edge-swipe-back', () => {
 		);
 		expect(controller.isSwiping).toBe(false);
 
-		// Horizontal movement > 8px
+		// Horizontal movement >= 24px
 		controller.handleTouchMove(
-			mockTouchEvent('touchmove', [{ clientX: 30, clientY: 102, identifier: 1 }])
+			mockTouchEvent('touchmove', [{ clientX: 40, clientY: 102, identifier: 1 }])
 		);
 		expect(controller.isSwiping).toBe(true);
 		expect(onGestureStart).toHaveBeenCalledTimes(1);
@@ -233,14 +233,14 @@ describe('edge-swipe-back', () => {
 			mockTouchEvent('touchstart', [{ clientX: 10, clientY: 100, identifier: 1 }])
 		);
 
-		// Swipe right by only 20px (5%)
+		// Swipe right by only 30px (7.5%)
 		controller.handleTouchMove(
-			mockTouchEvent('touchmove', [{ clientX: 30, clientY: 100, identifier: 1 }])
+			mockTouchEvent('touchmove', [{ clientX: 40, clientY: 100, identifier: 1 }])
 		);
 		expect(controller.isSwiping).toBe(true);
 
 		controller.handleTouchEnd(
-			mockTouchEvent('touchend', [{ clientX: 30, clientY: 100, identifier: 1 }])
+			mockTouchEvent('touchend', [{ clientX: 40, clientY: 100, identifier: 1 }])
 		);
 
 		expect(secondaryEl.style.transform).toBe('translate3d(0, 0, 0)');
@@ -261,6 +261,81 @@ describe('edge-swipe-back', () => {
 			closest: () => null
 		};
 		expect(isElementSwipeDisabled(enabledEl as unknown as EventTarget)).toBe(false);
+	});
+
+	it.each(['touchmove', 'touchend'] as const)(
+		'rejects initial horizontal jitter followed by vertical motion on %s',
+		(type) => {
+			const controller = makeController();
+			controller.handleTouchStart(
+				mockTouchEvent('touchstart', [{ clientX: 10, clientY: 100, identifier: 1 }])
+			);
+			controller.handleTouchMove(
+				mockTouchEvent('touchmove', [{ clientX: 19, clientY: 102, identifier: 1 }])
+			);
+			expect(controller.isSwiping).toBe(false);
+			const points = [{ clientX: 170, clientY: 500, identifier: 1 }];
+			if (type === 'touchmove') controller.handleTouchMove(mockTouchEvent(type, points));
+			controller.handleTouchEnd(mockTouchEvent('touchend', points));
+			vi.advanceTimersByTime(200);
+			expect(onBack).not.toHaveBeenCalled();
+		}
+	);
+
+	it('rolls back a horizontal swipe that becomes vertical', () => {
+		const controller = makeController();
+		controller.handleTouchStart(
+			mockTouchEvent('touchstart', [{ clientX: 10, clientY: 100, identifier: 1 }])
+		);
+		controller.handleTouchMove(
+			mockTouchEvent('touchmove', [{ clientX: 40, clientY: 102, identifier: 1 }])
+		);
+		expect(controller.isSwiping).toBe(true);
+		const vertical = mockTouchEvent('touchmove', [{ clientX: 170, clientY: 500, identifier: 1 }]);
+		const preventDefault = vi.spyOn(vertical, 'preventDefault');
+		controller.handleTouchMove(vertical);
+		expect(preventDefault).not.toHaveBeenCalled();
+		expect(controller.isSwiping).toBe(false);
+		controller.handleTouchEnd(
+			mockTouchEvent('touchend', [{ clientX: 170, clientY: 500, identifier: 1 }])
+		);
+		vi.advanceTimersByTime(200);
+		expect(onBack).not.toHaveBeenCalled();
+		expect(secondaryEl.style.transform).toBe('');
+	});
+
+	it('does not commit a release before horizontal direction has been confirmed', () => {
+		const controller = makeController();
+		controller.handleTouchStart(
+			mockTouchEvent('touchstart', [{ clientX: 10, clientY: 100, identifier: 1 }])
+		);
+		controller.handleTouchEnd(
+			mockTouchEvent('touchend', [{ clientX: 170, clientY: 500, identifier: 1 }])
+		);
+		vi.advanceTimersByTime(200);
+		expect(onBack).not.toHaveBeenCalled();
+	});
+
+	it('cancels an active swipe when a second finger joins', () => {
+		const controller = makeController();
+		controller.handleTouchStart(
+			mockTouchEvent('touchstart', [{ clientX: 10, clientY: 100, identifier: 1 }])
+		);
+		controller.handleTouchMove(
+			mockTouchEvent('touchmove', [{ clientX: 170, clientY: 100, identifier: 1 }])
+		);
+		controller.handleTouchStart(
+			mockTouchEvent('touchstart', [
+				{ clientX: 170, clientY: 100, identifier: 1 },
+				{ clientX: 180, clientY: 100, identifier: 2 }
+			])
+		);
+		expect(controller.isSwiping).toBe(false);
+		controller.handleTouchEnd(
+			mockTouchEvent('touchend', [{ clientX: 170, clientY: 100, identifier: 1 }])
+		);
+		vi.advanceTimersByTime(200);
+		expect(onBack).not.toHaveBeenCalled();
 	});
 
 	it('does not mutate boxShadow during touchmove to keep transform/opacity on compositor thread', () => {

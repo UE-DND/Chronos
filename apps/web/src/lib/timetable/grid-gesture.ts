@@ -8,7 +8,7 @@ export function createGridHandlers(
 	const { onEmptyLongPress, onClickEmpty } = options;
 	return {
 		onpointerdown: (event: PointerEvent) => {
-			if (event.button !== 0) return;
+			if (event.button !== 0 || !event.isPrimary) return;
 			interaction.resetClickFlags();
 			if (interaction.mode !== 'view' || interaction.isClickGuarded()) return;
 			if (isCourseCapsuleTarget(event.target)) return;

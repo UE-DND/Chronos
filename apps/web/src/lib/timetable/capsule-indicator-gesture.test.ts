@@ -2,6 +2,77 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 import { createCapsuleIndicatorGesture } from './capsule-indicator-gesture.svelte';
 
 describe('createCapsuleIndicatorGesture', () => {
+	it.each([100, 250])(
+		'keeps the first pointer in control when a second pointer joins after %s ms',
+		(elapsed) => {
+			vi.useFakeTimers();
+			const onTap = vi.fn();
+			const gesture = createCapsuleIndicatorGesture({
+				getStartWeek: () => 1,
+				getEndWeek: () => 16,
+				getDisplayedWeek: () => 5,
+				onWeekChange: vi.fn(),
+				onTap,
+				onScrubStartFeedback: vi.fn()
+			});
+			gesture.onPointerDown({
+				button: 0,
+				isPrimary: true,
+				pointerId: 1,
+				clientX: 100,
+				clientY: 100
+			} as PointerEvent);
+			vi.advanceTimersByTime(elapsed);
+			gesture.onPointerDown({
+				button: 0,
+				isPrimary: false,
+				pointerId: 2,
+				clientX: 120,
+				clientY: 100
+			} as PointerEvent);
+			gesture.onPointerUp({ pointerId: 2 } as PointerEvent);
+			expect(gesture.isActive).toBe(true);
+			gesture.onPointerUp({ pointerId: 1 } as PointerEvent);
+			expect(gesture.isActive).toBe(false);
+			expect(onTap).toHaveBeenCalledTimes(elapsed < 220 ? 1 : 0);
+			gesture.destroy();
+			vi.useRealTimers();
+		}
+	);
+
+	it('destroy releases capture and clears active scrubbing without committing', () => {
+		vi.useFakeTimers();
+		const onScrubCommit = vi.fn();
+		const releasePointerCapture = vi.fn();
+		const gesture = createCapsuleIndicatorGesture({
+			getStartWeek: () => 1,
+			getEndWeek: () => 16,
+			getDisplayedWeek: () => 5,
+			onWeekChange: vi.fn(),
+			onScrubCommit,
+			onScrubStartFeedback: vi.fn()
+		});
+		gesture.containerEl = {
+			getBoundingClientRect: () => ({ width: 240 }),
+			setPointerCapture: vi.fn(),
+			hasPointerCapture: () => true,
+			releasePointerCapture
+		} as unknown as HTMLElement;
+		gesture.onPointerDown({
+			button: 0,
+			isPrimary: true,
+			pointerId: 1,
+			clientX: 100,
+			clientY: 100
+		} as PointerEvent);
+		vi.advanceTimersByTime(250);
+		gesture.destroy();
+		expect(releasePointerCapture).toHaveBeenCalledWith(1);
+		expect(gesture.isActive).toBe(false);
+		expect(gesture.isScrubbing).toBe(false);
+		expect(onScrubCommit).not.toHaveBeenCalled();
+		vi.useRealTimers();
+	});
 	it('activates scrubbing on long press and fires feedback', () => {
 		vi.useFakeTimers();
 		const onScrubStartFeedback = vi.fn();
@@ -16,6 +87,7 @@ describe('createCapsuleIndicatorGesture', () => {
 
 		gesture.onPointerDown({
 			button: 0,
+			isPrimary: true,
 			pointerId: 1,
 			clientX: 50,
 			clientY: 50
@@ -45,6 +117,7 @@ describe('createCapsuleIndicatorGesture', () => {
 		// Touch at far right of screen
 		gesture.onPointerDown({
 			button: 0,
+			isPrimary: true,
 			pointerId: 1,
 			clientX: 350,
 			clientY: 50
@@ -74,6 +147,7 @@ describe('createCapsuleIndicatorGesture', () => {
 
 		gesture.onPointerDown({
 			button: 0,
+			isPrimary: true,
 			pointerId: 1,
 			clientX: 50,
 			clientY: 50
@@ -107,6 +181,7 @@ describe('createCapsuleIndicatorGesture', () => {
 
 		gesture.onPointerDown({
 			button: 0,
+			isPrimary: true,
 			pointerId: 1,
 			clientX: 50,
 			clientY: 50
@@ -154,6 +229,7 @@ describe('createCapsuleIndicatorGesture', () => {
 
 		gesture.onPointerDown({
 			button: 0,
+			isPrimary: true,
 			pointerId: 1,
 			clientX: 10,
 			clientY: 16
@@ -210,6 +286,7 @@ describe('createCapsuleIndicatorGesture', () => {
 
 		gesture.onPointerDown({
 			button: 0,
+			isPrimary: true,
 			pointerId: 1,
 			clientX: 10,
 			clientY: 16
@@ -262,6 +339,7 @@ describe('createCapsuleIndicatorGesture', () => {
 
 		gesture.onPointerDown({
 			button: 0,
+			isPrimary: true,
 			pointerId: 1,
 			clientX: 100,
 			clientY: 16

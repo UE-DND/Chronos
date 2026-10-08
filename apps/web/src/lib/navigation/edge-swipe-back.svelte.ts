@@ -1,3 +1,4 @@
+import { createHorizontalGesture } from '@chronos/ui-kit';
 import { isReducedMotionActive } from './route-motion-controller.svelte';
 import { requestSuppressNextTransition } from './page-view-transition.svelte';
 
@@ -26,7 +27,7 @@ export function createEdgeSwipeBack(options: EdgeSwipeBackOptions) {
 	let startY = 0;
 	let startTime = 0;
 	let isTracking = false;
-	let directionLocked = false;
+	const axis = createHorizontalGesture();
 	let isSwiping = false;
 	let activeTouchId: number | null = null;
 	let gestureRevealsShell = true;
@@ -63,14 +64,19 @@ export function createEdgeSwipeBack(options: EdgeSwipeBackOptions) {
 
 	function resetState(): void {
 		isTracking = false;
-		directionLocked = false;
+		axis.reset();
 		isSwiping = false;
 		activeTouchId = null;
 	}
 
 	function handleTouchStart(event: TouchEvent): void {
 		if (isReducedMotionActive() || !options.canSwipeBack()) return;
-		if (event.touches.length !== 1) return;
+		if (event.touches.length !== 1) {
+			if (isSwiping) cancelGesture();
+			else resetState();
+			return;
+		}
+		if (isTracking) return;
 
 		const touch = event.touches[0];
 		if (touch.clientX > maxEdgeX) return;
@@ -88,12 +94,17 @@ export function createEdgeSwipeBack(options: EdgeSwipeBackOptions) {
 		activeTouchId = touch.identifier;
 		gestureRevealsShell = options.revealsShell?.() ?? true;
 		isTracking = true;
-		directionLocked = false;
+		axis.reset();
 		isSwiping = false;
 	}
 
 	function handleTouchMove(event: TouchEvent): void {
 		if (!isTracking) return;
+		if (event.touches.length !== 1) {
+			if (isSwiping) cancelGesture();
+			else resetState();
+			return;
+		}
 
 		let touch: Touch | undefined;
 		for (let i = 0; i < event.touches.length; i++) {
@@ -107,20 +118,16 @@ export function createEdgeSwipeBack(options: EdgeSwipeBackOptions) {
 		const dx = touch.clientX - startX;
 		const dy = touch.clientY - startY;
 
-		if (!directionLocked) {
-			const dist = Math.hypot(dx, dy);
-			if (dist > 8) {
-				if (dx > 0 && Math.abs(dx) > Math.abs(dy) * 1.25) {
-					directionLocked = true;
-					isSwiping = true;
-					options.onGestureStart?.();
-				} else {
-					resetState();
-					return;
-				}
-			} else {
-				return;
-			}
+		const direction = axis.update(dx, dy);
+		if (direction === 'vertical' || (direction === 'horizontal' && dx <= 0)) {
+			if (isSwiping) cancelGesture();
+			else resetState();
+			return;
+		}
+		if (direction !== 'horizontal') return;
+		if (!isSwiping) {
+			isSwiping = true;
+			options.onGestureStart?.();
 		}
 
 		if (isSwiping) {
@@ -148,7 +155,10 @@ export function createEdgeSwipeBack(options: EdgeSwipeBackOptions) {
 	}
 
 	function handleTouchEnd(event: TouchEvent): void {
-		if (!isTracking && !isSwiping) return;
+		if (!isSwiping) {
+			resetState();
+			return;
+		}
 
 		let touch: Touch | undefined;
 		for (let i = 0; i < event.changedTouches.length; i++) {
@@ -174,7 +184,9 @@ export function createEdgeSwipeBack(options: EdgeSwipeBackOptions) {
 		const progress = Math.min(1, Math.max(0, dx) / width);
 
 		const shouldCommit =
-			event.type === 'touchend' && (progress > 0.35 || (velocity > 0.35 && dx > 30));
+			event.type === 'touchend' &&
+			axis.update(dx, touch.clientY - startY) === 'horizontal' &&
+			(progress > 0.35 || (velocity > 0.35 && dx > 30));
 
 		if (shouldCommit) {
 			commitGesture();

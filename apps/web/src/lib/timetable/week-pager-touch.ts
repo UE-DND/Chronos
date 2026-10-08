@@ -1,7 +1,5 @@
-import { isReducedMotionActive } from '@chronos/ui-kit';
+import { createHorizontalGesture, isReducedMotionActive } from '@chronos/ui-kit';
 
-const DIRECTION_THRESHOLD_PX = 8;
-const HORIZONTAL_RATIO = 1.35;
 const COMMIT_DISTANCE_RATIO = 0.23;
 const FLING_DISTANCE_PX = 24;
 const FLING_VELOCITY_PX_MS = 0.5;
@@ -20,7 +18,7 @@ export function createWeekPagerTouch(
 	const listeners = new AbortController();
 	const options = { signal: listeners.signal };
 	let pointerId: number | null = null;
-	let direction: 'pending' | 'horizontal' | 'vertical' = 'pending';
+	const axis = createHorizontalGesture();
 	let startX = 0;
 	let startY = 0;
 	let startTime = 0;
@@ -45,7 +43,7 @@ export function createWeekPagerTouch(
 		const wasActive = pointerId !== null || frame !== 0;
 		stopAnimation();
 		pointerId = null;
-		direction = 'pending';
+		axis.reset();
 		if (wasActive) restoreSnap();
 	}
 
@@ -99,7 +97,7 @@ export function createWeekPagerTouch(
 			const wasSettling = frame !== 0;
 			stopAnimation();
 			pointerId = event.pointerId;
-			direction = 'pending';
+			axis.reset();
 			startX = event.clientX;
 			startY = event.clientY;
 			startTime = performance.now();
@@ -121,13 +119,11 @@ export function createWeekPagerTouch(
 				cancel();
 				return;
 			}
-			if (direction === 'vertical') return;
 			const dx = event.clientX - startX;
 			const dy = event.clientY - startY;
-			if (direction === 'pending') {
-				if (Math.hypot(dx, dy) < DIRECTION_THRESHOLD_PX) return;
-				direction = Math.abs(dx) > Math.abs(dy) * HORIZONTAL_RATIO ? 'horizontal' : 'vertical';
-			}
+			const previous = axis.direction;
+			const direction = axis.update(dx, dy);
+			if (direction === 'vertical' && previous === 'horizontal') node.scrollLeft = startOffset;
 			if (direction !== 'horizontal') return;
 			const width = node.clientWidth;
 			const minOffset = Math.max(0, (startPage - 1) * width);
@@ -144,15 +140,17 @@ export function createWeekPagerTouch(
 			return;
 		}
 		pointerId = null;
-		if (direction !== 'horizontal') {
+		if (axis.direction !== 'horizontal') {
 			settle(startPage * node.clientWidth);
 			return;
 		}
 		const dx = event.clientX - startX;
+		const dy = event.clientY - startY;
 		const width = node.clientWidth;
 		const elapsed = Math.max(1, performance.now() - startTime);
 		const advance =
 			!canceled &&
+			axis.update(dx, dy) === 'horizontal' &&
 			(Math.abs(dx) >= width * COMMIT_DISTANCE_RATIO ||
 				(Math.abs(dx) >= FLING_DISTANCE_PX && Math.abs(dx) / elapsed >= FLING_VELOCITY_PX_MS));
 		const maxPage = Math.max(0, Math.round((node.scrollWidth - width) / width));

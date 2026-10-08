@@ -2,22 +2,38 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 import timetable from '../../packages/core/tests/fixtures/timetable.json' with { type: 'json' };
 import { encodeSharePayload } from '../../packages/plugins/codec-share/src/share-link/chronos-share-link-codec.ts';
 import type { Timetable } from '../../packages/core/src/domain/timetable';
+import { PREFERENCE_STORAGE_KEYS } from '../../packages/core/src/domain/preferences';
 
 const payload = await encodeSharePayload(timetable as Timetable);
 
 test.use({ viewport: { width: 430, height: 932 }, isMobile: true, hasTouch: true });
 
 async function swipe(page: Page, start: { x: number; y: number }, dx: number, dy: number) {
+	await swipePath(
+		page,
+		start,
+		Array.from({ length: 5 }, (_, index) => ({
+			x: (dx * (index + 1)) / 5,
+			y: (dy * (index + 1)) / 5
+		}))
+	);
+}
+
+async function swipePath(
+	page: Page,
+	start: { x: number; y: number },
+	offsets: { x: number; y: number }[]
+) {
 	const cdp = await page.context().newCDPSession(page);
 	const point = (x: number, y: number) => ({ x, y, id: 1 });
 	await cdp.send('Input.dispatchTouchEvent', {
 		type: 'touchStart',
 		touchPoints: [point(start.x, start.y)]
 	});
-	for (let step = 1; step <= 5; step++) {
+	for (const offset of offsets) {
 		await cdp.send('Input.dispatchTouchEvent', {
 			type: 'touchMove',
-			touchPoints: [point(start.x + (dx * step) / 5, start.y + (dy * step) / 5)]
+			touchPoints: [point(start.x + offset.x, start.y + offset.y)]
 		});
 	}
 	await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
@@ -101,6 +117,41 @@ test('keeps vertical scrolling on its week and limits a touch swipe to one week'
 	await swipe(page, cardStart, cardDx, 0);
 	await expect.poll(position).toBeCloseTo(next + (cardDx > 0 ? -1 : 1), 1);
 	expect(page.url()).toMatch(/\/Chronos\/?$/);
+});
+
+test('keeps vertical swipes with initial sideways jitter on the current week', async ({
+	page,
+	request
+}) => {
+	await page.setViewportSize({ width: 430, height: 450 });
+	await page.addInitScript(
+		(key) => localStorage.setItem(key, 'fixed'),
+		PREFERENCE_STORAGE_KEYS.timetableLayoutMode
+	);
+	const { pager, position } = await importTimetable(page, request);
+	const initial = await position();
+	const body = pager.locator('.timetable-week-page').nth(Math.round(initial)).getByRole('region');
+	const rect = (await body.boundingBox())!;
+	const start = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+	const indicator = page.locator('#week-indicator');
+	const maxScroll = await body.evaluate((node) => node.scrollHeight - node.clientHeight);
+	expect(maxScroll).toBeGreaterThan(0);
+	for (const sign of [-1, 1]) {
+		await body.evaluate((node) => (node.scrollTop = (node.scrollHeight - node.clientHeight) / 2));
+		const before = await body.evaluate((node) => node.scrollTop);
+		await swipePath(page, start, [
+			{ x: sign * 9, y: sign * 2 },
+			{ x: sign * 12, y: sign * 24 },
+			{ x: sign * 18, y: sign * 60 },
+			{ x: sign * 30, y: sign * 120 }
+		]);
+		await expect.poll(position).toBeCloseTo(initial, 1);
+		await expect
+			.poll(async () => sign * ((await body.evaluate((node) => node.scrollTop)) - before))
+			.toBeLessThan(0);
+		// Even a transient horizontal preview incorrectly treats scrolling as navigation.
+		expect(await indicator.getAttribute('inert')).toBe('');
+	}
 });
 
 test('shows the whole capsule only during week navigation and disables it after fading', async ({
@@ -219,6 +270,47 @@ async function observeMotion(page: Page) {
 		};
 	});
 }
+
+test('sheet handle keeps its first finger when a second finger joins', async ({
+	page,
+	request
+}) => {
+	const { pager } = await prepareMotionTest(page, request);
+	await pager.locator('.timetable-week-page').nth(5).locator('.course-capsule').first().click();
+	const dialog = page.locator('.bottom-sheet-content');
+	await expect(dialog).toHaveAttribute('data-state', 'open');
+	await expect(dialog).not.toHaveAttribute('data-starting-style');
+	const offset = () =>
+		dialog.evaluate((node) => new DOMMatrix(getComputedStyle(node).transform).m42);
+	await expect.poll(offset).toBe(0);
+	const handle = dialog.locator('.touch-none').first();
+	const rect = (await handle.boundingBox())!;
+	const start = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+	const cdp = await page.context().newCDPSession(page);
+	const first = (dy: number) => ({ x: start.x, y: start.y + dy, id: 1 });
+	const second = { x: start.x + 40, y: start.y + 30, id: 2 };
+	try {
+		await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [first(0)] });
+		await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [first(30)] });
+		await expect.poll(offset).toBeGreaterThan(20);
+		const before = await offset();
+		await cdp.send('Input.dispatchTouchEvent', {
+			type: 'touchStart',
+			touchPoints: [first(30), second]
+		});
+		await cdp.send('Input.dispatchTouchEvent', {
+			type: 'touchMove',
+			touchPoints: [first(70), second]
+		});
+		await expect.poll(offset).toBeGreaterThan(before + 25);
+		await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+		await expect(dialog).not.toHaveAttribute('data-dragging');
+		await expect.poll(offset).toBe(0);
+		await expect(dialog).toHaveAttribute('data-state', 'open');
+	} finally {
+		await cdp.detach();
+	}
+});
 
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 	test.describe(`course detail motion: ${reducedMotion}`, () => {

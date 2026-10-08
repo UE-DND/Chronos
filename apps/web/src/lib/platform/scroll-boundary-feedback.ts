@@ -1,3 +1,4 @@
+import { createHorizontalGesture } from '@chronos/ui-kit';
 import { haptic } from '$lib/haptic/haptic';
 
 const SCROLL_SURFACE_SELECTOR = '.native-overscroll-y, .secondary-scroll';
@@ -10,6 +11,8 @@ const HIDE_DELAY_MS = 180;
 type ActivePull = {
 	node: HTMLElement;
 	identifier: number;
+	startX: number;
+	startY: number;
 	lastY: number;
 	strength: number;
 };
@@ -27,6 +30,7 @@ export function installScrollBoundaryFeedback(doc: Document = document): () => v
 	doc.body.append(indicator);
 
 	let activePull: ActivePull | null = null;
+	const axis = createHorizontalGesture();
 	let hideTimer: ReturnType<typeof setTimeout> | undefined;
 
 	function hideIndicator() {
@@ -73,9 +77,12 @@ export function installScrollBoundaryFeedback(doc: Document = document): () => v
 			clearTimeout(hideTimer);
 			hideTimer = undefined;
 		}
+		axis.reset();
 		activePull = {
 			node,
 			identifier: touch.identifier,
+			startX: touch.clientX,
+			startY: touch.clientY,
 			lastY: touch.clientY,
 			strength: 0
 		};
@@ -98,7 +105,12 @@ export function installScrollBoundaryFeedback(doc: Document = document): () => v
 
 		const deltaY = touch.clientY - activePull.lastY;
 		activePull.lastY = touch.clientY;
-		if (Math.abs(deltaY) < 1) return;
+		if (
+			axis.update(touch.clientX - activePull.startX, touch.clientY - activePull.startY) !==
+				'vertical' ||
+			Math.abs(deltaY) < 1
+		)
+			return;
 
 		const maxScrollTop = Math.max(0, activePull.node.scrollHeight - activePull.node.clientHeight);
 		const atTop = activePull.node.scrollTop <= 0.5;
@@ -128,7 +140,8 @@ export function installScrollBoundaryFeedback(doc: Document = document): () => v
 
 	function onWheel(event: WheelEvent) {
 		const node = findScrollSurface(event.target);
-		if (!node || Math.abs(event.deltaY) < 1) return;
+		if (!node || Math.abs(event.deltaY) < 1 || Math.abs(event.deltaX) >= Math.abs(event.deltaY))
+			return;
 
 		const maxScrollTop = Math.max(0, node.scrollHeight - node.clientHeight);
 		const atTop = node.scrollTop <= 0.5;

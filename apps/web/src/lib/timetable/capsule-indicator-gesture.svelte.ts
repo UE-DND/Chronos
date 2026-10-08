@@ -1,3 +1,4 @@
+import { createSinglePointerSession } from '@chronos/ui-kit';
 import { haptic } from '$lib/haptic/haptic';
 import { createRafCoalescer } from '$lib/utils/raf-coalescer';
 import { createThrottledCallback } from '$lib/utils/throttle';
@@ -13,26 +14,6 @@ export interface CapsuleIndicatorGestureOptions {
 	onWeekStepFeedback?: () => void;
 }
 
-function trySetPointerCapture(target: HTMLElement | null, pointerId: number): void {
-	if (target?.setPointerCapture) {
-		try {
-			target.setPointerCapture(pointerId);
-		} catch {
-			// Ignore
-		}
-	}
-}
-
-function tryReleasePointerCapture(element: HTMLElement | null, pointerId: number): void {
-	if (element && element.hasPointerCapture(pointerId)) {
-		try {
-			element.releasePointerCapture(pointerId);
-		} catch {
-			// Ignore
-		}
-	}
-}
-
 export function createCapsuleIndicatorGesture({
 	getStartWeek,
 	getEndWeek,
@@ -45,7 +26,7 @@ export function createCapsuleIndicatorGesture({
 }: CapsuleIndicatorGestureOptions) {
 	let isScrubbing = $state(false);
 	let scrubWeek = $state(1);
-	let activePointerId = $state<number | null>(null);
+	const pointer = createSinglePointerSession();
 	let containerEl = $state<HTMLElement | null>(null);
 
 	let longPressTimer: ReturnType<typeof setTimeout> | null = null;
@@ -93,16 +74,13 @@ export function createCapsuleIndicatorGesture({
 	}
 
 	function onPointerDown(e: PointerEvent): void {
-		if (e.button !== 0) return;
 		const startWeek = getStartWeek();
 		const endWeek = getEndWeek();
 		if (startWeek >= endWeek) return;
 
-		activePointerId = e.pointerId;
+		if (!pointer.start(e, containerEl)) return;
 		startX = e.clientX;
 		startY = e.clientY;
-
-		trySetPointerCapture(containerEl, e.pointerId);
 
 		if (longPressTimer) clearTimeout(longPressTimer);
 		longPressTimer = setTimeout(() => {
@@ -112,7 +90,7 @@ export function createCapsuleIndicatorGesture({
 	}
 
 	function onPointerMove(e: PointerEvent): void {
-		if (activePointerId !== e.pointerId) return;
+		if (!pointer.owns(e)) return;
 
 		if (isScrubbing) {
 			e.preventDefault();
@@ -128,14 +106,12 @@ export function createCapsuleIndicatorGesture({
 				clearTimeout(longPressTimer);
 				longPressTimer = null;
 			}
-			tryReleasePointerCapture(containerEl, e.pointerId);
-			activePointerId = null;
+			pointer.end();
 		}
 	}
 
-	function finishPointerInteraction(pointerId: number, commit: boolean): void {
-		tryReleasePointerCapture(containerEl, pointerId);
-		activePointerId = null;
+	function finishPointerInteraction(commit: boolean): void {
+		pointer.end();
 
 		if (longPressTimer) {
 			clearTimeout(longPressTimer);
@@ -158,16 +134,18 @@ export function createCapsuleIndicatorGesture({
 	}
 
 	function onPointerUp(e: PointerEvent): void {
-		if (activePointerId !== e.pointerId) return;
-		finishPointerInteraction(e.pointerId, true);
+		if (!pointer.owns(e)) return;
+		finishPointerInteraction(true);
 	}
 
 	function onPointerCancel(e: PointerEvent): void {
-		if (activePointerId !== e.pointerId) return;
-		finishPointerInteraction(e.pointerId, false);
+		if (!pointer.owns(e)) return;
+		finishPointerInteraction(false);
 	}
 
 	function destroy(): void {
+		pointer.end();
+		isScrubbing = false;
 		if (longPressTimer) {
 			clearTimeout(longPressTimer);
 			longPressTimer = null;
@@ -183,7 +161,7 @@ export function createCapsuleIndicatorGesture({
 			return scrubWeek;
 		},
 		get isActive() {
-			return activePointerId !== null || isScrubbing;
+			return pointer.id !== null || isScrubbing;
 		},
 		get containerEl() {
 			return containerEl;

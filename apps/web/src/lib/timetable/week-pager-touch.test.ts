@@ -133,6 +133,41 @@ describe('week pager touch', () => {
 		h.touch.destroy();
 	});
 
+	it.each([-1, 1])('ignores initial horizontal jitter during vertical scrolling (%s)', (sign) => {
+		const h = createHarness();
+		h.pointer('pointerdown', 500, 500);
+		h.pointer('pointermove', 500 + sign * 9, 502);
+		expect(h.node.scrollLeft).toBe(9000);
+		h.pointer('pointermove', 500 + sign * 40, 620);
+		expect(h.node.scrollLeft).toBe(9000);
+		h.pointer('pointerup', 500 + sign * 40, 620);
+		h.advance(400);
+		expect(h.node.scrollLeft).toBe(9000);
+		expect(h.touch.isActive).toBe(false);
+		h.touch.destroy();
+	});
+
+	it.each(['pointermove', 'pointerup'] as const)(
+		'rejects a horizontal start that becomes vertical on %s',
+		(type) => {
+			const h = createHarness();
+			h.pointer('pointerdown', 500, 500);
+			h.pointer('pointermove', 470, 502);
+			expect(h.node.scrollLeft).toBe(9030);
+			h.pointer(type, 460, 620);
+			if (type === 'pointermove') {
+				expect(h.node.scrollLeft).toBe(9000);
+				// Once vertical, later sideways movement must not revive paging.
+				h.pointer('pointermove', 200, 620);
+				h.pointer('pointerup', 200, 620);
+			}
+			h.advance(400);
+			expect(h.node.scrollLeft).toBe(9000);
+			expect(h.node.style.scrollSnapType).toBe('');
+			h.touch.destroy();
+		}
+	);
+
 	it('limits a long drag to one adjacent week', () => {
 		const h = createHarness();
 		h.drag(-2500);

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getContext, setContext, onDestroy } from 'svelte';
 	import { Dialog } from 'bits-ui';
+	import { createSinglePointerSession } from '../gesture/single-pointer-session.svelte';
 	import type { Snippet } from 'svelte';
 	import { isReducedMotionActive } from '../motion/motion';
 	import {
@@ -55,7 +56,7 @@
 	let isDragging = $state(false);
 	let isClosing = $state(false);
 	let isSnappingBack = $state(false);
-	let activePointerId: number | null = null;
+	const pointer = createSinglePointerSession();
 	let startY = 0;
 	let sheetOpen = $state(false);
 
@@ -81,7 +82,7 @@
 		isDragging = false;
 		isClosing = false;
 		isSnappingBack = false;
-		activePointerId = null;
+		pointer.end();
 		clearOverlayOpacity();
 	}
 
@@ -89,16 +90,6 @@
 		resetDragState();
 		sheetOpen = false;
 		if (open) open = false;
-	}
-
-	function releasePointerCapture(pointerId: number) {
-		if (dragHandleRef?.hasPointerCapture(pointerId)) {
-			try {
-				dragHandleRef.releasePointerCapture(pointerId);
-			} catch {
-				// Ignore
-			}
-		}
 	}
 
 	function startDismissAnimation() {
@@ -134,31 +125,22 @@
 	function onHandlePointerDown(event: PointerEvent) {
 		if (!showHandle || event.button !== 0 || isClosing || isSnappingBack) return;
 
-		activePointerId = event.pointerId;
+		if (!pointer.start(event, dragHandleRef)) return;
 		startY = event.clientY;
 		isDragging = true;
-
-		if (dragHandleRef?.setPointerCapture) {
-			try {
-				dragHandleRef.setPointerCapture(event.pointerId);
-			} catch {
-				// Ignore
-			}
-		}
 	}
 
 	function onWindowPointerMove(event: PointerEvent) {
-		if (activePointerId !== event.pointerId || !isDragging) return;
+		if (!pointer.owns(event) || !isDragging) return;
 
 		dragOffsetPx = clampDragOffset(event.clientY - startY);
 		syncOverlayOpacity();
 	}
 
 	function onWindowPointerUp(event: PointerEvent) {
-		if (activePointerId !== event.pointerId) return;
+		if (!pointer.owns(event)) return;
 
-		releasePointerCapture(event.pointerId);
-		activePointerId = null;
+		pointer.end();
 
 		if (!isDragging) return;
 		isDragging = false;
@@ -173,10 +155,9 @@
 	}
 
 	function onWindowPointerCancel(event: PointerEvent) {
-		if (activePointerId !== event.pointerId) return;
+		if (!pointer.owns(event)) return;
 
-		releasePointerCapture(event.pointerId);
-		activePointerId = null;
+		pointer.end();
 
 		if (!isDragging) return;
 		isDragging = false;
@@ -219,7 +200,10 @@
 	});
 	setContext(OVERLAY_LIFECYCLE_CONTEXT, historySync);
 	$effect(() => historySync.syncOpenState(sheetOpen));
-	onDestroy(() => historySync.dispose());
+	onDestroy(() => {
+		pointer.end();
+		historySync.dispose();
+	});
 
 	function handleDialogOpenChange(next: boolean) {
 		if (next) {
@@ -292,6 +276,7 @@
 							class="relative flex shrink-0 touch-none justify-center py-3 before:absolute before:inset-x-0 before:-top-4 before:-bottom-4 before:content-['']"
 							aria-label={dragDismissAria}
 							onpointerdown={onHandlePointerDown}
+							onlostpointercapture={onWindowPointerCancel}
 						>
 							<div class="h-1 w-10 rounded-full bg-on-surface-variant/40"></div>
 						</div>
