@@ -226,7 +226,9 @@ export class ReactiveChronosController implements ChronosUiController {
 		return this.engine.switchTimetable(timetableId);
 	}
 
-	async deleteTimetable(timetableId: string): Promise<void> {
+	async deleteTimetable(
+		timetableId: string
+	): Promise<import('@chronos/core').DeleteTimetableResult> {
 		return this.engine.deleteTimetable(timetableId);
 	}
 

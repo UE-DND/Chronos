@@ -254,7 +254,7 @@ export function createAppShell() {
 	}
 
 	async function deleteTimetable(id: string) {
-		await controller.deleteTimetable(id);
+		return controller.deleteTimetable(id);
 	}
 
 	async function clearAllData() {

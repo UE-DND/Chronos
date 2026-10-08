@@ -23,11 +23,16 @@ import type { EngineContextHost } from './engine-context-host';
 import { I18nCatalog, interpolateMessage } from '../i18n/i18n-catalog';
 import type { ThemeContribution } from '../types/contributions';
 import type { EngineActionHost } from './engine/engine-action-host';
-import type { ChronosActions, TimetableDetailsPatch } from '../types/actions';
+import type {
+	ChronosActions,
+	DeleteTimetableResult,
+	TimetableDetailsPatch
+} from '../types/actions';
 import type { ChronosEngineState, TimetableSummary } from '../types/state';
 import { createEngineActionHost } from './engine/create-action-host';
 import { planRevertToDefaultThemes } from './engine/revert-default-themes';
 import { EngineTimeKeeper } from './engine/engine-time-keeper';
+import { TimetableSelection } from './engine/timetable-selection';
 import { TimetableActions } from './engine/timetable-actions';
 import { CourseActions } from './engine/course-actions';
 import { StorageSyncHandler } from './engine/storage-sync-handler';
@@ -58,6 +63,7 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 
 	private _currentTimetable: Timetable | null = null;
 	private _timetables: TimetableSummary[] = [];
+	private listRevision = 0;
 	private _activeWeek = 1;
 	private _currentPeriodIndex: number | null = null;
 	private _activeThemeId: string | null = null;
@@ -154,9 +160,10 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 				this._currentPeriodIndex = index;
 			}
 		);
-		this.timetableActions = new TimetableActions(this.actionHost);
+		const selection = new TimetableSelection();
+		this.timetableActions = new TimetableActions(this.actionHost, selection);
 		this.courseActions = new CourseActions(this.actionHost, this.timetableActions);
-		this.storageSync = new StorageSyncHandler(this.actionHost, this.timeKeeper);
+		this.storageSync = new StorageSyncHandler(this.actionHost, this.timeKeeper, selection);
 		this.pluginLifecycle = new PluginLifecycleManager(
 			this,
 			this.storage,
@@ -256,7 +263,10 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 	}
 
 	private async refreshTimetables(): Promise<void> {
-		this._timetables = await this.storage.listTimetables();
+		const revision = ++this.listRevision;
+		const list = await this.storage.listTimetables();
+		if (revision !== this.listRevision) return;
+		this._timetables = list;
 		this.events.emit('timetables:updated', { timetables: this._timetables });
 	}
 
@@ -299,7 +309,7 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 		return this.timetableActions.switchTimetable(timetableId);
 	}
 
-	async deleteTimetable(timetableId: string): Promise<void> {
+	async deleteTimetable(timetableId: string): Promise<DeleteTimetableResult> {
 		return this.timetableActions.deleteTimetable(timetableId);
 	}
 

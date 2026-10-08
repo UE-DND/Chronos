@@ -914,3 +914,86 @@ describe('profile fallback lifecycle', () => {
 		engine.dispose();
 	});
 });
+
+describe('selection synchronization races', () => {
+	it('discards a stored A read that completes after switching to B', async () => {
+		const { env, timetables, triggerStorageChange } = createMockEnv();
+		const a = createTimetable({ id: 'a', name: 'A' });
+		const b = createTimetable({ id: 'b', name: 'B' });
+		timetables.set('a', a);
+		timetables.set('b', b);
+		const engine = new ChronosEngine({ env });
+		await engine.init();
+		await engine.switchTimetable('a');
+		let release!: (value: Timetable) => void;
+		let started!: () => void;
+		const reading = new Promise<void>((resolve) => {
+			started = resolve;
+		});
+		vi.spyOn(env.storage, 'getTimetable').mockImplementationOnce(() => {
+			started();
+			return new Promise((resolve) => {
+				release = resolve;
+			});
+		});
+		try {
+			const pending = triggerStorageChange({ type: 'timetable', key: 'a' });
+			await reading;
+			await engine.switchTimetable('b');
+			release(a);
+			await pending;
+			expect(engine.state.currentTimetable?.id).toBe('b');
+			expect(await env.storage.getActiveTimetableId()).toBe('b');
+		} finally {
+			engine.dispose();
+		}
+	});
+	it('clears an externally deleted current timetable even when its stored id is stale', async () => {
+		const { env, timetables, triggerStorageChange } = createMockEnv();
+		timetables.set('a', createTimetable({ id: 'a', name: 'A' }));
+		const engine = new ChronosEngine({ env });
+		await engine.init();
+		try {
+			timetables.delete('a');
+			await triggerStorageChange({ type: 'timetable', key: 'a' });
+			expect(engine.state.currentTimetable).toBeNull();
+			expect(engine.state.timetables).toEqual([]);
+		} finally {
+			engine.dispose();
+		}
+	});
+});
+
+it('applies a fresh external selection received while a local switch is finishing', async () => {
+	const { env, timetables, triggerStorageChange } = createMockEnv();
+	timetables.set('a', createTimetable({ id: 'a', name: 'A' }));
+	timetables.set('b', createTimetable({ id: 'b', name: 'B' }));
+	const engine = new ChronosEngine({ env });
+	await engine.init();
+	let release!: () => void;
+	let started!: () => void;
+	const writing = new Promise<void>((resolve) => {
+		started = resolve;
+	});
+	const original = env.storage.setActiveTimetableId.bind(env.storage);
+	vi.spyOn(env.storage, 'setActiveTimetableId').mockImplementationOnce(async (id) => {
+		await original(id);
+		started();
+		await new Promise<void>((resolve) => {
+			release = resolve;
+		});
+	});
+	try {
+		const switching = engine.switchTimetable('b');
+		await writing;
+		await original('a');
+		const syncing = triggerStorageChange({ type: 'timetable', key: 'active' });
+		release();
+		await switching;
+		await syncing;
+		expect(engine.state.currentTimetable?.id).toBe('a');
+		expect(await env.storage.getActiveTimetableId()).toBe('a');
+	} finally {
+		engine.dispose();
+	}
+});

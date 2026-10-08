@@ -24,6 +24,7 @@
 	);
 
 	let deleteDialogOpen = $state(false);
+	let deleteTarget = $state<{ id: string; name: string } | null>(null);
 	let switchingId = $state<string | null>(null);
 	let isDeleting = $state(false);
 	const busy = $derived(switchingId !== null || isDeleting);
@@ -37,6 +38,8 @@
 						variant: 'danger',
 						disabled: !currentTimetableId || busy,
 						onClick: () => {
+							if (!selectedTimetable) return;
+							deleteTarget = { id: selectedTimetable.id, name: selectedTimetable.name };
 							deleteDialogOpen = true;
 						}
 					}
@@ -58,12 +61,26 @@
 	}
 
 	async function confirmDelete() {
-		if (!currentTimetableId || busy) return;
+		if (!deleteTarget || busy) return;
+		const target = deleteTarget;
+		if (!timetables.some((t) => t.id === target.id)) {
+			deleteDialogOpen = false;
+			snackbarKey('timetable.manage.deleteMissing', undefined, undefined, 4000, 'assertive');
+			return;
+		}
 		isDeleting = true;
 		try {
-			await shell.deleteTimetable(currentTimetableId);
+			const result = await shell.deleteTimetable(target.id);
 			trackEvent('timetable_delete');
 			deleteDialogOpen = false;
+			if (result.followUpFailed)
+				snackbarKey(
+					'timetable.manage.deleteFollowUpFailed',
+					undefined,
+					undefined,
+					4000,
+					'assertive'
+				);
 		} catch {
 			snackbarKey('timetable.manage.deleteFailed', undefined, undefined, 4000, 'assertive');
 		} finally {
@@ -130,9 +147,9 @@
 	bind:open={deleteDialogOpen}
 	showHandle={false}
 	title={hostT('timetable.manage.delete.title')}
-	description={selectedTimetable
+	description={deleteTarget
 		? hostT('timetable.manage.delete.descNamed', {
-				name: selectedTimetable.name
+				name: deleteTarget.name
 			})
 		: hostT('timetable.manage.delete.descGeneric')}
 >

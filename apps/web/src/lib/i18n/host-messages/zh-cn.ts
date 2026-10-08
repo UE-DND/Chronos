@@ -252,6 +252,8 @@ export const zhCn = {
 	'timetable.manage.courseCount': '{count} 门课程',
 	'timetable.manage.delete': '删除课表',
 	'timetable.manage.switchFailed': '课表切换失败，请重试',
+	'timetable.manage.deleteMissing': '此课表已被删除，请重新选择',
+	'timetable.manage.deleteFollowUpFailed': '课表已删除，但后续状态更新失败，请重新选择课表',
 	'timetable.manage.deleteFailed': '课表删除失败，请重试',
 	'timetable.manage.delete.title': '删除课表？',
 	'timetable.manage.delete.descNamed': '确定删除「{name}」吗？删除后无法恢复。',

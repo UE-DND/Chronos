@@ -128,3 +128,113 @@ describe('updateTimetableDetails', () => {
 		}
 	});
 });
+
+describe('delete commit boundary', () => {
+	it('clears the deleted selection and reports a committed deletion when successor persistence fails', async () => {
+		const { engine, env, timetables } = await harness();
+		try {
+			vi.spyOn(env.storage, 'setActiveTimetableId').mockRejectedValue(new Error('write failed'));
+			await expect(engine.deleteTimetable('a')).resolves.toEqual({ followUpFailed: true });
+			expect(timetables.has('a')).toBe(false);
+			expect(engine.state.currentTimetable).toBeNull();
+			expect(engine.state.timetables.map((t) => t.id)).toEqual(['b']);
+		} finally {
+			engine.dispose();
+		}
+	});
+	it('keeps the selection and list when deletion fails before commit', async () => {
+		const { engine, env } = await harness();
+		try {
+			vi.spyOn(env.storage, 'deleteTimetable').mockRejectedValue(new Error('delete failed'));
+			await expect(engine.deleteTimetable('a')).rejects.toThrow('delete failed');
+			expect(engine.state.currentTimetable?.id).toBe('a');
+			expect(engine.state.timetables).toHaveLength(2);
+		} finally {
+			engine.dispose();
+		}
+	});
+	it('removes the last timetable even if clearing the stored selection fails', async () => {
+		const { engine, env, timetables } = await harness();
+		try {
+			timetables.delete('b');
+			vi.spyOn(env.storage, 'setActiveTimetableId').mockRejectedValue(new Error('write failed'));
+			await expect(engine.deleteTimetable('a')).resolves.toEqual({ followUpFailed: true });
+			expect(engine.state.currentTimetable).toBeNull();
+			expect(engine.state.timetables).toEqual([]);
+		} finally {
+			engine.dispose();
+		}
+	});
+});
+
+it('keeps committed deletion state when refreshing the list fails', async () => {
+	const { engine, env, timetables } = await harness();
+	try {
+		vi.spyOn(env.storage, 'listTimetables').mockRejectedValueOnce(new Error('read failed'));
+		await expect(engine.deleteTimetable('a')).resolves.toEqual({ followUpFailed: true });
+		expect(timetables.has('a')).toBe(false);
+		expect(engine.state.currentTimetable).toBeNull();
+		expect(engine.state.timetables.map((t) => t.id)).toEqual(['b']);
+	} finally {
+		engine.dispose();
+	}
+});
+
+it('rejects a missing deletion target without deleting the current timetable', async () => {
+	const { engine, timetables } = await harness();
+	try {
+		timetables.delete('b');
+		await expect(engine.deleteTimetable('b')).rejects.toThrow('Timetable not found: b');
+		expect(engine.state.currentTimetable?.id).toBe('a');
+		expect(timetables.has('a')).toBe(true);
+	} finally {
+		engine.dispose();
+	}
+});
+
+it('serializes overlapping selection writes and recovers after a failed selection', async () => {
+	const { engine, env } = await harness();
+	let release!: () => void;
+	let started!: () => void;
+	const reading = new Promise<void>((resolve) => {
+		started = resolve;
+	});
+	const original = env.storage.setActiveTimetableId.bind(env.storage);
+	vi.spyOn(env.storage, 'setActiveTimetableId')
+		.mockImplementationOnce(async () => {
+			started();
+			await new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			throw new Error('write failed');
+		})
+		.mockImplementationOnce(original);
+	try {
+		const first = expect(engine.switchTimetable('b')).rejects.toThrow('write failed');
+		await reading;
+		const second = engine.switchTimetable('a');
+		release();
+		await first;
+		await second;
+		expect(engine.state.currentTimetable?.id).toBe('a');
+		expect(await env.storage.getActiveTimetableId()).toBe('a');
+	} finally {
+		engine.dispose();
+	}
+});
+
+it('clears the persisted deleted id before trying to save its successor', async () => {
+	const { engine, env } = await harness();
+	const original = env.storage.setActiveTimetableId.bind(env.storage);
+	vi.spyOn(env.storage, 'setActiveTimetableId').mockImplementation(async (id) => {
+		if (id) throw new Error('write failed');
+		await original(id);
+	});
+	try {
+		await expect(engine.deleteTimetable('a')).resolves.toEqual({ followUpFailed: true });
+		expect(await env.storage.getActiveTimetableId()).toBeNull();
+		expect(engine.state.currentTimetable).toBeNull();
+	} finally {
+		engine.dispose();
+	}
+});

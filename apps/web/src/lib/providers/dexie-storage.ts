@@ -22,6 +22,7 @@ import { clearKeysWithPrefix } from '$lib/storage/storage-key-utils';
  */
 export class DexieStorageProvider implements IStorageService {
 	private listeners = new Set<(event: StorageChangeEvent) => void>();
+	private changeChannel?: BroadcastChannel;
 	private storageListener?: (e: StorageEvent) => void;
 	private readonly preferences: PreferencesStore;
 	private readonly timetables: TimetableRepository;
@@ -39,6 +40,22 @@ export class DexieStorageProvider implements IStorageService {
 		this.images = new ImageRepository(database);
 
 		if (typeof window !== 'undefined') {
+			if (typeof BroadcastChannel !== 'undefined') {
+				this.changeChannel = new BroadcastChannel('chronos:timetable-changes');
+				this.changeChannel.onmessage = (event: MessageEvent<unknown>) => {
+					const data = event.data;
+					if (
+						data &&
+						typeof data === 'object' &&
+						'type' in data &&
+						data.type === 'timetable' &&
+						'key' in data &&
+						typeof data.key === 'string'
+					) {
+						this.notifyChange({ type: 'timetable', key: data.key });
+					}
+				};
+			}
 			this.storageListener = (e: StorageEvent) => {
 				if (e.key === PREFERENCE_STORAGE_KEYS.currentTimetableId) {
 					this.notifyChange({ type: 'timetable', key: e.key });
@@ -68,10 +85,19 @@ export class DexieStorageProvider implements IStorageService {
 		try {
 			const result = await fn();
 			this.notifyChange(event);
+			if (event.type === 'timetable') this.broadcastChange(event);
 			return result;
 		} catch (err) {
 			console.warn(`[DexieStorageProvider] Failed to ${action}:`, err);
 			throw err;
+		}
+	}
+
+	private broadcastChange(event: StorageChangeEvent): void {
+		try {
+			this.changeChannel?.postMessage(event);
+		} catch (error) {
+			console.warn('[DexieStorageProvider] Failed to broadcast committed change:', error);
 		}
 	}
 
@@ -174,6 +200,7 @@ export class DexieStorageProvider implements IStorageService {
 			await clearAppCaches(this.cacheStore, { keepHostAssets: true });
 			this.notifyChange({ type: 'preferences', key: 'clearAllData' });
 			this.notifyChange({ type: 'timetable', key: 'clearAllData' });
+			this.broadcastChange({ type: 'timetable', key: 'clearAllData' });
 		} catch (err) {
 			console.warn('[DexieStorageProvider] Failed to clear all data:', err);
 			throw err;
@@ -190,6 +217,8 @@ export class DexieStorageProvider implements IStorageService {
 	}
 
 	dispose(): void {
+		this.changeChannel?.close();
+		this.changeChannel = undefined;
 		if (typeof window !== 'undefined' && this.storageListener) {
 			window.removeEventListener('storage', this.storageListener);
 			this.storageListener = undefined;

@@ -259,6 +259,10 @@ export const en = {
 	'timetable.manage.courseCount': '{count} courses',
 	'timetable.manage.delete': 'Delete timetable',
 	'timetable.manage.switchFailed': 'Could not switch timetables. Please try again.',
+	'timetable.manage.deleteMissing':
+		'This timetable has already been deleted. Please select another timetable.',
+	'timetable.manage.deleteFollowUpFailed':
+		'The timetable was deleted, but updating the selection or list failed. Please select a timetable again.',
 	'timetable.manage.deleteFailed': 'Could not delete the timetable. Please try again.',
 	'timetable.manage.delete.title': 'Delete timetable?',
 	'timetable.manage.delete.descNamed': 'Delete "{name}"? This cannot be undone.',

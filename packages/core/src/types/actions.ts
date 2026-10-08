@@ -2,6 +2,11 @@ import type { Course } from '../domain/course';
 import type { AcademicConfig, Timetable, TimetableViewPrefs } from '../domain/timetable';
 import type { UserPreferences } from '../domain/preferences';
 
+/** Deletion has committed; follow-up refresh or selection may need retrying. */
+export interface DeleteTimetableResult {
+	followUpFailed: boolean;
+}
+
 /** Editable details; timetable identity and persistence timestamps belong to the host. */
 export type TimetableDetailsPatch = Partial<
 	Pick<Timetable, 'name' | 'courses' | 'importMetadata' | 'customMetadata'>
@@ -19,7 +24,7 @@ export interface ChronosActions {
 		options?: { overwriteActive?: boolean }
 	): Promise<Timetable>;
 	switchTimetable(timetableId: string): Promise<void>;
-	deleteTimetable(timetableId: string): Promise<void>;
+	deleteTimetable(timetableId: string): Promise<DeleteTimetableResult>;
 	updateTimetableDetails(timetableId: string, patch: TimetableDetailsPatch): Promise<void>;
 	saveCourse(course: Course): Promise<void>;
 	updateCourse(courseId: string, patch: Partial<Course>): Promise<void>;

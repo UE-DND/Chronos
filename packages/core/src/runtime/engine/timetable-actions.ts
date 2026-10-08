@@ -1,5 +1,10 @@
 import { createTimetable, type AcademicConfig, type Timetable } from '../../domain/timetable';
-import type { ChronosActions, TimetableDetailsPatch } from '../../types/actions';
+import type {
+	ChronosActions,
+	DeleteTimetableResult,
+	TimetableDetailsPatch
+} from '../../types/actions';
+import type { TimetableSelection } from './timetable-selection';
 import type { EngineActionHost } from './engine-action-host';
 
 function createTimetableId(): string {
@@ -18,7 +23,10 @@ export class TimetableActions implements Pick<
 	| 'deleteTimetable'
 	| 'updateTimetableDetails'
 > {
-	constructor(private readonly host: EngineActionHost) {}
+	constructor(
+		private readonly host: EngineActionHost,
+		private readonly selection: TimetableSelection
+	) {}
 
 	async createTimetable(name: string, config?: Partial<AcademicConfig>): Promise<Timetable> {
 		const id = createTimetableId();
@@ -69,6 +77,10 @@ export class TimetableActions implements Pick<
 	}
 
 	async switchTimetable(timetableId: string): Promise<void> {
+		return this.selection.change(() => this.switchSelection(timetableId));
+	}
+
+	private async switchSelection(timetableId: string): Promise<void> {
 		const previousId = this.host.getCurrentTimetable()?.id ?? null;
 		const timetable = await this.host.storage.getTimetable(timetableId);
 		if (!timetable) {
@@ -88,20 +100,36 @@ export class TimetableActions implements Pick<
 		});
 	}
 
-	async deleteTimetable(timetableId: string): Promise<void> {
-		await this.host.storage.deleteTimetable(timetableId);
-		await this.host.refreshTimetables();
-
-		if (this.host.getCurrentTimetable()?.id === timetableId) {
-			const remaining = await this.host.storage.listTimetables();
-			if (remaining.length > 0 && remaining[0]) {
-				await this.host.switchTimetable(remaining[0].id);
-			} else {
+	async deleteTimetable(timetableId: string): Promise<DeleteTimetableResult> {
+		return this.selection.change(async () => {
+			if (!(await this.host.storage.getTimetable(timetableId))) {
+				throw new Error(`Timetable not found: ${timetableId}`);
+			}
+			await this.host.storage.deleteTimetable(timetableId);
+			// The deletion is committed. Remove stale state before any fallible follow-up.
+			const wasCurrent = this.host.getCurrentTimetable()?.id === timetableId;
+			const remaining = this.host.getTimetables().filter((t) => t.id !== timetableId);
+			this.host.setTimetables(remaining);
+			this.host.emit('timetables:updated', { timetables: remaining });
+			if (wasCurrent) {
 				this.host.setCurrentTimetable(null);
-				await this.host.storage.setActiveTimetableId('');
+				this.host.updateTime();
+				this.host.rescheduleDayClock();
 				this.host.emit('timetable:updated', { timetable: null as unknown as Timetable });
 			}
-		}
+			try {
+				if (wasCurrent) await this.host.badges.recalculate([]);
+				await this.host.refreshTimetables();
+				if (wasCurrent) {
+					await this.host.storage.setActiveTimetableId('');
+					const next = this.host.getTimetables()[0];
+					if (next) await this.switchSelection(next.id);
+				}
+				return { followUpFailed: false };
+			} catch {
+				return { followUpFailed: true };
+			}
+		});
 	}
 
 	async updateTimetableDetails(timetableId: string, patch: TimetableDetailsPatch): Promise<void> {
