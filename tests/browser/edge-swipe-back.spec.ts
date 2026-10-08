@@ -27,7 +27,7 @@ test('edge scrolling ignores sideways jitter while deliberate swipes still retur
 		});
 		await cdp.send('Input.dispatchTouchEvent', {
 			type: 'touchMove',
-			touchPoints: [point(19, 302)]
+			touchPoints: [point(13, 302)]
 		});
 		expect(await secondary.evaluate((node) => node.style.transform)).toBe('');
 		for (const [x, y] of [

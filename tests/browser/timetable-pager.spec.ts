@@ -140,7 +140,7 @@ test('keeps vertical swipes with initial sideways jitter on the current week', a
 		await body.evaluate((node) => (node.scrollTop = (node.scrollHeight - node.clientHeight) / 2));
 		const before = await body.evaluate((node) => node.scrollTop);
 		await swipePath(page, start, [
-			{ x: sign * 9, y: sign * 2 },
+			{ x: sign * 3, y: sign * 2 },
 			{ x: sign * 12, y: sign * 24 },
 			{ x: sign * 18, y: sign * 60 },
 			{ x: sign * 30, y: sign * 120 }
@@ -152,6 +152,68 @@ test('keeps vertical swipes with initial sideways jitter on the current week', a
 		// Even a transient horizontal preview incorrectly treats scrolling as navigation.
 		expect(await indicator.getAttribute('inert')).toBe('');
 	}
+});
+
+test('locks horizontal paging against vertical scrolling even when the finger turns vertically', async ({
+	page,
+	request
+}) => {
+	await page.setViewportSize({ width: 430, height: 450 });
+	await page.addInitScript(
+		(key) => localStorage.setItem(key, 'fixed'),
+		PREFERENCE_STORAGE_KEYS.timetableLayoutMode
+	);
+	const { pager, position } = await importTimetable(page, request);
+	const initial = await position();
+	const body = pager.locator('.timetable-week-page').nth(Math.round(initial)).getByRole('region');
+	await body.evaluate((node) => (node.scrollTop = (node.scrollHeight - node.clientHeight) / 2));
+	const before = await body.evaluate((node) => node.scrollTop);
+	expect(before).toBeGreaterThan(0);
+	const rect = (await body.boundingBox())!;
+	const start = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+	const dx = initial >= 15 ? 120 : -120;
+	await swipePath(page, start, [
+		{ x: Math.sign(dx) * 9, y: 2 },
+		{ x: Math.sign(dx) * 30, y: 4 },
+		{ x: dx / 2, y: -60 },
+		{ x: dx, y: -150 }
+	]);
+	await expect.poll(position).toBeCloseTo(initial + (dx > 0 ? -1 : 1), 1);
+	expect(await body.evaluate((node) => node.scrollTop)).toBe(before);
+});
+
+test('keeps native vertical scrolling and disables paging in edit mode', async ({
+	page,
+	request
+}) => {
+	await page.setViewportSize({ width: 430, height: 450 });
+	await page.addInitScript(
+		(key) => localStorage.setItem(key, 'fixed'),
+		PREFERENCE_STORAGE_KEYS.timetableLayoutMode
+	);
+	const { pager, position } = await importTimetable(page, request);
+	const initial = await position();
+	const body = pager.locator('.timetable-week-page').nth(Math.round(initial)).getByRole('region');
+	await body.evaluate((node) => (node.scrollTop = (node.scrollHeight - node.clientHeight) / 2));
+	const rect = (await body.boundingBox())!;
+	// The period sidebar belongs to the grid and contains no draggable course.
+	const start = { x: rect.x + 10, y: rect.y + rect.height / 2 };
+	const cdp = await page.context().newCDPSession(page);
+	await cdp.send('Input.dispatchTouchEvent', {
+		type: 'touchStart',
+		touchPoints: [{ ...start, id: 1 }]
+	});
+	await expect(pager).toHaveClass(/timetable-week-pager-locked/);
+	await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+	await cdp.detach();
+	const before = await body.evaluate((node) => node.scrollTop);
+	await swipe(page, start, 18, -100);
+	await expect.poll(() => body.evaluate((node) => node.scrollTop)).toBeGreaterThan(before);
+	await swipe(page, start, 160, 0);
+	await expect.poll(position).toBeCloseTo(initial, 1);
+	await expect(pager).toHaveClass(/timetable-week-pager-locked/);
+	await page.keyboard.press('Escape');
+	await expect(pager).not.toHaveClass(/timetable-week-pager-locked/);
 });
 
 test('shows the whole capsule only during week navigation and disables it after fading', async ({

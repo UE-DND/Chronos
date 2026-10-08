@@ -29,13 +29,14 @@ function harness() {
 		createElement: () => indicator
 	});
 	const cleanup = installScrollBoundaryFeedback(doc as unknown as Document);
-	function touch(type: string, x: number, y: number) {
+	function touch(type: string, x: number, y: number, consumed = false) {
 		const points = [{ identifier: 1, clientX: x, clientY: y }];
-		const event = Object.assign(new Event(type), {
+		const event = Object.assign(new Event(type, { cancelable: true }), {
 			touches: type === 'touchend' ? [] : points,
 			changedTouches: points
 		});
 		Object.defineProperty(event, 'target', { value: node });
+		if (consumed) event.preventDefault();
 		doc.dispatchEvent(event);
 	}
 	return { doc, node, indicator, cleanup, touch };
@@ -82,6 +83,20 @@ it('ignores horizontal wheel drift at a scroll boundary', () => {
 		Object.defineProperty(event, 'target', { value: h.node });
 		h.doc.dispatchEvent(event);
 		expect(h.indicator.style.opacity).toBe('0');
+	} finally {
+		h.cleanup();
+	}
+});
+
+it('does not apply vertical feedback to touches consumed by horizontal paging', () => {
+	const h = harness();
+	try {
+		h.touch('touchstart', 100, 100);
+		h.touch('touchmove', 109, 102, true);
+		h.touch('touchmove', 130, 220, true);
+		h.touch('touchend', 130, 220);
+		expect(h.indicator.style.opacity).toBe('0');
+		expect(light).not.toHaveBeenCalled();
 	} finally {
 		h.cleanup();
 	}

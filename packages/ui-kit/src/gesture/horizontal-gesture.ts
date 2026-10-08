@@ -1,7 +1,7 @@
 export type GestureDirection = 'pending' | 'horizontal' | 'vertical';
 
 const VERTICAL_THRESHOLD_PX = 8;
-const HORIZONTAL_THRESHOLD_PX = 24;
+const HORIZONTAL_THRESHOLD_PX = 8;
 const HORIZONTAL_RATIO = 1.35;
 
 /** Give native vertical scrolling priority over sideways jitter, including after activation. */

@@ -90,6 +90,10 @@ export function installScrollBoundaryFeedback(doc: Document = document): () => v
 
 	function onTouchMove(event: TouchEvent) {
 		if (!activePull) return;
+		if (event.defaultPrevented) {
+			hide();
+			return;
+		}
 		if (event.touches.length !== 1) {
 			hide();
 			return;
@@ -155,14 +159,15 @@ export function installScrollBoundaryFeedback(doc: Document = document): () => v
 	}
 
 	doc.addEventListener('touchstart', onTouchStart, { passive: true, capture: true });
-	doc.addEventListener('touchmove', onTouchMove, { passive: true, capture: true });
+	// Observe after the target has had a chance to claim paging or dragging.
+	doc.addEventListener('touchmove', onTouchMove, { passive: true });
 	doc.addEventListener('touchend', onTouchEnd, { passive: true, capture: true });
 	doc.addEventListener('touchcancel', hide, { passive: true, capture: true });
 	doc.addEventListener('wheel', onWheel, { passive: true, capture: true });
 
 	return () => {
 		doc.removeEventListener('touchstart', onTouchStart, true);
-		doc.removeEventListener('touchmove', onTouchMove, true);
+		doc.removeEventListener('touchmove', onTouchMove);
 		doc.removeEventListener('touchend', onTouchEnd, true);
 		doc.removeEventListener('touchcancel', hide, true);
 		doc.removeEventListener('wheel', onWheel, true);

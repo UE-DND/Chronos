@@ -41,7 +41,7 @@ function createHarness({
 		x: number,
 		y = 500
 	) {
-		const event = Object.assign(new Event(type), {
+		const event = Object.assign(new Event(type, { cancelable: true }), {
 			pointerId: 1,
 			pointerType: 'touch',
 			isPrimary: true,
@@ -49,6 +49,14 @@ function createHarness({
 			clientY: y
 		});
 		(type === 'pointerdown' ? node : node.ownerDocument).dispatchEvent(event);
+	}
+
+	function touchMove(x: number, y = 500) {
+		const event = Object.assign(new Event('touchmove', { cancelable: true }), {
+			touches: [{ clientX: x, clientY: y }]
+		});
+		node.dispatchEvent(event);
+		return event;
 	}
 
 	function advance(ms: number) {
@@ -71,7 +79,7 @@ function createHarness({
 		pointer('pointerup', 500 + dx);
 	}
 
-	return { node, touch, suspendSnap, onSettled, positions, pointer, advance, drag };
+	return { node, touch, suspendSnap, onSettled, positions, pointer, touchMove, advance, drag };
 }
 
 afterEach(() => {
@@ -133,40 +141,62 @@ describe('week pager touch', () => {
 		h.touch.destroy();
 	});
 
-	it.each([-1, 1])('ignores initial horizontal jitter during vertical scrolling (%s)', (sign) => {
+	it('confirms horizontal paging at the restored 8px threshold', () => {
 		const h = createHarness();
-		h.pointer('pointerdown', 500, 500);
-		h.pointer('pointermove', 500 + sign * 9, 502);
+		h.pointer('pointerdown', 500);
+		h.pointer('pointermove', 493);
 		expect(h.node.scrollLeft).toBe(9000);
-		h.pointer('pointermove', 500 + sign * 40, 620);
-		expect(h.node.scrollLeft).toBe(9000);
-		h.pointer('pointerup', 500 + sign * 40, 620);
-		h.advance(400);
-		expect(h.node.scrollLeft).toBe(9000);
-		expect(h.touch.isActive).toBe(false);
+		h.pointer('pointermove', 491);
+		expect(h.node.scrollLeft).toBe(9009);
+		expect(h.touchMove(491).defaultPrevented).toBe(true);
 		h.touch.destroy();
 	});
 
-	it.each(['pointermove', 'pointerup'] as const)(
-		'rejects a horizontal start that becomes vertical on %s',
-		(type) => {
-			const h = createHarness();
-			h.pointer('pointerdown', 500, 500);
-			h.pointer('pointermove', 470, 502);
-			expect(h.node.scrollLeft).toBe(9030);
-			h.pointer(type, 460, 620);
-			if (type === 'pointermove') {
-				expect(h.node.scrollLeft).toBe(9000);
-				// Once vertical, later sideways movement must not revive paging.
-				h.pointer('pointermove', 200, 620);
-				h.pointer('pointerup', 200, 620);
-			}
-			h.advance(400);
-			expect(h.node.scrollLeft).toBe(9000);
-			expect(h.node.style.scrollSnapType).toBe('');
-			h.touch.destroy();
-		}
-	);
+	it('locks horizontal paging and blocks vertical scrolling until release', () => {
+		const h = createHarness();
+		h.pointer('pointerdown', 500, 500);
+		h.pointer('pointermove', 470, 502);
+		expect(h.touchMove(470, 502).defaultPrevented).toBe(true);
+		h.pointer('pointermove', 200, 620);
+		expect(h.node.scrollLeft).toBe(9300);
+		expect(h.touchMove(200, 620).defaultPrevented).toBe(true);
+		h.pointer('pointerup', 200, 620);
+		h.advance(400);
+		expect(h.node.scrollLeft).toBe(10000);
+		expect(h.touchMove(200, 620).defaultPrevented).toBe(false);
+		h.touch.destroy();
+	});
+
+	it('locks vertical scrolling without taking over later horizontal movement', () => {
+		const h = createHarness();
+		h.pointer('pointerdown', 500, 500);
+		h.pointer('pointermove', 498, 480);
+		expect(h.touchMove(498, 480).defaultPrevented).toBe(false);
+		h.pointer('pointermove', 200, 470);
+		expect(h.touchMove(200, 470).defaultPrevented).toBe(false);
+		expect(h.node.scrollLeft).toBe(9000);
+		h.pointer('pointerup', 200, 470);
+		h.advance(400);
+		expect(h.node.scrollLeft).toBe(9000);
+		h.touch.destroy();
+	});
+
+	it('leaves editing touches to course dragging and native scrolling', () => {
+		let enabled = false;
+		const h = createHarness({ enabled: () => enabled });
+		h.pointer('pointerdown', 500);
+		h.pointer('pointermove', 200, 620);
+		expect(h.touchMove(200, 620).defaultPrevented).toBe(false);
+		expect(h.node.scrollLeft).toBe(9000);
+		enabled = true;
+		h.pointer('pointerdown', 500);
+		h.pointer('pointermove', 470);
+		expect(h.touchMove(470).defaultPrevented).toBe(true);
+		enabled = false;
+		expect(h.touchMove(200, 620).defaultPrevented).toBe(false);
+		expect(h.touch.isActive).toBe(false);
+		h.touch.destroy();
+	});
 
 	it('limits a long drag to one adjacent week', () => {
 		const h = createHarness();

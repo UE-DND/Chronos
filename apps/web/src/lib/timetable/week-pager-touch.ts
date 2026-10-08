@@ -19,6 +19,7 @@ export function createWeekPagerTouch(
 	const options = { signal: listeners.signal };
 	let pointerId: number | null = null;
 	const axis = createHorizontalGesture();
+	let direction: 'pending' | 'horizontal' | 'vertical' = 'pending';
 	let startX = 0;
 	let startY = 0;
 	let startTime = 0;
@@ -44,6 +45,7 @@ export function createWeekPagerTouch(
 		stopAnimation();
 		pointerId = null;
 		axis.reset();
+		direction = 'pending';
 		if (wasActive) restoreSnap();
 	}
 
@@ -98,6 +100,7 @@ export function createWeekPagerTouch(
 			stopAnimation();
 			pointerId = event.pointerId;
 			axis.reset();
+			direction = 'pending';
 			startX = event.clientX;
 			startY = event.clientY;
 			startTime = performance.now();
@@ -121,9 +124,7 @@ export function createWeekPagerTouch(
 			}
 			const dx = event.clientX - startX;
 			const dy = event.clientY - startY;
-			const previous = axis.direction;
-			const direction = axis.update(dx, dy);
-			if (direction === 'vertical' && previous === 'horizontal') node.scrollLeft = startOffset;
+			if (direction === 'pending') direction = axis.update(dx, dy);
 			if (direction !== 'horizontal') return;
 			const width = node.clientWidth;
 			const minOffset = Math.max(0, (startPage - 1) * width);
@@ -133,6 +134,25 @@ export function createWeekPagerTouch(
 		options
 	);
 
+	// touch-action: pan-y keeps native vertical scrolling available before axis selection.
+	// Changing touch-action mid-gesture cannot stop that scroll; cancel touchmove instead.
+	node.addEventListener(
+		'touchmove',
+		(event) => {
+			if (pointerId === null) return;
+			if (!enabled()) {
+				cancel();
+				return;
+			}
+			if (event.touches.length !== 1) return;
+			const touch = event.touches[0]!;
+			if (direction === 'pending')
+				direction = axis.update(touch.clientX - startX, touch.clientY - startY);
+			if (direction === 'horizontal' && event.cancelable) event.preventDefault();
+		},
+		{ ...options, passive: false }
+	);
+
 	function release(event: PointerEvent, canceled: boolean) {
 		if (event.pointerId !== pointerId) return;
 		if (!enabled()) {
@@ -140,17 +160,15 @@ export function createWeekPagerTouch(
 			return;
 		}
 		pointerId = null;
-		if (axis.direction !== 'horizontal') {
+		if (direction !== 'horizontal') {
 			settle(startPage * node.clientWidth);
 			return;
 		}
 		const dx = event.clientX - startX;
-		const dy = event.clientY - startY;
 		const width = node.clientWidth;
 		const elapsed = Math.max(1, performance.now() - startTime);
 		const advance =
 			!canceled &&
-			axis.update(dx, dy) === 'horizontal' &&
 			(Math.abs(dx) >= width * COMMIT_DISTANCE_RATIO ||
 				(Math.abs(dx) >= FLING_DISTANCE_PX && Math.abs(dx) / elapsed >= FLING_VELOCITY_PX_MS));
 		const maxPage = Math.max(0, Math.round((node.scrollWidth - width) / width));

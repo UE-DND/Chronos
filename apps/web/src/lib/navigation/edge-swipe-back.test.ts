@@ -264,7 +264,7 @@ describe('edge-swipe-back', () => {
 	});
 
 	it.each(['touchmove', 'touchend'] as const)(
-		'rejects initial horizontal jitter followed by vertical motion on %s',
+		'rejects a short horizontal start followed by vertical motion on %s',
 		(type) => {
 			const controller = makeController();
 			controller.handleTouchStart(
@@ -273,7 +273,7 @@ describe('edge-swipe-back', () => {
 			controller.handleTouchMove(
 				mockTouchEvent('touchmove', [{ clientX: 19, clientY: 102, identifier: 1 }])
 			);
-			expect(controller.isSwiping).toBe(false);
+			expect(controller.isSwiping).toBe(true);
 			const points = [{ clientX: 170, clientY: 500, identifier: 1 }];
 			if (type === 'touchmove') controller.handleTouchMove(mockTouchEvent(type, points));
 			controller.handleTouchEnd(mockTouchEvent('touchend', points));
