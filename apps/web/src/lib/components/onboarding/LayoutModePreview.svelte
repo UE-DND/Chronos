@@ -2,7 +2,14 @@
 	import type { TimetableLayoutMode } from '@chronos/core';
 	import { hostT } from '$lib/i18n/host-i18n.svelte';
 
-	let { mode }: { mode: TimetableLayoutMode } = $props();
+	import { attachDemoMotion, createLayoutTimeline } from './demo-motion';
+
+	let { mode, active = true }: { mode: TimetableLayoutMode; active?: boolean } = $props();
+	function animatePreview(node: HTMLElement) {
+		if (!active) return;
+		const currentMode = mode;
+		return attachDemoMotion(node, (root) => createLayoutTimeline(root, currentMode));
+	}
 
 	const days = [
 		'timetable.dayShort.mon',
@@ -11,7 +18,11 @@
 	] as const;
 </script>
 
-<div class="preview mode-{mode} bg-surface text-on-surface" aria-hidden="true">
+<div
+	{@attach animatePreview}
+	class="preview mode-{mode} bg-surface text-on-surface"
+	aria-hidden="true"
+>
 	<div class="week-label">{hostT('timetable.week.label', { week: 1, today: '' })}</div>
 	<div class="day-row text-on-surface-variant">
 		<span></span>
@@ -78,7 +89,6 @@
 
 	.mode-fixed .grid {
 		height: 165%;
-		animation: scroll-preview 3s ease-in-out infinite;
 	}
 
 	.periods {
@@ -114,7 +124,6 @@
 		margin: var(--cell-inset);
 		padding: 0.25rem;
 		border-radius: 0.3rem;
-		animation: course-highlight 5.2s ease-in-out infinite;
 	}
 
 	.course span {
@@ -140,14 +149,12 @@
 		grid-column: 2;
 		grid-row: 2 / 4;
 		color: var(--color-on-secondary-container);
-		animation-delay: -1.7s;
 	}
 
 	.course-three {
 		grid-column: 3;
 		grid-row: 4 / 6;
 		color: var(--color-on-tertiary-container);
-		animation-delay: -3.4s;
 	}
 
 	.bottom-bar {
@@ -163,40 +170,5 @@
 		width: 1rem;
 		height: 0.2rem;
 		border-radius: 999px;
-	}
-
-	@keyframes scroll-preview {
-		0%,
-		10%,
-		90%,
-		100% {
-			transform: translateY(0);
-		}
-		42%,
-		58% {
-			transform: translateY(-39%);
-		}
-	}
-
-	@keyframes course-highlight {
-		0%,
-		100% {
-			filter: brightness(1);
-		}
-		50% {
-			filter: brightness(1.14);
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.mode-fixed .grid,
-		.course {
-			animation: none;
-		}
-	}
-
-	:global(:root.reduce-motion) .mode-fixed .grid,
-	:global(:root.reduce-motion) .course {
-		animation: none;
 	}
 </style>

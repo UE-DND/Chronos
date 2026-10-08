@@ -65,3 +65,6 @@ declare const __ANDROID_RELEASE_FEED_URL__: string;
 declare module '$chronos-platform-adapter' {
 	export function getBootPlatformAdapter(): import('$lib/platform/host-platform').HostPlatformAdapter;
 }
+
+/** Only browser regression builds expose element-scoped animation controls. */
+declare const __ONBOARDING_TEST__: boolean;

@@ -16,6 +16,7 @@
 		"@material-symbols-svg/svelte": "^0.14.0",
 		"bits-ui": "^2.19.3",
 		"dexie": "^4.4.5",
+		"gsap": "^3.15.0",
 		"hyperellipse": "^1.0.5",
 		"marked": "^18.0.14",
 		"posthog-js": "^1.434.17",

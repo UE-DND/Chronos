@@ -398,7 +398,7 @@ export const zhCn = {
 	'onboarding.layout.compact.landscapeUnavailable': '紧凑横屏不可用，竖屏后可选择',
 	'onboarding.longPress.title': '长按课表页，发现更多功能',
 	'onboarding.longPress.description':
-		'长按课程进入编辑模式，可拖动课程调整位置，或拖到删除区并确认删除。',
+		'长按课程后松手进入编辑模式。再次按住可拖动调整位置，或拖到删除区，确认删除本周这次课程。',
 	'onboarding.longPress.coursePrimary': '高等数学',
 	'onboarding.longPress.courseSecondary': '大学英语',
 	'onboarding.install.title': '安装到主屏幕',

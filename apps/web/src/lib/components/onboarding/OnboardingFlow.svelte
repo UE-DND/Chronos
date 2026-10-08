@@ -322,7 +322,10 @@
 													? 'border-brand'
 													: 'border-transparent'}"
 											>
-												<LayoutModePreview mode={option.mode} />
+												<LayoutModePreview
+													mode={option.mode}
+													active={showOnboarding && step === 'layout'}
+												/>
 											</span>
 											<span
 												class="text-title-medium mt-2 font-semibold {selected
@@ -354,7 +357,7 @@
 								>
 									{hostT('onboarding.longPress.title')}
 								</h2>
-								<LongPressDemo />
+								<LongPressDemo active={showOnboarding && step === 'longPress'} />
 							</div>
 						{:else}
 							<div class="flex flex-1 flex-col items-center justify-center gap-3 text-center">

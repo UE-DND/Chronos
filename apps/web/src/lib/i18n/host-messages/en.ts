@@ -411,7 +411,7 @@ export const en = {
 		'Compact landscape: unavailable; choose in portrait',
 	'onboarding.longPress.title': 'Long press your timetable to discover more',
 	'onboarding.longPress.description':
-		'Long press a class to edit the timetable, drag a class to move it, or drag it to the remove area and confirm.',
+		'Long press a class, then release to stay in edit mode. Press again to move it, or drag it to the remove area and confirm removal for this week.',
 	'onboarding.longPress.coursePrimary': 'Mathematics',
 	'onboarding.longPress.courseSecondary': 'English',
 	'onboarding.install.title': 'Add to home screen',

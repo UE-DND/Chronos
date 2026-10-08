@@ -82,6 +82,7 @@ export default defineConfig(({ mode }) => {
 			exclude: ['@material-symbols-svg/svelte']
 		},
 		define: {
+			__ONBOARDING_TEST__: JSON.stringify(Boolean(process.env.PUBLIC_REGRESSION_BUILD)),
 			__BUILD_TIME__: JSON.stringify(
 				new Date(Number(process.env.SOURCE_DATE_EPOCH ?? 0) * 1000).toISOString()
 			),
