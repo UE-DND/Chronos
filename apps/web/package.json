@@ -34,7 +34,7 @@
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.3.0",
 		"@types/node": "^24",
-		"@vite-pwa/sveltekit": "^1.1.0",
+		"@vite-pwa/sveltekit": "github:UE-DND/sveltekit#359fc2e9b402a4cd56353b89fbdd1721e78040b7",
 		"rolldown-license-plugin": "^3.0.14",
 		"smol-toml": "^1.9.0",
 		"svelte": "^5.57.1",

@@ -7,6 +7,7 @@ packages:
 allowBuilds:
   core-js: false
   esbuild: true
+  '@vite-pwa/sveltekit@https://codeload.github.com/UE-DND/sveltekit/tar.gz/359fc2e9b402a4cd56353b89fbdd1721e78040b7': true
 catalog:
   vite: npm:@voidzero-dev/vite-plus-core@1.1.0
   vite-plus: 1.1.0
@@ -38,8 +39,6 @@ minimumReleaseAgeExclude:
   - vite-plus@0.3.3 || 1.0.0 || 1.1.0
 overrides:
   vite@*: 'catalog:'
-patchedDependencies:
-  '@vite-pwa/sveltekit@1.1.0': patches/@vite-pwa__sveltekit@1.1.0.patch
 peerDependencyRules:
   allowAny:
     - vite
