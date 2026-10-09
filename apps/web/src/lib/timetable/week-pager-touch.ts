@@ -1,4 +1,5 @@
 import { createHorizontalGesture, isReducedMotionActive } from '@chronos/ui-kit';
+import { weekPagerPageWidth } from './week-pager-metrics';
 
 const COMMIT_DISTANCE_RATIO = 0.23;
 const FLING_DISTANCE_PX = 24;
@@ -25,6 +26,9 @@ export function createWeekPagerTouch(
 	let startTime = 0;
 	let startOffset = 0;
 	let startPage = 0;
+	let pageWidth = 0;
+	let maxPage = 0;
+	let needsSettle = false;
 	let savedSnapType = '';
 	let frame = 0;
 	let animationGeneration = 0;
@@ -56,7 +60,7 @@ export function createWeekPagerTouch(
 		const duration = isReducedMotionActive()
 			? 0
 			: MIN_SETTLE_MS +
-				Math.min(1, Math.abs(distance) / node.clientWidth) * (MAX_SETTLE_MS - MIN_SETTLE_MS);
+				Math.min(1, Math.abs(distance) / pageWidth) * (MAX_SETTLE_MS - MIN_SETTLE_MS);
 		if (duration === 0 || Math.abs(target - from) < 1) {
 			node.scrollLeft = target;
 			restoreSnap();
@@ -67,7 +71,7 @@ export function createWeekPagerTouch(
 		const started = performance.now();
 		function step(now: number) {
 			if (task !== animationGeneration) return;
-			const t = Math.min(1, (now - started) / duration);
+			const t = Math.min(1, Math.max(0, (now - started) / duration));
 			node.scrollLeft = from + distance * (1 - (1 - t) ** 2.25);
 			if (t < 1) {
 				frame = requestAnimationFrame(step);
@@ -96,6 +100,9 @@ export function createWeekPagerTouch(
 				node.clientWidth <= 0
 			)
 				return;
+			pageWidth = weekPagerPageWidth(node);
+			if (pageWidth <= 0) return;
+			maxPage = Math.max(0, node.childElementCount - 1);
 			const wasSettling = frame !== 0;
 			stopAnimation();
 			pointerId = event.pointerId;
@@ -105,7 +112,8 @@ export function createWeekPagerTouch(
 			startY = event.clientY;
 			startTime = performance.now();
 			startOffset = node.scrollLeft;
-			startPage = Math.round(startOffset / node.clientWidth);
+			startPage = Math.round(startOffset / pageWidth);
+			needsSettle = wasSettling || Math.abs(startOffset - startPage * pageWidth) >= 1;
 			if (!wasSettling) savedSnapType = node.style.scrollSnapType;
 			suspendSnap(true);
 			node.style.scrollSnapType = 'none';
@@ -126,9 +134,9 @@ export function createWeekPagerTouch(
 			const dy = event.clientY - startY;
 			if (direction === 'pending') direction = axis.update(dx, dy);
 			if (direction !== 'horizontal') return;
-			const width = node.clientWidth;
+			const width = pageWidth;
 			const minOffset = Math.max(0, (startPage - 1) * width);
-			const maxOffset = Math.min(node.scrollWidth - width, (startPage + 1) * width);
+			const maxOffset = Math.min(maxPage * width, (startPage + 1) * width);
 			node.scrollLeft = Math.max(minOffset, Math.min(maxOffset, startOffset - dx));
 		},
 		options
@@ -161,17 +169,21 @@ export function createWeekPagerTouch(
 		}
 		pointerId = null;
 		if (direction !== 'horizontal') {
-			settle(startPage * node.clientWidth);
+			// Native vertical scrolling cancels pointers even when the pager never moved.
+			if (needsSettle) settle(startPage * pageWidth);
+			else {
+				restoreSnap();
+				onSettled();
+			}
 			return;
 		}
 		const dx = event.clientX - startX;
-		const width = node.clientWidth;
+		const width = pageWidth;
 		const elapsed = Math.max(1, performance.now() - startTime);
 		const advance =
 			!canceled &&
 			(Math.abs(dx) >= width * COMMIT_DISTANCE_RATIO ||
 				(Math.abs(dx) >= FLING_DISTANCE_PX && Math.abs(dx) / elapsed >= FLING_VELOCITY_PX_MS));
-		const maxPage = Math.max(0, Math.round((node.scrollWidth - width) / width));
 		const page = Math.max(0, Math.min(maxPage, startPage + (advance ? -Math.sign(dx) : 0)));
 		settle(page * width);
 	}

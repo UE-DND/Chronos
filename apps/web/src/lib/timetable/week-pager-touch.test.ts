@@ -3,6 +3,7 @@ import { createWeekPagerTouch } from './week-pager-touch';
 
 function createHarness({
 	initialOffset = 9000,
+	pageWidth = 1000,
 	reducedMotion = false,
 	hz = 60,
 	enabled = (): boolean => true
@@ -22,12 +23,14 @@ function createHarness({
 	});
 	vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
 	const node = Object.assign(new EventTarget(), {
-		clientWidth: 1000,
-		scrollWidth: 20000,
+		clientWidth: Math.round(pageWidth),
+		scrollWidth: Math.round(pageWidth * 20),
+		childElementCount: 20,
 		scrollLeft: initialOffset,
 		style: { scrollSnapType: '' },
 		ownerDocument: new EventTarget()
 	});
+	vi.stubGlobal('getComputedStyle', () => ({ width: `${pageWidth}px` }));
 	const suspendSnap = vi.fn();
 	const onSettled = vi.fn();
 	const touch = createWeekPagerTouch(node as unknown as HTMLElement, {
@@ -88,6 +91,59 @@ afterEach(() => {
 });
 
 describe('week pager touch', () => {
+	it.each(['vertical release', 'vertical cancel', 'pending cancel', 'tap'] as const)(
+		'keeps a fractionally aligned page completely still during %s',
+		(kind) => {
+			const pageWidth = 412.19049;
+			const initialOffset = pageWidth * 15;
+			const h = createHarness({ pageWidth, initialOffset });
+			let offset = initialOffset;
+			const writes: number[] = [];
+			Object.defineProperty(h.node, 'scrollLeft', {
+				get: () => offset,
+				set: (left: number) => {
+					writes.push(left);
+					offset = left;
+				}
+			});
+			h.pointer('pointerdown', 200, 440);
+			if (kind.startsWith('vertical')) h.pointer('pointermove', 203, 420);
+			h.pointer(kind.endsWith('cancel') ? 'pointercancel' : 'pointerup', 205, 400);
+			h.advance(500);
+			expect(writes).toEqual([]);
+			expect(h.node.scrollLeft).toBe(initialOffset);
+			expect(h.node.style.scrollSnapType).toBe('');
+			expect(h.touch.isActive).toBe(false);
+			h.touch.destroy();
+		}
+	);
+
+	it.each([1, -1])('lands on fractional page boundaries when swiping %s', (direction) => {
+		const pageWidth = 412.19049;
+		const h = createHarness({ pageWidth, initialOffset: 15 * pageWidth });
+		h.drag(direction * 160);
+		h.advance(500);
+		expect(h.node.scrollLeft).toBeCloseTo((15 - direction) * pageWidth, 6);
+		h.touch.destroy();
+	});
+
+	it('finishes an interrupted horizontal animation when the next gesture scrolls vertically', () => {
+		const pageWidth = 412.19049;
+		const h = createHarness({ pageWidth, initialOffset: 14 * pageWidth });
+		h.drag(-160);
+		h.advance(100);
+		expect(h.node.scrollLeft).toBeGreaterThan(14.5 * pageWidth);
+		expect(h.node.scrollLeft).toBeLessThan(15 * pageWidth);
+		h.pointer('pointerdown', 200, 440);
+		h.pointer('pointermove', 203, 410);
+		h.pointer('pointercancel', 203, 410);
+		h.advance(500);
+		expect(h.node.scrollLeft).toBeCloseTo(15 * pageWidth, 6);
+		expect(h.touch.isActive).toBe(false);
+		expect(h.node.style.scrollSnapType).toBe('');
+		h.touch.destroy();
+	});
+
 	it.each([-300, 300])('cancels paging when long press takes over before moving %s px', (dx) => {
 		let enabled = true;
 		const h = createHarness({ enabled: () => enabled });

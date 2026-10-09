@@ -1,4 +1,5 @@
 import { isReducedMotionActive } from '@chronos/ui-kit';
+import { weekPagerPageWidth } from './week-pager-metrics';
 
 const MAX_FINISH_MS = 120;
 const WHEEL_QUIET_MS = 48;
@@ -30,7 +31,7 @@ export function createWeekPagerSnap(node: HTMLElement, onSettled: () => void) {
 	function finishSnap(target: number, velocity: number, now: number) {
 		const from = node.scrollLeft;
 		const distance = target - from;
-		const width = node.clientWidth;
+		const width = weekPagerPageWidth(node);
 		const scrollWidth = node.scrollWidth;
 		const duration = (4 * Math.abs(distance / velocity)) / 3;
 		// Clamping the duration would force a second acceleration toward the page.
@@ -52,7 +53,7 @@ export function createWeekPagerSnap(node: HTMLElement, onSettled: () => void) {
 
 		function step(time: number) {
 			if (animation !== running) return;
-			if (node.clientWidth !== width || node.scrollWidth !== scrollWidth) {
+			if (weekPagerPageWidth(node) !== width || node.scrollWidth !== scrollWidth) {
 				cancel();
 				return;
 			}
@@ -86,8 +87,8 @@ export function createWeekPagerSnap(node: HTMLElement, onSettled: () => void) {
 		if (suspended || pointerDown || touching || now < wheelActiveUntil || isReducedMotionActive())
 			return;
 
-		const width = node.clientWidth;
-		const maxOffset = node.scrollWidth - width;
+		const width = weekPagerPageWidth(node);
+		const maxOffset = Math.max(0, node.childElementCount - 1) * width;
 		if (width <= 0 || offset < 0 || offset > maxOffset) return;
 		const target = Math.max(0, Math.min(maxOffset, Math.round(offset / width) * width));
 		const distance = target - offset;

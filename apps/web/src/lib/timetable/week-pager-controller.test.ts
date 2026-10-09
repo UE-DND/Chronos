@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { createWeekPagerController } from './week-pager-controller.svelte';
 
-function harness() {
+function harness(pageWidth = 1000) {
 	vi.useFakeTimers();
 	vi.spyOn(performance, 'now').mockImplementation(() => Date.now());
 	vi.stubGlobal('window', globalThis);
@@ -21,8 +21,9 @@ function harness() {
 		}
 	);
 	const node = Object.assign(new EventTarget(), {
-		clientWidth: 1000,
-		scrollWidth: 20000,
+		clientWidth: Math.round(pageWidth),
+		scrollWidth: Math.round(pageWidth * 20),
+		childElementCount: 20,
 		scrollLeft: 0,
 		style: { scrollSnapType: '', overflowX: '' },
 		ownerDocument: new EventTarget(),
@@ -30,6 +31,7 @@ function harness() {
 			this.scrollLeft = left;
 		}
 	});
+	vi.stubGlobal('getComputedStyle', () => ({ width: `${pageWidth}px` }));
 	const calls: string[] = [];
 	let context = {
 		timetableId: 'a',
@@ -93,6 +95,32 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 describe('week pager lifecycle', () => {
+	it('ignores native resize snapping even when the browser already aligned the page', () => {
+		const width = 412.19049;
+		const h = harness(width);
+		h.sync({ displayedWeek: 16 });
+		vi.advanceTimersByTime(160);
+		h.resize();
+		h.calls.length = 0;
+		h.scroll(15 * width);
+		vi.advanceTimersByTime(160);
+		expect(h.calls).toEqual([]);
+		h.scroll(14.5 * width);
+		expect(h.calls[0]).toMatch(/^preview:/);
+		expect(Number(h.calls[0]?.split(':')[1])).toBeCloseTo(15.5, 6);
+		h.detach();
+	});
+
+	it('uses fractional page width for week jumps and the live indicator preview', () => {
+		const width = 412.19049;
+		const h = harness(width);
+		h.sync({ displayedWeek: 16 });
+		expect(h.node.scrollLeft).toBeCloseTo(15 * width, 6);
+		vi.advanceTimersByTime(160);
+		h.scroll(15 * width);
+		expect(h.calls).toContain('preview:16');
+		h.detach();
+	});
 	it('publishes preview before the integer week and keeps it through quiet time', () => {
 		const h = harness();
 		h.scroll(600);

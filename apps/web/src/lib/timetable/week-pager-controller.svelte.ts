@@ -6,6 +6,7 @@ import {
 } from './week-navigation';
 import { createWeekPagerSnap } from './week-pager-snap';
 import { createWeekPagerTouch } from './week-pager-touch';
+import { weekPagerPageWidth } from './week-pager-metrics';
 
 export interface WeekPagerContext {
 	timetableId: string | null;
@@ -48,7 +49,11 @@ export function createWeekPagerController(options: {
 	}
 	function position() {
 		if (!node || !context || node.clientWidth <= 0) return;
-		const left = scrollOffsetFromWeek(context.displayedWeek, node.clientWidth, context.startWeek);
+		const left = scrollOffsetFromWeek(
+			context.displayedWeek,
+			weekPagerPageWidth(node),
+			context.startWeek
+		);
 		if (Math.abs(node.scrollLeft - left) >= 2) {
 			suppressUntil = Date.now() + 150;
 			node.scrollTo({ left, behavior: 'instant' });
@@ -80,9 +85,10 @@ export function createWeekPagerController(options: {
 	}
 	function publish() {
 		if (!node || !context) return;
+		const width = weekPagerPageWidth(node);
 		const preview = pagerPreviewWeekFromScroll(
 			node.scrollLeft,
-			node.clientWidth,
+			width,
 			context.startWeek,
 			context.endWeek
 		);
@@ -91,7 +97,7 @@ export function createWeekPagerController(options: {
 		paintWeek = Math.round(preview);
 		const week = committedWeekFromScroll(
 			node.scrollLeft,
-			node.clientWidth,
+			width,
 			context.startWeek,
 			context.endWeek
 		);
@@ -203,7 +209,10 @@ export function createWeekPagerController(options: {
 				eventOptions
 			);
 		const observer = new ResizeObserver(() => {
-			if (node === element) interrupt();
+			if (node !== element) return;
+			// Native snapping can align a resized page before delivering its scroll event.
+			suppressUntil = Date.now() + 150;
+			interrupt();
 		});
 		observer.observe(element);
 		position();

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { createWeekPagerSnap } from './week-pager-snap';
 
-function createHarness(initialOffset = 9000, reducedMotion = false) {
+function createHarness(initialOffset = 9000, reducedMotion = false, pageWidth?: number) {
 	let now = 0;
 	let nextFrame = 1;
 	const frames = new Map<number, FrameRequestCallback>();
@@ -16,8 +16,9 @@ function createHarness(initialOffset = 9000, reducedMotion = false) {
 
 	const positions: number[] = [];
 	const node = Object.assign(new EventTarget(), {
-		clientWidth: 1000,
-		scrollWidth: 20000,
+		clientWidth: Math.round(pageWidth ?? 1000),
+		scrollWidth: Math.round((pageWidth ?? 1000) * 20),
+		childElementCount: 20,
 		scrollLeft: initialOffset,
 		style: { scrollSnapType: '', overflowX: '' },
 		ownerDocument: new EventTarget(),
@@ -27,6 +28,7 @@ function createHarness(initialOffset = 9000, reducedMotion = false) {
 			node.dispatchEvent(new Event('scroll'));
 		}
 	});
+	vi.stubGlobal('getComputedStyle', () => ({ width: `${pageWidth ?? node.clientWidth}px` }));
 	const onSettled = vi.fn();
 	const snap = createWeekPagerSnap(node as unknown as HTMLElement, onSettled);
 
@@ -63,6 +65,14 @@ afterEach(() => {
 });
 
 describe('week pager snap finish', () => {
+	it('finishes at the fractional CSS snap position', () => {
+		const width = 412.19049;
+		const h = createHarness(14 * width, false, width);
+		h.approach(15 * width);
+		h.advance(160);
+		expect(h.node.scrollLeft).toBeCloseTo(15 * width, 6);
+		h.snap.destroy();
+	});
 	it.each([1, -1])('shortens the slow tail without overshooting in direction %s', (direction) => {
 		const h = createHarness(direction === 1 ? 9000 : 11000);
 		h.approach(10000, direction);

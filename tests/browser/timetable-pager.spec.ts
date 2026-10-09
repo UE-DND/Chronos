@@ -154,6 +154,66 @@ test('keeps vertical swipes with initial sideways jitter on the current week', a
 	}
 });
 
+test('keeps a fractional-width page and its indicator still throughout vertical gestures', async ({
+	page,
+	request
+}) => {
+	await page.setViewportSize({ width: 430, height: 450 });
+	await page.addInitScript(
+		(key) => localStorage.setItem(key, 'fixed'),
+		PREFERENCE_STORAGE_KEYS.timetableLayoutMode
+	);
+	const { pager } = await importTimetable(page, request);
+	await pager.evaluate((node) => (node.style.width = '412.25px'));
+	await page.waitForTimeout(200);
+	const initial = await pager.evaluate((node) => node.scrollLeft);
+	const index = Math.round(initial / 412.25);
+	const body = pager.locator('.timetable-week-page').nth(index).getByRole('region');
+	const rect = (await body.boundingBox())!;
+	const start = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+	await expect(page.locator('#week-indicator')).toHaveAttribute('inert', '');
+	const probe = await pager.evaluateHandle((node) => {
+		const initial = node.scrollLeft;
+		const indicator = document.querySelector('#week-indicator')!;
+		let maxDeviation = 0;
+		let indicatorShown = false;
+		const sample = () => {
+			maxDeviation = Math.max(maxDeviation, Math.abs(node.scrollLeft - initial));
+			indicatorShown ||= !indicator.hasAttribute('inert');
+		};
+		node.addEventListener('scroll', sample);
+		const observer = new MutationObserver(sample);
+		observer.observe(indicator, { attributes: true, attributeFilter: ['inert'] });
+		return {
+			stop() {
+				sample();
+				node.removeEventListener('scroll', sample);
+				observer.disconnect();
+				return { maxDeviation, indicatorShown };
+			}
+		};
+	});
+	for (const sign of [-1, 1]) {
+		await body.evaluate((node) => (node.scrollTop = (node.scrollHeight - node.clientHeight) / 2));
+		const before = await body.evaluate((node) => node.scrollTop);
+		await swipePath(page, start, [
+			{ x: sign * 3, y: sign * 12 },
+			{ x: sign * 10, y: sign * 40 },
+			{ x: sign * 25, y: sign * 80 },
+			{ x: sign * 40, y: sign * 120 }
+		]);
+		await expect
+			.poll(async () => sign * ((await body.evaluate((node) => node.scrollTop)) - before))
+			.toBeLessThan(0);
+		await page.waitForTimeout(500);
+	}
+	expect(await probe.evaluate((probe) => probe.stop())).toEqual({
+		maxDeviation: 0,
+		indicatorShown: false
+	});
+	await probe.dispose();
+});
+
 test('locks horizontal paging against vertical scrolling even when the finger turns vertically', async ({
 	page,
 	request
