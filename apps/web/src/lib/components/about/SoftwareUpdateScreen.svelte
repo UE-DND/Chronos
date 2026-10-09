@@ -129,9 +129,9 @@
 			</HighlightRowList>
 
 			{#if htmlBody && updateState.state.hasNewerVersion}
-				<MineSection title={hostT('about.update.changelog')}>
+				<MineSection title={hostT('about.update.changelog')} comfortable>
 					<div
-						class="markdown-prose markdown-prose--release prose prose-sm max-w-none px-2 dark:prose-invert"
+						class="markdown-prose markdown-prose--release prose prose-sm max-w-none dark:prose-invert"
 					>
 						{@html htmlBody}
 					</div>

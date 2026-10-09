@@ -1,3 +1,8 @@
+.markdown-prose {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
 .markdown-prose h1 {
 	margin: 0 0 1rem;
 	font-size: 1.25rem;
@@ -38,11 +43,13 @@
 	flex-direction: column;
 	gap: 0.5rem;
 	margin: 0 0 1rem;
-	padding-left: 1.25rem;
+	padding-inline-start: 1.25rem;
 	color: var(--color-on-surface-variant);
 }
 
 .markdown-prose li {
+	margin: 0;
+	padding-inline-start: 0;
 	line-height: 1.65;
 }
 
@@ -118,16 +125,20 @@
 }
 
 .markdown-prose--release h2 {
-	margin: 0 0 0.75rem;
+	margin: 1.5rem 0 0.75rem;
 	font-size: 1rem;
 	font-weight: 500;
 	color: var(--color-on-surface);
 }
 
-.markdown-prose--release ul {
-	margin-bottom: 0;
-}
-
 .markdown-prose--release a {
 	text-decoration: none;
+}
+
+.markdown-prose > :first-child {
+	margin-top: 0;
+}
+
+.markdown-prose > :last-child {
+	margin-bottom: 0;
 }

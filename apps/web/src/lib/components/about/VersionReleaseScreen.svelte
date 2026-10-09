@@ -70,9 +70,9 @@
 			/>
 		</HighlightRowList>
 
-		<MineSection title={hostT('about.release.detail.changelog')}>
+		<MineSection title={hostT('about.release.detail.changelog')} comfortable>
 			<div
-				class="markdown-prose markdown-prose--release prose prose-sm max-w-none px-2 dark:prose-invert"
+				class="markdown-prose markdown-prose--release prose prose-sm max-w-none dark:prose-invert"
 			>
 				{@html htmlBody || emptyBodyHtml}
 			</div>
