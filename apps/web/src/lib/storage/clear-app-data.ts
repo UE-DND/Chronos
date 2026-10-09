@@ -1,3 +1,4 @@
+import { appLocalStorage, appSessionStorage } from './storage-namespace';
 import type { ChronosEngine } from '@chronos/core';
 import { getAppEngine } from '#lib/services/app-engine.ts';
 import { estimateCacheStorageBytes } from './cache-storage';
@@ -41,10 +42,10 @@ export async function estimateAppDataBytes(engine?: ChronosEngine): Promise<numb
 		total += await resolvedEngine.storage.estimateStorageBytes();
 	}
 	if (typeof localStorage !== 'undefined') {
-		total += estimateStorageBytes(localStorage, CHRONOS_STORAGE_PREFIX);
+		total += estimateStorageBytes(appLocalStorage(), CHRONOS_STORAGE_PREFIX);
 	}
 	if (typeof sessionStorage !== 'undefined') {
-		total += estimateStorageBytes(sessionStorage, CHRONOS_STORAGE_PREFIX);
+		total += estimateStorageBytes(appSessionStorage(), CHRONOS_STORAGE_PREFIX);
 	}
 	if (typeof caches !== 'undefined') {
 		total += await estimateCacheStorageBytes(caches);

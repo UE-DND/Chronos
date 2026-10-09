@@ -1,6 +1,9 @@
 import { isPluginBinaryValue } from '@chronos/core';
 import type { ChronosDB } from '#lib/storage/db.ts';
-import { PluginBinaryRepository } from '#lib/storage/plugin-binary-repository.ts';
+import {
+	PluginBinaryRepository,
+	preparePluginBinaryRow
+} from '#lib/storage/plugin-binary-repository.ts';
 import { PluginDataRepository } from '#lib/storage/plugin-data-repository.ts';
 
 /**
@@ -11,37 +14,64 @@ export class PluginKvRepository {
 	private readonly json: PluginDataRepository;
 	private readonly binary: PluginBinaryRepository;
 
-	constructor(database: ChronosDB) {
+	constructor(private database: ChronosDB) {
 		this.json = new PluginDataRepository(database);
 		this.binary = new PluginBinaryRepository(database);
 	}
 
 	async get<T>(pluginId: string, key: string): Promise<T | null> {
-		const blob = await this.binary.get(pluginId, key);
-		if (blob) return blob as T;
-		return this.json.get<T>(pluginId, key);
+		return this.database.transaction(
+			'r',
+			[this.database.pluginData, this.database.pluginBinary],
+			async () => {
+				const blob = await this.binary.get(pluginId, key);
+				if (blob) return blob as T;
+				return this.json.get<T>(pluginId, key);
+			}
+		);
 	}
 
 	async set<T>(pluginId: string, key: string, value: T): Promise<void> {
-		if (isPluginBinaryValue(value)) {
-			await this.json.delete(pluginId, key);
-			await this.binary.set(pluginId, key, value);
-			return;
-		}
-		await this.binary.delete(pluginId, key);
-		await this.json.set(pluginId, key, value);
+		const row = isPluginBinaryValue(value)
+			? await preparePluginBinaryRow(pluginId, key, value)
+			: null;
+		await this.database.transaction(
+			'rw',
+			[this.database.pluginData, this.database.pluginBinary],
+			async () => {
+				if (row) {
+					await this.json.delete(pluginId, key);
+					await this.database.pluginBinary.put(row);
+				} else {
+					await this.binary.delete(pluginId, key);
+					await this.json.set(pluginId, key, value);
+				}
+			}
+		);
 	}
 
 	async delete(pluginId: string, key: string): Promise<void> {
-		await Promise.all([this.json.delete(pluginId, key), this.binary.delete(pluginId, key)]);
+		await this.database.transaction(
+			'rw',
+			[this.database.pluginData, this.database.pluginBinary],
+			() => Promise.all([this.json.delete(pluginId, key), this.binary.delete(pluginId, key)])
+		);
 	}
 
 	async clear(pluginId: string): Promise<void> {
-		await Promise.all([this.json.clear(pluginId), this.binary.clear(pluginId)]);
+		await this.database.transaction(
+			'rw',
+			[this.database.pluginData, this.database.pluginBinary],
+			() => Promise.all([this.json.clear(pluginId), this.binary.clear(pluginId)])
+		);
 	}
 
 	async clearAll(): Promise<void> {
-		await Promise.all([this.json.clearAll(), this.binary.clearAll()]);
+		await this.database.transaction(
+			'rw',
+			[this.database.pluginData, this.database.pluginBinary],
+			() => Promise.all([this.json.clearAll(), this.binary.clearAll()])
+		);
 	}
 
 	async estimateBytes(): Promise<number> {

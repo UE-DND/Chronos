@@ -30,7 +30,9 @@ test('clock summary below the host toolbar does not add the native top inset aga
 	request
 }, testInfo) => {
 	await request.post('/__e2e/deploy?build=old');
-	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	await context.route('https://ue-dnd.github.io/Chronos/plugins/releases/**', async (route) => {
 		const url = new URL(route.request().url());
 		const path = url.pathname.replace('/Chronos/plugins/releases/', '/__e2e/market/');
@@ -76,7 +78,9 @@ test('native safe areas move between edges on rotation even when WebView env val
 	request
 }) => {
 	await request.post('/__e2e/deploy?build=old');
-	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	const cdp = await page.context().newCDPSession(page);
 	// Keep the browser's portrait values stale while native WindowInsets change.
 	await cdp.send('Emulation.setSafeAreaInsetsOverride', {
@@ -122,7 +126,9 @@ test('landscape timetable and secondary pages avoid the status bar, cutout and g
 	request
 }) => {
 	await request.post('/__e2e/deploy?build=old');
-	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	await page.goto(`/Chronos/s#${payload}`);
 	await expect(page.getByRole('heading', { name: timetable.name })).toBeVisible();
 	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();

@@ -2,7 +2,7 @@ import { expect, test, type Page, type Locator } from '@playwright/test';
 import fixture from '../../packages/core/tests/fixtures/timetable.json' with { type: 'json' };
 import { encodeSharePayload } from '../../packages/plugins/codec-share/src/share-link/chronos-share-link-codec.ts';
 import type { Timetable } from '../../packages/core/src/domain/timetable';
-import { PREFERENCE_STORAGE_KEYS } from '../../packages/core/src/domain/preferences';
+import { PREFERENCE_STORAGE_KEYS } from './storage-keys';
 
 const timetable: Timetable = {
 	...fixture,
@@ -65,7 +65,9 @@ async function expectPrimaryBorder(capsule: Locator) {
 test.beforeEach(async ({ page, request }) => {
 	await request.post('/__e2e/deploy?build=old');
 	await page.clock.setFixedTime(new Date('2026-03-02T08:10:00+08:00'));
-	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 });
 
 async function importTimetable(page: Page, source: Timetable = timetable) {

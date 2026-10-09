@@ -29,7 +29,7 @@ async function storedCourses(page: Page) {
 	return page.evaluate(
 		() =>
 			new Promise<{ name: string; weeksCsv: string }[]>((resolve, reject) => {
-				const request = indexedDB.open('chronos');
+				const request = indexedDB.open('chronos:/Chronos:db');
 				request.onerror = () => reject(request.error);
 				request.onsuccess = () => {
 					const db = request.result;
@@ -56,7 +56,9 @@ for (const viewport of [
 		await page.setViewportSize(viewport);
 		await request.post('/__e2e/deploy?build=old');
 		await page.clock.install({ time: new Date('2026-03-02T08:00:00+08:00') });
-		await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+		await page.addInitScript(() =>
+			localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+		);
 		await page.goto(`/Chronos/s#${payload}`);
 		await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
 		await expect.poll(() => storedCourses(page)).toHaveLength(1);

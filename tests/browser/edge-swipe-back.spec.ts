@@ -7,7 +7,9 @@ test('edge scrolling ignores sideways jitter while deliberate swipes still retur
 	request
 }) => {
 	await request.post('/__e2e/deploy?build=old');
-	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	await page.goto('/Chronos/');
 	await page.getByRole('tab', { name: '我的', exact: true }).click();
 	await page.getByText('显示设置', { exact: true }).click();

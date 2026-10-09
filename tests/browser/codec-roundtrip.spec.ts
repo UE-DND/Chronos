@@ -16,7 +16,7 @@ const payload = await encodeSharePayload(timetable);
 async function storedWeeks(page: Page) {
 	return page.evaluate(async () => {
 		const database = await new Promise<IDBDatabase>((resolve, reject) => {
-			const request = indexedDB.open('chronos');
+			const request = indexedDB.open('chronos:/Chronos:db');
 			request.onsuccess = () => resolve(request.result);
 			request.onerror = () => reject(request.error);
 		});
@@ -47,7 +47,9 @@ test('QR PNG download and file import preserve whole-semester weeks after reload
 }, testInfo) => {
 	await request.post('/__e2e/deploy?build=old');
 	await page.clock.install({ time: new Date('2026-03-30T08:00:00+08:00') });
-	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	await context.route('https://ue-dnd.github.io/Chronos/plugins/releases/**', async (route) => {
 		const url = new URL(route.request().url());
 		const path = url.pathname.replace('/Chronos/plugins/releases/', '/__e2e/market/');

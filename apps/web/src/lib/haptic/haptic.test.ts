@@ -11,11 +11,11 @@ import {
 const mockLocalStorage = new Map<string, string>();
 
 function enableHaptic() {
-	mockLocalStorage.set('chronos_preferences:haptic_feedback_enabled', '1');
+	mockLocalStorage.set('chronos:/:chronos_preferences:haptic_feedback_enabled', '1');
 }
 
 function disableHaptic() {
-	mockLocalStorage.set('chronos_preferences:haptic_feedback_enabled', '0');
+	mockLocalStorage.set('chronos:/:chronos_preferences:haptic_feedback_enabled', '0');
 }
 
 function stubNavigatorVibrate(

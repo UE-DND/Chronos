@@ -383,6 +383,63 @@ describe('OfficialPluginService', () => {
 		expect(stored?.records).toHaveLength(1);
 	});
 
+	it('rejects reset while host preparation is in flight before a persisted lock exists', async () => {
+		const entered = Promise.withResolvers<void>();
+		const loaded =
+			Promise.withResolvers<import('./official-plugin-types').InstalledOfficialPluginRecord[]>();
+		vi.spyOn(service.installationStore, 'load').mockImplementationOnce(async () => {
+			entered.resolve();
+			return loaded.promise;
+		});
+		const preparing = service.prepareHostUpdate({
+			host: { ...HOST_BUILD, buildId: 'next' },
+			pluginCatalogUrl: 'https://example.com/catalog.json',
+			requiredPluginIds: []
+		});
+		await entered.promise;
+		try {
+			await expect(service.resetAfterFactoryClear()).rejects.toThrow();
+			expect(service.installationStore.prepared).toBeUndefined();
+		} finally {
+			loaded.resolve([]);
+		}
+		await preparing;
+	});
+
+	it('reset waits for an aborted install before stopping runtime', async () => {
+		const started = Promise.withResolvers<void>();
+		const download = Promise.withResolvers<HttpResponse>();
+		const manifest: PluginManifest = {
+			id: 'test-plugin',
+			name: { en: 'Test' },
+			description: { en: 'Test' },
+			author: 'Test',
+			version: '1.0.0',
+			type: 'tool',
+			toolGroup: 'utility',
+			bundleFormat: 'esm',
+			bundleUrl: '/b.js',
+			sha256: await engine.runtime.sha256(SAMPLE_BUNDLE)
+		};
+		httpRequest.mockImplementationOnce(async () => {
+			started.resolve();
+			return download.promise;
+		});
+		const installing = service.install(manifest).catch((error: unknown) => error);
+		await started.promise;
+		let stopped = false;
+		const stopping = service.resetAfterFactoryClear().then(() => {
+			stopped = true;
+		});
+		await Promise.resolve();
+		expect(stopped).toBe(false);
+		download.resolve(httpResponse({ text: async () => SAMPLE_BUNDLE }));
+		expect(await installing).toMatchObject({ name: 'AbortError' });
+		await stopping;
+		expect(service.listInstalled()).toEqual([]);
+		expect(engine.isPluginLoaded('test-plugin')).toBe(false);
+	});
+
 	it('resetAfterFactoryClear unloads plugins and clears installed cache', async () => {
 		const hash = await engine.env.runtime.sha256(SAMPLE_BUNDLE);
 		const manifest: PluginManifest = {
@@ -820,13 +877,15 @@ describe('OfficialPluginService', () => {
 		await service.init();
 		const oldSync = service.retryPendingUpdates();
 		await engine.storage.deletePluginData(OFFICIAL_PLUGINS_PLUGIN_ID, INSTALLED_STORAGE_KEY);
-		await service.resetAfterFactoryClear();
-		await service.init();
+		const stopping = service.resetAfterFactoryClear();
 		finishCatalog(
 			httpResponse({
 				json: async <T>() => ({ version: 1, manifests: [OFFICIAL_MANIFEST_URL] }) as T
 			})
 		);
+		await stopping;
+		service.resumeAfterFactoryClear();
+		await service.init();
 		await oldSync;
 		expect(service.listInstalled()).toEqual([]);
 		expect(engine.isPluginLoaded('test-plugin')).toBe(false);

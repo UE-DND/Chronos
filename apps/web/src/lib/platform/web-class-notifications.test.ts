@@ -251,7 +251,7 @@ describe('web class reminders', () => {
 		const open = vi.fn();
 		const off = initWebClassNotificationLinks({ onDeepLink: open });
 		messages.dispatchEvent(
-			new MessageEvent('message', { data: { type: 'chronos:class-notification-open' } })
+			new MessageEvent('message', { data: { type: 'chronos:/:class-notification-open' } })
 		);
 		expect(open).toHaveBeenCalledOnce();
 		off();

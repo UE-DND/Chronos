@@ -216,6 +216,12 @@ export class OfficialPluginRuntimeActivator {
 			await this.engine.revertToDefaultThemes();
 	}
 
+	async deactivateAll(): Promise<void> {
+		for (const id of this.activeHandles.keys()) {
+			await this.deactivate(id, { revertThemes: false });
+		}
+	}
+
 	disposeAll(): void {
 		for (const [, handle] of this.activeHandles) {
 			handle.dispose();

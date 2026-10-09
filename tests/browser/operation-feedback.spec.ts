@@ -13,8 +13,8 @@ test('display settings write once for row, radio and keyboard activation', async
 }) => {
 	await request.post('/__e2e/deploy?build=old');
 	await page.addInitScript(() => {
-		localStorage.setItem('chronos:onboarding-seen', '1');
-		localStorage.setItem('chronos_preferences:timetable_layout_mode', 'fixed');
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1');
+		localStorage.setItem('chronos:/Chronos:chronos_preferences:timetable_layout_mode', 'fixed');
 	});
 	await page.goto('/Chronos/display-settings');
 	await expect(page.getByText('暗色主题', { exact: true })).toBeVisible();
@@ -25,10 +25,10 @@ test('display settings write once for row, radio and keyboard activation', async
 		const setItem = Object.getOwnPropertyDescriptor(Storage.prototype, 'setItem')!
 			.value as Storage['setItem'];
 		Storage.prototype.setItem = function (key, value) {
-			if (key === 'chronos_preferences:theme_mode') writes.push(value);
+			if (key === 'chronos:/Chronos:chronos_preferences:theme_mode') writes.push(value);
 			if (
-				key === 'chronos_preferences:timetable_layout_mode' ||
-				key === 'chronos_preferences:capsule_corner_style'
+				key === 'chronos:/Chronos:chronos_preferences:timetable_layout_mode' ||
+				key === 'chronos:/Chronos:chronos_preferences:capsule_corner_style'
 			)
 				otherWrites.push({ key, value });
 			setItem.call(this, key, value);
@@ -59,8 +59,8 @@ test('display settings write once for row, radio and keyboard activation', async
 					.otherPreferenceWrites
 		)
 	).toEqual([
-		{ key: 'chronos_preferences:timetable_layout_mode', value: 'compact' },
-		{ key: 'chronos_preferences:capsule_corner_style', value: 'pill' }
+		{ key: 'chronos:/Chronos:chronos_preferences:timetable_layout_mode', value: 'compact' },
+		{ key: 'chronos:/Chronos:chronos_preferences:capsule_corner_style', value: 'pill' }
 	]);
 });
 
@@ -95,9 +95,9 @@ for (const activation of ['row', 'keyboard'] as const) {
 		}) => {
 			await request.post('/__e2e/deploy?build=old');
 			await page.addInitScript(({ key, before }) => {
-				localStorage.setItem('chronos:onboarding-seen', '1');
-				if (localStorage.getItem(`chronos_preferences:${key}`) === null)
-					localStorage.setItem(`chronos_preferences:${key}`, before);
+				localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1');
+				if (localStorage.getItem(`chronos:/Chronos:chronos_preferences:${key}`) === null)
+					localStorage.setItem(`chronos:/Chronos:chronos_preferences:${key}`, before);
 			}, setting);
 			const errors: string[] = [];
 			page.on('pageerror', (error) => errors.push(error.message));
@@ -112,7 +112,7 @@ for (const activation of ['row', 'keyboard'] as const) {
 				let attempts = 0;
 				Object.assign(window, { preferenceAttempts: () => attempts });
 				Storage.prototype.setItem = function (name, value) {
-					if (name === `chronos_preferences:${key}` && ++attempts === 1)
+					if (name === `chronos:/Chronos:chronos_preferences:${key}` && ++attempts === 1)
 						throw new DOMException('Test preference failure', 'QuotaExceededError');
 					setItem.call(this, name, value);
 				};
@@ -126,7 +126,7 @@ for (const activation of ['row', 'keyboard'] as const) {
 				await expect(page.getByRole('radio', { name: setting.initial })).toBeChecked();
 			expect(
 				await page.evaluate(
-					(key) => localStorage.getItem(`chronos_preferences:${key}`),
+					(key) => localStorage.getItem(`chronos:/Chronos:chronos_preferences:${key}`),
 					setting.key
 				)
 			).toBe(setting.before);
@@ -139,7 +139,10 @@ for (const activation of ['row', 'keyboard'] as const) {
 			await expect(control).toBeChecked();
 			await expect
 				.poll(() =>
-					page.evaluate((key) => localStorage.getItem(`chronos_preferences:${key}`), setting.key)
+					page.evaluate(
+						(key) => localStorage.getItem(`chronos:/Chronos:chronos_preferences:${key}`),
+						setting.key
+					)
 				)
 				.toBe(setting.after);
 			expect(
@@ -154,7 +157,10 @@ for (const activation of ['row', 'keyboard'] as const) {
 			await expect(control).not.toBeChecked();
 			await expect
 				.poll(() =>
-					page.evaluate((key) => localStorage.getItem(`chronos_preferences:${key}`), setting.key)
+					page.evaluate(
+						(key) => localStorage.getItem(`chronos:/Chronos:chronos_preferences:${key}`),
+						setting.key
+					)
 				)
 				.toBe(setting.before);
 		});
@@ -168,8 +174,8 @@ test('display settings disable compact layout in landscape without writing prefe
 	await request.post('/__e2e/deploy?build=old');
 	await page.setViewportSize({ width: 844, height: 390 });
 	await page.addInitScript(() => {
-		localStorage.setItem('chronos:onboarding-seen', '1');
-		localStorage.setItem('chronos_preferences:timetable_layout_mode', 'fixed');
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1');
+		localStorage.setItem('chronos:/Chronos:chronos_preferences:timetable_layout_mode', 'fixed');
 	});
 	await page.goto('/Chronos/display-settings');
 	const compact = page.getByRole('radio', { name: /^一屏显示/ });
@@ -178,7 +184,9 @@ test('display settings disable compact layout in landscape without writing prefe
 	await expect(compact).not.toBeChecked();
 	await expect(page.getByRole('radio', { name: /^滚动查看/ })).toBeChecked();
 	expect(
-		await page.evaluate(() => localStorage.getItem('chronos_preferences:timetable_layout_mode'))
+		await page.evaluate(() =>
+			localStorage.getItem('chronos:/Chronos:chronos_preferences:timetable_layout_mode')
+		)
 	).toBe('fixed');
 });
 
@@ -186,7 +194,7 @@ async function holdStorage(page: Page) {
 	await page.evaluate(
 		() =>
 			new Promise<void>((resolve, reject) => {
-				const open = indexedDB.open('chronos');
+				const open = indexedDB.open('chronos:/Chronos:db');
 				open.onerror = () => reject(open.error);
 				open.onsuccess = () => {
 					const db = open.result;
@@ -227,14 +235,16 @@ for (const viewport of [
 			request
 		}, testInfo) => {
 			await request.post('/__e2e/deploy?build=old');
-			await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+			await page.addInitScript(() =>
+				localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+			);
 			await page.goto(`/Chronos/s#${payload}`);
 			await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
 			await expect(page.locator('.timetable-week-pager')).toBeVisible();
 			const courseId = await page.evaluate(
 				() =>
 					new Promise<string>((resolve, reject) => {
-						const open = indexedDB.open('chronos');
+						const open = indexedDB.open('chronos:/Chronos:db');
 						open.onerror = () => reject(open.error);
 						open.onsuccess = () => {
 							const db = open.result;
@@ -295,7 +305,9 @@ test('timetable details save displays progress and recovers after a write failur
 	request
 }) => {
 	await request.post('/__e2e/deploy?build=old');
-	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	await page.goto(`/Chronos/s#${payload}`);
 	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
 	await expect(page.locator('.timetable-week-pager')).toBeVisible();
@@ -329,7 +341,9 @@ test('course deletion displays progress and leaves a failed operation retryable'
 	request
 }) => {
 	await request.post('/__e2e/deploy?build=old');
-	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	await page.goto(`/Chronos/s#${payload}`);
 	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
 	await expect(page.locator('.timetable-week-pager')).toBeVisible();
@@ -359,7 +373,9 @@ test('timetable switching and deletion show progress and recover from storage er
 	request
 }) => {
 	await request.post('/__e2e/deploy?build=old');
-	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	for (const source of [timetable, { ...timetable, name: '第二课表' }]) {
 		await page.goto(`/Chronos/s#${await encodeSharePayload(source as Timetable)}`);
 		await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
@@ -373,7 +389,7 @@ test('timetable switching and deletion show progress and recover from storage er
 		const setItem = Object.getOwnPropertyDescriptor(Storage.prototype, 'setItem')!
 			.value as Storage['setItem'];
 		Storage.prototype.setItem = function (key, value) {
-			if (key === 'chronos_preferences:current_timetable_id')
+			if (key === 'chronos:/Chronos:chronos_preferences:current_timetable_id')
 				throw new DOMException('Test switch failure', 'QuotaExceededError');
 			setItem.call(this, key, value);
 		};

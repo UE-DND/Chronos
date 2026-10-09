@@ -2,7 +2,7 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 import timetable from '../../packages/core/tests/fixtures/timetable.json' with { type: 'json' };
 import { encodeSharePayload } from '../../packages/plugins/codec-share/src/share-link/chronos-share-link-codec.ts';
 import type { Timetable } from '../../packages/core/src/domain/timetable';
-import { PREFERENCE_STORAGE_KEYS } from '../../packages/core/src/domain/preferences';
+import { PREFERENCE_STORAGE_KEYS } from './storage-keys';
 
 const payload = await encodeSharePayload(timetable as Timetable);
 
@@ -57,7 +57,7 @@ async function importTimetable(
 			page.evaluate(
 				() =>
 					new Promise<number>((resolve, reject) => {
-						const request = indexedDB.open('chronos');
+						const request = indexedDB.open('chronos:/Chronos:db');
 						request.onerror = () => reject(request.error);
 						request.onsuccess = () => {
 							const database = request.result;
@@ -584,7 +584,7 @@ test('saves a long-press course drop for only the displayed week', async ({ page
 			() =>
 				new Promise<{ name: string; dayOfWeek: number; startPeriod: number; weeks: number[] }[]>(
 					(resolve, reject) => {
-						const request = indexedDB.open('chronos');
+						const request = indexedDB.open('chronos:/Chronos:db');
 						request.onerror = () => reject(request.error);
 						request.onsuccess = () => {
 							const db = request.result;

@@ -1,3 +1,4 @@
+import { createStorageNamespace } from '../../../../packages/core/src/constants/storage-namespace.ts';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -22,13 +23,14 @@ export function finalizeWorkerArtifacts(
 			.update(readFileSync(resolve(output, path)))
 			.digest('hex')
 	}));
+	const namespace = createStorageNamespace(base);
 	const source = `/* Generated per host build. No plugin code is evaluated in this worker. */
 const HOST = ${JSON.stringify(host)};
 const ASSETS = ${JSON.stringify(assets)};
-const CACHE = 'chronos-shell:' + self.registration.scope + ':' + HOST.buildId;
+const CACHE = ${JSON.stringify(namespace.key('shell:'))} + HOST.buildId;
 function changeState(change) {
  return new Promise((resolve, reject) => {
-  const open = indexedDB.open('chronos');
+  const open = indexedDB.open(${JSON.stringify(namespace.databaseName)});
   open.onupgradeneeded = () => { open.transaction.abort(); reject(new Error('Installation state unavailable')); };
   open.onerror = () => reject(open.error);
   open.onsuccess = () => {
@@ -73,7 +75,7 @@ self.addEventListener('activate', event => event.waitUntil((async () => {
  await self.clients.claim();
  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
  for (const client of clients) client.postMessage({ type: 'CHRONOS_HOST_ACTIVE', host: HOST });
- const prefix = 'chronos-shell:' + self.registration.scope + ':';
+ const prefix = ${JSON.stringify(namespace.key('shell:'))};
  for (const name of await caches.keys()) if (name.startsWith(prefix) && name !== CACHE) await caches.delete(name);
 })()));
 self.addEventListener('message', event => {

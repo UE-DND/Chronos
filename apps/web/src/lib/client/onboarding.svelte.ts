@@ -1,3 +1,4 @@
+import { appLocalStorage } from '#lib/storage/storage-namespace.ts';
 import { isShellRoute } from '#lib/navigation/routes.ts';
 import { getHostPlatform } from '#lib/platform/host-platform.ts';
 
@@ -27,7 +28,7 @@ export interface OnboardingState {
 export function hasSeenOnboarding(): boolean {
 	if (typeof window === 'undefined') return true;
 	try {
-		return localStorage.getItem(SEEN_KEY) === '1';
+		return appLocalStorage().getItem(SEEN_KEY) === '1';
 	} catch {
 		return false;
 	}
@@ -110,7 +111,7 @@ export class OnboardingController {
 		this.hasChecked = true;
 		if (typeof window !== 'undefined') {
 			try {
-				localStorage.setItem(SEEN_KEY, '1');
+				appLocalStorage().setItem(SEEN_KEY, '1');
 			} catch {
 				// Storage can be denied; keep onboarding closed for this session.
 			}

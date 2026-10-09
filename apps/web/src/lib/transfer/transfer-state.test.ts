@@ -53,8 +53,8 @@ describe('createTransferState', () => {
 	it('clears preview from memory and sessionStorage when clearPreview is called', () => {
 		const controller = createTransferState();
 
-		mockStorage['chronos:import-preview'] = JSON.stringify({ name: 'Test' });
-		mockStorage['chronos:import-preview-slot'] = 'share-link';
+		mockStorage['chronos:/:chronos:import-preview'] = JSON.stringify({ name: 'Test' });
+		mockStorage['chronos:/:chronos:import-preview-slot'] = 'share-link';
 
 		controller.loadPersistedPreview();
 		expect(controller.state.preview).toEqual({ name: 'Test' });
@@ -62,18 +62,18 @@ describe('createTransferState', () => {
 
 		controller.clearPreview();
 		expect(controller.state.preview).toBeNull();
-		expect(mockStorage['chronos:import-preview']).toBeUndefined();
+		expect(mockStorage['chronos:/:chronos:import-preview']).toBeUndefined();
 	});
 
 	it('clears sessionStorage when clearPersistedPreview is called', () => {
 		const controller = createTransferState();
 
-		mockStorage['chronos:import-preview'] = JSON.stringify({ name: 'Test' });
-		mockStorage['chronos:import-preview-slot'] = 'share-link';
+		mockStorage['chronos:/:chronos:import-preview'] = JSON.stringify({ name: 'Test' });
+		mockStorage['chronos:/:chronos:import-preview-slot'] = 'share-link';
 
 		controller.clearPersistedPreview();
-		expect(mockStorage['chronos:import-preview']).toBeUndefined();
-		expect(mockStorage['chronos:import-preview-slot']).toBeUndefined();
+		expect(mockStorage['chronos:/:chronos:import-preview']).toBeUndefined();
+		expect(mockStorage['chronos:/:chronos:import-preview-slot']).toBeUndefined();
 	});
 
 	it('skips confirmInputs update when values are unchanged', () => {
@@ -216,8 +216,8 @@ describe('createTransferState', () => {
 		expect(await controller.previewWithSlot('share-link', {})).toBe(true);
 		controller.persistPreview();
 
-		expect(mockStorage['chronos:import-preview']).toBeDefined();
-		expect(mockStorage['chronos:import-preview-slot']).toBe('share-link');
+		expect(mockStorage['chronos:/:chronos:import-preview']).toBeDefined();
+		expect(mockStorage['chronos:/:chronos:import-preview-slot']).toBe('share-link');
 
 		const success = await controller.confirmImport();
 		expect(success).toBe(true);

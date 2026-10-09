@@ -1,3 +1,4 @@
+import { createStorageNamespace } from '../../packages/core/src/constants/storage-namespace.ts';
 import { nativeBuildGuard } from '../../scripts/architecture/native-build-guard.ts';
 import { preinstallPrecachePlugin } from './src/lib/profile-codegen/preinstall-precache';
 import { fileURLToPath } from 'node:url';
@@ -49,6 +50,7 @@ const deployTarget = resolveDeployTarget();
 const targetDef = getDeployTargetDefinition(deployTarget);
 const shouldAnalyze = process.env.ANALYZE === 'true';
 const basePath = targetDef.basePath;
+const storageNamespace = createStorageNamespace(basePath);
 
 function resolveManualChunk(id: string): string | undefined {
 	if (!id.includes('node_modules')) return undefined;
@@ -237,7 +239,7 @@ export default defineConfig(({ mode }) => {
 					clientsClaim: true,
 					// The imported gate pins navigation and environment assets to this host build.
 					importScripts: [`sw-host-gate-${host.buildId}.js`, 'sw-class-notifications.js'],
-					cacheId: `chronos-${host.profileId}-${host.target}`,
+					cacheId: storageNamespace.key('precache'),
 					globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}'],
 					globIgnores: ['**/official-plugins/**', '**/plugins/releases/**'],
 					navigateFallback: null,
@@ -250,7 +252,7 @@ export default defineConfig(({ mode }) => {
 							urlPattern: /\/legal\/.*\.md$|\/licenses\/.*$/i,
 							handler: 'CacheFirst',
 							options: {
-								cacheName: `chronos-legal:${basePath}`,
+								cacheName: storageNamespace.key('legal'),
 								expiration: { maxEntries: 16, maxAgeSeconds: 2_592_000 }
 							}
 						},
@@ -258,7 +260,7 @@ export default defineConfig(({ mode }) => {
 							urlPattern: /\/manifest\.webmanifest$/i,
 							handler: 'NetworkFirst',
 							options: {
-								cacheName: `chronos-manifest:${basePath}`,
+								cacheName: storageNamespace.key('manifest'),
 								networkTimeoutSeconds: 5,
 								expiration: { maxEntries: 1, maxAgeSeconds: 86_400 }
 							}
@@ -269,6 +271,7 @@ export default defineConfig(({ mode }) => {
 			}),
 			paraglideVitePlugin({
 				project: './project.inlang',
+				cookieName: storageNamespace.localeCookie,
 				outdir: './src/lib/paraglide',
 				emitTsDeclarations: true
 			})

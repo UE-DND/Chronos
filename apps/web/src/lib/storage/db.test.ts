@@ -10,6 +10,7 @@ describe('ChronosDB schema', () => {
 			'images',
 			'pluginBinary',
 			'pluginData',
+			'pluginResources',
 			'timetables'
 		]);
 	});

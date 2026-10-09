@@ -27,7 +27,9 @@ for (const labels of [
 			request
 		}, testInfo) => {
 			await request.post('/__e2e/deploy?build=old');
-			await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+			await page.addInitScript(() =>
+				localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+			);
 			await page.goto('/Chronos/feedback-settings');
 			await expect(page.getByRole('heading', { name: labels.heading, exact: true })).toBeVisible();
 			const row = page.getByRole('button', { name: new RegExp(labels.title) });
@@ -71,7 +73,7 @@ for (const labels of [
 			await expect(row).toContainText(labels.minutes(5));
 			expect(
 				await page.evaluate(() =>
-					localStorage.getItem('chronos_preferences:prepare_reminder_minutes')
+					localStorage.getItem('chronos:/Chronos:chronos_preferences:prepare_reminder_minutes')
 				)
 			).toBe('5');
 			await page.reload();

@@ -7,6 +7,9 @@ function createMockDb() {
 	const pluginBinaryMap = new Map<string, PluginBinaryRow>();
 
 	const db = {
+		transaction: vi.fn(async (_mode: string, _tables: unknown, work: () => Promise<unknown>) =>
+			work()
+		),
 		pluginData: {
 			clear: vi.fn(async () => pluginDataMap.clear()),
 			get: vi.fn(async (id: string) => pluginDataMap.get(id)),
@@ -99,4 +102,35 @@ describe('PluginKvRepository', () => {
 		expect(pluginDataMap.has('plugin-a:asset')).toBe(true);
 		expect(await repo.get<{ version: number }>('plugin-a', 'asset')).toEqual({ version: 1 });
 	});
+});
+
+it('does not delete the old value when Blob conversion fails', async () => {
+	const { db, pluginDataMap } = createMockDb();
+	const repo = new PluginKvRepository(db);
+	await repo.set('plugin', 'key', { saved: true });
+	const deleting = vi.spyOn(db.pluginData, 'delete');
+	const blob = new Blob(['replacement']);
+	vi.spyOn(blob, 'arrayBuffer').mockRejectedValue(new Error('unreadable'));
+	await expect(repo.set('plugin', 'key', blob)).rejects.toThrow('unreadable');
+	expect(JSON.parse(pluginDataMap.get('plugin:key')!.valueJson)).toEqual({ saved: true });
+	expect(deleting).not.toHaveBeenCalled();
+});
+
+it('finishes Blob conversion before opening the replacement transaction', async () => {
+	const { db } = createMockDb();
+	const repo = new PluginKvRepository(db);
+	const transaction = vi.spyOn(db, 'transaction');
+	const gate = Promise.withResolvers<ArrayBuffer>();
+	const blob = new Blob(['replacement'], { type: 'text/plain' });
+	vi.spyOn(blob, 'arrayBuffer').mockReturnValue(gate.promise);
+	const writing = repo.set('plugin', 'key', blob);
+	expect(transaction).not.toHaveBeenCalled();
+	gate.resolve(new Uint8Array([1]).buffer);
+	await writing;
+	expect(transaction).toHaveBeenCalledWith(
+		'rw',
+		[db.pluginData, db.pluginBinary],
+		expect.any(Function)
+	);
+	expect((await repo.get<Blob>('plugin', 'key'))?.type).toBe('text/plain');
 });

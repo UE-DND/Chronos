@@ -1,4 +1,4 @@
-import { PREFERENCE_STORAGE_KEYS } from '@chronos/core';
+import { createStorageNamespace, PREFERENCE_STORAGE_KEYS } from '@chronos/core';
 
 const REDUCE_MOTION_STORAGE_KEY = PREFERENCE_STORAGE_KEYS.reduceMotionEnabled;
 export const REDUCE_MOTION_CLASS = 'reduce-motion';
@@ -10,7 +10,13 @@ export function isReduceMotionEnabled(): boolean {
 	if (typeof window === 'undefined') return false;
 	try {
 		if (typeof localStorage === 'undefined') return false;
-		const raw = localStorage.getItem(REDUCE_MOTION_STORAGE_KEY);
+		const raw = localStorage.getItem(
+			createStorageNamespace(
+				typeof document !== 'undefined'
+					? (document.documentElement?.dataset?.chronosBase ?? '')
+					: ''
+			).key(REDUCE_MOTION_STORAGE_KEY)
+		);
 		return raw === '1' || raw === 'true';
 	} catch {
 		return false;

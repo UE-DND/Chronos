@@ -8,11 +8,16 @@ import timetable from '../../packages/core/tests/fixtures/timetable.json';
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const output = resolve(root, 'dist/e2e');
 mkdirSync(output, { recursive: true });
-for (const build of ['old', 'new']) {
+for (const build of ['old', 'new', 'isolated']) {
 	execFileSync('vp', ['run', 'build:pages'], {
 		cwd: root,
 		stdio: 'inherit',
-		env: { ...process.env, PUBLIC_REGRESSION_BUILD: build, PUBLIC_POSTHOG_KEY: '' }
+		env: {
+			...process.env,
+			PUBLIC_REGRESSION_BUILD: build,
+			CHRONOS_BASE_PATH: build === 'isolated' ? '/Other' : '/Chronos',
+			PUBLIC_POSTHOG_KEY: ''
+		}
 	});
 	rmSync(resolve(output, build), { recursive: true, force: true });
 	cpSync(resolve(root, 'apps/web/build'), resolve(output, build), { recursive: true });

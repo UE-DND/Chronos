@@ -1,3 +1,4 @@
+import { appSessionStorage } from '#lib/storage/storage-namespace.ts';
 import type { Timetable } from '@chronos/core';
 import { ImportMode } from '#lib/domain/import-mode.ts';
 
@@ -22,7 +23,7 @@ export interface PreviewPersistence {
 export function createSessionPreviewPersistence(
 	storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 ): PreviewPersistence {
-	const resolvedStorage = storage ?? globalThis.sessionStorage;
+	const resolvedStorage = storage ?? appSessionStorage();
 	return {
 		save({ preview, slotId, importMode, confirmInputs }) {
 			resolvedStorage.setItem(PREVIEW_KEY, JSON.stringify(preview));

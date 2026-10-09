@@ -1,12 +1,12 @@
 import { createHash } from 'node:crypto';
 import { test, expect, type Page } from '@playwright/test';
-import { PREFERENCE_STORAGE_KEYS } from '../../packages/core/src/domain/preferences';
+import { PREFERENCE_STORAGE_KEYS } from './storage-keys';
 import type { PluginInstallationState } from '../../apps/web/src/lib/services/official-plugins/installed-store';
 
 async function installation(page: Page, stale?: { id: string; external?: boolean }) {
 	return page.evaluate(async (stale) => {
 		const database = await new Promise<IDBDatabase>((resolve, reject) => {
-			const request = indexedDB.open('chronos');
+			const request = indexedDB.open('chronos:/Chronos:db');
 			request.onsuccess = () => resolve(request.result);
 			request.onerror = () => reject(request.error);
 		});
@@ -80,7 +80,9 @@ async function preferredTheme(page: Page) {
 
 test.beforeEach(async ({ page, request, context }) => {
 	await request.post('/__e2e/deploy?build=old');
-	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	await context.route('https://ue-dnd.github.io/Chronos/plugins/releases/**', async (route) => {
 		const url = new URL(route.request().url());
 		const path = url.pathname.replace('/Chronos/plugins/releases/', '/__e2e/market/');

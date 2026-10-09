@@ -72,6 +72,16 @@ describe('deploy-targets configuration & isolation', () => {
 		});
 	});
 
+	it('uses an explicit deployment path and rejects invalid or mobile paths', () => {
+		expect(getDeployTargetDefinition('pages', '/Other').basePath).toBe('/Other');
+		expect(getDeployTargetDefinition('vercel', '/one/two').basePath).toBe('/one/two');
+		expect(getDeployTargetDefinition('pages', '').basePath).toBe('');
+		for (const invalid of ['relative', '/trailing/', '/one/../two', '/a?b']) {
+			expect(() => getDeployTargetDefinition('pages', invalid)).toThrow('CHRONOS_BASE_PATH');
+		}
+		expect(() => getDeployTargetDefinition('mobile', '/Other')).toThrow('Mobile');
+	});
+
 	it('creates correct adapters from definitions', () => {
 		const mobileAdapter = createDeployTargetAdapter(DEPLOY_TARGET_DEFINITIONS.mobile);
 		expect(mobileAdapter.name).toBe('@sveltejs/adapter-static');

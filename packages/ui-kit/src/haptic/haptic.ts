@@ -1,4 +1,4 @@
-import { PREFERENCE_STORAGE_KEYS } from '@chronos/core';
+import { createStorageNamespace, PREFERENCE_STORAGE_KEYS } from '@chronos/core';
 import { CHRONOS_NATIVE_BRIDGE_KEY, getNativeBridge } from '../platform/native-bridge';
 
 const HAPTIC_STORAGE_KEY = PREFERENCE_STORAGE_KEYS.hapticFeedbackEnabled;
@@ -44,7 +44,13 @@ export function isHapticFeedbackEnabled(): boolean {
 	if (typeof window === 'undefined') return false;
 	try {
 		if (typeof localStorage === 'undefined') return true;
-		const raw = localStorage.getItem(HAPTIC_STORAGE_KEY);
+		const raw = localStorage.getItem(
+			createStorageNamespace(
+				typeof document !== 'undefined'
+					? (document.documentElement?.dataset?.chronosBase ?? '')
+					: ''
+			).key(HAPTIC_STORAGE_KEY)
+		);
 		return raw !== '0' && raw !== 'false';
 	} catch {
 		return true;

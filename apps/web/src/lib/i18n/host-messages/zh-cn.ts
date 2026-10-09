@@ -477,7 +477,7 @@ export const zhCn = {
 	'about.clear.recoveryFailed': '数据已清除，但应用未能完全恢复初始状态。重启应用后会再次尝试。',
 	'about.clear.title': '清除所有数据？',
 	'about.clear.desc':
-		'将删除本设备上的所有课表、课程、壁纸、主题偏好与已保存的教务凭据。此操作不可恢复。',
+		'将清除课表、壁纸、教务凭据和插件数据，移除额外安装的插件并恢复默认设置。应用和预装插件会保留，此操作无法撤销。',
 	'about.update.subtitle.new': '建议及时更新以获取最新特性与体验优化',
 	'about.update.subtitle.swOnly': '检测到应用更新，安装后生效',
 	'about.update.checking': '正在检查最新版本…',

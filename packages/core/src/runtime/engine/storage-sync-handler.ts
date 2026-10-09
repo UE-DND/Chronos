@@ -1,3 +1,4 @@
+import { StorageClearError } from '../../types/services';
 import type { TimetableSelection } from './timetable-selection';
 import { DEFAULT_USER_PREFERENCES } from '../../domain/preferences';
 import type { Timetable } from '../../domain/timetable';
@@ -109,8 +110,14 @@ export class StorageSyncHandler {
 		this.selection.invalidate();
 		this.listGeneration += 1;
 		const storage = this.host.storage;
+		let cleanupError: StorageClearError | undefined;
 		if (storage.clearAllData) {
-			await storage.clearAllData();
+			try {
+				await storage.clearAllData();
+			} catch (error) {
+				if (!(error instanceof StorageClearError)) throw error;
+				cleanupError = error;
+			}
 		} else {
 			const list = await storage.listTimetables();
 			for (const t of list) {
@@ -124,6 +131,7 @@ export class StorageSyncHandler {
 		this.host.emit('timetables:updated', { timetables: [] });
 		this.host.emit('timetable:updated', { timetable: null as unknown as Timetable });
 		this.host.emit('preferences:updated', { preferences: this.host.getUserPreferences() });
+		if (cleanupError) throw cleanupError;
 	}
 
 	private applyTimetableList(list: TimetableSummary[], generation: number): boolean {

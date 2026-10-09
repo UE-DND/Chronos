@@ -1,3 +1,4 @@
+import { storageNamespace } from './storage-namespace';
 /**
  * Cache Storage helpers for app-owned offline caches.
  *
@@ -5,15 +6,16 @@
  * source shared by "clear all data" and the storage-usage estimate.
  */
 
-/** App caches use an owned namespace; generic Workbox or other sites' caches are untouched. */
-const APP_CACHE_PATTERNS: RegExp[] = [
-	/^chronos-shell:/,
-	/^chronos-.*-precache/,
-	/^chronos-(?:legal|manifest):/
-];
-
 function isAppCache(cacheName: string): boolean {
-	return APP_CACHE_PATTERNS.some((pattern) => pattern.test(cacheName));
+	return ['shell:', 'precache-', 'legal', 'manifest'].some((kind) =>
+		cacheName.startsWith(storageNamespace.key(kind))
+	);
+}
+function isHostCache(cacheName: string): boolean {
+	return (
+		cacheName.startsWith(storageNamespace.key('shell:')) ||
+		cacheName.startsWith(storageNamespace.key('precache-'))
+	);
 }
 
 /** Deletes app-owned caches, keeping third-party entries untouched. */
@@ -22,19 +24,13 @@ export async function clearAppCaches(
 	options?: { keepHostAssets?: boolean }
 ): Promise<void> {
 	if (!cacheStorage) return;
-	try {
-		const names = await cacheStorage.keys();
-		await Promise.all(
-			names
-				.filter((name) => isAppCache(name))
-				.filter(
-					(name) => !options?.keepHostAssets || !/^chronos-shell:|^chronos-.*-precache/.test(name)
-				)
-				.map((name) => cacheStorage.delete(name).catch(() => false))
-		);
-	} catch (err) {
-		console.warn('[cache-storage] Failed to clear app caches:', err);
-	}
+	const names = await cacheStorage.keys();
+	await Promise.all(
+		names
+			.filter((name) => isAppCache(name))
+			.filter((name) => !options?.keepHostAssets || !isHostCache(name))
+			.map((name) => cacheStorage.delete(name))
+	);
 }
 
 /** Sums cached response body sizes (settings page only; reads bodies into memory). */

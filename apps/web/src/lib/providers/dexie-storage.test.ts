@@ -17,7 +17,7 @@ describe('cross-tab storage changes', () => {
 			for (const newValue of ['other-timetable', null]) {
 				window.dispatchEvent(
 					Object.assign(new Event('storage'), {
-						key: PREFERENCE_STORAGE_KEYS.currentTimetableId,
+						key: 'chronos:/:' + PREFERENCE_STORAGE_KEYS.currentTimetableId,
 						newValue
 					})
 				);
@@ -27,12 +27,21 @@ describe('cross-tab storage changes', () => {
 				});
 			}
 			window.dispatchEvent(
-				Object.assign(new Event('storage'), { key: PREFERENCE_STORAGE_KEYS.themeMode })
+				Object.assign(new Event('storage'), {
+					key: 'chronos:/:' + PREFERENCE_STORAGE_KEYS.themeMode
+				})
 			);
 			expect(changed).toHaveBeenLastCalledWith({
 				type: 'preferences',
 				key: PREFERENCE_STORAGE_KEYS.themeMode
 			});
+			changed.mockClear();
+			window.dispatchEvent(
+				Object.assign(new Event('storage'), {
+					key: 'chronos:/Other:' + PREFERENCE_STORAGE_KEYS.themeMode
+				})
+			);
+			expect(changed).not.toHaveBeenCalled();
 		} finally {
 			storage.dispose();
 		}
@@ -75,4 +84,25 @@ it('broadcasts committed data changes without changing the active id, and closes
 	}
 	expect(channels).toHaveLength(2);
 	expect(channels.every((channel) => channel.close.mock.calls.length === 1)).toBe(true);
+});
+
+it('requests persistence only after a successful timetable save', async () => {
+	const request = vi.fn(async () => {});
+	const save = vi
+		.spyOn(TimetableRepository.prototype, 'saveTimetable')
+		.mockRejectedValueOnce(new Error('save failed'))
+		.mockResolvedValueOnce();
+	const storage = new DexieStorageProvider(undefined, null, null, undefined, request);
+	const timetable = createTimetable({ id: 'persistent', name: 'Persistent' });
+	const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+	try {
+		await expect(storage.saveTimetable(timetable)).rejects.toThrow('save failed');
+		expect(request).not.toHaveBeenCalled();
+		await storage.saveTimetable(timetable);
+		expect(request).toHaveBeenCalledOnce();
+	} finally {
+		storage.dispose();
+		save.mockRestore();
+		warn.mockRestore();
+	}
 });

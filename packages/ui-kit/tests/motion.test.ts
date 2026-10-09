@@ -69,7 +69,7 @@ describe('motion', () => {
 
 	it('reads reduce-motion preference from localStorage', () => {
 		expect(isReduceMotionEnabled()).toBe(false);
-		mockLocalStorage.set(PREFERENCE_STORAGE_KEYS.reduceMotionEnabled, '1');
+		mockLocalStorage.set('chronos:/:' + PREFERENCE_STORAGE_KEYS.reduceMotionEnabled, '1');
 		expect(isReduceMotionEnabled()).toBe(true);
 	});
 
@@ -81,7 +81,7 @@ describe('motion', () => {
 
 	it('combines user preference and system setting', () => {
 		expect(isReducedMotionActive()).toBe(false);
-		mockLocalStorage.set(PREFERENCE_STORAGE_KEYS.reduceMotionEnabled, '1');
+		mockLocalStorage.set('chronos:/:' + PREFERENCE_STORAGE_KEYS.reduceMotionEnabled, '1');
 		expect(isReducedMotionActive()).toBe(true);
 		mockLocalStorage.clear();
 		matchMediaMatches = true;

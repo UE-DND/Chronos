@@ -11,7 +11,9 @@ for (const viewport of [
 	}) => {
 		await page.setViewportSize(viewport);
 		await request.post('/__e2e/deploy?build=old');
-		await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+		await page.addInitScript(() =>
+			localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+		);
 		await context.route('https://ue-dnd.github.io/Chronos/plugins/releases/**', async (route) => {
 			const url = new URL(route.request().url());
 			const path = url.pathname.replace('/Chronos/plugins/releases/', '/__e2e/market/');

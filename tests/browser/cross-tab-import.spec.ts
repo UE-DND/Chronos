@@ -11,7 +11,9 @@ test('synchronizes the overwrite target across tabs and preserves the other time
 	request
 }) => {
 	await request.post('/__e2e/deploy?build=old');
-	await context.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await context.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	for (const name of ['课表 A', '课表 B']) {
 		await page.goto(`/Chronos/s#${await payload(name)}`);
 		await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
@@ -43,7 +45,9 @@ test('pins the deletion target across tabs and broadcasts deletion of an inactiv
 	request
 }) => {
 	await request.post('/__e2e/deploy?build=old');
-	await context.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await context.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	for (const name of ['课表 A', '课表 B']) {
 		await page.goto(`/Chronos/s#${await payload(name)}`);
 		await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
@@ -62,7 +66,7 @@ test('pins the deletion target across tabs and broadcasts deletion of an inactiv
 	await expect(dialog).toContainText('课表 A');
 	await expect(dialog).not.toContainText('课表 B');
 	const activeBefore = await other.evaluate(() =>
-		localStorage.getItem('chronos_preferences:current_timetable_id')
+		localStorage.getItem('chronos:/Chronos:chronos_preferences:current_timetable_id')
 	);
 	await dialog.getByRole('button', { name: '删除', exact: true }).click();
 	await expect(dialog).not.toBeVisible();
@@ -71,7 +75,9 @@ test('pins the deletion target across tabs and broadcasts deletion of an inactiv
 		await expect(tab.getByRole('button', { name: /课表 B/ }).locator('input')).toBeChecked();
 	}
 	expect(
-		await other.evaluate(() => localStorage.getItem('chronos_preferences:current_timetable_id'))
+		await other.evaluate(() =>
+			localStorage.getItem('chronos:/Chronos:chronos_preferences:current_timetable_id')
+		)
 	).toBe(activeBefore);
 	await page.reload();
 	await expect(page.getByRole('button', { name: /课表 B/ }).locator('input')).toBeChecked();
@@ -83,7 +89,9 @@ test('reports committed deletion separately when saving the successor selection 
 	request
 }) => {
 	await request.post('/__e2e/deploy?build=old');
-	await context.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await context.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	for (const name of ['课表 A', '课表 B']) {
 		await page.goto(`/Chronos/s#${await payload(name)}`);
 		await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
@@ -97,7 +105,7 @@ test('reports committed deletion separately when saving the successor selection 
 		const original = Object.getOwnPropertyDescriptor(Storage.prototype, 'setItem')!
 			.value as Storage['setItem'];
 		Storage.prototype.setItem = function (key, value) {
-			if (key === 'chronos_preferences:current_timetable_id')
+			if (key === 'chronos:/Chronos:chronos_preferences:current_timetable_id')
 				throw new DOMException('Test write failure', 'QuotaExceededError');
 			original.call(this, key, value);
 		};
@@ -110,7 +118,9 @@ test('reports committed deletion separately when saving the successor selection 
 	await expect(page.getByRole('button', { name: /课表 B/ })).toHaveCount(0);
 	await expect(page.getByRole('button', { name: /课表 A/ }).locator('input')).not.toBeChecked();
 	expect(
-		await page.evaluate(() => localStorage.getItem('chronos_preferences:current_timetable_id'))
+		await page.evaluate(() =>
+			localStorage.getItem('chronos:/Chronos:chronos_preferences:current_timetable_id')
+		)
 	).toBeNull();
 	await page.reload();
 	await expect(page.getByRole('button', { name: /课表 A/ }).locator('input')).toBeChecked();

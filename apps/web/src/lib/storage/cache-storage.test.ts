@@ -40,11 +40,20 @@ function createFakeCacheStorage(initial: Record<string, number[]> = {}) {
 }
 
 describe('clearAppCaches', () => {
+	it('propagates owned-cache deletion failures to the reset caller', async () => {
+		const caches = createFakeCacheStorage({ 'chronos:/:legal': [10] });
+		vi.spyOn(caches, 'delete').mockRejectedValue(new Error('denied'));
+		await expect(
+			clearAppCaches(caches as unknown as CacheStorage, { keepHostAssets: true })
+		).rejects.toThrow('denied');
+	});
+
 	it('deletes only app-owned caches and tolerates missing storage', async () => {
 		const caches = createFakeCacheStorage({
-			'chronos-shell:example:build': [10],
-			'chronos-legal:/Chronos': [20],
-			'chronos-default-pages-precache-v2': [30],
+			'chronos:/:shell:build': [10],
+			'chronos:/:legal': [20],
+			'chronos:/:precache-precache-v2': [30],
+			'chronos:/Other:legal': [70],
 			'third-party-cache': [40],
 			'workbox-precache-v2': [50],
 			'pages-cache': [60]
@@ -53,13 +62,10 @@ describe('clearAppCaches', () => {
 		await clearAppCaches(caches as unknown as CacheStorage);
 
 		expect(caches.deleted.sort()).toEqual(
-			[
-				'chronos-legal:/Chronos',
-				'chronos-shell:example:build',
-				'chronos-default-pages-precache-v2'
-			].sort()
+			['chronos:/:legal', 'chronos:/:shell:build', 'chronos:/:precache-precache-v2'].sort()
 		);
 		expect(await caches.keys()).toEqual([
+			'chronos:/Other:legal',
 			'third-party-cache',
 			'workbox-precache-v2',
 			'pages-cache'
@@ -71,8 +77,8 @@ describe('clearAppCaches', () => {
 describe('estimateCacheStorageBytes', () => {
 	it('sums cached response sizes and returns 0 without storage', async () => {
 		const caches = createFakeCacheStorage({
-			'chronos-shell:example:build': [100, 200],
-			'chronos-legal:/Chronos': [50]
+			'chronos:/:shell:build': [100, 200],
+			'chronos:/:legal': [50]
 		});
 
 		await expect(estimateCacheStorageBytes(caches as unknown as CacheStorage)).resolves.toBe(350);
@@ -80,7 +86,7 @@ describe('estimateCacheStorageBytes', () => {
 	});
 
 	it('ignores unreadable entries', async () => {
-		const caches = createFakeCacheStorage({ 'chronos-shell:example:build': [10] });
+		const caches = createFakeCacheStorage({ 'chronos:/:shell:build': [10] });
 		vi.spyOn(caches, 'open').mockRejectedValueOnce(new Error('denied'));
 
 		await expect(estimateCacheStorageBytes(caches as unknown as CacheStorage)).resolves.toBe(0);

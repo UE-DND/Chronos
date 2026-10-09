@@ -53,6 +53,7 @@ export function createHostIdentity(root: string, context?: HostIdentityContext):
 				deployment,
 				deploymentId,
 				target,
+				basePath: getDeployTargetDefinition(target).basePath,
 				environment
 			})
 		)

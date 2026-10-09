@@ -36,10 +36,14 @@ const server = createServer((request, response) => {
 		response.end('Simulated plugin download failure');
 		return;
 	}
-	const directory = resolve(output, build, market ? 'market' : '.');
+	const directory = resolve(
+		output,
+		pathname.startsWith('/Other') ? 'isolated' : build,
+		market ? 'market' : '.'
+	);
 	const localPath = market
 		? pathname.replace(/^\/__e2e\/market\/[^/]+\//, '')
-		: pathname.replace(/^\/Chronos\/?/, '');
+		: pathname.replace(/^\/(?:Chronos|Other)\/?/, '');
 	let path = resolve(directory, localPath || 'index.html');
 	if (!path.startsWith(directory + sep) && path !== directory) {
 		response.writeHead(403);

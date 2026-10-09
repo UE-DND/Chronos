@@ -1,3 +1,4 @@
+import { storageNamespace } from '#lib/storage/storage-namespace.ts';
 import { PUBLIC_POSTHOG_KEY, PUBLIC_POSTHOG_HOST } from '$app/env/public';
 import type { PostHog } from 'posthog-js';
 import type { IAnalyticsService } from '@chronos/core';
@@ -95,7 +96,8 @@ export function initAnalytics() {
 				autocapture: false,
 				disable_session_recording: true,
 				capture_performance: { web_vitals: false },
-				persistence: 'localStorage'
+				persistence: 'localStorage',
+				persistence_name: storageNamespace.key('analytics')
 			});
 			client = posthog;
 			const queued = pending;

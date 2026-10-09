@@ -1,3 +1,4 @@
+import { storageNamespace } from './storage-namespace';
 import Dexie, { type Table } from 'dexie';
 
 export interface TimetableRow {
@@ -38,20 +39,32 @@ export interface PluginBinaryRow {
 	updatedAt: number;
 }
 
+/** Immutable executable and static plugin resources, referenced by installation metadata. */
+export interface PluginResourceRow {
+	id: string;
+	pluginId: string;
+	code?: string | null;
+	cssCode?: string | null;
+	colorsJson?: string | null;
+	iconThemeJson?: string | null;
+}
+
 export class ChronosDB extends Dexie {
 	timetables!: Table<TimetableRow, string>;
 	courses!: Table<CourseRow, string>;
 	pluginData!: Table<PluginDataRow, string>;
 	pluginBinary!: Table<PluginBinaryRow, string>;
+	pluginResources!: Table<PluginResourceRow, string>;
 	images!: Table<{ id: string; blob: Blob }, string>;
 
-	constructor(name = 'chronos') {
+	constructor(name = storageNamespace.databaseName) {
 		super(name);
 		this.version(1).stores({
 			timetables: 'id, updatedAt',
 			courses: 'id, timetableId, [timetableId+dayOfWeek]',
 			pluginData: 'id, pluginId, key, updatedAt',
 			pluginBinary: 'id, pluginId, key, updatedAt',
+			pluginResources: 'id, pluginId',
 			images: 'id'
 		});
 	}

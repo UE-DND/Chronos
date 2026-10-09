@@ -51,6 +51,8 @@ vp run dev
 
 开发数据存放在浏览器本地数据库中。当前产品尚未发布，Chronos 自有数据库、结构和线格式版本固定为 `1`；不要新增升级链或旧格式兼容分支。开发数据失效时，手动清空对应站点数据并重新导入，应用不会在启动时自动删除数据。完整约定见 [AGENTS.md](AGENTS.md#未发布阶段的数据契约)。
 
+同源部署按部署根路径隔离 IndexedDB、localStorage、sessionStorage、离线缓存、语言 Cookie 和跨窗口同步。根路径部署使用 `chronos:/:`，`/Chronos` 使用 `chronos:/Chronos:`；命名空间不随应用版本或 Profile 改变。Web 构建可通过 `CHRONOS_BASE_PATH=/Other` 指定其他根路径，Mobile 根路径保持为空。调整根路径将使用独立数据空间，原有未隔离数据不自动迁移或删除。
+
 ### 架构边界和浏览器回归
 
 `vp run check` 检查工作区的运行时依赖、源码导入和 Svelte 脚本。检查同时解析 Web 与 Mobile 平台别名；`core` 可以声明 DOM 契约类型，但不能读取 DOM 全局对象或写入元素样式。生产 Web 构建还检查最终模块图，阻止间接打包 Capacitor。
@@ -267,7 +269,7 @@ Bundle、Manifest 和 Catalog 都由构建生成，不需要提交到版本库�
 
 插件 KV 支持 JSON 和二进制数据。二进制数据可以写入 `Blob` 或 `Uint8Array`，读取时统一返回 `Blob`。同一个键只能保存一种数据。写入 JSON 会替换原有二进制数据，反之亦然。详情见 [ADR 0036](.agents/docs/adr/0036-plugin-kv-binary-storage.md)。
 
-用户自定义图片和主题图片由宿主单独保存在 `images` 中。
+用户自定义图片和主题图片由宿主单独保存在 `images` 中。插件程序和静态 JSON、CSS 保存在 `pluginResources` 中；安装集合及更新准备快照只保存元数据和资源引用。资源与安装状态在同库事务内提交，卸载、更新采用或取消、重置时删除不再被引用的资源。插件配置和业务数据仍保存在 `pluginData`／`pluginBinary` 中。
 
 ## 参考：槽位目录
 

@@ -365,6 +365,35 @@ describe('OfficialPluginRuntimeActivator', () => {
 		expect(styles.filter((el) => !el.removed)).toHaveLength(1);
 	});
 
+	it('deactivateAll waits for asynchronous engine disposal', async () => {
+		const gate = Promise.withResolvers<void>();
+		const entered = Promise.withResolvers<void>();
+		vi.stubGlobal('__resetDispose', async () => {
+			entered.resolve();
+			await gate.promise;
+		});
+		const code = SAMPLE_BUNDLE.replace(
+			'apply: function',
+			'dispose: () => globalThis.__resetDispose(), apply: function'
+		);
+		await activator.activate({
+			manifest: { id: 'test-plugin', bundleUrl: '/b.js', sha256: 'hash' } as never,
+			code,
+			origin: { kind: 'user' },
+			installedAt: 1
+		});
+		let completed = false;
+		const stopping = activator.deactivateAll().then(() => {
+			completed = true;
+		});
+		await entered.promise;
+		expect(completed).toBe(false);
+		gate.resolve();
+		await stopping;
+		expect(activator.isActive('test-plugin')).toBe(false);
+		expect(engine.isPluginLoaded('test-plugin')).toBe(false);
+	});
+
 	it('unload disposes engine plugin handle', async () => {
 		installed.add('test-plugin');
 		await activator.activate({

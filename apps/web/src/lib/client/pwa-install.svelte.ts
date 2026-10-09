@@ -1,3 +1,4 @@
+import { appLocalStorage } from '#lib/storage/storage-namespace.ts';
 import { trackEvent } from '#lib/client/analytics.ts';
 import { snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
 import { getHostPlatform } from '#lib/platform/host-platform.ts';
@@ -138,7 +139,7 @@ const INSTALLED_KEY = 'chronos:pwa-installed';
 
 function safeSetItem(key: string, value: string): void {
 	try {
-		localStorage.setItem(key, value);
+		appLocalStorage().setItem(key, value);
 	} catch {
 		// private mode / storage denied: install flag stays in-memory only
 	}
@@ -146,7 +147,7 @@ function safeSetItem(key: string, value: string): void {
 
 function safeGetItem(key: string): string | null {
 	try {
-		return localStorage.getItem(key);
+		return appLocalStorage().getItem(key);
 	} catch {
 		return null;
 	}
@@ -256,7 +257,7 @@ export class PWAInstallController {
 	resetInstalledFlag() {
 		this.isInstalledLocally = false;
 		try {
-			localStorage.removeItem(INSTALLED_KEY);
+			appLocalStorage().removeItem(INSTALLED_KEY);
 		} catch {
 			// ignore
 		}

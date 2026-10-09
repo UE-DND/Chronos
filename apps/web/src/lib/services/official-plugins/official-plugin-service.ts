@@ -99,6 +99,9 @@ export class OfficialPluginService implements Disposable {
 	private lifecycle = new AbortController();
 	private operations = new PluginOperationCoordinator();
 	private syncPromise?: Promise<void>;
+	private factoryResetting = false;
+	private hostPreparations = 0;
+	private skipNextHostSync = false;
 	private hostBuild?: HostBuildIdentity;
 	private updateStatuses = new Map<
 		string,
@@ -122,6 +125,7 @@ export class OfficialPluginService implements Disposable {
 	}
 
 	async prepareProfile(profile: ChronosProfile): Promise<void> {
+		this.lifecycle.signal.throwIfAborted();
 		validateProfile(profile);
 		this.profile = profile;
 		await this.loadInstalledStore();
@@ -166,9 +170,12 @@ export class OfficialPluginService implements Disposable {
 		if (!this.profile) return;
 		const pending = planPreinstall(
 			this.profile,
-			this.listInstalled().filter((record) => this.isCompatible(record))
+			this.listInstalled().filter(
+				(record) => this.isCompatible(record) && !this.failures.has(record.manifest.id)
+			)
 		);
 		for (const entry of pending) {
+			this.lifecycle.signal.throwIfAborted();
 			try {
 				const cached = this.installedStore.find(entry.id);
 				if (cached && this.isCompatible(cached)) {
@@ -238,7 +245,9 @@ export class OfficialPluginService implements Disposable {
 		await this.activateInstalledFromCache();
 		this.initialized = true;
 		this.installedStore.notify();
-		if (this.hostBuild?.target !== 'mobile') void this.retryPendingUpdates();
+		if (!this.skipNextHostSync && this.hostBuild?.target !== 'mobile')
+			void this.retryPendingUpdates();
+		this.skipNextHostSync = false;
 		this.storeSubscription = this.installedStore.onChanged(() => {
 			if (this.installedStore.hostChanged) {
 				this.dispose();
@@ -334,7 +343,7 @@ export class OfficialPluginService implements Disposable {
 		return this.installedStore;
 	}
 	async retryPendingUpdates(): Promise<void> {
-		if (this.disposed || this.installedStore.isFrozen) return;
+		if (this.disposed || this.factoryResetting || this.installedStore.isFrozen) return;
 		if (this.syncPromise) return this.syncPromise;
 		const signal = this.lifecycle.signal;
 		const operation: Promise<void> = this.syncWithHostCatalog()
@@ -353,6 +362,7 @@ export class OfficialPluginService implements Disposable {
 		return operation;
 	}
 	private async reconcileRuntime(): Promise<void> {
+		if (this.factoryResetting) return;
 		for (const id of this.activeVersions.keys()) {
 			if (this.operations.isBusy(id)) continue;
 			const record = this.installedStore.find(id);
@@ -376,13 +386,28 @@ export class OfficialPluginService implements Disposable {
 		progress?: (percent: number) => void,
 		options?: { signal?: AbortSignal }
 	): Promise<string> {
+		this.lifecycle.signal.throwIfAborted();
+		this.hostPreparations++;
+		try {
+			return await this.performHostPreparation(update, progress, options);
+		} finally {
+			this.hostPreparations--;
+		}
+	}
+	private async performHostPreparation(
+		update: HostPluginPreparation,
+		progress?: (percent: number) => void,
+		options?: { signal?: AbortSignal }
+	): Promise<string> {
+		const lifecycleSignal = this.lifecycle.signal;
+		lifecycleSignal.throwIfAborted();
 		await this.loadInstalledStore();
 		await this.operations.waitForAllSettled();
 		if (this.syncPromise) await this.syncPromise.catch(() => {});
 		await this.installedStore.load();
 		const revision = this.installedStore.revision;
 		const merged = mergeAbortSignals([
-			this.lifecycle.signal,
+			lifecycleSignal,
 			...(options?.signal ? [options.signal] : [])
 		]);
 		const signal = merged.signal;
@@ -479,6 +504,7 @@ export class OfficialPluginService implements Disposable {
 
 	private async activateInstalledFromCache(options?: { skipIds?: Set<string> }): Promise<void> {
 		for (const record of this.installedStore.getCache()) {
+			this.lifecycle.signal.throwIfAborted();
 			if (options?.skipIds?.has(record.manifest.id)) continue;
 			if (!this.isCompatible(record)) {
 				this.updateStatuses.set(record.manifest.id, {
@@ -535,9 +561,12 @@ export class OfficialPluginService implements Disposable {
 	}
 
 	async installFromManifestUrl(manifestUrl: string): Promise<void> {
+		const signal = this.lifecycle.signal;
+		signal.throwIfAborted();
 		assertValidManifestInstallUrl(manifestUrl);
 		const manifest = await this.fetchManifest(manifestUrl);
-		await this.install(manifest, manifestUrl);
+		signal.throwIfAborted();
+		await this.install(manifest, manifestUrl, { signal });
 	}
 
 	async applyHotUpdate(
@@ -885,27 +914,45 @@ export class OfficialPluginService implements Disposable {
 		return this.runtimeActivator.isActive(pluginId);
 	}
 
-	async resetAfterFactoryClear(): Promise<void> {
+	async assertFactoryResetAllowed(): Promise<void> {
 		await this.installedStore.load();
-		if (this.installedStore.isFrozen) throw new Error(hostT('plugins.update.locked'));
+		if (
+			this.hostPreparations > 0 ||
+			this.installedStore.isFrozen ||
+			this.installedStore.hostChanged ||
+			(this.hostBuild && this.installedStore.hostGeneration !== this.hostBuild.buildId)
+		) {
+			throw new Error(hostT('plugins.update.locked'));
+		}
+	}
+
+	async resetAfterFactoryClear(): Promise<void> {
+		await this.assertFactoryResetAllowed();
+		this.factoryResetting = true;
 		this.lifecycle.abort();
+		this.installQueue.cancelAll();
 		this.storeSubscription?.dispose();
 		this.storeSubscription = undefined;
-		await this.operations.waitForAllSettled();
+		const pending = this.operations.waitForAllSettled();
 		this.operations.dispose();
-		this.operations = new PluginOperationCoordinator();
-		this.lifecycle = new AbortController();
-		this.syncPromise = undefined;
-		this.initPromise = undefined;
-		this.installQueue.cancelAll();
+		await Promise.allSettled([pending, this.syncPromise, this.reconciling]);
 		this.engine.clearDefaultTheme();
-		this.runtimeActivator.disposeAll();
+		await this.runtimeActivator.deactivateAll();
 		this.installedStore.clear();
 		this.failures.clear();
 		this.activeVersions.clear();
 		this.updateStatuses.clear();
 		this.initialized = false;
 		this.loaded = false;
+		this.syncPromise = undefined;
+		this.initPromise = undefined;
+	}
+
+	resumeAfterFactoryClear(): void {
+		this.operations = new PluginOperationCoordinator();
+		this.lifecycle = new AbortController();
+		this.factoryResetting = false;
+		this.skipNextHostSync = true;
 	}
 
 	dispose(): void {

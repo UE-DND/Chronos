@@ -17,7 +17,7 @@ test.use({ viewport: { width: 1280, height: 932 } });
 async function storedCourses(page: Page) {
 	return page.evaluate(async () => {
 		const database = await new Promise<IDBDatabase>((resolve, reject) => {
-			const request = indexedDB.open('chronos');
+			const request = indexedDB.open('chronos:/Chronos:db');
 			request.onsuccess = () => resolve(request.result);
 			request.onerror = () => reject(request.error);
 		});
@@ -50,7 +50,9 @@ test('shortening a semester, dragging away and back, then extending does not res
 }) => {
 	await request.post('/__e2e/deploy?build=old');
 	await page.clock.install({ time: new Date('2026-03-02T08:00:00+08:00') });
-	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	await page.goto(`/Chronos/s#${payload}`);
 	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
 	await expect
@@ -104,7 +106,9 @@ test('dragging an unrelated course preserves distinct delimiter-bearing identiti
 }) => {
 	await request.post('/__e2e/deploy?build=old');
 	await page.clock.install({ time: new Date('2026-03-02T08:00:00+08:00') });
-	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	const template = {
 		...fixture.courses[0]!,
 		location: '',

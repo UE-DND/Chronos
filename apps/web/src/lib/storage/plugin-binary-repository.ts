@@ -34,16 +34,7 @@ export class PluginBinaryRepository {
 	}
 
 	async set(pluginId: string, key: string, value: Blob | Uint8Array): Promise<void> {
-		const id = pluginDataId(pluginId, key);
-		const bytes = await toArrayBuffer(value);
-		await this.database.pluginBinary.put({
-			id,
-			pluginId,
-			key,
-			mimeType: resolveMimeType(value),
-			bytes,
-			updatedAt: Date.now()
-		} satisfies PluginBinaryRow);
+		await this.database.pluginBinary.put(await preparePluginBinaryRow(pluginId, key, value));
 	}
 
 	async delete(pluginId: string, key: string): Promise<void> {
@@ -71,4 +62,20 @@ export class PluginBinaryRepository {
 			return 0;
 		}
 	}
+}
+
+/** Convert Blob bytes before entering an IndexedDB transaction. */
+export async function preparePluginBinaryRow(
+	pluginId: string,
+	key: string,
+	value: Blob | Uint8Array
+): Promise<PluginBinaryRow> {
+	return {
+		id: pluginDataId(pluginId, key),
+		pluginId,
+		key,
+		mimeType: resolveMimeType(value),
+		bytes: await toArrayBuffer(value),
+		updatedAt: Date.now()
+	};
 }

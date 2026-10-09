@@ -1,3 +1,4 @@
+import { storageNamespace } from '#lib/storage/storage-namespace.ts';
 import type { ChronosEngine, Disposable, HostBuildIdentity } from '@chronos/core';
 import {
 	INSTALLED_STORAGE_KEY,
@@ -105,7 +106,7 @@ export class OfficialPluginInstalledStore {
 	constructor(engine: ChronosEngine, repository?: PluginInstallationRepository) {
 		this.repository = repository ?? storageRepository(engine);
 		if (repository && typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
-			this.channel = new BroadcastChannel('chronos-plugin-installations');
+			this.channel = new BroadcastChannel(storageNamespace.key('plugin-installations'));
 			this.channel.onmessage = () => {
 				void this.load()
 					.then(() => this.notify())

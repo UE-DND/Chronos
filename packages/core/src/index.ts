@@ -106,3 +106,5 @@ export * from './types/host-update';
 export * from './algorithms/class-notifications';
 
 export { rearrangeCourseSchedule, type RearrangeCourseOptions } from './domain/course-reorder';
+
+export { createStorageNamespace } from './constants/storage-namespace';

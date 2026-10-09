@@ -1,6 +1,6 @@
 <!doctype html>
 
-<html lang="%paraglide.lang%" dir="%paraglide.dir%">
+<html data-chronos-base="%sveltekit.assets%" lang="%paraglide.lang%" dir="%paraglide.dir%">
 	<head>
 		<script>
 			(function () {
@@ -31,7 +31,9 @@
 					var locale = detectLocale();
 					document.documentElement.lang = toBcp47(locale);
 					document.cookie =
-						'PARAGLIDE_LOCALE=' +
+						'chronos_' +
+						encodeURIComponent('%sveltekit.assets%' || '/') +
+						'_locale=' +
 						encodeURIComponent(locale) +
 						'; path=/; max-age=34560000; samesite=lax';
 				} catch (e) {}
@@ -52,7 +54,9 @@
 		<script>
 			(function () {
 				try {
-					var mode = localStorage.getItem('chronos_preferences:theme_mode');
+					var mode = localStorage.getItem(
+						'chronos:' + ('%sveltekit.assets%' || '/') + ':chronos_preferences:theme_mode'
+					);
 					var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 					var dark = mode === 'dark' || ((mode === 'auto' || !mode) && prefersDark);
 					if (dark) {
@@ -79,7 +83,11 @@
 					if (statusBar) {
 						statusBar.setAttribute('content', dark ? 'black-translucent' : 'default');
 					}
-					var reduceMotion = localStorage.getItem('chronos_preferences:reduce_motion_enabled');
+					var reduceMotion = localStorage.getItem(
+						'chronos:' +
+							('%sveltekit.assets%' || '/') +
+							':chronos_preferences:reduce_motion_enabled'
+					);
 					if (reduceMotion === '1' || reduceMotion === 'true') {
 						document.documentElement.classList.add('reduce-motion');
 					}

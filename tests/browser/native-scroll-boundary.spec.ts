@@ -4,7 +4,9 @@ test.use({ viewport: { width: 430, height: 932 }, isMobile: true, hasTouch: true
 
 async function openMine(page: Page, request: APIRequestContext) {
 	await request.post('/__e2e/deploy?build=old');
-	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	await page.goto('/Chronos/');
 	await page.getByRole('tab', { name: '我的', exact: true }).click();
 	const scroll = page.locator('.shell-tab-panel:not([hidden]) .app-scroll-y');

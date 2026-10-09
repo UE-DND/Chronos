@@ -4,6 +4,8 @@ export const OFFICIAL_PLUGINS_PLUGIN_ID = 'core.official-plugins';
 export const INSTALLED_STORAGE_KEY = 'installed_plugins';
 
 export interface InstalledOfficialPluginRecord {
+	/** Immutable resource reference assigned by the browser repository. */
+	resourceId?: string;
 	revision?: number;
 	acceptedHostVersion?: string;
 	origin: { kind: 'user' } | { kind: 'profile'; profileId: string };

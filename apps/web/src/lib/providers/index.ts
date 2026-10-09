@@ -1,3 +1,6 @@
+import { appLocalStorage } from '#lib/storage/storage-namespace.ts';
+import { createPersistentStorageRequest } from '#lib/storage/persistent-storage.ts';
+import { HOST_BUILD } from '#lib/config/app-meta.ts';
 import { resolve } from '$app/paths';
 import { ProfilePolicyHttpAdapter } from './profile-policy-http';
 import { resolveActiveProfile } from '#lib/boot/profile-registry.ts';
@@ -47,10 +50,31 @@ export function createWebProviders(options?: WebProviderOptions) {
 		http = options.wrapHttpService(http);
 	}
 
-	const denied = resolveActiveProfile().deniedPluginServerActions;
+	const profile = resolveActiveProfile();
+	const denied = profile.deniedPluginServerActions;
 	if (denied?.length) http = new ProfilePolicyHttpAdapter(http, denied);
 	return {
-		storage: new DexieStorageProvider(options?.database, options?.localStorage),
+		storage: new DexieStorageProvider(
+			options?.database,
+			options?.localStorage,
+			undefined,
+			{
+				profileId: profile.profileId,
+				preinstallIds: profile.preinstall.map((entry) => entry.id),
+				hostVersion: HOST_BUILD.version,
+				hostBuildId: HOST_BUILD.buildId
+			},
+			options?.platform === undefined || options.platform === 'web'
+				? createPersistentStorageRequest(
+						typeof navigator !== 'undefined' ? navigator.storage : undefined,
+						options?.localStorage === undefined
+							? typeof localStorage !== 'undefined'
+								? appLocalStorage()
+								: null
+							: options.localStorage
+					)
+				: undefined
+		),
 		http,
 		runtime: new WebRuntimeProvider(),
 		analytics: new WebAnalyticsProvider(),

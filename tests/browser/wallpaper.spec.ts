@@ -65,7 +65,9 @@ for (const viewport of [
 		test.use({ viewport });
 		test.beforeEach(async ({ page, request }) => {
 			await request.post('/__e2e/deploy?build=old');
-			await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+			await page.addInitScript(() =>
+				localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+			);
 		});
 
 		test('initial cover is stable with decode and measurement in either order', async ({
@@ -171,7 +173,7 @@ for (const viewport of [
 					window.wallpaperAttempts = () => attempts;
 					Storage.prototype.setItem = function (key, value) {
 						if (
-							key === 'chronos_preferences:wallpaper_source' &&
+							key === 'chronos:/Chronos:chronos_preferences:wallpaper_source' &&
 							value === 'custom' &&
 							++attempts === 1
 						)
@@ -200,7 +202,9 @@ for (const viewport of [
 				expect(await page.evaluate(() => window.wallpaperAttempts())).toBe(2);
 				await expect
 					.poll(() =>
-						page.evaluate(() => localStorage.getItem('chronos_preferences:wallpaper_source'))
+						page.evaluate(() =>
+							localStorage.getItem('chronos:/Chronos:chronos_preferences:wallpaper_source')
+						)
 					)
 					.toBe('custom');
 				await page.getByText('无壁纸', { exact: true }).click();
@@ -247,12 +251,18 @@ for (const viewport of [
 				page
 			}) => {
 				await page.addInitScript(
-					(mode) => localStorage.setItem('chronos_preferences:theme_mode', mode),
+					(mode) => localStorage.setItem('chronos:/Chronos:chronos_preferences:theme_mode', mode),
 					themeMode
 				);
 				await page.addInitScript(() => {
-					if (localStorage.getItem('chronos_preferences:wallpaper_mask_enabled') === null)
-						localStorage.setItem('chronos_preferences:wallpaper_mask_enabled', 'false');
+					if (
+						localStorage.getItem('chronos:/Chronos:chronos_preferences:wallpaper_mask_enabled') ===
+						null
+					)
+						localStorage.setItem(
+							'chronos:/Chronos:chronos_preferences:wallpaper_mask_enabled',
+							'false'
+						);
 				});
 				await importTimetable(page);
 				await page.goto('/Chronos/wallpaper/preview');
@@ -311,7 +321,9 @@ for (const viewport of [
 				);
 				await expect
 					.poll(() =>
-						page.evaluate(() => localStorage.getItem('chronos_preferences:wallpaper_source'))
+						page.evaluate(() =>
+							localStorage.getItem('chronos:/Chronos:chronos_preferences:wallpaper_source')
+						)
 					)
 					.toBe('custom');
 				await page.goto('/Chronos/wallpaper');
@@ -320,7 +332,9 @@ for (const viewport of [
 				await expect(page.getByRole('switch', { name: /^壁纸遮罩/ })).toBeChecked();
 				await expect
 					.poll(() =>
-						page.evaluate(() => localStorage.getItem('chronos_preferences:wallpaper_mask_enabled'))
+						page.evaluate(() =>
+							localStorage.getItem('chronos:/Chronos:chronos_preferences:wallpaper_mask_enabled')
+						)
 					)
 					.toBe('true');
 				await page.goto('/Chronos/wallpaper/preview');
@@ -339,8 +353,14 @@ for (const viewport of [
 			context
 		}) => {
 			await page.addInitScript(() => {
-				if (localStorage.getItem('chronos_preferences:wallpaper_mask_enabled') === null)
-					localStorage.setItem('chronos_preferences:wallpaper_mask_enabled', 'false');
+				if (
+					localStorage.getItem('chronos:/Chronos:chronos_preferences:wallpaper_mask_enabled') ===
+					null
+				)
+					localStorage.setItem(
+						'chronos:/Chronos:chronos_preferences:wallpaper_mask_enabled',
+						'false'
+					);
 			});
 			await importTimetable(page);
 			await page.goto('/Chronos/wallpaper/preview');

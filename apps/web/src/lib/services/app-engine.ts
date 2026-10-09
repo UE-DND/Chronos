@@ -1,3 +1,4 @@
+import { StorageClearError } from '@chronos/core';
 import { ChronosEngine } from '@chronos/core';
 import { createWebChronosEnv, type WebProviderOptions } from '#lib/providers/index.ts';
 import { ReactiveChronosController } from '@chronos/ui-kit';
@@ -204,16 +205,48 @@ function getMissingPreinstalls(
 	const installed = new Map(service.listInstalled().map((record) => [record.manifest.id, record]));
 	return profile.preinstall.flatMap((entry) => {
 		const record = installed.get(entry.id);
-		return record ? [] : [entry.id];
+		return record && service.isPluginActive(entry.id) ? [] : [entry.id];
 	});
 }
 
-export async function resetAppToInitialState(): Promise<ResetAppResult> {
+let resetPromise: Promise<ResetAppResult> | undefined;
+export function resetAppToInitialState(afterClear?: () => Promise<void>): Promise<ResetAppResult> {
+	if (resetPromise) return resetPromise;
+	resetPromise = performAppReset(afterClear).finally(() => {
+		resetPromise = undefined;
+	});
+	return resetPromise;
+}
+
+async function performAppReset(afterClear?: () => Promise<void>): Promise<ResetAppResult> {
 	const engine = await ensureEngineFullyReady();
 	const service = getOfficialPluginService();
-	await service.resetAfterFactoryClear();
-	await engine.clearAllData();
 	const profile = resolveActiveProfile();
+	await service.resetAfterFactoryClear();
+	let cleanupError: unknown;
+	try {
+		await engine.clearAllData();
+	} catch (error) {
+		if (error instanceof StorageClearError) {
+			cleanupError = error;
+		} else {
+			service.resumeAfterFactoryClear();
+			try {
+				await service.prepareProfile(profile);
+				await service.init();
+				await applyThemeFromPreferences(engine);
+			} catch (restoreError) {
+				console.error('[app-engine] Could not resume after failed data transaction:', restoreError);
+			}
+			throw error;
+		}
+	}
+	service.resumeAfterFactoryClear();
+	try {
+		await afterClear?.();
+	} catch (error) {
+		cleanupError = error;
+	}
 
 	let restoreError: unknown;
 	let recoveryRetried = false;
@@ -266,8 +299,8 @@ export async function resetAppToInitialState(): Promise<ResetAppResult> {
 		}
 	}
 
-	if (restoreError) {
-		console.error('[app-engine] Data cleared, but profile recovery failed:', restoreError);
+	if (restoreError || cleanupError) {
+		console.error('[app-engine] Data cleared, but recovery failed:', restoreError ?? cleanupError);
 		return { status: 'recovery-failed' };
 	}
 	return { status: 'complete' };

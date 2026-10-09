@@ -7,7 +7,7 @@ self.addEventListener('notificationclick', (event) => {
  const client = windows.find((window) => window.url.startsWith(self.registration.scope));
  if (client) {
  await client.focus();
- client.postMessage({ type: 'chronos:class-notification-open' });
+ client.postMessage({ type: 'chronos:' + (new URL(self.registration.scope).pathname.replace(/\/+$/, '') || '/') + ':class-notification-open' });
  } else {
  await self.clients.openWindow(new URL('?class-reminder=1', self.registration.scope).href);
  }

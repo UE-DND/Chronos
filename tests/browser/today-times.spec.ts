@@ -52,7 +52,9 @@ for (const viewport of [
 			page.on('pageerror', (error) => errors.push(error.message));
 			await request.post('/__e2e/deploy?build=old');
 			await page.clock.setFixedTime(new Date('2026-03-02T08:50:00+08:00'));
-			await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+			await page.addInitScript(() =>
+				localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+			);
 			await context.route('https://ue-dnd.github.io/Chronos/plugins/releases/**', async (route) => {
 				const url = new URL(route.request().url());
 				const path = url.pathname.replace('/Chronos/plugins/releases/', '/__e2e/market/');
@@ -66,7 +68,7 @@ for (const viewport of [
 			await page.evaluate(
 				async ({ timetable, courses }) => {
 					const database = await new Promise<IDBDatabase>((resolve, reject) => {
-						const request = indexedDB.open('chronos');
+						const request = indexedDB.open('chronos:/Chronos:db');
 						request.onsuccess = () => resolve(request.result);
 						request.onerror = () => reject(request.error);
 					});

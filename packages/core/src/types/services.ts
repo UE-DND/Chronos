@@ -202,3 +202,11 @@ export interface IHostLinks {
 	getImportUrl(): string | null;
 }
 export const IHostLinks = createServiceIdentifier<IHostLinks>('hostLinks');
+
+/** Persistence was cleared, but ancillary cleanup failed; never restore old user data. */
+export class StorageClearError extends Error {
+	constructor(cause: unknown) {
+		super('User data cleared, but storage cleanup did not complete', { cause });
+		this.name = 'StorageClearError';
+	}
+}

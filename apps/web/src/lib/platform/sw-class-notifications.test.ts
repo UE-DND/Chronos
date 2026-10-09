@@ -34,7 +34,7 @@ describe('notification worker navigation', () => {
 		});
 		await pending;
 		expect(focus).toHaveBeenCalledOnce();
-		expect(postMessage).toHaveBeenCalledWith({ type: 'chronos:class-notification-open' });
+		expect(postMessage).toHaveBeenCalledWith({ type: 'chronos:/Chronos:class-notification-open' });
 		expect(h.openWindow).not.toHaveBeenCalled();
 	});
 	it('opens the correct deployment path when the app is closed', async () => {

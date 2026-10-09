@@ -7,7 +7,7 @@ import { DEFAULT_USER_PREFERENCES } from '../src/domain/preferences';
 import type { ChronosEnv, StorageChangeEvent } from '../src/types/env';
 import type { ChronosContext, ChronosPlugin } from '../src/types/context';
 import { defineSchema } from '../src/schema/schema';
-import { IHttpService } from '../src/types/services';
+import { IHttpService, StorageClearError } from '../src/types/services';
 
 function createMockEnv(options?: { holdList?: boolean }) {
 	const timetables = new Map<string, Timetable>();
@@ -782,6 +782,26 @@ describe('ChronosEngine in @chronos/core', () => {
 		expect(engine.state.timetables).toEqual([]);
 		expect(engine.state.userPreferences.themeMode).toBe('auto');
 		expect(timetables.size).toBe(0);
+		engine.dispose();
+	});
+
+	it('drops in-memory user state when post-commit storage cleanup fails', async () => {
+		const { env, timetables } = createMockEnv();
+		timetables.set('t1', createTimetable({ id: 't1', name: '课表' }));
+		await env.storage.setActiveTimetableId('t1');
+		await env.storage.savePreferences({ themeMode: 'dark' });
+		const engine = new ChronosEngine({ env });
+		await engine.init();
+		Object.assign(env.storage, {
+			clearAllData: async () => {
+				timetables.clear();
+				throw new StorageClearError(new Error('cache deletion denied'));
+			}
+		});
+		await expect(engine.clearAllData()).rejects.toBeInstanceOf(StorageClearError);
+		expect(engine.state.currentTimetable).toBeNull();
+		expect(engine.state.timetables).toEqual([]);
+		expect(engine.state.userPreferences.themeMode).toBe('auto');
 		engine.dispose();
 	});
 

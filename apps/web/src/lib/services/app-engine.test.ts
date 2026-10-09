@@ -1,5 +1,6 @@
+import { createPluginInstallationRepository } from '#lib/storage/plugin-installation-repository.ts';
 import { createHash } from 'node:crypto';
-import { APP_VERSION } from '#lib/config/app-meta.ts';
+import { APP_VERSION, HOST_BUILD } from '#lib/config/app-meta.ts';
 import { readFile } from 'node:fs/promises';
 import { afterAll } from 'vite-plus/test';
 import { describe, it, expect, beforeEach, vi } from 'vite-plus/test';
@@ -13,11 +14,7 @@ import {
 	resetAppToInitialState
 } from './app-engine';
 import type { ChronosDB } from '#lib/storage/db.ts';
-import {
-	INSTALLED_STORAGE_KEY,
-	OFFICIAL_PLUGINS_PLUGIN_ID,
-	type InstalledOfficialPluginRecord
-} from './official-plugins/official-plugin-types';
+import type { InstalledOfficialPluginRecord } from './official-plugins/official-plugin-types';
 
 class MockLocalStorage implements Storage {
 	private map = new Map<string, string>();
@@ -45,7 +42,20 @@ function createMockDb(): ChronosDB {
 	const pluginRows = new Map<string, unknown>();
 	const binaryRows = new Map<string, unknown>();
 	const imageRows = new Map<string, unknown>();
+	const resourceRows = new Map<string, import('#lib/storage/db.ts').PluginResourceRow>();
+
 	return {
+		pluginResources: {
+			get: vi.fn(async (id: string) => resourceRows.get(id)),
+			bulkGet: vi.fn(async (ids: string[]) => ids.map((id) => resourceRows.get(id))),
+			put: vi.fn(async (row: import('#lib/storage/db.ts').PluginResourceRow) => {
+				resourceRows.set(row.id, row);
+			}),
+			bulkDelete: vi.fn(async (ids: string[]) => {
+				for (const id of ids) resourceRows.delete(id);
+			}),
+			toArray: vi.fn(async () => [...resourceRows.values()])
+		},
 		timetables: {
 			get: vi.fn(async () => undefined),
 			put: vi.fn(async () => 'id'),
@@ -78,6 +88,10 @@ function createMockDb(): ChronosDB {
 			toArray: vi.fn(async () => [...binaryRows.values()])
 		},
 		pluginData: {
+			toCollection: () => ({ primaryKeys: async () => [...pluginRows.keys()] }),
+			bulkDelete: vi.fn(async (ids: string[]) => {
+				for (const id of ids) pluginRows.delete(id);
+			}),
 			get: vi.fn(async (id: string) => pluginRows.get(id)),
 			put: vi.fn(async (row: { id: string }) => {
 				pluginRows.set(row.id, row);
@@ -90,6 +104,10 @@ function createMockDb(): ChronosDB {
 			toArray: vi.fn(async () => [...pluginRows.values()])
 		},
 		images: {
+			toCollection: () => ({ primaryKeys: async () => [...imageRows.keys()] }),
+			bulkDelete: vi.fn(async (ids: string[]) => {
+				for (const id of ids) imageRows.delete(id);
+			}),
 			get: vi.fn(async (id: string) => imageRows.get(id)),
 			put: vi.fn(async (row: { id: string }) => {
 				imageRows.set(row.id, row);
@@ -193,28 +211,11 @@ describe('app-engine bootstrap', () => {
 			installedAt: 1
 		};
 
-		const installedPluginDataId = `${OFFICIAL_PLUGINS_PLUGIN_ID}:${INSTALLED_STORAGE_KEY}`;
-		const installedPluginDataRow = {
-			id: installedPluginDataId,
-			pluginId: OFFICIAL_PLUGINS_PLUGIN_ID,
-			key: INSTALLED_STORAGE_KEY,
-			valueJson: JSON.stringify({
-				records: [installedThemePlugin],
-				removed: [],
-				revision: 0,
-				generation: '',
-				seeded: true
-			}),
-			updatedAt: 1
-		};
 		const mockDb = createMockDb();
-		const readPluginRow = mockDb.pluginData.get.bind(mockDb.pluginData);
-		const getPluginData = vi.fn(
-			async (id: string) =>
-				(await readPluginRow(id)) ??
-				(id === installedPluginDataId ? installedPluginDataRow : undefined)
-		);
-		Object.defineProperty(mockDb.pluginData, 'get', { value: getPluginData });
+		await createPluginInstallationRepository(mockDb).transaction((state) => {
+			state.records = [installedThemePlugin];
+			state.seeded = true;
+		});
 
 		const mockStore = new MockLocalStorage();
 		mockStore.setItem(PREFERENCE_STORAGE_KEYS.visualThemeId, 'yumemita');
@@ -269,6 +270,102 @@ describe('app-engine bootstrap', () => {
 		}
 	});
 
+	it('clears user data while reusing preinstalls without HTTP or installation', async () => {
+		const mockDb = createMockDb();
+		const mockStore = new MockLocalStorage();
+		const engine = await ensureEngineFullyReady({ database: mockDb, localStorage: mockStore });
+		const service = getOfficialPluginService();
+		const before = structuredClone(service.listInstalled());
+		const oldContext = engine.getPluginContext('theme-m3');
+		await oldContext.updateConfig({ private: 'secret' });
+		const request = vi.spyOn(engine.http, 'request').mockRejectedValue(new Error('offline'));
+		const install = vi.spyOn(service, 'install');
+		expect(await resetAppToInitialState()).toEqual({ status: 'complete' });
+		expect(request).not.toHaveBeenCalled();
+		expect(install).not.toHaveBeenCalled();
+		expect(service.listInstalled().map((r) => [r.manifest.id, r.code, r.installedAt])).toEqual(
+			before.map((r) => [r.manifest.id, r.code, r.installedAt])
+		);
+		expect(await engine.storage.getPluginData('theme-m3', '__config__')).toBeNull();
+		expect(engine.getPluginContext('theme-m3')).not.toBe(oldContext);
+		expect(engine.getPluginContext('theme-m3').config).not.toHaveProperty('private');
+	});
+
+	it('coalesces concurrent resets and runs host cleanup only once after the transaction', async () => {
+		const mockDb = createMockDb();
+		await ensureEngineFullyReady({ database: mockDb, localStorage: new MockLocalStorage() });
+		const cleanup = vi.fn(async () => {
+			expect(vi.spyOn(mockDb.timetables, 'clear')).toHaveBeenCalledOnce();
+		});
+		const first = resetAppToInitialState(cleanup);
+		const second = resetAppToInitialState(cleanup);
+		expect(second).toBe(first);
+		expect(await first).toEqual({ status: 'complete' });
+		expect(cleanup).toHaveBeenCalledOnce();
+	});
+
+	it('reports post-commit host cleanup failure while keeping preinstalls usable', async () => {
+		const mockDb = createMockDb();
+		await ensureEngineFullyReady({ database: mockDb, localStorage: new MockLocalStorage() });
+		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			expect(
+				await resetAppToInitialState(async () => {
+					throw new Error('notification cleanup failed');
+				})
+			).toEqual({ status: 'recovery-failed' });
+			expect(vi.spyOn(mockDb.timetables, 'clear')).toHaveBeenCalledOnce();
+			expect(getOfficialPluginService().isPluginActive('theme-m3')).toBe(true);
+		} finally {
+			log.mockRestore();
+		}
+	});
+
+	it.each(['missing', 'corrupt'])(
+		'repairs only the affected preinstall after %s resources',
+		async (kind) => {
+			const mockDb = createMockDb();
+			await ensureEngineFullyReady({
+				database: mockDb,
+				localStorage: new MockLocalStorage()
+			});
+			await createPluginInstallationRepository(mockDb).transaction((state) => {
+				if (kind === 'missing')
+					state.records = state.records.filter((r) => r.manifest.id !== 'codec-share');
+				else state.records.find((r) => r.manifest.id === 'codec-share')!.code = 'corrupt';
+			});
+			const install = vi.spyOn(getOfficialPluginService(), 'install');
+			const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+			try {
+				expect(await resetAppToInitialState()).toEqual({ status: 'complete' });
+				expect(install.mock.calls.map(([manifest]) => manifest.id)).toEqual(['codec-share']);
+			} finally {
+				log.mockRestore();
+			}
+		}
+	);
+
+	it('rejects an update lock before host cleanup or data deletion', async () => {
+		const mockDb = createMockDb();
+		const engine = await ensureEngineFullyReady({
+			database: mockDb,
+			localStorage: new MockLocalStorage()
+		});
+		const service = getOfficialPluginService();
+		await service.installationStore.prepare({
+			target: { ...HOST_BUILD, buildId: 'next' },
+			revision: service.installationStore.revision,
+			records: [],
+			token: 'lock',
+			until: Date.now() + 60_000
+		});
+		const cleanup = vi.fn(async () => {});
+		await expect(resetAppToInitialState(cleanup)).rejects.toThrow();
+		expect(cleanup).not.toHaveBeenCalled();
+		expect(vi.spyOn(mockDb.timetables, 'clear')).not.toHaveBeenCalled();
+		expect(engine.isPluginLoaded('theme-m3')).toBe(true);
+	});
+
 	it('retries profile restoration once after clearing data', async () => {
 		const mockDb = createMockDb();
 		const mockStore = new MockLocalStorage();
@@ -299,7 +396,11 @@ describe('app-engine bootstrap', () => {
 			const result = await resetAppToInitialState();
 
 			expect(result).toEqual({ status: 'recovery-failed' });
-			expect(service.listInstalled()).toEqual([]);
+			expect(
+				JSON.parse(
+					(await mockDb.pluginData.get('core.official-plugins:installed_plugins'))!.valueJson
+				).records.map((r: InstalledOfficialPluginRecord) => r.manifest.id)
+			).toContain('theme-m3');
 		} finally {
 			log.mockRestore();
 		}
@@ -356,24 +457,9 @@ describe('theme preferences during deferred boot', () => {
 			origin: { kind: 'user' as const },
 			installedAt: 1
 		};
-		const key = `${OFFICIAL_PLUGINS_PLUGIN_ID}:${INSTALLED_STORAGE_KEY}`;
-		const readPluginRow = db.pluginData.get.bind(db.pluginData);
-		Object.defineProperty(db.pluginData, 'get', {
-			value: vi.fn(
-				async (id: string) =>
-					(await readPluginRow(id)) ??
-					(id === key
-						? {
-								valueJson: JSON.stringify({
-									records: [record],
-									removed: [],
-									revision: 0,
-									generation: '',
-									seeded: true
-								})
-							}
-						: undefined)
-			)
+		await createPluginInstallationRepository(db).transaction((state) => {
+			state.records = [record];
+			state.seeded = true;
 		});
 		const store = new MockLocalStorage();
 		store.setItem(PREFERENCE_STORAGE_KEYS.visualThemeId, 'broken');

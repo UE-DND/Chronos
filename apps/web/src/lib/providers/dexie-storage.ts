@@ -1,3 +1,13 @@
+import {
+	appLocalStorage,
+	appSessionStorage,
+	storageNamespace
+} from '#lib/storage/storage-namespace.ts';
+import { StorageClearError } from '@chronos/core';
+import {
+	clearUserDataKeepingPreinstalls,
+	type AppDataResetPolicy
+} from '#lib/storage/plugin-installation-repository.ts';
 import { ImageRepository } from '#lib/storage/image-repository.ts';
 import { PREFERENCE_STORAGE_KEYS } from '@chronos/core';
 import type {
@@ -30,9 +40,18 @@ export class DexieStorageProvider implements IStorageService {
 	private readonly images: ImageRepository;
 
 	constructor(
-		database: ChronosDB = db,
-		localStore: Storage | null = typeof localStorage !== 'undefined' ? localStorage : null,
-		private cacheStore: CacheStorage | null = typeof caches !== 'undefined' ? caches : null
+		private database: ChronosDB = db,
+		private localStore: Storage | null = typeof localStorage !== 'undefined'
+			? appLocalStorage()
+			: null,
+		private cacheStore: CacheStorage | null = typeof caches !== 'undefined' ? caches : null,
+		private resetPolicy: AppDataResetPolicy = {
+			profileId: '',
+			preinstallIds: [],
+			hostVersion: '',
+			hostBuildId: ''
+		},
+		private requestPersistence?: () => Promise<void>
 	) {
 		this.preferences = new PreferencesStore(localStore);
 		this.timetables = new TimetableRepository(database);
@@ -41,7 +60,7 @@ export class DexieStorageProvider implements IStorageService {
 
 		if (typeof window !== 'undefined') {
 			if (typeof BroadcastChannel !== 'undefined') {
-				this.changeChannel = new BroadcastChannel('chronos:timetable-changes');
+				this.changeChannel = new BroadcastChannel(storageNamespace.key('timetable-changes'));
 				this.changeChannel.onmessage = (event: MessageEvent<unknown>) => {
 					const data = event.data;
 					if (
@@ -52,15 +71,22 @@ export class DexieStorageProvider implements IStorageService {
 						'key' in data &&
 						typeof data.key === 'string'
 					) {
+						if (data.key === 'clearAllData') {
+							window.location.reload();
+							return;
+						}
 						this.notifyChange({ type: 'timetable', key: data.key });
 					}
 				};
 			}
 			this.storageListener = (e: StorageEvent) => {
-				if (e.key === PREFERENCE_STORAGE_KEYS.currentTimetableId) {
-					this.notifyChange({ type: 'timetable', key: e.key });
-				} else if (e.key?.startsWith('chronos_preferences:')) {
-					this.notifyChange({ type: 'preferences', key: e.key });
+				const key = e.key?.startsWith(storageNamespace.prefix)
+					? e.key.slice(storageNamespace.prefix.length)
+					: null;
+				if (key === PREFERENCE_STORAGE_KEYS.currentTimetableId) {
+					this.notifyChange({ type: 'timetable', key: key! });
+				} else if (key?.startsWith('chronos_preferences:')) {
+					this.notifyChange({ type: 'preferences', key: key! });
 				}
 			};
 			window.addEventListener('storage', this.storageListener);
@@ -131,6 +157,9 @@ export class DexieStorageProvider implements IStorageService {
 		await this.withStorageNotify({ type: 'timetable', key: timetable.id }, 'save timetable', () =>
 			this.timetables.saveTimetable(timetable, options)
 		);
+		void this.requestPersistence?.().catch((error) => {
+			console.warn('[DexieStorageProvider] Persistence request failed:', error);
+		});
 	}
 
 	async deleteTimetable(id: string): Promise<void> {
@@ -186,25 +215,28 @@ export class DexieStorageProvider implements IStorageService {
 	}
 
 	async clearAllData(): Promise<void> {
-		try {
-			await this.timetables.clearTimetables();
-			await this.pluginKv.clearAll();
-			await this.images.clear();
-			if (typeof localStorage !== 'undefined') {
-				clearKeysWithPrefix(localStorage, 'chronos');
+		await clearUserDataKeepingPreinstalls(this.database, this.resetPolicy);
+		const cleanupErrors: unknown[] = [];
+		for (const cleanup of [
+			async () => {
+				if (this.localStore) clearKeysWithPrefix(this.localStore, 'chronos');
+			},
+			async () => {
+				if (typeof sessionStorage !== 'undefined')
+					clearKeysWithPrefix(appSessionStorage(), 'chronos');
+			},
+			() => clearAppCaches(this.cacheStore, { keepHostAssets: true })
+		]) {
+			try {
+				await cleanup();
+			} catch (error) {
+				cleanupErrors.push(error);
 			}
-			if (typeof sessionStorage !== 'undefined') {
-				clearKeysWithPrefix(sessionStorage, 'chronos');
-			}
-			// Installed PWA code and bundled required plugins play the same role as APK assets.
-			await clearAppCaches(this.cacheStore, { keepHostAssets: true });
-			this.notifyChange({ type: 'preferences', key: 'clearAllData' });
-			this.notifyChange({ type: 'timetable', key: 'clearAllData' });
-			this.broadcastChange({ type: 'timetable', key: 'clearAllData' });
-		} catch (err) {
-			console.warn('[DexieStorageProvider] Failed to clear all data:', err);
-			throw err;
 		}
+		this.notifyChange({ type: 'preferences', key: 'clearAllData' });
+		this.notifyChange({ type: 'timetable', key: 'clearAllData' });
+		this.broadcastChange({ type: 'timetable', key: 'clearAllData' });
+		if (cleanupErrors.length) throw new StorageClearError(new AggregateError(cleanupErrors));
 	}
 
 	async estimateStorageBytes(): Promise<number> {
@@ -213,7 +245,11 @@ export class DexieStorageProvider implements IStorageService {
 			this.pluginKv.estimateBytes(),
 			this.images.estimateBytes()
 		]);
-		return timetableBytes + pluginBytes + imageBytes;
+		const resourceBytes = (await this.database.pluginResources.toArray()).reduce(
+			(total, row) => total + new TextEncoder().encode(JSON.stringify(row)).length,
+			0
+		);
+		return timetableBytes + pluginBytes + imageBytes + resourceBytes;
 	}
 
 	dispose(): void {

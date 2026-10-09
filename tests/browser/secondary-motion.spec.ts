@@ -16,7 +16,7 @@ test.use({ viewport: { width: 430, height: 932 }, isMobile: true, hasTouch: true
 async function openMine(page: Page, request: APIRequestContext, pause = false) {
 	await request.post('/__e2e/deploy?build=old');
 	await page.addInitScript((pause) => {
-		localStorage.setItem('chronos:onboarding-seen', '1');
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1');
 		// Exercise the same real DOM fallback used by the native Android host.
 		delete (Document.prototype as { startViewTransition?: unknown }).startViewTransition;
 		window.__routeMotion = { pause, animations: [], completed: 0, canceled: 0 };

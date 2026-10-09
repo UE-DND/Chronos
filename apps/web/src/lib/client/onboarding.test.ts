@@ -52,7 +52,7 @@ describe('OnboardingController', () => {
 		});
 
 		it('stays inactive when onboarding was already seen', () => {
-			storage.set('chronos:onboarding-seen', '1');
+			storage.set('chronos:/:chronos:onboarding-seen', '1');
 			expect(controller.isActive('/')).toBe(false);
 		});
 
@@ -160,7 +160,7 @@ describe('OnboardingController', () => {
 			controller.openAt('done');
 			controller.finish();
 			expect(controller.state.open).toBe(false);
-			expect(storage.get('chronos:onboarding-seen')).toBe('1');
+			expect(storage.get('chronos:/:chronos:onboarding-seen')).toBe('1');
 			expect(controller.isActive('/')).toBe(false);
 		});
 

@@ -52,7 +52,7 @@ async function persistedCourses(page: Page) {
 	return page.evaluate(
 		() =>
 			new Promise<unknown[]>((resolve, reject) => {
-				const request = indexedDB.open('chronos');
+				const request = indexedDB.open('chronos:/Chronos:db');
 				request.onerror = () => reject(request.error);
 				request.onsuccess = () => {
 					const db = request.result;
@@ -227,7 +227,7 @@ for (const preference of ['system', 'application'] as const) {
 		if (preference === 'system') await page.emulateMedia({ reducedMotion: 'reduce' });
 		else
 			await page.evaluate(() => {
-				localStorage.setItem('chronos_preferences:reduce_motion_enabled', '1');
+				localStorage.setItem('chronos:/Chronos:chronos_preferences:reduce_motion_enabled', '1');
 				document.documentElement.classList.add('reduce-motion');
 			});
 		await expect(demo).toHaveClass(/demo-reduced/);
@@ -244,7 +244,7 @@ for (const preference of ['system', 'application'] as const) {
 		if (preference === 'system') await page.emulateMedia({ reducedMotion: 'no-preference' });
 		else
 			await page.evaluate(() => {
-				localStorage.setItem('chronos_preferences:reduce_motion_enabled', '0');
+				localStorage.setItem('chronos:/Chronos:chronos_preferences:reduce_motion_enabled', '0');
 				document.documentElement.classList.remove('reduce-motion');
 			});
 		await seek(page.locator('.preview.mode-fixed'), 0);

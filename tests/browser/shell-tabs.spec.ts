@@ -7,7 +7,9 @@ test('keeps inactive shell panels hidden after plugin utilities load', async ({
 	request
 }) => {
 	await request.post('/__e2e/deploy?build=old');
-	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	await page.goto('/Chronos/');
 	const mineTab = page.getByRole('tab', { name: '我的', exact: true });
 	const timetableTab = page.getByRole('tab', { name: '课表', exact: true });

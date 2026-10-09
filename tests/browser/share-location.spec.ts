@@ -17,7 +17,9 @@ test('mixed classroom, full and empty locations survive share import and reload'
 	request
 }) => {
 	await request.post('/__e2e/deploy?build=old');
-	await page.addInitScript(() => localStorage.setItem('chronos:onboarding-seen', '1'));
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	await page.goto(`/Chronos/s#${payload}`);
 	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
 	await expect(page.locator('.timetable-week-pager')).toBeVisible();
@@ -26,7 +28,7 @@ test('mixed classroom, full and empty locations survive share import and reload'
 	const actual = await page.evaluate(
 		() =>
 			new Promise<string[]>((resolve, reject) => {
-				const open = indexedDB.open('chronos');
+				const open = indexedDB.open('chronos:/Chronos:db');
 				open.onerror = () => reject(open.error);
 				open.onsuccess = () => {
 					const database = open.result;

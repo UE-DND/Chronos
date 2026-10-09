@@ -258,18 +258,14 @@ export function createAppShell() {
 	}
 
 	async function clearAllData() {
-		await classNotifications.clearData();
-		let result = await resetAppToInitialState();
-		try {
-			await wallpaper.clear();
-		} catch (error) {
-			console.error('[app-shell] Data cleared, but wallpaper state reset failed:', error);
-			result = { status: 'recovery-failed' };
-		}
-		// localStorage chronos:* keys are wiped by storage; drop in-memory PWA flags too.
-		pwaInstallController.resetInstalledFlag();
-		pwaInstallController.dismiss({ track: false });
-		return result;
+		return resetAppToInitialState(async () => {
+			try {
+				await classNotifications.clearData();
+			} finally {
+				pwaInstallController.resetInstalledFlag();
+				pwaInstallController.dismiss({ track: false });
+			}
+		});
 	}
 
 	return {

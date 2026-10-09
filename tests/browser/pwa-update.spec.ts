@@ -39,7 +39,7 @@ async function workerBuild(page: Page) {
 async function stored(page: Page) {
 	return page.evaluate(async () => {
 		const database = await new Promise<IDBDatabase>((resolve, reject) => {
-			const request = indexedDB.open('chronos');
+			const request = indexedDB.open('chronos:/Chronos:db');
 			request.onsuccess = () => resolve(request.result);
 			request.onerror = () => reject(request.error);
 		});

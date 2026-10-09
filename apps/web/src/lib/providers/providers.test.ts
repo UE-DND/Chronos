@@ -1,3 +1,6 @@
+import { createPluginInstallationRepository } from '#lib/storage/plugin-installation-repository.ts';
+import { emptyInstallationState } from '#lib/services/official-plugins/installed-store.ts';
+import type { InstalledOfficialPluginRecord } from '#lib/services/official-plugins/official-plugin-types.ts';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vite-plus/test';
 import {
 	DexieStorageProvider,
@@ -8,7 +11,7 @@ import {
 	createWebProviders,
 	createWebChronosEnv
 } from './index';
-import { createCourse, createTimetable } from '@chronos/core';
+import { createCourse, createTimetable, StorageClearError } from '@chronos/core';
 import type {
 	ChronosDB,
 	CourseRow,
@@ -67,9 +70,35 @@ function createMockDb(): ChronosDB {
 	const coursesMap = new Map<string, CourseRow>();
 	const pluginDataMap = new Map<string, PluginDataRow>();
 	const pluginBinaryMap = new Map<string, PluginBinaryRow>();
+	const imageRows = new Map<string, { id: string; blob: Blob }>();
+
+	const resourceRows = new Map<string, import('#lib/storage/db.ts').PluginResourceRow>();
 
 	return {
-		images: { clear: vi.fn().mockResolvedValue(undefined), toArray: vi.fn().mockResolvedValue([]) },
+		pluginResources: {
+			get: vi.fn(async (id: string) => resourceRows.get(id)),
+			bulkGet: vi.fn(async (ids: string[]) => ids.map((id) => resourceRows.get(id))),
+			put: vi.fn(async (row: import('#lib/storage/db.ts').PluginResourceRow) => {
+				resourceRows.set(row.id, row);
+			}),
+			bulkDelete: vi.fn(async (ids: string[]) => {
+				for (const id of ids) resourceRows.delete(id);
+			}),
+			toArray: vi.fn(async () => [...resourceRows.values()])
+		},
+		images: {
+			toCollection: () => ({ primaryKeys: async () => [...imageRows.keys()] }),
+			put: vi.fn(async (row: { id: string; blob: Blob }) => {
+				imageRows.set(row.id, row);
+				return row.id;
+			}),
+			get: vi.fn(async (id: string) => imageRows.get(id)),
+			bulkDelete: vi.fn(async (ids: string[]) => {
+				for (const id of ids) imageRows.delete(id);
+			}),
+			clear: vi.fn(async () => imageRows.clear()),
+			toArray: vi.fn(async () => [...imageRows.values()])
+		},
 		timetables: {
 			clear: vi.fn(async () => {
 				timetablesMap.clear();
@@ -123,6 +152,10 @@ function createMockDb(): ChronosDB {
 			})
 		},
 		pluginData: {
+			toCollection: () => ({ primaryKeys: async () => [...pluginDataMap.keys()] }),
+			bulkDelete: vi.fn(async (ids: string[]) => {
+				for (const id of ids) pluginDataMap.delete(id);
+			}),
 			clear: vi.fn(async () => {
 				pluginDataMap.clear();
 			}),
@@ -483,11 +516,11 @@ describe('Web Providers', () => {
 	});
 
 	it('clearAllData keeps the installed host while purging user resources and runtime caches', async () => {
-		const clearImages = vi.spyOn(db.images, 'clear');
+		const clearImages = vi.spyOn(db.images, 'bulkDelete');
 		const remaining = new Set([
-			'chronos-shell:/scope:build',
-			'chronos-default-pages-precache-v2',
-			'chronos-legal:/scope',
+			'chronos:/:shell:build',
+			'chronos:/:precache-precache-v2',
+			'chronos:/:legal',
 			'pages-cache',
 			'other-cache'
 		]);
@@ -509,14 +542,123 @@ describe('Web Providers', () => {
 		await storage.clearAllData();
 
 		expect(clearImages).toHaveBeenCalledOnce();
-		expect(deleted).toEqual(['chronos-legal:/scope']);
+		expect(deleted).toEqual(['chronos:/:legal']);
 		expect([...remaining]).toEqual([
-			'chronos-shell:/scope:build',
-			'chronos-default-pages-precache-v2',
+			'chronos:/:shell:build',
+			'chronos:/:precache-precache-v2',
 			'pages-cache',
 			'other-cache'
 		]);
 	});
+
+	it('retains only current profile resources, resetting all user data and removal markers', async () => {
+		const record = (
+			id: string,
+			profileId = 'profile',
+			version = '1.0.0'
+		): InstalledOfficialPluginRecord => ({
+			manifest: { id, version } as never,
+			origin: { kind: 'profile', profileId },
+			installedAt: 1,
+			code: 'code',
+			cssCode: 'css',
+			wallpaperAssetId: `${id}-image`
+		});
+		const retained = record('preinstall');
+		const state = {
+			...emptyInstallationState(),
+			generation: 'build',
+			revision: 4,
+			seeded: true,
+			removed: ['preinstall'],
+			records: [
+				retained,
+				record('extra'),
+				record('other-profile', 'other'),
+				record('old', 'profile', '0.9.0')
+			]
+		};
+		const storage = new DexieStorageProvider(db, localStorage, null, {
+			profileId: 'profile',
+			preinstallIds: ['preinstall', 'other-profile', 'old'],
+			hostVersion: '1.0.0',
+			hostBuildId: 'build'
+		});
+		await createPluginInstallationRepository(db).transaction((saved) =>
+			Object.assign(saved, state)
+		);
+		await storage.setPluginData('preinstall', '__config__', { password: 'secret' });
+		await storage.setPluginData('preinstall', 'binary', new Uint8Array([1]));
+		await storage.saveTimetable(createTimetable({ id: 'user', name: '用户课表', courses: [] }));
+		await db.images.put({ id: 'preinstall-image', blob: new Blob(['bundled']) });
+		await db.images.put({ id: 'custom-wallpaper', blob: new Blob(['private']) });
+		await db.images.put({ id: 'extra-image', blob: new Blob(['extra']) });
+		localStorage.setItem('chronos:test', 'private');
+		localStorage.setItem('third-party', 'kept');
+		await storage.clearAllData();
+		const after = await createPluginInstallationRepository(db).read();
+		expect(after).toMatchObject({
+			generation: 'build',
+			revision: 5,
+			seeded: false,
+			removed: [],
+			records: [{ ...retained, revision: 5 }]
+		});
+		expect(after?.records).toHaveLength(1);
+		expect(await db.pluginData.toArray()).toHaveLength(1);
+		expect(await db.pluginBinary.toArray()).toEqual([]);
+		expect(await storage.listTimetables()).toEqual([]);
+		expect((await db.images.toArray()).map((row) => row.id)).toEqual(['preinstall-image']);
+		expect(localStorage.getItem('chronos:test')).toBeNull();
+		expect(localStorage.getItem('third-party')).toBe('kept');
+	});
+
+	it('reports post-commit cache failure after clearing all other user storage', async () => {
+		const caches = {
+			keys: async () => ['chronos:/:legal'],
+			delete: async () => {
+				throw new Error('denied');
+			}
+		};
+		const storage = new DexieStorageProvider(db, localStorage, caches as unknown as CacheStorage);
+		await storage.setPluginData('plugin', 'secret', 'private');
+		localStorage.setItem('chronos:test', 'private');
+		await expect(storage.clearAllData()).rejects.toBeInstanceOf(StorageClearError);
+		expect(await storage.getPluginData('plugin', 'secret')).toBeNull();
+		expect(localStorage.getItem('chronos:test')).toBeNull();
+	});
+
+	it.each(['generation', 'web-lock', 'native-lock'])(
+		'rejects reset before deleting anything during %s',
+		async (kind) => {
+			const state = {
+				...emptyInstallationState(),
+				generation: kind === 'generation' ? 'other-build' : 'build'
+			};
+			if (kind !== 'generation')
+				state.prepared = {
+					target: { buildId: 'next', target: kind === 'native-lock' ? 'mobile' : 'pages' } as never,
+					revision: 0,
+					records: [],
+					token: 'lock',
+					until: kind === 'native-lock' ? null : Date.now() + 60_000
+				};
+			const storage = new DexieStorageProvider(db, localStorage, null, {
+				profileId: 'profile',
+				preinstallIds: [],
+				hostVersion: '1',
+				hostBuildId: 'build'
+			});
+			await createPluginInstallationRepository(db).transaction((saved) =>
+				Object.assign(saved, state)
+			);
+			localStorage.setItem('chronos:test', 'kept');
+			await expect(storage.clearAllData()).rejects.toThrow('Application update');
+			expect(vi.spyOn(db.timetables, 'clear')).not.toHaveBeenCalled();
+			expect(vi.spyOn(db.pluginBinary, 'clear')).not.toHaveBeenCalled();
+			expect(localStorage.getItem('chronos:test')).toBe('kept');
+		}
+	);
 
 	it('dispose removes cross-tab storage listener', () => {
 		const removeListener = vi.fn();

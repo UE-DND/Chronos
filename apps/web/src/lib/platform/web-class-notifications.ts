@@ -1,3 +1,4 @@
+import { appLocalStorage, storageNamespace } from '#lib/storage/storage-namespace.ts';
 import { resolve } from '$app/paths';
 import { staticPath } from '#lib/config/static-path.ts';
 import type {
@@ -8,8 +9,8 @@ import type {
 } from './host-platform';
 
 const DELIVERY_PREFIX = 'chronos_class_notifications:';
-const OPEN_MESSAGE = 'chronos:class-notification-open';
-const TAG = 'chronos-class-notification';
+const OPEN_MESSAGE = storageNamespace.key('class-notification-open');
+const TAG = storageNamespace.key('class-notification');
 
 export function initWebClassNotificationLinks(callbacks?: HostPlatformInitCallbacks): () => void {
 	if (typeof window === 'undefined') return () => {};
@@ -80,15 +81,17 @@ export function createWebClassNotifications(): ClassNotificationAdapter {
 		timer = undefined;
 	}
 	async function show(message: ClassNotificationMessage, revision: number) {
-		await navigator.locks.request('chronos-class-notifications', async () => {
+		await navigator.locks.request(storageNamespace.key('class-notifications'), async () => {
 			if (generation !== revision || Notification.permission !== 'granted') return;
-			const courses = message.courses.filter((c) => !localStorage.getItem(DELIVERY_PREFIX + c.key));
+			const courses = message.courses.filter(
+				(c) => !appLocalStorage().getItem(DELIVERY_PREFIX + c.key)
+			);
 			if (!courses.length) return;
 			const registration = await activeRegistration();
 			if (generation !== revision || Notification.permission !== 'granted') return;
 			// Reserve before display: another window must never deliver the same occurrence.
 			const keys = courses.map((c) => DELIVERY_PREFIX + c.key);
-			for (const key of keys) localStorage.setItem(key, String(message.startAt));
+			for (const key of keys) appLocalStorage().setItem(key, String(message.startAt));
 			try {
 				await registration.showNotification(message.title, {
 					body: courses.map((course) => course.body).join('\n'),
@@ -101,7 +104,7 @@ export function createWebClassNotifications(): ClassNotificationAdapter {
 						notification.close();
 				}
 			} catch (cause) {
-				for (const key of keys) localStorage.removeItem(key);
+				for (const key of keys) appLocalStorage().removeItem(key);
 				throw cause;
 			}
 		});
@@ -171,13 +174,13 @@ export function createWebClassNotifications(): ClassNotificationAdapter {
 			if (plan.length) await activeRegistration();
 			if (generation !== revision) return;
 			// Prune completed occurrences, but retain recent ones across refreshes and toggles.
-			for (let index = localStorage.length - 1; index >= 0; index--) {
-				const key = localStorage.key(index);
+			for (let index = appLocalStorage().length - 1; index >= 0; index--) {
+				const key = appLocalStorage().key(index);
 				if (
 					key?.startsWith(DELIVERY_PREFIX) &&
-					Number(localStorage.getItem(key)) < Date.now() - 86_400_000
+					Number(appLocalStorage().getItem(key)) < Date.now() - 86_400_000
 				)
-					localStorage.removeItem(key);
+					appLocalStorage().removeItem(key);
 			}
 			if (!plan.length) {
 				active = false;
@@ -206,9 +209,9 @@ export function createWebClassNotifications(): ClassNotificationAdapter {
 			stop();
 			plan = [];
 			if (typeof localStorage === 'undefined') return;
-			for (let index = localStorage.length - 1; index >= 0; index--) {
-				const key = localStorage.key(index);
-				if (key?.startsWith(DELIVERY_PREFIX)) localStorage.removeItem(key);
+			for (let index = appLocalStorage().length - 1; index >= 0; index--) {
+				const key = appLocalStorage().key(index);
+				if (key?.startsWith(DELIVERY_PREFIX)) appLocalStorage().removeItem(key);
 			}
 		},
 		dispose() {
