@@ -1,0 +1,18 @@
+{
+	"id": "tool-error-log",
+	"name": {
+		"zh-CN": "错误日志",
+		"en": "Error Log"
+	},
+	"version": "1.2.5",
+	"description": {},
+	"author": "Chronos",
+	"type": "tool",
+	"bundleFormat": "esm",
+	"toolGroup": "dev",
+	"downloadSizeBytes": 81750,
+	"bundleUrl": "../../bundles/tool-error-log/69b271314c6439839edafb80/bundle.js",
+	"sha256": "9c90b6783b0035f0c5bc3276e19da25bdb44ce8a7f297678af613cc361213187",
+	"cssUrl": "../../bundles/tool-error-log/69b271314c6439839edafb80/bundle.css",
+	"cssSha256": "420ffe9137066bc2146cc507d57e2bba24b135f78abe3b2e47f9b8d63ee2956c"
+}
