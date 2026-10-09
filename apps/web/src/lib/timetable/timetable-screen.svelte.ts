@@ -49,6 +49,7 @@ interface TimetableScreenState {
 	weekRangeText: string;
 	isCurrentWeek: boolean;
 	currentPeriodIndex: number | null;
+	scrollPeriodIndex: number | null;
 	expandedSlots: ReadonlySet<string>;
 	isEditing: boolean;
 	weekGridModels: Map<number, TimetableGridModel>;
@@ -164,7 +165,12 @@ function createTimetableScreen() {
 
 		const periods = timetable?.academicConfig.periodTimes ?? [];
 		const parsedPeriods = parsePeriodRanges(periods);
-		const currentPeriodIndex = findCurrentPeriodIndex(parsedPeriods, currentTimeMinutes(now));
+		const currentPeriodIndex = findCurrentPeriodIndex(
+			parsedPeriods,
+			currentTimeMinutes(now),
+			'none'
+		);
+		const scrollPeriodIndex = findCurrentPeriodIndex(parsedPeriods, currentTimeMinutes(now));
 
 		return {
 			currentTimetable: timetable,
@@ -180,6 +186,7 @@ function createTimetableScreen() {
 			weekRangeText,
 			isCurrentWeek,
 			currentPeriodIndex,
+			scrollPeriodIndex,
 			expandedSlots,
 			isEditing: interaction.isEditing,
 			weekGridModels,

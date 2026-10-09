@@ -79,9 +79,7 @@ export const WORKBENCH_COLOR_KEYS = [
 	'leadingIcon.backgroundTertiary',
 	'leadingIcon.colorTertiary',
 	'leadingIcon.backgroundNeutral',
-	'leadingIcon.colorNeutral',
-	'timetable.period.activeBackground',
-	'timetable.period.activeBackgroundImage'
+	'leadingIcon.colorNeutral'
 ] as const;
 
 export type WorkbenchColorKey = (typeof WORKBENCH_COLOR_KEYS)[number];
@@ -171,9 +169,7 @@ export const WORKBENCH_COLOR_REGISTRY: Record<WorkbenchColorKey, WorkbenchColorD
 	'leadingIcon.backgroundTertiary': { cssVar: '--leading-icon-bg-tertiary' },
 	'leadingIcon.colorTertiary': { cssVar: '--leading-icon-color-tertiary' },
 	'leadingIcon.backgroundNeutral': { cssVar: '--leading-icon-bg-neutral' },
-	'leadingIcon.colorNeutral': { cssVar: '--leading-icon-color-neutral' },
-	'timetable.period.activeBackground': { cssVar: '--period-active-bg' },
-	'timetable.period.activeBackgroundImage': { cssVar: '--period-active-bg-image' }
+	'leadingIcon.colorNeutral': { cssVar: '--leading-icon-color-neutral' }
 };
 
 const REGISTRY_KEY_SET = new Set<string>(WORKBENCH_COLOR_KEYS);

@@ -35,6 +35,9 @@
 	const activeWeek = $derived(ui?.current.activeWeek ?? academicWeek);
 	const displayedWeek = $derived(resolveDisplayedWeek(presentation, academicWeek, activeWeek));
 	const isCurrentWeek = $derived(displayedWeek === (academicWeek ?? activeWeek ?? 1));
+	const periodHighlightEnabled = $derived(
+		ui?.current.userPreferences?.currentPeriodHighlightEnabled ?? false
+	);
 	const currentPeriodIndex = $derived(ui?.current.currentPeriodIndex ?? null);
 	const coursePalette = $derived(resolveCoursePalette(presentation));
 	const paletteCourses = $derived(timetable?.courses ?? []);
@@ -82,6 +85,7 @@
 					{capsuleCornerStyle}
 					{isCurrentWeek}
 					{currentPeriodIndex}
+					{periodHighlightEnabled}
 					{courseBadges}
 					{hostTranslate}
 					interactive={false}

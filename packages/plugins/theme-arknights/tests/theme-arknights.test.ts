@@ -28,12 +28,6 @@ describe('@chronos/plugin-theme-arknights', () => {
 		expect(themeContribution.workbenchColors.light['shell.bottomTab.activeBackground']).toBe(
 			'#24282B'
 		);
-		expect(themeContribution.workbenchColors.light['timetable.period.activeBackground']).toBe(
-			'#006A93'
-		);
-		expect(
-			themeContribution.workbenchColors.dark['timetable.period.activeBackgroundImage']
-		).toContain('radial-gradient');
 	});
 
 	it('exposes six readable course colors in both modes', () => {

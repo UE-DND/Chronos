@@ -175,4 +175,25 @@ describe('TimetableScreenController', () => {
 		heavySpy.mockRestore();
 		setHostPlatform({ ...getHostPlatform(), isNative: false });
 	});
+	it('keeps a scroll target but no current course period during breaks and after classes', () => {
+		const screen = getTimetableScreen();
+		for (const [hours, minutes, expectedScroll] of [
+			[8, 50, 2],
+			[10, 0, 2]
+		]) {
+			screen.destroy();
+			const shell = {
+				...mockShell,
+				controller: {
+					currentTimetable: sampleTimetable,
+					now: new Date(2026, 2, 2, hours, minutes),
+					todayIso: '2026-03-02'
+				}
+			} as AppShellController;
+			screen.init(shell);
+			expect(screen.state.currentPeriodIndex).toBeNull();
+			expect(screen.state.scrollPeriodIndex).toBe(expectedScroll);
+		}
+		screen.destroy();
+	});
 });

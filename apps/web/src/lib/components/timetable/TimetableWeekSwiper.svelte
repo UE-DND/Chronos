@@ -95,6 +95,7 @@
 						displayedWeek={week}
 						isCurrentWeek={week === screenState.academicWeek}
 						currentPeriodIndex={screenState.currentPeriodIndex}
+						scrollPeriodIndex={screenState.scrollPeriodIndex}
 						{periodHighlightEnabled}
 						expandedSlots={screenState.expandedSlots}
 						onExpandSlot={(slotKey) => screen.expandSlot(slotKey)}

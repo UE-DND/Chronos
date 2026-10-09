@@ -1,4 +1,4 @@
-import type { CapsuleCornerStyle } from '@chronos/core';
+import type { TimetableCourseDisplayModel } from '@chronos/core';
 
 /** Shared timetable grid surface classes for production and preview grids. */
 
@@ -45,12 +45,27 @@ export function timetableHolidayColumnOverlayClass(hasDynamicBackground: boolean
 	return 'bg-on-surface-variant/5';
 }
 
-export function timetablePeriodHighlightClass(
-	isActive: boolean,
-	capsuleCornerStyle?: CapsuleCornerStyle
-): string {
-	if (!isActive) return '';
-	return capsuleCornerStyle === 'pill'
-		? 'period-active period-active--pill rounded-r-capsule'
-		: 'period-active';
+/** Matches a live course against the displayed day's current period. */
+export function isCurrentCourseCapsule({
+	displayModel,
+	isCurrentWeek,
+	todayDayOfWeek,
+	currentPeriodIndex
+}: {
+	displayModel: TimetableCourseDisplayModel;
+	isCurrentWeek: boolean;
+	todayDayOfWeek: number | null;
+	currentPeriodIndex: number | null;
+}): boolean {
+	const { course, isInDisplayedWeek, isHolidayMuted } = displayModel;
+	return (
+		isCurrentWeek &&
+		isInDisplayedWeek &&
+		!isHolidayMuted &&
+		todayDayOfWeek !== null &&
+		course.dayOfWeek === todayDayOfWeek &&
+		currentPeriodIndex !== null &&
+		course.startPeriod <= currentPeriodIndex &&
+		currentPeriodIndex <= course.endPeriod
+	);
 }

@@ -40,6 +40,9 @@
 	);
 	const displayedWeek = $derived(propDisplayedWeek ?? controller.activeWeek ?? academicWeek ?? 1);
 	const isCurrentWeek = $derived(displayedWeek === (academicWeek ?? controller.activeWeek ?? 1));
+	const periodHighlightEnabled = $derived(
+		controller.userPreferences?.currentPeriodHighlightEnabled ?? false
+	);
 	const currentPeriodIndex = $derived(controller.currentPeriodIndex);
 	const layoutMode = $derived(controller.userPreferences?.timetableLayoutMode ?? 'compact');
 	const capsuleCornerStyle = $derived(controller.userPreferences?.capsuleCornerStyle ?? 'sharp');
@@ -84,6 +87,7 @@
 			{interactive}
 			{isCurrentWeek}
 			{currentPeriodIndex}
+			{periodHighlightEnabled}
 			{courseBadges}
 			{hostTranslate}
 		/>

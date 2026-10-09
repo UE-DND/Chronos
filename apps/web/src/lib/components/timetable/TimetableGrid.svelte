@@ -34,7 +34,7 @@
 		timetableDayColumnDateClass,
 		timetableDayColumnDateShellClass,
 		timetableHolidayColumnOverlayClass,
-		timetablePeriodHighlightClass,
+		isCurrentCourseCapsule,
 		timetablePeriodIndexClass,
 		timetableSideTimeClass,
 		timetableSidebarTintClass,
@@ -71,6 +71,7 @@
 		displayedWeek: number;
 		isCurrentWeek: boolean;
 		currentPeriodIndex: number | null;
+		scrollPeriodIndex?: number | null;
 		periodHighlightEnabled?: boolean;
 		expandedSlots?: ReadonlySet<string>;
 		onExpandSlot?: (slotKey: string) => void;
@@ -94,6 +95,7 @@
 		displayedWeek,
 		isCurrentWeek,
 		currentPeriodIndex,
+		scrollPeriodIndex = currentPeriodIndex,
 		periodHighlightEnabled = false,
 		expandedSlots: propExpandedSlots,
 		onExpandSlot,
@@ -169,6 +171,9 @@
 		})
 	);
 
+	const todayDayOfWeek = $derived(
+		gridModel.visibleDays.find((day) => day.isToday)?.dayOfWeek ?? null
+	);
 	const solidBgClass = $derived(timetableSolidBgClass(hasDynamicBackground));
 	const isFitLayout = $derived(layoutMode === 'compact');
 	const capsuleLayoutReady = $derived(!isFitLayout || bodyViewportHeight > 0);
@@ -191,7 +196,7 @@
 		if (isFitLayout || !isCurrentWeek || !scrollContainer || bodyViewportHeight <= 0) {
 			return false;
 		}
-		const target = effectivePeriodIndex;
+		const target = periodHighlightEnabled ? scrollPeriodIndex : null;
 		if (target == null) return false;
 
 		const periodElements = scrollContainer.querySelectorAll<HTMLElement>('aside > div');
@@ -550,20 +555,14 @@
 			>
 				{#each gridModel.periods as period (period.index)}
 					<div
-						class="flex h-[var(--row-height)] flex-col items-center justify-center px-1 text-center {timetablePeriodHighlightClass(
-							period.index === effectivePeriodIndex,
-							capsuleCornerStyle
-						)}"
+						class="flex h-[var(--row-height)] flex-col items-center justify-center px-1 text-center"
 					>
 						<span data-adaptive-text="" class={timetablePeriodIndexClass()}>
 							{period.index}
 						</span>
 						<span
 							data-adaptive-text=""
-							class="period-time text-caption mt-1 font-mono leading-tight {period.index ===
-							effectivePeriodIndex
-								? ''
-								: timetableSideTimeClass()}"
+							class="period-time text-caption mt-1 font-mono leading-tight {timetableSideTimeClass()}"
 						>
 							{period.startTime}<br />{period.endTime}
 						</span>
@@ -668,6 +667,12 @@
 </div>
 
 {#snippet courseCard(placed: PlacedCourseCapsule, displayCorners: CapsuleCorners)}
+	{@const isCurrent = isCurrentCourseCapsule({
+		displayModel: placed.displayModel,
+		isCurrentWeek,
+		todayDayOfWeek,
+		currentPeriodIndex: effectivePeriodIndex
+	})}
 	{@const colors = placed.colors}
 	{@const scale = placed.scale}
 	{@const locationLines = placed.locationLines}
@@ -697,6 +702,7 @@
 	<button
 		type="button"
 		draggable="false"
+		data-current-course={isCurrent ? '' : undefined}
 		class="course-capsule flex h-full min-h-0 w-full flex-col overflow-hidden border p-2 text-left select-none {isEditing
 			? 'cursor-grab active:cursor-grabbing'
 			: 'course-capsule--pressable'} {placed.displayModel.isHolidayMuted

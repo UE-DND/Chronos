@@ -20,7 +20,6 @@ describe('@chronos/plugin-theme-yumemita', () => {
 		const dark = themeContribution.workbenchColors.dark;
 		expect(light['color.primary']).toBe('#2288dd');
 		expect(light['shell.bottomTab.activeForeground']).toBe('#2288dd');
-		expect(light['timetable.period.activeBackgroundImage']).toContain('linear-gradient');
 		expect(dark['color.surface']).toBe('#1e2026');
 	});
 

@@ -144,9 +144,7 @@
 				"leadingIcon.backgroundTertiary": "color-mix(in srgb, #796000 14%, transparent)",
 				"leadingIcon.colorTertiary": "#796000",
 				"leadingIcon.backgroundNeutral": "#DFE2DF",
-				"leadingIcon.colorNeutral": "#525B60",
-				"timetable.period.activeBackground": "#006A93",
-				"timetable.period.activeBackgroundImage": "radial-gradient(circle at 1px 1px, color-mix(in srgb, #FAFAF7 14%, transparent) 0.7px, transparent 0.8px)"
+				"leadingIcon.colorNeutral": "#525B60"
 			}
 		},
 		"dark": {
@@ -229,9 +227,7 @@
 				"leadingIcon.backgroundTertiary": "color-mix(in srgb, #F1C644 16%, transparent)",
 				"leadingIcon.colorTertiary": "#F2E3AA",
 				"leadingIcon.backgroundNeutral": "#343D42",
-				"leadingIcon.colorNeutral": "#BDC8CB",
-				"timetable.period.activeBackground": "#4AABEA",
-				"timetable.period.activeBackgroundImage": "radial-gradient(circle at 1px 1px, color-mix(in srgb, #082C40 14%, transparent) 0.7px, transparent 0.8px)"
+				"leadingIcon.colorNeutral": "#BDC8CB"
 			}
 		}
 	},

@@ -50,7 +50,6 @@ export function observeAdaptiveWallpaperText(
 		for (const element of targets) {
 			const rect = element.getBoundingClientRect();
 			if (
-				element.closest('.period-active') ||
 				rect.width <= 0 ||
 				rect.height <= 0 ||
 				rect.right <= viewport.left ||

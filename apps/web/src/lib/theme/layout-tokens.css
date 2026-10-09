@@ -1,12 +1,6 @@
 /* Layout shell dimensions, safe-area, and component-level course tokens */
 
 @layer tokens {
-	.period-active {
-		background-color: var(--period-active-bg, var(--color-brand));
-		background-image: var(--period-active-bg-image, none);
-		color: var(--color-on-primary);
-	}
-
 	/* Light: raw course paint. Dark: 42%/18% course mix (was layout blendColors 0.58/0.18). */
 	.course-capsule {
 		background-color: var(--capsule);
@@ -18,6 +12,12 @@
 		background-color: color-mix(in srgb, var(--capsule) 42%, var(--color-surface));
 		color: color-mix(in srgb, var(--capsule) 18%, var(--color-on-surface));
 		border-color: color-mix(in srgb, currentColor 18%, transparent);
+	}
+
+	.course-capsule[data-current-course],
+	.dark .course-capsule[data-current-course] {
+		border-color: var(--color-primary);
+		box-shadow: inset 0 0 0 1px var(--color-primary);
 	}
 
 	button.course-capsule.course-capsule--pressable {
