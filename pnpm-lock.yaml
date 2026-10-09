@@ -276,8 +276,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui-kit
       '@material-symbols-svg/svelte':
-        specifier: ^0.14.0
-        version: 0.14.0(svelte@5.57.1)
+        specifier: ^0.15.0
+        version: 0.15.0(svelte@5.57.1)
       bits-ui:
         specifier: ^2.19.3
         version: 2.19.3(@internationalized/date@3.12.4)(@sveltejs/kit@2.70.3(@sveltejs/vite-plugin-svelte@7.3.1(@voidzero-dev/vite-plus-core@1.1.0(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3))(svelte@5.57.1))(@voidzero-dev/vite-plus-core@1.1.0(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3))(svelte@5.57.1)(typescript@6.0.3))(svelte@5.57.1)
@@ -1434,8 +1434,8 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@material-symbols-svg/svelte@0.14.0':
-    resolution: {integrity: sha512-O8PRTgl1rbM2u2g4GttbZfU4oZRXxj3dx82F+uyC7NoqMd9/MSg+hTa28FK1V4mh/jIqK8N94T0VBXSakbZ3Rw==}
+  '@material-symbols-svg/svelte@0.15.0':
+    resolution: {integrity: sha512-jdX1GejRLv0u95qDe2QLl5PL4rFLtehI+lvYtr7PPRGZ6YPcRC9ApJ1VlrK/n8hLpjvoar2/2Rfa6j3jX1tPpw==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       svelte: ^5.0.0
@@ -5773,7 +5773,7 @@ snapshots:
       - encoding
       - supports-color
 
-  '@material-symbols-svg/svelte@0.14.0(svelte@5.57.1)':
+  '@material-symbols-svg/svelte@0.15.0(svelte@5.57.1)':
     dependencies:
       svelte: 5.57.1
 
