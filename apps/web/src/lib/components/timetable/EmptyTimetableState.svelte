@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { resolve } from '$app/paths';
-	import favicon from '$lib/assets/favicon.svg';
-	import { trackEvent } from '$lib/client/analytics';
-	import { onboardingController } from '$lib/client/onboarding.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import { getAppController } from '$lib/services/app-engine';
+	import favicon from '#lib/assets/favicon.svg';
+	import { trackEvent } from '#lib/client/analytics.ts';
+	import { onboardingController } from '#lib/client/onboarding.svelte.ts';
+	import Button from '#lib/components/ui/Button.svelte';
+	import { getAppController } from '#lib/services/app-engine.ts';
 
 	const controller = getAppController();
 
@@ -30,7 +30,7 @@
 	</h2>
 
 	<div class="mt-4 flex flex-col items-center gap-3">
-		<Button variant="outlined" href={resolve('/transfer/import')} onclick={handleImportClick}>
+		<Button variant="outlined" href={resolve('transfer/import')} onclick={handleImportClick}>
 			{hostT('timetable.empty.import')}
 		</Button>
 		<button

@@ -1,4 +1,4 @@
-import type { ChronosDB, PluginBinaryRow } from '$lib/storage/db';
+import type { ChronosDB, PluginBinaryRow } from '#lib/storage/db.ts';
 
 const DEFAULT_MIME = 'application/octet-stream';
 

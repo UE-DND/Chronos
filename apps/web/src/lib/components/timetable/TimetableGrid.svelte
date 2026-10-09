@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import type { Attachment } from 'svelte/attachments';
 	import {
 		ALL_CORNERS_ROUNDED,
@@ -18,16 +18,16 @@
 		courseCapsuleInnerWidthPx,
 		createFitWidthFontAttachment
 	} from '@chronos/ui-kit/utils/fit-width-font.svelte';
-	import { timetableDayColumnHeaderLabel } from '$lib/timetable/day-labels';
+	import { timetableDayColumnHeaderLabel } from '#lib/timetable/day-labels.ts';
 	import {
 		buildCourseCapsuleAriaLabel,
 		buildOverlapPlaceholderAriaLabel
-	} from '$lib/timetable/course-a11y';
+	} from '#lib/timetable/course-a11y.ts';
 	import {
 		calculatePeriodCenterScrollOffset,
 		calculatePeriodOffsetByIndex
-	} from '$lib/timetable/period-scroll';
-	import { trackEvent } from '$lib/client/analytics';
+	} from '#lib/timetable/period-scroll.ts';
+	import { trackEvent } from '#lib/client/analytics.ts';
 
 	import {
 		timetableBodyTintClass,
@@ -41,10 +41,10 @@
 		timetableSolidBgClass,
 		timetableTopTextClass
 	} from '@chronos/ui-kit';
-	import type { TimetableDropController } from '$lib/timetable/timetable-drop.svelte';
-	import { type TimetableInteraction } from '$lib/timetable/timetable-interaction.svelte';
-	import { haptic } from '$lib/haptic/haptic';
-	import { getHostPlatform } from '$lib/platform/host-platform';
+	import type { TimetableDropController } from '#lib/timetable/timetable-drop.svelte.ts';
+	import { type TimetableInteraction } from '#lib/timetable/timetable-interaction.svelte.ts';
+	import { haptic } from '#lib/haptic/haptic.ts';
+	import { getHostPlatform } from '#lib/platform/host-platform.ts';
 
 	const SCROLL_ROW_HEIGHT = '5.5rem';
 	const SIDEBAR_WIDTH_REM = 3.25;

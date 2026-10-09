@@ -1,6 +1,7 @@
-import { base } from '$app/paths';
+import { asset } from '$app/paths';
+import type { AssetPath } from '$app/types';
 
-/** Resolve a `static/` file path for the current deploy base (e.g. GitHub Pages). */
+/** Resolve a static file using the configured deploy base and asset origin. */
 export function staticPath(path: string): string {
-	return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+	return asset(path.replace(/^\//, '') as AssetPath);
 }

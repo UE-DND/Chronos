@@ -1,5 +1,5 @@
 import type { ChronosEngine } from '@chronos/core';
-import { getAppEngine } from '$lib/services/app-engine';
+import { getAppEngine } from '#lib/services/app-engine.ts';
 import { estimateCacheStorageBytes } from './cache-storage';
 
 const CHRONOS_STORAGE_PREFIX = 'chronos';

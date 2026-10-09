@@ -1,9 +1,9 @@
 import { describe, expect, it, vi, beforeEach, afterEach, type Mock } from 'vite-plus/test';
-import type { ImageRepository } from '$lib/storage/image-repository';
-import { HOST_BUILD } from '$lib/config/app-meta';
+import type { ImageRepository } from '#lib/storage/image-repository.ts';
+import { HOST_BUILD } from '#lib/config/app-meta.ts';
 
 const environment = vi.hoisted(() => ({ dev: false }));
-vi.mock('$app/environment', () => ({
+vi.mock('$app/env', () => ({
 	get dev() {
 		return environment.dev;
 	}

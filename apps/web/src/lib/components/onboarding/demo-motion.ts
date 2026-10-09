@@ -2,7 +2,7 @@ import { gsap } from 'gsap';
 import { isReducedMotionActive } from '@chronos/ui-kit';
 import type { TimetableLayoutMode } from '@chronos/core';
 import type { LongPressDemoController } from './long-press-demo.svelte';
-import { TIMETABLE_LONG_PRESS_DELAY_MS } from '$lib/timetable/timetable-interaction.svelte';
+import { TIMETABLE_LONG_PRESS_DELAY_MS } from '#lib/timetable/timetable-interaction.svelte.ts';
 
 /** Shared lifecycle for the two onboarding demos, scoped to their mounted root. */
 export function attachDemoMotion(

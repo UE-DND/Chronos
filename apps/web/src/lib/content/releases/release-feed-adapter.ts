@@ -1,5 +1,5 @@
-import { getHostPlatform } from '$lib/platform/host-platform';
-import { base } from '$app/paths';
+import { getHostPlatform } from '#lib/platform/host-platform.ts';
+import { staticPath } from '#lib/config/static-path.ts';
 import {
 	AppError,
 	failure,
@@ -10,7 +10,7 @@ import {
 } from '@chronos/core';
 import { createLocalReleaseCatalog } from './local-catalog';
 import type { ReleaseCatalog } from './catalog';
-import { HOST_BUILD, ANDROID_SIGNING_CERTIFICATE } from '$lib/config/app-meta';
+import { HOST_BUILD, ANDROID_SIGNING_CERTIFICATE } from '#lib/config/app-meta.ts';
 import { type Release } from './release';
 
 /**
@@ -22,7 +22,7 @@ export interface ReleaseFeedAdapter {
 
 export async function fetchLatestProjectRelease(
 	fetchFn: typeof fetch = fetch,
-	versionUrl = `${base}/version.json`,
+	versionUrl = staticPath('version.json'),
 	android = false
 ): Promise<AppResult<Release>> {
 	const abortController = new AbortController();

@@ -1,5 +1,5 @@
 import { SvelteSet } from 'svelte/reactivity';
-import { trackEvent } from '$lib/client/analytics';
+import { trackEvent } from '#lib/client/analytics.ts';
 import {
 	AcademicCalendarService,
 	currentTimeMinutes,
@@ -13,9 +13,9 @@ import {
 	type TimetableGridModel,
 	type TimetableWeekLayoutResult
 } from '@chronos/core';
-import { snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
+import { snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
 import { deleteCourseForWeek } from './course-delete-week';
-import type { AppShellController } from '$lib/app/app-shell.svelte';
+import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
 import {
 	academicBounds,
 	buildWeekList,
@@ -28,8 +28,8 @@ import {
 import { buildWeekViewport, createWeekLayoutCache } from './week-viewport';
 import { createTimetableInteraction } from './timetable-interaction.svelte';
 import { createTimetableDropController } from './timetable-drop.svelte';
-import { haptic } from '$lib/haptic/haptic';
-import { getHostPlatform } from '$lib/platform/host-platform';
+import { haptic } from '#lib/haptic/haptic.ts';
+import { getHostPlatform } from '#lib/platform/host-platform.ts';
 
 const calendarService = new AcademicCalendarService();
 

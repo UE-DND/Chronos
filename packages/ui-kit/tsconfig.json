@@ -1,9 +1,10 @@
 {
-	"extends": "../../apps/web/.svelte-kit/tsconfig.json",
+	"extends": "../../apps/web/node_modules/$app/tsconfig.json",
 	"compilerOptions": {
 		"paths": {
 			"@chronos/core": ["./packages/core/src/index.ts"]
-		}
+		},
+		"types": ["node"]
 	},
-	"include": ["src/**/*", "tests/**/*"]
+	"include": ["src/**/*", "tests/**/*", "../../apps/web/node_modules/$app/types/**/*.d.ts"]
 }

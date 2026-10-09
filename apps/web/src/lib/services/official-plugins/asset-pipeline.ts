@@ -1,5 +1,5 @@
 import { parseColorThemeJson } from '@chronos/core';
-import { validateImage } from '$lib/wallpaper/validate-image';
+import { validateImage } from '#lib/wallpaper/validate-image.ts';
 import { resolveManifestAssetUrl } from './manifest-url';
 import type { PluginManifest } from '@chronos/core';
 import type { ChronosEngine } from '@chronos/core';

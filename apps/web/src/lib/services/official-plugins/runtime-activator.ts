@@ -1,4 +1,4 @@
-import { ImageRepository } from '$lib/storage/image-repository';
+import { ImageRepository } from '#lib/storage/image-repository.ts';
 import type { ChronosEngine, Disposable } from '@chronos/core';
 import {
 	createIconThemeFromJson,

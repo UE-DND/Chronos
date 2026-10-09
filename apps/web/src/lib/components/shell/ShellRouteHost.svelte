@@ -1,18 +1,18 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { onMount } from 'svelte';
 	import { getContext } from 'svelte';
 	import { MediaQuery } from 'svelte/reactivity';
 	import { page } from '$app/state';
-	import type { AppShellController } from '$lib/app/app-shell.svelte';
-	import type { ShellTabController } from '$lib/shell/shell-tab.svelte';
-	import type { TimetableScreenController } from '$lib/timetable/timetable-screen.svelte';
-	import ShellTabPanels from '$lib/components/shell/ShellTabPanels.svelte';
-	import ShellWallpaper from '$lib/components/shell/ShellWallpaper.svelte';
-	import { isShellWallpaperRevealed } from '$lib/components/shell/shell-wallpaper';
-	import BottomTabBar from '$lib/components/BottomTabBar.svelte';
-	import AdaptiveEdgeBar from '$lib/components/ui/AdaptiveEdgeBar.svelte';
-	import TimetableWeekBadge from '$lib/components/timetable/TimetableWeekBadge.svelte';
+	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
+	import type { ShellTabController } from '#lib/shell/shell-tab.svelte.ts';
+	import type { TimetableScreenController } from '#lib/timetable/timetable-screen.svelte.ts';
+	import ShellTabPanels from '#lib/components/shell/ShellTabPanels.svelte';
+	import ShellWallpaper from '#lib/components/shell/ShellWallpaper.svelte';
+	import { isShellWallpaperRevealed } from '#lib/components/shell/shell-wallpaper.ts';
+	import BottomTabBar from '#lib/components/BottomTabBar.svelte';
+	import AdaptiveEdgeBar from '#lib/components/ui/AdaptiveEdgeBar.svelte';
+	import TimetableWeekBadge from '#lib/components/timetable/TimetableWeekBadge.svelte';
 	import {
 		MountableSlotOutlet,
 		resolvePluginScreenSlot,
@@ -20,10 +20,10 @@
 		setEdgeBarActions
 	} from '@chronos/ui-kit';
 	import { resolveLocalizedText } from '@chronos/core';
-	import EdgeBarActionButtons from '$lib/components/ui/EdgeBarActionButtons.svelte';
-	import { ensureEngineFullyReady, getAppController } from '$lib/services/app-engine';
-	import { isShellRoute } from '$lib/navigation/routes';
-	import { secondaryTransitionGate } from '$lib/navigation';
+	import EdgeBarActionButtons from '#lib/components/ui/EdgeBarActionButtons.svelte';
+	import { ensureEngineFullyReady, getAppController } from '#lib/services/app-engine.ts';
+	import { isShellRoute } from '#lib/navigation/routes.ts';
+	import { secondaryTransitionGate } from '#lib/navigation/index.ts';
 
 	const shell = getContext<AppShellController>('appShell');
 	const shellTab = getContext<ShellTabController>('shellTab');
@@ -124,6 +124,7 @@
 					blurred={timetableScreen.state.isEditing}
 				/>
 			{/if}
+
 			<div class={['shell-content h-full', gate.skipPaint && 'is-frozen']}>
 				<ShellTabPanels {ready} frozen={gate.frozen} />
 			</div>

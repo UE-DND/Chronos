@@ -1,14 +1,14 @@
 import { resolve } from '$app/paths';
 import { ProfilePolicyHttpAdapter } from './profile-policy-http';
-import { resolveActiveProfile } from '$lib/boot/profile-registry';
-import type { ChronosDB } from '$lib/storage/db';
+import { resolveActiveProfile } from '#lib/boot/profile-registry.ts';
+import type { ChronosDB } from '#lib/storage/db.ts';
 import { DexieStorageProvider } from './dexie-storage';
 import { WebHttpProxyProvider } from './web-http';
 import { PluginProxyHttpAdapter } from './plugin-proxy-http';
 import { WebRuntimeProvider } from './web-runtime';
 import { WebAnalyticsProvider } from './web-analytics';
 import { WebErrorCaptureProvider } from './web-error-capture';
-import { env } from '$env/dynamic/public';
+import { PUBLIC_CHRONOS_SHARE_IMPORT_URL } from '$app/env/public';
 
 import type { PlatformType } from '@chronos/core';
 
@@ -68,11 +68,11 @@ export function createWebChronosEnv(options?: WebProviderOptions) {
 		hostLinks: {
 			getImportUrl: () => {
 				if (options?.platform === 'ios' || options?.platform === 'android') {
-					return env.PUBLIC_CHRONOS_SHARE_IMPORT_URL?.trim() || null;
+					return PUBLIC_CHRONOS_SHARE_IMPORT_URL?.trim() || null;
 				}
 				return typeof window === 'undefined'
 					? null
-					: new URL(resolve('/s'), window.location.origin).href;
+					: new URL(resolve('s'), window.location.origin).href;
 			}
 		},
 		http: providers.http,

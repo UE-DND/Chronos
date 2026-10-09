@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { getEventListeners } from 'node:events';
 import { WebHttpProxyProvider } from './web-http';
-import { OfficialPluginInstallQueue } from '$lib/services/official-plugins/install-queue';
+import { OfficialPluginInstallQueue } from '#lib/services/official-plugins/install-queue.ts';
 
-vi.mock('$app/paths', () => ({ base: '' }));
-vi.mock('$lib/boot/plugin-proxy-meta.generated', () => ({
+vi.mock('$app/paths', () => ({ resolve: (path: string) => '/' + path.replace(/^\//, '') }));
+vi.mock('#lib/boot/plugin-proxy-meta.generated.ts', () => ({
 	deploymentHasServerPlugins: () => false
 }));
 

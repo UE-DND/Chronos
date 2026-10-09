@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import type { InstallPhase } from '$lib/content/releases/update-state.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import type { InstallPhase } from '#lib/content/releases/update-state.svelte.ts';
 
 	let {
 		phase,

@@ -194,3 +194,25 @@ test('retries preparation, updates every window and preserves installed plugins 
 	expect(offline.courses).toEqual(before.courses);
 	expect(offline.tables).toEqual(before.tables);
 });
+
+test('detects a deployment on focus and keeps installation under user control', async ({
+	page,
+	request
+}) => {
+	await importScenario(page);
+	await page.getByRole('tab', { name: '我的', exact: true }).click();
+	await expect(page.getByText('有新版本！', { exact: true })).toBeHidden();
+	await request.post('/__e2e/deploy?build=new');
+	const kitVersion = page.waitForResponse(
+		(response) => new URL(response.url()).pathname === '/Chronos/_app/version.json'
+	);
+	const hostVersion = page.waitForResponse(
+		(response) => new URL(response.url()).pathname === '/Chronos/version.json'
+	);
+	await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+	expect((await (await kitVersion).json()).version).toBe(newFeed.host.buildId);
+	expect((await (await hostVersion).json()).host.buildId).toBe(newFeed.host.buildId);
+	await expect(page.getByText('有新版本！', { exact: true })).toBeVisible();
+	expect(await workerBuild(page)).toBe(oldFeed.host.buildId);
+	expect((await stored(page)).courses).toHaveLength(timetable.courses.length);
+});

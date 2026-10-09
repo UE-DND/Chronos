@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
-import { createRafCoalescer } from '$lib/utils/raf-coalescer';
+import { createRafCoalescer } from '#lib/utils/raf-coalescer.ts';
 
 describe('createRafCoalescer', () => {
 	it('coalesces multiple schedule calls into one flush', () => {

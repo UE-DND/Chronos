@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { getTimetableScreen } from './timetable-screen.svelte';
 import { createTimetable, createCourse } from '@chronos/core';
-import type { AppShellController } from '$lib/app/app-shell.svelte';
-import { haptic } from '$lib/haptic/haptic';
-import { getHostPlatform, setHostPlatform } from '$lib/platform/host-platform';
+import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
+import { haptic } from '#lib/haptic/haptic.ts';
+import { getHostPlatform, setHostPlatform } from '#lib/platform/host-platform.ts';
 
 describe('TimetableScreenController', () => {
 	const sampleTimetable = createTimetable({

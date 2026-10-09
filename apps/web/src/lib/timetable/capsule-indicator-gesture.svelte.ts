@@ -1,7 +1,7 @@
 import { createSinglePointerSession } from '@chronos/ui-kit';
-import { haptic } from '$lib/haptic/haptic';
-import { createRafCoalescer } from '$lib/utils/raf-coalescer';
-import { createThrottledCallback } from '$lib/utils/throttle';
+import { haptic } from '#lib/haptic/haptic.ts';
+import { createRafCoalescer } from '#lib/utils/raf-coalescer.ts';
+import { createThrottledCallback } from '#lib/utils/throttle.ts';
 
 export interface CapsuleIndicatorGestureOptions {
 	getStartWeek: () => number;

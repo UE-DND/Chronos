@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { BottomSheet as UiBottomSheet } from '@chronos/ui-kit';
 	import type { Snippet } from 'svelte';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import { getOverlayHistoryPort } from '$lib/navigation/overlay-history-port';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import { getOverlayHistoryPort } from '#lib/navigation/overlay-history-port.ts';
 
 	const historyPort = getOverlayHistoryPort();
 	const instanceId = $props.id();

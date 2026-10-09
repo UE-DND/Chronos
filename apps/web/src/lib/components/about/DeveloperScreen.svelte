@@ -1,14 +1,14 @@
 <script lang="ts">
 	import type { AppLocale } from '@chronos/core';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import { parseMarkdown } from '$lib/content/markdown';
-	import { trackEvent } from '$lib/client/analytics';
-	import { getAppEngine, getAppController } from '$lib/services/app-engine';
-	import { APP_LOCALES, applySessionAppLocale, normalizeAppLocale } from '$lib/i18n/locale-sync';
-	import Radio from '$lib/components/ui/Radio.svelte';
-	import MineSection from '$lib/components/mine/MineSection.svelte';
-	import MineRow from '$lib/components/mine/MineRow.svelte';
-	import { haptic } from '$lib/haptic/haptic';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import { parseMarkdown } from '#lib/content/markdown.ts';
+	import { trackEvent } from '#lib/client/analytics.ts';
+	import { getAppEngine, getAppController } from '#lib/services/app-engine.ts';
+	import { APP_LOCALES, applySessionAppLocale, normalizeAppLocale } from '#lib/i18n/locale-sync.ts';
+	import Radio from '#lib/components/ui/Radio.svelte';
+	import MineSection from '#lib/components/mine/MineSection.svelte';
+	import MineRow from '#lib/components/mine/MineRow.svelte';
+	import { haptic } from '#lib/haptic/haptic.ts';
 
 	const controller = getAppController();
 	const markdownContent = $derived(hostT('developer.markdown'));

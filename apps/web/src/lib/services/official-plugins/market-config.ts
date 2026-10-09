@@ -1,5 +1,5 @@
-import { APP_VERSION } from '$lib/config/app-meta';
-import { staticPath } from '$lib/config/static-path';
+import { APP_VERSION } from '#lib/config/app-meta.ts';
+import { staticPath } from '#lib/config/static-path.ts';
 
 declare const __CHRONOS_PLUGIN_MARKET_BASE_URL__: string;
 declare const __OFFICIAL_PLUGIN_IDS__: string[];

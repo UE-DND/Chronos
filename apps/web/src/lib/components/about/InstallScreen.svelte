@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import { FullscreenFill, RocketLaunchFill, WifiOffFill } from '$lib/icons';
-	import AppHero from '$lib/components/AppHero.svelte';
-	import HighlightRow from '$lib/components/ui/HighlightRow.svelte';
-	import HighlightRowList from '$lib/components/ui/HighlightRowList.svelte';
-	import InstallGuideCard from '$lib/components/pwa/InstallGuideCard.svelte';
-	import { getAppController } from '$lib/services/app-engine';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import { FullscreenFill, RocketLaunchFill, WifiOffFill } from '#lib/icons/index.ts';
+	import AppHero from '#lib/components/AppHero.svelte';
+	import HighlightRow from '#lib/components/ui/HighlightRow.svelte';
+	import HighlightRowList from '#lib/components/ui/HighlightRowList.svelte';
+	import InstallGuideCard from '#lib/components/pwa/InstallGuideCard.svelte';
+	import { getAppController } from '#lib/services/app-engine.ts';
 
 	const controller = getAppController();
 </script>

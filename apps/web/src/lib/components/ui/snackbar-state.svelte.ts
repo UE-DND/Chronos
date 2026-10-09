@@ -1,6 +1,6 @@
-import { hostT } from '$lib/i18n/host-i18n.svelte';
+import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 
-import type { HostMessageKey } from '$lib/i18n/host-messages';
+import type { HostMessageKey } from '#lib/i18n/host-messages.ts';
 
 export type SnackbarAction = { label: string; onClick: () => void };
 export type SnackbarPriority = 'polite' | 'assertive';

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Button from './Button.svelte';
 	import type { EdgeBarAction } from '@chronos/ui-kit';
-	import { resolveShellIcon } from '$lib/shell/resolve-shell-icon';
+	import { resolveShellIcon } from '#lib/shell/resolve-shell-icon.ts';
 
 	let {
 		actions,

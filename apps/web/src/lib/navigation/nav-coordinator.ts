@@ -1,4 +1,4 @@
-import type { BeforeNavigate } from '@sveltejs/kit';
+import type { BeforeNavigate } from '$app/navigation';
 import { resolveBack, resolveTraversal, type BackFallback } from './back-resolver';
 import {
 	findRecord,
@@ -16,7 +16,7 @@ import {
 import { appRouteHref, isShellRoute } from './routes';
 
 export type NavigationCoordinatorDeps = {
-	goto: (href: string, opts?: { replaceState?: boolean }) => void | Promise<void>;
+	goto: (href: string, opts?: { replace?: boolean }) => void | Promise<void>;
 	pushState: (url: string, state: App.PageState) => void;
 	replaceState: (url: string, state: App.PageState) => void;
 	getPage: () => { url: URL; state: App.PageState };
@@ -76,7 +76,7 @@ export async function navigateForward(
 	const request = ++requestId;
 	requestedReplace = opts.replace ?? getTopFrame()?.kind === 'overlay';
 	try {
-		await deps.goto(appRouteHref(url), { replaceState: requestedReplace });
+		await deps.goto(appRouteHref(url), { replace: requestedReplace });
 	} finally {
 		if (request === requestId) {
 			requestedReplace = false;
@@ -115,7 +115,7 @@ function performNavigateBack(fallback: BackFallback): Promise<void> {
 	pendingFallbackTab = target.kind === 'shell' ? target.tab : undefined;
 	requestedReplace = true;
 	return Promise.resolve(
-		deps.goto(appRouteHref(target.kind === 'shell' ? '/' : target.href), { replaceState: true })
+		deps.goto(appRouteHref(target.kind === 'shell' ? '/' : target.href), { replace: true })
 	)
 		.catch(() => {
 			/* Router keeps the previous page on canceled/failed navigation. */
@@ -271,7 +271,7 @@ export function syncNavigationPage(completed = false): void {
 			// The public state identifies the target, but its page component still needs loading.
 			renderingTarget = actual;
 			backPending = true;
-			void Promise.resolve(deps.goto(actual.href, { replaceState: true })).catch(() => {
+			void Promise.resolve(deps.goto(actual.href, { replace: true })).catch(() => {
 				if (renderingTarget !== actual) return;
 				renderingTarget = undefined;
 				intent = undefined;
@@ -279,10 +279,13 @@ export function syncNavigationPage(completed = false): void {
 			});
 			return;
 		}
+
 		invalidateOverlays(
 			(frame) => frame.position > actual.position && frame.position <= current.position
 		);
+
 		if (intent?.shellTab && getTopRoute()) getTopRoute()!.shellTab = intent.shellTab;
+
 		const departingRoute = getTopRoute();
 		moveToRecord(actual);
 		if (renderingTarget) {

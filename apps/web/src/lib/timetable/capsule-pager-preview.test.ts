@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
-import { createCapsulePagerPreview } from '$lib/timetable/capsule-pager-preview';
+import { createCapsulePagerPreview } from '#lib/timetable/capsule-pager-preview.ts';
 
 describe('createCapsulePagerPreview', () => {
 	it('delivers the current preview when a target attaches late', () => {

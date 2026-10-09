@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 import { staticPath } from './static-path';
 
 vi.mock('$app/paths', () => ({
-	base: '/Chronos'
+	asset: (path: string) => `/Chronos/${path}`
 }));
 
 describe('staticPath', () => {

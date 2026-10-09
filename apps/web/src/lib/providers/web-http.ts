@@ -1,12 +1,15 @@
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
+
 import type {
 	HttpDownloadProgress,
 	HttpRequestOptions,
 	HttpResponse,
 	IHttpService
 } from '@chronos/core';
-import { mergeAbortSignals } from '$lib/utils/abort-signal';
-import { deploymentHasServerPlugins } from '$lib/boot/plugin-proxy-meta.generated';
+import { mergeAbortSignals } from '#lib/utils/abort-signal.ts';
+import { deploymentHasServerPlugins } from '#lib/boot/plugin-proxy-meta.generated.ts';
+
+const base = resolve('').replace(/\/$/, '');
 
 /**
  * Checks whether a given hostname is a private or loopback IP address (anti-SSRF).

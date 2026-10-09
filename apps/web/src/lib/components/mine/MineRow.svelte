@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { Component, Snippet } from 'svelte';
 	import type { HTMLAnchorAttributes, HTMLButtonAttributes, HTMLAttributes } from 'svelte/elements';
-	import { ChevronRight } from '$lib/icons';
-	import { appRouteHref } from '$lib/navigation/routes';
+	import { ChevronRight } from '#lib/icons/index.ts';
+	import { appRouteHref } from '#lib/navigation/routes.ts';
 
 	export type MineIconTone = 'primary' | 'secondary' | 'tertiary' | 'neutral';
 

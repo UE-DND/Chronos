@@ -1,6 +1,6 @@
-import { trackEvent } from '$lib/client/analytics';
-import { snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
-import { getHostPlatform } from '$lib/platform/host-platform';
+import { trackEvent } from '#lib/client/analytics.ts';
+import { snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
+import { getHostPlatform } from '#lib/platform/host-platform.ts';
 const INSTALLED_DISPLAY_MODES = ['standalone', 'fullscreen', 'minimal-ui'] as const;
 
 export function isPwaStandalone(): boolean {

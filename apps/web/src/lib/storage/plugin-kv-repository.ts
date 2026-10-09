@@ -1,7 +1,7 @@
 import { isPluginBinaryValue } from '@chronos/core';
-import type { ChronosDB } from '$lib/storage/db';
-import { PluginBinaryRepository } from '$lib/storage/plugin-binary-repository';
-import { PluginDataRepository } from '$lib/storage/plugin-data-repository';
+import type { ChronosDB } from '#lib/storage/db.ts';
+import { PluginBinaryRepository } from '#lib/storage/plugin-binary-repository.ts';
+import { PluginDataRepository } from '#lib/storage/plugin-data-repository.ts';
 
 /**
  * Unified plugin KV: JSON in `pluginData`, raw bytes in `pluginBinary`.

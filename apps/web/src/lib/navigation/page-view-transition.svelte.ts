@@ -1,9 +1,8 @@
-import { onNavigate } from '$app/navigation';
+import { onNavigate, type OnNavigate } from '$app/navigation';
 import { getPendingTraversal } from './nav-coordinator';
-import type { OnNavigate } from '@sveltejs/kit';
 import { flushSync } from 'svelte';
 import { isSecondaryRoute, toAppPathname } from './routes';
-import { getHostPlatform } from '$lib/platform/host-platform';
+import { getHostPlatform } from '#lib/platform/host-platform.ts';
 import {
 	routeMotionController,
 	type RouteMotionController
@@ -299,6 +298,9 @@ export function setupSecondaryPageViewTransition(
 ): void {
 	let navigationGeneration = 0;
 	onNavigate((navigation) => {
+		// History markers and overlays must not interrupt an active route animation.
+		if (navigation.shallow && navigation.type === 'goto') return;
+
 		const generation = ++navigationGeneration;
 		motion.cancelMotion();
 		const toPath = navigation.to?.url.pathname ?? '';

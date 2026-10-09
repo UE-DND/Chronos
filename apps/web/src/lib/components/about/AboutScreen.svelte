@@ -1,29 +1,29 @@
 <script lang="ts">
-	import { appUpdateNotice } from '$lib/client/app-update-ux.svelte';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { appUpdateNotice } from '#lib/client/app-update-ux.svelte.ts';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import type { AppShellController } from '$lib/app/app-shell.svelte';
-	import { trackEvent } from '$lib/client/analytics';
-	import { dismissSnackbar, snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
-	import { estimateAppDataBytes } from '$lib/storage/clear-app-data';
-	import { formatBytes } from '$lib/utils/format-bytes';
+	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
+	import { trackEvent } from '#lib/client/analytics.ts';
+	import { dismissSnackbar, snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
+	import Button from '#lib/components/ui/Button.svelte';
+	import BottomSheet from '#lib/components/ui/BottomSheet.svelte';
+	import { estimateAppDataBytes } from '#lib/storage/clear-app-data.ts';
+	import { formatBytes } from '#lib/utils/format-bytes.ts';
 	import {
 		APP_VERSION,
 		BUILD_TIME,
 		COPYRIGHT_HOLDER,
 		formatCopyrightYearRange,
 		PROJECT_LICENSE
-	} from '$lib/config/app-meta';
+	} from '#lib/config/app-meta.ts';
 	import { formatFullDate } from '@chronos/core';
 
-	import MineSection from '$lib/components/mine/MineSection.svelte';
-	import MineRow from '$lib/components/mine/MineRow.svelte';
-	import AppHero from '$lib/components/AppHero.svelte';
-	import { ChevronRight, InfoFill, LayersClearFill, ScheduleFill } from '$lib/icons';
+	import MineSection from '#lib/components/mine/MineSection.svelte';
+	import MineRow from '#lib/components/mine/MineRow.svelte';
+	import AppHero from '#lib/components/AppHero.svelte';
+	import { ChevronRight, InfoFill, LayersClearFill, ScheduleFill } from '#lib/icons/index.ts';
 
 	let { shell }: { shell: AppShellController } = $props();
 
@@ -66,7 +66,7 @@
 			clickCount = 0;
 			trackEvent('developer_easter_egg_open');
 			dismissSnackbar();
-			void goto(resolve('/about/easter-egg'));
+			void goto(resolve('about/easter-egg'));
 		} else if (clickCount >= Math.ceil(DEVELOPER_PAGE_TAP_COUNT / 2)) {
 			const remaining = DEVELOPER_PAGE_TAP_COUNT - clickCount;
 			snackbarKey('about.easterEgg.hint', { remaining }, undefined, 1500);
@@ -105,7 +105,7 @@
 		<MineRow
 			title={hostT('about.version.current')}
 			supporting={APP_VERSION}
-			href={resolve('/about/update')}
+			href={resolve('about/update')}
 			icon={InfoFill}
 			iconTone="primary"
 		>
@@ -141,16 +141,16 @@
 	</MineSection>
 
 	<MineSection title={hostT('about.section.info')}>
-		<MineRow title={hostT('about.legal.terms')} href={resolve('/legal/terms')} />
-		<MineRow title={hostT('about.legal.privacy')} href={resolve('/legal/privacy')} />
-		<MineRow title={hostT('about.legal.licenses')} href={resolve('/open-source-licenses')} />
+		<MineRow title={hostT('about.legal.terms')} href={resolve('legal/terms')} />
+		<MineRow title={hostT('about.legal.privacy')} href={resolve('legal/privacy')} />
+		<MineRow title={hostT('about.legal.licenses')} href={resolve('open-source-licenses')} />
 	</MineSection>
 
 	<footer class="copyright">
 		<p class="text-body-small text-on-surface-variant">
 			© {formatCopyrightYearRange()}
 			{COPYRIGHT_HOLDER} ·
-			<a href={resolve('/open-source-licenses/project')} class="license-link">
+			<a href={resolve('open-source-licenses/project')} class="license-link">
 				{PROJECT_LICENSE}
 			</a>
 		</p>

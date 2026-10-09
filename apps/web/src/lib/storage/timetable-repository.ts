@@ -1,7 +1,12 @@
 import type { Course, CourseQueryFilter, CourseQueryHit, Timetable } from '@chronos/core';
 import { countDistinctCourseNames, matchesCourseQuery } from '@chronos/core';
-import type { ChronosDB } from '$lib/storage/db';
-import { courseFromRow, courseToRow, timetableFromRow, timetableToRow } from '$lib/storage/mappers';
+import type { ChronosDB } from '#lib/storage/db.ts';
+import {
+	courseFromRow,
+	courseToRow,
+	timetableFromRow,
+	timetableToRow
+} from '#lib/storage/mappers.ts';
 
 function groupCoursesByTimetable(
 	courseRows: Array<{ timetableId: string } & Parameters<typeof courseFromRow>[0]>

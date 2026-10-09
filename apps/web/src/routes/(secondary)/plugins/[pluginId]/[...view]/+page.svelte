@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { ensureEngineFullyReady, getAppController } from '$lib/services/app-engine';
-	import SecondaryPageShell from '$lib/components/SecondaryPageShell.svelte';
-	import LoadingIndicator from '$lib/components/ui/LoadingIndicator.svelte';
+	import { ensureEngineFullyReady, getAppController } from '#lib/services/app-engine.ts';
+	import SecondaryPageShell from '#lib/components/SecondaryPageShell.svelte';
+	import LoadingIndicator from '#lib/components/ui/LoadingIndicator.svelte';
 	import { PluginScreenContainer, resolvePluginScreenSlot } from '@chronos/ui-kit';
 	import { resolveLocalizedText } from '@chronos/core';
 

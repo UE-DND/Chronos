@@ -4,9 +4,9 @@ import {
 	setHostPlatform,
 	resetHostPlatform,
 	getDefaultWebPlatform
-} from '$lib/platform/host-platform';
+} from '#lib/platform/host-platform.ts';
 
-vi.mock('$lib/config/app-meta', () => ({
+vi.mock('#lib/config/app-meta.ts', () => ({
 	ANDROID_SIGNING_CERTIFICATE: 'c'.repeat(64),
 	HOST_BUILD: { version: '1.1.2', profileId: 'chronos-default' }
 }));

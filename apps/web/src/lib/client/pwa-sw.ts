@@ -1,5 +1,5 @@
-import { HOST_BUILD } from '$lib/config/app-meta';
-import { dev } from '$app/environment';
+import { HOST_BUILD } from '#lib/config/app-meta.ts';
+import { dev } from '$app/env';
 import { registerSW } from 'virtual:pwa-register';
 
 let registered = false;
@@ -235,7 +235,7 @@ export async function probeSwUpdate(): Promise<boolean> {
 	if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return false;
 	try {
 		const { fetchLatestProjectRelease } =
-			await import('$lib/content/releases/release-feed-adapter');
+			await import('#lib/content/releases/release-feed-adapter.ts');
 		const result = await fetchLatestProjectRelease();
 		if (result.ok) {
 			if (result.value.hostUpdate?.host.buildId !== HOST_BUILD.buildId) return markUpdatePending();
@@ -270,7 +270,7 @@ async function checkControllerIdentity() {
 		const host = await readWorkerIdentity(navigator.serviceWorker.controller);
 		if (host.buildId === HOST_BUILD.buildId) return;
 		reloading = true;
-		const { disposeAppEngine } = await import('$lib/services/app-engine');
+		const { disposeAppEngine } = await import('#lib/services/app-engine.ts');
 		disposeAppEngine();
 		window.location.reload();
 	} catch (error) {

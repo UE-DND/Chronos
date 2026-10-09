@@ -1,9 +1,9 @@
-import type { AppShellController } from '$lib/app/app-shell.svelte';
-import { trackEvent } from '$lib/client/analytics';
-import type { CourseDraft } from '$lib/models/drafts';
-import { courseToDraft } from '$lib/timetable/timetable-mappers';
-import { getAppController } from '$lib/services/app-engine';
-import { snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
+import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
+import { trackEvent } from '#lib/client/analytics.ts';
+import type { CourseDraft } from '#lib/models/drafts.ts';
+import { courseToDraft } from '#lib/timetable/timetable-mappers.ts';
+import { getAppController } from '#lib/services/app-engine.ts';
+import { snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
 import {
 	COURSE_REMARK_MAX_LENGTH,
 	createCourse,

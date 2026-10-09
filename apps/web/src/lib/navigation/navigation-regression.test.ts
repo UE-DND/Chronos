@@ -54,7 +54,7 @@ function browserAdapter(initial = '/') {
 	};
 	const setActiveTab = vi.fn();
 	const traversals: Array<{ from: string; delta: number }> = [];
-	const goto = vi.fn(async (url: string, opts?: { replaceState?: boolean }) => {
+	const goto = vi.fn(async (url: string, opts?: { replace?: boolean }) => {
 		const to = new URL(url, 'https://app');
 		const traversal = getPendingTraversal();
 		if (traversal) traversals.push(traversal);
@@ -69,11 +69,11 @@ function browserAdapter(initial = '/') {
 			url: to,
 			wrapper: {
 				routerIndex: 43 + position,
-				navigationGroup: entries[position].wrapper.navigationGroup + (opts?.replaceState ? 0 : 1),
+				navigationGroup: entries[position].wrapper.navigationGroup + (opts?.replace ? 0 : 1),
 				pageState: {}
 			}
 		};
-		if (opts?.replaceState) entries[position] = entry;
+		if (opts?.replace) entries[position] = entry;
 		else {
 			entries.splice(position + 1);
 			entries.push(entry);
@@ -469,7 +469,7 @@ describe('navigation and overlay browser contract', () => {
 
 			expect(canSystemBack()).toBe(true);
 			expect(dispatchSystemBack()).toBe('consumed');
-			expect(browser.goto).toHaveBeenCalledWith('/', { replaceState: true });
+			expect(browser.goto).toHaveBeenCalledWith('/', { replace: true });
 		});
 
 		it('consumes back while navigation is in flight', () => {

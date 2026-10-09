@@ -1,8 +1,8 @@
-import { HOST_BUILD } from '$lib/config/app-meta';
-import { base } from '$app/paths';
-import { PLUGIN_PROXY_ENTRIES } from '$lib/boot/plugin-proxy-meta.generated';
+import { HOST_BUILD } from '#lib/config/app-meta.ts';
+import { resolve } from '$app/paths';
+import { PLUGIN_PROXY_ENTRIES } from '#lib/boot/plugin-proxy-meta.generated.ts';
 import type { HttpResponse, IHttpService } from '@chronos/core';
-import { mergeAbortSignals } from '$lib/utils/abort-signal';
+import { mergeAbortSignals } from '#lib/utils/abort-signal.ts';
 import {
 	parsePluginServerResponse,
 	pluginServerErrorMessage,
@@ -75,16 +75,20 @@ export class PluginProxyHttpAdapter implements IHttpService {
 		const signal = mergedSignal?.signal;
 
 		try {
-			const proxyRes = await fetch(`${base}/api/plugins/${pluginId}/${action}`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-Chronos-Version': HOST_BUILD.version,
-					'X-Chronos-Profile': HOST_BUILD.profileId
-				},
-				body: JSON.stringify(payload),
-				signal
-			});
+			const proxyRes = await fetch(
+				resolve('') +
+					`api/plugins/${encodeURIComponent(pluginId)}/${action.split('/').map(encodeURIComponent).join('/')}`,
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'X-Chronos-Version': HOST_BUILD.version,
+						'X-Chronos-Profile': HOST_BUILD.profileId
+					},
+					body: JSON.stringify(payload),
+					signal
+				}
+			);
 
 			if (proxyRes.status === 426) window.dispatchEvent(new CustomEvent('chronos-update-required'));
 			const raw = await proxyRes.json();

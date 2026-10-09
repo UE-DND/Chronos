@@ -1,4 +1,4 @@
-import { hostT } from '$lib/i18n/host-i18n.svelte';
+import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 import type { DateFieldLabels, TimePickerLabels } from '@chronos/ui-kit';
 
 export function createHostDateFieldLabels(): DateFieldLabels {

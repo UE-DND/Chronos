@@ -1,5 +1,5 @@
-import type { HostMessageKey } from '$lib/i18n/host-messages';
-import { hostT } from '$lib/i18n/host-i18n.svelte';
+import type { HostMessageKey } from '#lib/i18n/host-messages.ts';
+import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 import {
 	timetableDayColumnHeaderLabel as uiDayColumnHeaderLabel,
 	timetableDayLabel as uiDayLabel

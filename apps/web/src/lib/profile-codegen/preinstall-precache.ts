@@ -44,7 +44,6 @@ export function preinstallPrecachePlugin(
 	profile: ChronosProfile,
 	base = ''
 ): Plugin {
-	let serverBuild = false;
 	let api:
 		| {
 				extendManifestEntries: (
@@ -57,14 +56,13 @@ export function preinstallPrecachePlugin(
 	return {
 		name: 'chronos-preinstall-precache',
 		configResolved(config) {
-			serverBuild = Boolean(config.build.ssr);
 			api = config.plugins.find((plugin) => plugin.name === 'vite-plugin-pwa')?.api;
 		},
 		writeBundle: {
 			order: 'post',
 			sequential: true,
 			handler() {
-				if (!serverBuild) return;
+				if (this.environment.config.consumer !== 'client') return;
 				if (!api) throw new Error('PWA manifest extension API is unavailable');
 				api.extendManifestEntries((entries) => {
 					const licensePath = join(webRoot, '.svelte-kit/output/client/licenses/third-party.json');

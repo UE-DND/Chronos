@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { trackEvent } from '$lib/client/analytics';
+	import { trackEvent } from '#lib/client/analytics.ts';
 	import type { ChronosUiController } from '@chronos/ui-kit';
 	import {
 		TimetableLivePreview,
@@ -10,10 +10,10 @@
 	import { getWallpaperBitmap } from './wallpaper-theme';
 	import { observeAdaptiveWallpaperText } from './adaptive-text';
 	import WallpaperCropEditor from './WallpaperCropEditor.svelte';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import type { HostMessageKey } from '$lib/i18n/host-messages';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import type { HostMessageKey } from '#lib/i18n/host-messages.ts';
 
-	import type { AppShellController } from '$lib/app/app-shell.svelte';
+	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
 	let { shell }: { shell: AppShellController } = $props();
 	const controller = $derived(shell.controller);
 	const edgeActions = getEdgeBarActions();

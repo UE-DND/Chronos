@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { TIMETABLE_NAME_MAX_LENGTH } from '@chronos/core';
-	import type { TimetableDetailsController } from '$lib/timetable/timetable-details.svelte';
-	import FormCard from '$lib/components/ui/FormCard.svelte';
-	import DateField from '$lib/components/ui/DateField.svelte';
-	import StepperField from '$lib/components/ui/StepperField.svelte';
-	import TextField from '$lib/components/ui/TextField.svelte';
-	import PeriodTimesEditor from '$lib/components/timetable/PeriodTimesEditor.svelte';
+	import type { TimetableDetailsController } from '#lib/timetable/timetable-details.svelte.ts';
+	import FormCard from '#lib/components/ui/FormCard.svelte';
+	import DateField from '#lib/components/ui/DateField.svelte';
+	import StepperField from '#lib/components/ui/StepperField.svelte';
+	import TextField from '#lib/components/ui/TextField.svelte';
+	import PeriodTimesEditor from '#lib/components/timetable/PeriodTimesEditor.svelte';
 
 	let {
 		editor

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { dayOfWeekFromIso } from '@chronos/core';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import { timetableDayLabel } from '$lib/timetable/day-labels';
-	import type { TimetableScreenController } from '$lib/timetable/timetable-screen.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import { timetableDayLabel } from '#lib/timetable/day-labels.ts';
+	import type { TimetableScreenController } from '#lib/timetable/timetable-screen.svelte.ts';
 
 	let { screen }: { screen: TimetableScreenController } = $props();
 

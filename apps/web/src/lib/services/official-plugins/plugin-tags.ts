@@ -1,4 +1,4 @@
-import { hostT } from '$lib/i18n/host-i18n.svelte';
+import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 import type { PluginManifest, ToolGroup } from '@chronos/core';
 
 /** Preset plugin category tags shown in official plugin UI. */

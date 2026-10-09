@@ -4,7 +4,9 @@
 
 ## 开发工作流
 
-Chronos 是由 Web 宿主、共享包、插件包和 Capacitor 移动端组成的 workspace。项目使用 [Vite+](https://viteplus.dev) 管理依赖和开发工具；在仓库根目录运行命令，并使用 `vp` 或 `vpx`，不要直接调用 npm、pnpm、yarn、npx 等工具。尚未安装 Vite+ 时，请按[官方安装说明](https://viteplus.dev/guide/global-cli)安装全局 `vp` 命令。CI 使用 Node.js 24，本地使用相同主版本可避免运行时差异。
+Chronos 是由 Web 宿主、共享包、插件包和 Capacitor 移动端组成的 workspace。项目使用 [Vite+](https://viteplus.dev) 管理依赖和开发工具；在仓库根目录运行命令，并使用 `vp` 或 `vpx`，不要直接调用 npm、pnpm、yarn、npx 等工具。尚未安装 Vite+ 时，请按[官方安装说明](https://viteplus.dev/guide/global-cli)安装全局 `vp` 命令。CI 使用 Node.js 24，本地使用相同主版本可避免运行时差异。SvelteKit 3 的最低运行时要求为 Node.js 22.17。
+
+Web 宿主使用 SvelteKit 3 的原生 `#lib/*` 子路径导入，源码导入需带实际文件扩展名；环境变量在 `apps/web/src/env.ts` 显式声明，通过 `$app/env/public` 读取。`patches/@vite-pwa__sveltekit@1.1.0.patch` 将 PWA 插件接入 Vite 环境 API，并在完整构建完成、适配器输出之前生成缓存清单与 Service Worker。升级该插件时须验证补丁是否仍有必要，并运行浏览器离线更新回归。
 
 ### 初次运行
 

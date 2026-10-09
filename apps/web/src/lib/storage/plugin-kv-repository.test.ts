@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
-import type { ChronosDB, PluginBinaryRow, PluginDataRow } from '$lib/storage/db';
-import { PluginKvRepository } from '$lib/storage/plugin-kv-repository';
+import type { ChronosDB, PluginBinaryRow, PluginDataRow } from '#lib/storage/db.ts';
+import { PluginKvRepository } from '#lib/storage/plugin-kv-repository.ts';
 
 function createMockDb() {
 	const pluginDataMap = new Map<string, PluginDataRow>();

@@ -2,15 +2,15 @@
 	import { tick } from 'svelte';
 	import { DEFAULT_USER_PREFERENCES, PREPARE_REMINDER_MINUTES_OPTIONS } from '@chronos/core';
 	import { PickerWheel } from '@chronos/ui-kit';
-	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import type { AppShellController } from '$lib/app/app-shell.svelte';
-	import { trackEvent } from '$lib/client/analytics';
-	import Switch from '$lib/components/ui/Switch.svelte';
-	import MineSection from '$lib/components/mine/MineSection.svelte';
-	import MineRow from '$lib/components/mine/MineRow.svelte';
-	import { AnimationFill, MobileVibrateFill } from '$lib/icons';
-	import { haptic } from '$lib/haptic/haptic';
+	import BottomSheet from '#lib/components/ui/BottomSheet.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
+	import { trackEvent } from '#lib/client/analytics.ts';
+	import Switch from '#lib/components/ui/Switch.svelte';
+	import MineSection from '#lib/components/mine/MineSection.svelte';
+	import MineRow from '#lib/components/mine/MineRow.svelte';
+	import { AnimationFill, MobileVibrateFill } from '#lib/icons/index.ts';
+	import { haptic } from '#lib/haptic/haptic.ts';
 
 	let { shell }: { shell: AppShellController } = $props();
 	const hapticFeedbackEnabled = $derived(

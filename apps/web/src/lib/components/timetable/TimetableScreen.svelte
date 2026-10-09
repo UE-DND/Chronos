@@ -1,16 +1,16 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import type { TimetableScreenController } from '$lib/timetable/timetable-screen.svelte';
-	import { timetableDayLabel } from '$lib/timetable/day-labels';
-	import type { AppShellController } from '$lib/app/app-shell.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import type { TimetableScreenController } from '#lib/timetable/timetable-screen.svelte.ts';
+	import { timetableDayLabel } from '#lib/timetable/day-labels.ts';
+	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
 	import { dayOfWeekFromIso } from '@chronos/core';
 	import { getContext } from 'svelte';
-	import TopAppBar from '$lib/components/TopAppBar.svelte';
-	import { createCapsulePagerPreview } from '$lib/timetable/capsule-pager-preview';
+	import TopAppBar from '#lib/components/TopAppBar.svelte';
+	import { createCapsulePagerPreview } from '#lib/timetable/capsule-pager-preview.ts';
 	import TimetableWeekSwiper from './TimetableWeekSwiper.svelte';
 	import TimetableCapsuleIndicator from './TimetableCapsuleIndicator.svelte';
 	import WeekDeleteConfirmation from './WeekDeleteConfirmation.svelte';
-	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
+	import BottomSheet from '#lib/components/ui/BottomSheet.svelte';
 
 	let {
 		screen,
@@ -25,8 +25,8 @@
 	const screenState = $derived(screen.state);
 	const shell = getContext<AppShellController>('appShell');
 
-	import { getWallpaperBitmap } from '$lib/wallpaper/wallpaper-theme';
-	import { observeAdaptiveWallpaperText } from '$lib/wallpaper/adaptive-text';
+	import { getWallpaperBitmap } from '#lib/wallpaper/wallpaper-theme.ts';
+	import { observeAdaptiveWallpaperText } from '#lib/wallpaper/adaptive-text.ts';
 
 	const coursePalette = $derived(shell.appearance.coursePalette);
 	const hasWallpaper = $derived(shell.state.hasWallpaper);

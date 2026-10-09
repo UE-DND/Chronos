@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import { navigateForward } from '$lib/navigation';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import { navigateForward } from '#lib/navigation/index.ts';
 	import { getContext } from 'svelte';
-	import type { AppShellController } from '$lib/app/app-shell.svelte';
-	import { trackEvent } from '$lib/client/analytics';
-	import CourseDetailScreen from '$lib/components/timetable/CourseDetailScreen.svelte';
-	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
-	import IconButton from '$lib/components/ui/IconButton.svelte';
-	import { Edit } from '$lib/icons';
+	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
+	import { trackEvent } from '#lib/client/analytics.ts';
+	import CourseDetailScreen from '#lib/components/timetable/CourseDetailScreen.svelte';
+	import BottomSheet from '#lib/components/ui/BottomSheet.svelte';
+	import IconButton from '#lib/components/ui/IconButton.svelte';
+	import { Edit } from '#lib/icons/index.ts';
 
 	let {
 		open = $bindable(false),

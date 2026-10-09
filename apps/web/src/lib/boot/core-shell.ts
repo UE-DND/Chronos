@@ -1,7 +1,7 @@
 import type { ChronosEngine } from '@chronos/core';
 import { DEFAULT_MINE_SECTION_ID, type PluginTranslate } from '@chronos/core';
-import { pwaInstallController } from '$lib/client/pwa-install.svelte';
-import { CORE_SHELL_MESSAGES } from '$lib/boot/core-shell-messages';
+import { pwaInstallController } from '#lib/client/pwa-install.svelte.ts';
+import { CORE_SHELL_MESSAGES } from '#lib/boot/core-shell-messages.ts';
 
 const CORE_SHELL_PLUGIN_ID = 'core-shell';
 

@@ -1,19 +1,19 @@
 import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
-import { HOST_BUILD } from '$lib/config/app-meta';
+import { HOST_BUILD } from '#lib/config/app-meta.ts';
 import { pluginServerSuccess, type PluginServerManifest } from '@chronos/core';
 import { PLUGIN_RATE_LIMIT_MAX } from './config';
 import { PluginDispatcher, type PluginProxyRequestEvent } from './dispatch';
 import { PluginRateLimiter } from './rate-limit';
 
-vi.mock('$lib/server/plugin-server-loader.generated', () => ({
+vi.mock('#lib/server/plugin-server-loader.generated.ts', () => ({
 	loadServerManifest: vi.fn()
 }));
 
-vi.mock('$lib/boot/plugin-proxy-meta.generated', () => ({
+vi.mock('#lib/boot/plugin-proxy-meta.generated.ts', () => ({
 	ACTIVE_SERVER_PLUGIN_IDS: ['source-cqut']
 }));
 
-import { loadServerManifest } from '$lib/server/plugin-server-loader.generated';
+import { loadServerManifest } from '#lib/server/plugin-server-loader.generated.ts';
 
 function createEvent(
 	overrides: {

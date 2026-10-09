@@ -1,16 +1,16 @@
 import { planPreinstall } from './preinstall-policy';
-import { dev } from '$app/environment';
-import { ImageRepository } from '$lib/storage/image-repository';
+import { dev } from '$app/env';
+import { ImageRepository } from '#lib/storage/image-repository.ts';
 import { resolveManifestForDownload } from './manifest-url';
-import { hostT } from '$lib/i18n/host-i18n.svelte';
+import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 import type { ChronosEngine, ChronosProfile, Disposable, PluginManifest } from '@chronos/core';
 import { PLUGIN_CONFIG_STORAGE_KEY, validateProfile } from '@chronos/core';
-import { db, type ChronosDB } from '$lib/storage/db';
-import { createPluginInstallationRepository } from '$lib/storage/plugin-installation-repository';
+import { db, type ChronosDB } from '#lib/storage/db.ts';
+import { createPluginInstallationRepository } from '#lib/storage/plugin-installation-repository.ts';
 import type { HostBuildIdentity } from '@chronos/core';
-import { APP_VERSION, HOST_BUILD } from '$lib/config/app-meta';
+import { APP_VERSION, HOST_BUILD } from '#lib/config/app-meta.ts';
 import { isAbortError } from './abort-utils';
-import { mergeAbortSignals } from '$lib/utils/abort-signal';
+import { mergeAbortSignals } from '#lib/utils/abort-signal.ts';
 import { PluginOperationCoordinator } from './plugin-operation-coordinator';
 import { OfficialPluginAssetPipeline } from './asset-pipeline';
 import { OfficialPluginCatalogClient } from './catalog-client';
@@ -259,7 +259,7 @@ export class OfficialPluginService implements Disposable {
 		if (this.loaded) return;
 		await this.installedStore.load();
 		if (this.hostBuild?.target === 'mobile') {
-			const { getHostPlatform } = await import('$lib/platform/host-platform');
+			const { getHostPlatform } = await import('#lib/platform/host-platform.ts');
 			// Recover an orphaned native lock before profile installation can write the store.
 			await getHostPlatform()
 				.getUpdateAction?.()
@@ -278,16 +278,18 @@ export class OfficialPluginService implements Disposable {
 				typeof navigator !== 'undefined' &&
 				navigator.serviceWorker?.controller
 			) {
-				const { readWorkerIdentity } = await import('$lib/client/pwa-sw');
+				const { readWorkerIdentity } = await import('#lib/client/pwa-sw.ts');
 				const controlling = await readWorkerIdentity(navigator.serviceWorker.controller);
 				if (controlling.buildId !== this.hostBuild.buildId) {
 					window.location.reload();
 					throw new Error('Host controller changed; reloading');
 				}
 			}
+
 			const previous = this.installedStore
 				.getCache()
 				.flatMap((record) => (record.wallpaperAssetId ? [record.wallpaperAssetId] : []));
+
 			this.lifecycle.signal.throwIfAborted();
 			await this.installedStore.startHost(this.hostBuild, generation);
 			const retained = new Set(
@@ -513,6 +515,7 @@ export class OfficialPluginService implements Disposable {
 			const remoteDirectory = catalogUrl.startsWith('https:')
 				? new URL('./manifests/', catalogUrl).href
 				: undefined;
+
 			if (
 				catalog.manifests.some(
 					(url) =>
@@ -631,6 +634,7 @@ export class OfficialPluginService implements Disposable {
 		const previous = this.installedStore.find(candidate.manifest.id);
 		const expectedRevision =
 			options?.expectedRevision ?? (previous ? (previous.revision ?? 0) : -1);
+
 		const id = options?.wallpaper
 			? `theme:${candidate.manifest.id}:${crypto.randomUUID()}`
 			: undefined;
@@ -738,10 +742,13 @@ export class OfficialPluginService implements Disposable {
 			(!existingSnapshot || (existingSnapshot.revision ?? 0) !== options.expectedInstalledRevision)
 		)
 			return;
+
 		const expectedRevision = existingSnapshot ? (existingSnapshot.revision ?? 0) : -1;
+
 		const mergedSignal = mergeAbortSignals(
 			options?.signal ? [options.signal, this.lifecycle.signal] : [this.lifecycle.signal]
 		);
+
 		const { signal } = mergedSignal;
 
 		try {
@@ -756,8 +763,10 @@ export class OfficialPluginService implements Disposable {
 			if (this.installedStore.isFrozen || this.installedStore.hostChanged)
 				throw new Error('Application update in progress; reload before changing plugins');
 			const current = this.installedStore.find(manifest.id);
+
 			if ((current ? (current.revision ?? 0) : -1) !== expectedRevision)
 				throw new Error('Plugin changed during download; retry');
+
 			options?.onProgress?.({ stage: 'installing', percent: 88 });
 
 			const record: InstalledOfficialPluginRecord = {

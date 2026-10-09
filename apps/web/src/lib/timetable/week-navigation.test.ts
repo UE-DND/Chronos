@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { createTimetable } from '$lib/models/timetable';
+import { createTimetable } from '#lib/models/timetable.ts';
 import {
 	academicBounds,
 	buildWeekList,

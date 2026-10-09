@@ -5,7 +5,7 @@
 		OVERLAY_LIFECYCLE_CONTEXT,
 		type HistoryOverlaySync
 	} from '@chronos/ui-kit';
-	import { getOverlayHistoryPort } from '$lib/navigation';
+	import { getOverlayHistoryPort } from '#lib/navigation/index.ts';
 	import { onDestroy, getContext, setContext } from 'svelte';
 	import type { Snippet } from 'svelte';
 

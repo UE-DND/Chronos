@@ -1,4 +1,4 @@
-import { CORE_SHELL_MESSAGE_KEYS, HOST_MESSAGES } from '$lib/i18n/host-messages';
+import { CORE_SHELL_MESSAGE_KEYS, HOST_MESSAGES } from '#lib/i18n/host-messages.ts';
 
 function pickShellMessages(locale: 'zh-cn' | 'en') {
 	const entries = CORE_SHELL_MESSAGE_KEYS.map((key) => [key, HOST_MESSAGES[locale][key]]);

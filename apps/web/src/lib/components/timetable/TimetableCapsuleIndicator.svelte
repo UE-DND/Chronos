@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, untrack } from 'svelte';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import type { TimetableScreenController } from '$lib/timetable/timetable-screen.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import type { TimetableScreenController } from '#lib/timetable/timetable-screen.svelte.ts';
 	import {
 		applyScrollingDotTrackVisual,
 		calculateExpandedDotPitchPx,
@@ -9,12 +9,12 @@
 		calculateExpandedTooltipOffsetX,
 		calculateScrollingDotTrack,
 		scrollingDotTrackNeedsStructureUpdate
-	} from '$lib/timetable/capsule-indicator';
-	import { createCapsuleIndicatorGesture } from '$lib/timetable/capsule-indicator-gesture.svelte';
-	import type { CapsulePagerPreview } from '$lib/timetable/capsule-pager-preview';
-	import { createTransitionStateScheduler } from '$lib/timetable/capsule-indicator-transition';
-	import { trackEvent } from '$lib/client/analytics';
-	import { haptic } from '$lib/haptic/haptic';
+	} from '#lib/timetable/capsule-indicator.ts';
+	import { createCapsuleIndicatorGesture } from '#lib/timetable/capsule-indicator-gesture.svelte.ts';
+	import type { CapsulePagerPreview } from '#lib/timetable/capsule-pager-preview.ts';
+	import { createTransitionStateScheduler } from '#lib/timetable/capsule-indicator-transition.ts';
+	import { trackEvent } from '#lib/client/analytics.ts';
+	import { haptic } from '#lib/haptic/haptic.ts';
 
 	const STATE_TRANSITION_MS = 260;
 	const INDICATOR_LINGER_MS = 400;

@@ -1,10 +1,9 @@
-import { HOST_BUILD } from '$lib/config/app-meta';
-import { resolveActiveProfile } from '$lib/boot/profile-registry';
-import { json } from '@sveltejs/kit';
+import { HOST_BUILD } from '#lib/config/app-meta.ts';
+import { resolveActiveProfile } from '#lib/boot/profile-registry.ts';
 import type { PluginHttpMethod, PluginServerManifest } from '@chronos/core';
 import { pluginServerError } from '@chronos/core';
-import { ACTIVE_SERVER_PLUGIN_IDS } from '$lib/boot/plugin-proxy-meta.generated';
-import { loadServerManifest } from '$lib/server/plugin-server-loader.generated';
+import { ACTIVE_SERVER_PLUGIN_IDS } from '#lib/boot/plugin-proxy-meta.generated.ts';
+import { loadServerManifest } from '#lib/server/plugin-server-loader.generated.ts';
 import { defaultPluginRateLimiter, type PluginRateLimiter } from './rate-limit';
 
 export interface PluginDispatcherOptions {
@@ -49,30 +48,30 @@ export class PluginDispatcher {
 		const action = resolveAction(event.params);
 
 		if (!pluginId || !action) {
-			return json(pluginServerError('NotFound', 'Not found'), { status: 404 });
+			return Response.json(pluginServerError('NotFound', 'Not found'), { status: 404 });
 		}
 
 		if (this.deniedActions.some((entry) => entry.pluginId === pluginId && entry.action === action))
-			return json(pluginServerError('NotFound', 'Action unavailable in this profile'), {
+			return Response.json(pluginServerError('NotFound', 'Action unavailable in this profile'), {
 				status: 404
 			});
 		if (
 			event.request.headers.get('X-Chronos-Version') !== this.hostIdentity.version ||
 			event.request.headers.get('X-Chronos-Profile') !== this.hostIdentity.profileId
 		)
-			return json(
+			return Response.json(
 				pluginServerError('UpdateRequired', 'Update the application before using this action'),
 				{ status: 426 }
 			);
 		const manifest = await this.getManifest(pluginId);
 		const handler = manifest?.handlers[action]?.[method];
 		if (!handler) {
-			return json(pluginServerError('NotFound', 'Not found'), { status: 404 });
+			return Response.json(pluginServerError('NotFound', 'Not found'), { status: 404 });
 		}
 
 		const rateLimit = this.rateLimiter.check(pluginId, event.getClientAddress());
 		if (!rateLimit.allowed) {
-			return json(pluginServerError('RateLimited', 'rate_limited'), {
+			return Response.json(pluginServerError('RateLimited', 'rate_limited'), {
 				status: 429,
 				headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) }
 			});

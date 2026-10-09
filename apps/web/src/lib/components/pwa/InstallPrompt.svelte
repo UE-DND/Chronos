@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import { navigateForward } from '$lib/navigation';
-	import { trackEvent } from '$lib/client/analytics';
-	import Button from '$lib/components/ui/Button.svelte';
-	import Dialog from '$lib/components/ui/Dialog.svelte';
-	import { pwaInstallController } from '$lib/client/pwa-install.svelte';
-	import { getAppController } from '$lib/services/app-engine';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import { navigateForward } from '#lib/navigation/index.ts';
+	import { trackEvent } from '#lib/client/analytics.ts';
+	import Button from '#lib/components/ui/Button.svelte';
+	import Dialog from '#lib/components/ui/Dialog.svelte';
+	import { pwaInstallController } from '#lib/client/pwa-install.svelte.ts';
+	import { getAppController } from '#lib/services/app-engine.ts';
 
 	const controller = getAppController();
 

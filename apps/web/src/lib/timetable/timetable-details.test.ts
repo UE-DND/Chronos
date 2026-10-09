@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { createTimetable } from '@chronos/core';
-import type { AppShellController } from '$lib/app/app-shell.svelte';
+import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
 import { createTimetableDetailsEditor } from './timetable-details.svelte';
 
 const mocks = vi.hoisted(() => ({ updateTimetableDetails: vi.fn(), snackbarKey: vi.fn() }));
-vi.mock('$lib/services/app-engine', () => ({ getAppController: () => mocks }));
-vi.mock('$lib/components/ui/snackbar-state.svelte', () => ({ snackbarKey: mocks.snackbarKey }));
+vi.mock('#lib/services/app-engine.ts', () => ({ getAppController: () => mocks }));
+vi.mock('#lib/components/ui/snackbar-state.svelte.ts', () => ({ snackbarKey: mocks.snackbarKey }));
 
 function createEditor(onDone = vi.fn()) {
 	const timetable = createTimetable({

@@ -1,37 +1,37 @@
 <script lang="ts">
-	import { getAppEngine } from '$lib/services/app-engine';
-	import { formatBytes } from '$lib/utils/format-bytes';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { getAppEngine } from '#lib/services/app-engine.ts';
+	import { formatBytes } from '#lib/utils/format-bytes.ts';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { onMount } from 'svelte';
 	import {
 		getOfficialPluginService,
 		getAppController,
 		ensureEngineFullyReady
-	} from '$lib/services/app-engine';
-	import type { InstalledOfficialPluginRecord } from '$lib/services/official-plugins/official-plugin-service';
+	} from '#lib/services/app-engine.ts';
+	import type { InstalledOfficialPluginRecord } from '#lib/services/official-plugins/official-plugin-service.ts';
 	import type { PluginManifest, ConfigSchema } from '@chronos/core';
 	import { resolveLocaleMapText } from '@chronos/core';
-	import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import Dialog from '$lib/components/ui/Dialog.svelte';
-	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
-	import LoadingIndicator from '$lib/components/ui/LoadingIndicator.svelte';
-	import FormScreenLayout from '$lib/components/ui/FormScreenLayout.svelte';
+	import SegmentedControl from '#lib/components/ui/SegmentedControl.svelte';
+	import Button from '#lib/components/ui/Button.svelte';
+	import Dialog from '#lib/components/ui/Dialog.svelte';
+	import BottomSheet from '#lib/components/ui/BottomSheet.svelte';
+	import LoadingIndicator from '#lib/components/ui/LoadingIndicator.svelte';
+	import FormScreenLayout from '#lib/components/ui/FormScreenLayout.svelte';
 	import type { EdgeBarAction } from '@chronos/ui-kit';
 	import PluginConfigModal from './PluginConfigModal.svelte';
-	import { snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
-	import { groupCatalogManifestsByCategory } from '$lib/services/official-plugins/catalog-sort';
+	import { snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
+	import { groupCatalogManifestsByCategory } from '#lib/services/official-plugins/catalog-sort.ts';
 	import {
 		getPluginCategoryMeta,
 		resolvePluginCatalogCategory
-	} from '$lib/services/official-plugins/plugin-tags';
+	} from '#lib/services/official-plugins/plugin-tags.ts';
 	import {
 		assertValidManifestInstallUrl,
 		describeInstallSource
-	} from '$lib/services/official-plugins/manifest-url';
-	import type { PluginInstallTask } from '$lib/services/official-plugins/install-queue';
+	} from '#lib/services/official-plugins/manifest-url.ts';
+	import type { PluginInstallTask } from '#lib/services/official-plugins/install-queue.ts';
 	import PluginInstallAction from './PluginInstallAction.svelte';
-	import { CheckCircleFill, DownloadFill, TuneFill } from '$lib/icons';
+	import { CheckCircleFill, DownloadFill, TuneFill } from '#lib/icons/index.ts';
 
 	const officialPlugins = getOfficialPluginService();
 	const appController = getAppController();

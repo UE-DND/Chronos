@@ -7,10 +7,10 @@ const { snackbarKey, checkUpdate, state, isSwUpdatePending } = vi.hoisted(() => 
 	isSwUpdatePending: vi.fn(() => false)
 }));
 vi.mock('./pwa-sw', () => ({ isSwUpdatePending, onSwUpdateAvailable: vi.fn() }));
-vi.mock('$lib/content/releases/update-state.svelte', () => ({
+vi.mock('#lib/content/releases/update-state.svelte.ts', () => ({
 	createUpdateState: () => ({ state, checkUpdate, updateAction: { mode: 'service-worker' } })
 }));
-vi.mock('$lib/components/ui/snackbar-state.svelte', () => ({ snackbarKey }));
+vi.mock('#lib/components/ui/snackbar-state.svelte.ts', () => ({ snackbarKey }));
 
 describe('initAppUpdateUx', () => {
 	beforeEach(() => {

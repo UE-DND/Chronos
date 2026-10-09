@@ -1,5 +1,5 @@
-import { isShellRoute } from '$lib/navigation/routes';
-import { getHostPlatform } from '$lib/platform/host-platform';
+import { isShellRoute } from '#lib/navigation/routes.ts';
+import { getHostPlatform } from '#lib/platform/host-platform.ts';
 
 const SEEN_KEY = 'chronos:onboarding-seen';
 

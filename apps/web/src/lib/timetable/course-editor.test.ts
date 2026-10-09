@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { createTimetable, type Timetable } from '@chronos/core';
 import { createCourseEditor } from './course-editor.svelte';
-import type { AppShellController } from '$lib/app/app-shell.svelte';
+import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
 
 const mocks = vi.hoisted(() => ({
 	updateTimetableDetails: vi.fn(),
@@ -9,14 +9,14 @@ const mocks = vi.hoisted(() => ({
 	snackbarKey: vi.fn()
 }));
 
-vi.mock('$lib/services/app-engine', () => ({
+vi.mock('#lib/services/app-engine.ts', () => ({
 	getAppController: () => ({
 		updateTimetableDetails: mocks.updateTimetableDetails,
 		deleteCourse: mocks.deleteCourse
 	})
 }));
 
-vi.mock('$lib/components/ui/snackbar-state.svelte', () => ({
+vi.mock('#lib/components/ui/snackbar-state.svelte.ts', () => ({
 	snackbarKey: mocks.snackbarKey
 }));
 

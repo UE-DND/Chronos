@@ -1,18 +1,18 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { getContext } from 'svelte';
 	import type { Component, Snippet } from 'svelte';
-	import { trackEvent } from '$lib/client/analytics';
-	import type { AppShellController } from '$lib/app/app-shell.svelte';
-	import type { ShellTabController } from '$lib/shell/shell-tab.svelte';
-	import type { TimetableScreenController } from '$lib/timetable/timetable-screen.svelte';
-	import TimetableScreen from '$lib/components/timetable/TimetableScreen.svelte';
-	import EmptyTimetableState from '$lib/components/timetable/EmptyTimetableState.svelte';
-	import LoadingIndicator from '$lib/components/ui/LoadingIndicator.svelte';
+	import { trackEvent } from '#lib/client/analytics.ts';
+	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
+	import type { ShellTabController } from '#lib/shell/shell-tab.svelte.ts';
+	import type { TimetableScreenController } from '#lib/timetable/timetable-screen.svelte.ts';
+	import TimetableScreen from '#lib/components/timetable/TimetableScreen.svelte';
+	import EmptyTimetableState from '#lib/components/timetable/EmptyTimetableState.svelte';
+	import LoadingIndicator from '#lib/components/ui/LoadingIndicator.svelte';
 	import { isReducedMotionActive } from '@chronos/ui-kit';
-	import { getAppController } from '$lib/services/app-engine';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import TopAppBar from '$lib/components/TopAppBar.svelte';
+	import { getAppController } from '#lib/services/app-engine.ts';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import TopAppBar from '#lib/components/TopAppBar.svelte';
 
 	interface Props {
 		ready: boolean;
@@ -58,7 +58,7 @@
 
 	$effect(() => {
 		if (mineMounted && !MineScreen) {
-			void import('$lib/components/mine/MineScreen.svelte').then((module) => {
+			void import('#lib/components/mine/MineScreen.svelte').then((module) => {
 				MineScreen = module.default;
 			});
 		}
@@ -66,7 +66,7 @@
 
 	$effect(() => {
 		if (ready && timetableMounted && screen.state.hasLoadedAppState && !CourseDetailSheet) {
-			void import('$lib/components/timetable/CourseDetailSheet.svelte').then((module) => {
+			void import('#lib/components/timetable/CourseDetailSheet.svelte').then((module) => {
 				CourseDetailSheet = module.default;
 			});
 		}
@@ -197,6 +197,7 @@
 		<EmptyTimetableState />
 	{:else if screen.state.hasLoadedAppState}
 		<TimetableScreen {screen} active={timetableActive} onCourseClick={openCourseDetail} />
+
 		{#if CourseDetailSheet}
 			<CourseDetailSheet bind:open={detailOpen} bind:courseId={detailCourseId} />
 		{/if}

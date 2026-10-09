@@ -1,7 +1,7 @@
 import type { ShellIconDescriptor } from '@chronos/core';
 import { isShellIconDescriptor } from '@chronos/core';
 import type { Component } from 'svelte';
-import { SHELL_ICON_MAP } from '$lib/boot/mine-icons';
+import { SHELL_ICON_MAP } from '#lib/boot/mine-icons.ts';
 
 export type ResolvedShellIcon =
 	| { kind: 'component'; component: Component<{ class?: string }> }

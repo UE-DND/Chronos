@@ -1,7 +1,7 @@
-import { hostT } from '$lib/i18n/host-i18n.svelte';
+import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 import type { Course } from '@chronos/core';
 
-import { timetableDayLabel } from '$lib/timetable/day-labels';
+import { timetableDayLabel } from '#lib/timetable/day-labels.ts';
 
 export function formatPeriodRange(startPeriod: number, endPeriod: number): string {
 	return startPeriod === endPeriod

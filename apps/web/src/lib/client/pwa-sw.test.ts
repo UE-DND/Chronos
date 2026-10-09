@@ -42,7 +42,7 @@ describe('probeSwUpdate', () => {
 		vi.useRealTimers();
 	});
 	it('detects a remote build without installing a worker before authorization', async () => {
-		const { HOST_BUILD } = await import('$lib/config/app-meta');
+		const { HOST_BUILD } = await import('#lib/config/app-meta.ts');
 		const registration = createRegistrationStub();
 		vi.stubGlobal('window', {});
 		vi.stubGlobal('navigator', {

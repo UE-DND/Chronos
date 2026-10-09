@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import { Close, Search } from '$lib/icons';
-	import IconButton from '$lib/components/ui/IconButton.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import { Close, Search } from '#lib/icons/index.ts';
+	import IconButton from '#lib/components/ui/IconButton.svelte';
 
 	let {
 		value = $bindable(''),

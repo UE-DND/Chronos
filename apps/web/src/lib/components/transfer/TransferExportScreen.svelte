@@ -1,18 +1,22 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import { trackEvent } from '$lib/client/analytics';
-	import { getAppController } from '$lib/services/app-engine';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import { trackEvent } from '#lib/client/analytics.ts';
+	import { getAppController } from '#lib/services/app-engine.ts';
 	import {
 		pickPrimary,
 		resolveLocalizedText,
 		type ExportActionSlotContribution
 	} from '@chronos/core';
-	import Button from '$lib/components/ui/Button.svelte';
-	import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
-	import { snackbar, snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
-	import { copyTextWithFallback, downloadExportResult, withTimeout } from '$lib/platform/transfer';
+	import Button from '#lib/components/ui/Button.svelte';
+	import SegmentedControl from '#lib/components/ui/SegmentedControl.svelte';
+	import { snackbar, snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
+	import {
+		copyTextWithFallback,
+		downloadExportResult,
+		withTimeout
+	} from '#lib/platform/transfer.ts';
 
-	import { DEFAULT_TIMETABLE_NAME, normalizeTimetableName } from '$lib/models/timetable';
+	import { DEFAULT_TIMETABLE_NAME, normalizeTimetableName } from '#lib/models/timetable.ts';
 
 	let {
 		warningMessage = null

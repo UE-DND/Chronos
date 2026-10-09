@@ -2,7 +2,7 @@ import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { installScrollBoundaryFeedback } from './scroll-boundary-feedback';
 
 const { light } = vi.hoisted(() => ({ light: vi.fn() }));
-vi.mock('$lib/haptic/haptic', () => ({ haptic: { light } }));
+vi.mock('#lib/haptic/haptic.ts', () => ({ haptic: { light } }));
 
 function harness() {
 	class Surface {

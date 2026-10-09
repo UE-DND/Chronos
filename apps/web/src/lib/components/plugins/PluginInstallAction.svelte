@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import type { PluginManifest } from '@chronos/core';
-	import type { PluginInstallTask } from '$lib/services/official-plugins/install-queue';
-	import Button from '$lib/components/ui/Button.svelte';
-	import { CheckCircleFill, Close, Refresh } from '$lib/icons';
+	import type { PluginInstallTask } from '#lib/services/official-plugins/install-queue.ts';
+	import Button from '#lib/components/ui/Button.svelte';
+	import { CheckCircleFill, Close, Refresh } from '#lib/icons/index.ts';
 
 	let {
 		manifest,

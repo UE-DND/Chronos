@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
 	tabIds: ['today'] as string[]
 }));
 
-vi.mock('$lib/platform/connectivity.svelte', () => ({
+vi.mock('#lib/platform/connectivity.svelte.ts', () => ({
 	connectivity: {
 		init: mocks.connectivityInit,
 		destroy: mocks.connectivityDestroy,
@@ -28,7 +28,7 @@ vi.mock('$lib/platform/connectivity.svelte', () => ({
 	}
 }));
 
-vi.mock('$lib/client/pwa-install.svelte', () => ({
+vi.mock('#lib/client/pwa-install.svelte.ts', () => ({
 	isPwaStandalone: mocks.isPwaStandalone,
 	pwaInstallController: {
 		init: mocks.pwaInstallInit,
@@ -39,20 +39,20 @@ vi.mock('$lib/client/pwa-install.svelte', () => ({
 	}
 }));
 
-vi.mock('$lib/platform/scroll-boundary-feedback', () => ({
+vi.mock('#lib/platform/scroll-boundary-feedback.ts', () => ({
 	installScrollBoundaryFeedback: mocks.installScrollBoundaryFeedback
 }));
 
-vi.mock('$lib/client/web-host-update', () => ({ recoverInterruptedWebUpdate: vi.fn() }));
-vi.mock('$lib/client/app-update-ux.svelte', () => ({
+vi.mock('#lib/client/web-host-update.ts', () => ({ recoverInterruptedWebUpdate: vi.fn() }));
+vi.mock('#lib/client/app-update-ux.svelte.ts', () => ({
 	checkAppUpdateOnResume: mocks.checkAppUpdateOnResume
 }));
 
-vi.mock('$lib/client/analytics', () => ({
+vi.mock('#lib/client/analytics.ts', () => ({
 	initAnalytics: mocks.initAnalytics
 }));
 
-vi.mock('$lib/services/app-engine', () => ({
+vi.mock('#lib/services/app-engine.ts', () => ({
 	ensureEngineFullyReady: vi.fn().mockResolvedValue(undefined),
 	ensureEngineReady: vi.fn().mockResolvedValue({
 		events: { on: vi.fn(() => ({ dispose: vi.fn() })) },
@@ -69,11 +69,11 @@ vi.mock('$lib/services/app-engine', () => ({
 	}))
 }));
 
-vi.mock('$lib/platform/offline-ux.svelte', () => ({
+vi.mock('#lib/platform/offline-ux.svelte.ts', () => ({
 	attachOfflineUx: mocks.attachOfflineUx
 }));
 
-vi.mock('$lib/client/onboarding.svelte', () => ({
+vi.mock('#lib/client/onboarding.svelte.ts', () => ({
 	onboardingController: {
 		state: mocks.onboardingState,
 		maybeShow: vi.fn()
@@ -132,7 +132,7 @@ describe('createPlatformBootstrap', () => {
 	});
 
 	it('does not start resources after release while engine readiness is pending', async () => {
-		const { ensureEngineReady } = await import('$lib/services/app-engine');
+		const { ensureEngineReady } = await import('#lib/services/app-engine.ts');
 		let resolve!: (engine: Awaited<ReturnType<typeof ensureEngineReady>>) => void;
 		const engine = await ensureEngineReady();
 		vi.mocked(ensureEngineReady).mockReturnValueOnce(
@@ -288,7 +288,7 @@ describe('createPlatformBootstrap', () => {
 	});
 
 	it('hides splash screen on boot failure so error UI is shown', async () => {
-		const { ensureEngineReady } = await import('$lib/services/app-engine');
+		const { ensureEngineReady } = await import('#lib/services/app-engine.ts');
 		vi.mocked(ensureEngineReady).mockRejectedValueOnce(new Error('Profile boot error'));
 		const hideBootSplash = vi.fn();
 		const showBootFailure = vi.fn();

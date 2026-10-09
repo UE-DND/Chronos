@@ -1,4 +1,4 @@
-import { ImageRepository } from '$lib/storage/image-repository';
+import { ImageRepository } from '#lib/storage/image-repository.ts';
 import { PREFERENCE_STORAGE_KEYS } from '@chronos/core';
 import type {
 	Disposable,
@@ -9,12 +9,12 @@ import type {
 	CourseQueryFilter,
 	CourseQueryHit
 } from '@chronos/core';
-import { db, type ChronosDB } from '$lib/storage/db';
-import { clearAppCaches } from '$lib/storage/cache-storage';
-import { PreferencesStore } from '$lib/storage/preferences-store';
-import { TimetableRepository } from '$lib/storage/timetable-repository';
-import { PluginKvRepository } from '$lib/storage/plugin-kv-repository';
-import { clearKeysWithPrefix } from '$lib/storage/storage-key-utils';
+import { db, type ChronosDB } from '#lib/storage/db.ts';
+import { clearAppCaches } from '#lib/storage/cache-storage.ts';
+import { PreferencesStore } from '#lib/storage/preferences-store.ts';
+import { TimetableRepository } from '#lib/storage/timetable-repository.ts';
+import { PluginKvRepository } from '#lib/storage/plugin-kv-repository.ts';
+import { clearKeysWithPrefix } from '#lib/storage/storage-key-utils.ts';
 
 /**
  * DexieStorageProvider implements the core IStorageService contract

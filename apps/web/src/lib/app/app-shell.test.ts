@@ -14,15 +14,15 @@ const mocks = vi.hoisted(() => ({
 	setTheme: vi.fn()
 }));
 
-vi.mock('$lib/platform/class-notifications.svelte', () => ({
+vi.mock('#lib/platform/class-notifications.svelte.ts', () => ({
 	createClassNotificationsController: () => ({ start: vi.fn(), dispose: vi.fn(), sync: vi.fn() })
 }));
 
-vi.mock('$lib/appearance/appearance.svelte', () => ({
+vi.mock('#lib/appearance/appearance.svelte.ts', () => ({
 	createAppearance: () => ({ apply: mocks.applyAppearance, destroy: vi.fn() })
 }));
 
-vi.mock('$lib/wallpaper/wallpaper-controller.svelte', () => ({
+vi.mock('#lib/wallpaper/wallpaper-controller.svelte.ts', () => ({
 	createWallpaperController: () => ({
 		state: { uri: null },
 		init: vi.fn(),
@@ -31,9 +31,9 @@ vi.mock('$lib/wallpaper/wallpaper-controller.svelte', () => ({
 	})
 }));
 
-vi.mock('$lib/appearance/apply-active-theme', () => ({ applyActiveTheme: vi.fn() }));
+vi.mock('#lib/appearance/apply-active-theme.ts', () => ({ applyActiveTheme: vi.fn() }));
 
-vi.mock('$lib/services/app-engine', () => ({
+vi.mock('#lib/services/app-engine.ts', () => ({
 	getAppController: () => ({
 		get userPreferences() {
 			return mocks.preferences;

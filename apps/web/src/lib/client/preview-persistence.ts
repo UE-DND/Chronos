@@ -1,5 +1,5 @@
 import type { Timetable } from '@chronos/core';
-import { ImportMode } from '$lib/domain/import-mode';
+import { ImportMode } from '#lib/domain/import-mode.ts';
 
 const PREVIEW_KEY = 'chronos:import-preview';
 const PREVIEW_SLOT_KEY = 'chronos:import-preview-slot';

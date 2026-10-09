@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import IconButton from '$lib/components/ui/IconButton.svelte';
-	import { Add, Remove } from '$lib/icons';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import IconButton from '#lib/components/ui/IconButton.svelte';
+	import { Add, Remove } from '#lib/icons/index.ts';
 
 	let {
 		label,

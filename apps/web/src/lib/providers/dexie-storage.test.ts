@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { PREFERENCE_STORAGE_KEYS } from '@chronos/core';
-import { TimetableRepository } from '$lib/storage/timetable-repository';
+import { TimetableRepository } from '#lib/storage/timetable-repository.ts';
 import { createTimetable } from '@chronos/core';
 import { DexieStorageProvider } from './dexie-storage';
 

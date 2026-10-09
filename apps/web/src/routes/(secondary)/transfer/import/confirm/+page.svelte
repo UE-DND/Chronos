@@ -1,15 +1,19 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { navigateBack } from '$lib/navigation';
+	import { navigateBack } from '#lib/navigation/index.ts';
 	import { resolve } from '$app/paths';
-	import { ensureEngineFullyReady, getAppController, getAppEngine } from '$lib/services/app-engine';
-	import { ImportMode } from '$lib/domain/import-mode';
-	import { createTransferState } from '$lib/transfer/transfer-state.svelte';
-	import SecondaryPageShell from '$lib/components/SecondaryPageShell.svelte';
-	import TransferImportConfirmScreen from '$lib/components/transfer/TransferImportConfirmScreen.svelte';
-	import LoadingIndicator from '$lib/components/ui/LoadingIndicator.svelte';
+	import {
+		ensureEngineFullyReady,
+		getAppController,
+		getAppEngine
+	} from '#lib/services/app-engine.ts';
+	import { ImportMode } from '#lib/domain/import-mode.ts';
+	import { createTransferState } from '#lib/transfer/transfer-state.svelte.ts';
+	import SecondaryPageShell from '#lib/components/SecondaryPageShell.svelte';
+	import TransferImportConfirmScreen from '#lib/components/transfer/TransferImportConfirmScreen.svelte';
+	import LoadingIndicator from '#lib/components/ui/LoadingIndicator.svelte';
 
 	const engine = getAppEngine();
 	const transfer = createTransferState(engine);
@@ -31,7 +35,7 @@
 	});
 
 	function handleConfirmed() {
-		goto(resolve('/'));
+		goto(resolve(''));
 	}
 </script>
 

@@ -1,5 +1,5 @@
 import type { IAnalyticsService } from '@chronos/core';
-import { captureAnalyticsEvent } from '$lib/client/analytics';
+import { captureAnalyticsEvent } from '#lib/client/analytics.ts';
 
 /**
  * WebAnalyticsProvider implements the IAnalyticsService interface for Chronos Web host.

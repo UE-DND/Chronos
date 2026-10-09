@@ -103,7 +103,7 @@ export function checkBoundaries(
 	const check = (workspace: Workspace, source: string, specifier: string) => {
 		let destination: Workspace | undefined;
 		if (specifier.startsWith('.')) destination = owner(resolve(dirname(source), specifier));
-		else if (specifier === '$lib' || specifier.startsWith('$lib/'))
+		else if (specifier === '#lib' || specifier.startsWith('#lib/'))
 			destination = { name: '@chronos/web', directory: join(root, 'apps/web') };
 		else if (specifier === '$chronos-platform-adapter')
 			destination = workspaces.find((item) => category(item) === `apps/${target}`);

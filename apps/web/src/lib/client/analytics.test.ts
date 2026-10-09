@@ -15,15 +15,20 @@ const posthog = vi.hoisted(() => ({
 	capture: vi.fn()
 }));
 
-vi.mock('$env/dynamic/public', () => ({
-	env: envState
+vi.mock('$app/env/public', () => ({
+	get PUBLIC_POSTHOG_KEY() {
+		return envState.PUBLIC_POSTHOG_KEY;
+	},
+	get PUBLIC_POSTHOG_HOST() {
+		return envState.PUBLIC_POSTHOG_HOST;
+	}
 }));
 
-vi.mock('$lib/boot/profile-registry', () => ({
+vi.mock('#lib/boot/profile-registry.ts', () => ({
 	resolveActiveProfile: () => ({ profileId: analyticsContext.profile })
 }));
 
-vi.mock('$lib/platform/host-platform', () => ({
+vi.mock('#lib/platform/host-platform.ts', () => ({
 	getHostPlatform: () => ({ platformType: analyticsContext.platform })
 }));
 

@@ -167,7 +167,9 @@ export default defineConfig(({ mode }) => {
 				paths: {
 					base: basePath
 				},
-				adapter: createDeployTargetAdapter(targetDef, host.buildId)
+				adapter: createDeployTargetAdapter(targetDef, host.buildId),
+				version: { name: host.buildId, pollInterval: targetDef.isMobile ? 0 : 300_000 },
+				output: { linkHeaderPreload: targetDef.target === 'vercel' }
 			}),
 			SvelteKitPWA({
 				disable: targetDef.disablePwa,
@@ -231,6 +233,7 @@ export default defineConfig(({ mode }) => {
 					]
 				},
 				workbox: {
+					swDest: `${webRoot}/.svelte-kit/output/client/sw.js`,
 					clientsClaim: true,
 					// The imported gate pins navigation and environment assets to this host build.
 					importScripts: [`sw-host-gate-${host.buildId}.js`, 'sw-class-notifications.js'],
@@ -263,7 +266,10 @@ export default defineConfig(({ mode }) => {
 					]
 				},
 				devOptions: { enabled: false }
-			}),
+				// Chronos supplies icons and disables the development Service Worker.
+			}).filter(
+				(plugin) => !['vite-plugin-pwa:pwa-assets', 'vite-plugin-pwa:dev-sw'].includes(plugin.name)
+			),
 			paraglideVitePlugin({
 				project: './project.inlang',
 				outdir: './src/lib/paraglide',

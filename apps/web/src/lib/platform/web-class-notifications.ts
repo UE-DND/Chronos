@@ -1,4 +1,5 @@
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
+import { staticPath } from '#lib/config/static-path.ts';
 import type {
 	ClassNotificationAdapter,
 	ClassNotificationMessage,
@@ -55,8 +56,8 @@ export function createWebClassNotifications(): ClassNotificationAdapter {
 					if (!registration) {
 						// Dev disables the PWA worker; use the notification handler without caching.
 						registration = await workers.register(
-							`${base}/${import.meta.env.DEV ? 'sw-class-notifications.js' : 'sw.js'}`,
-							{ scope: `${base}/` }
+							staticPath(import.meta.env.DEV ? 'sw-class-notifications.js' : 'sw.js'),
+							{ scope: resolve('') }
 						);
 					}
 					return registration.active?.state === 'activated' ? registration : await workers.ready;

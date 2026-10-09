@@ -4,10 +4,10 @@ import { createAppearance } from './appearance.svelte';
 import { applyActiveTheme } from './apply-active-theme';
 
 const runtime = vi.hoisted(() => ({ theme: undefined as ThemeContribution | undefined }));
-vi.mock('$lib/services/app-engine', () => ({
+vi.mock('#lib/services/app-engine.ts', () => ({
 	getAppEngine: () => ({ themes: { getTheme: () => runtime.theme } })
 }));
-vi.mock('$lib/wallpaper/wallpaper-theme', () => ({
+vi.mock('#lib/wallpaper/wallpaper-theme.ts', () => ({
 	createWallpaperPixelReader: () => async () => new Uint8ClampedArray([255, 0, 0, 255])
 }));
 vi.mock('./apply-active-theme', () => ({ applyActiveTheme: vi.fn() }));

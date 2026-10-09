@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import Dialog from '$lib/components/ui/Dialog.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import Dialog from '#lib/components/ui/Dialog.svelte';
+	import Button from '#lib/components/ui/Button.svelte';
 	import { SchemaForm, findInvalidSchemaFields } from '@chronos/ui-kit';
 	import type { ConfigSchema } from '@chronos/core';
 	import {
 		getAppEngine,
 		getAppController,
 		getOfficialPluginService
-	} from '$lib/services/app-engine';
-	import { snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
+	} from '#lib/services/app-engine.ts';
+	import { snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
 
 	let {
 		open = $bindable(false),

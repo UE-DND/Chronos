@@ -1,4 +1,6 @@
-import { base, resolve } from '$app/paths';
+import { resolve } from '$app/paths';
+
+const base = resolve('').replace(/\/$/, '');
 
 /** Strip deploy base (e.g. `/Chronos`) so route helpers compare app-relative paths. */
 export function toAppPathname(pathname: string): string {
@@ -12,7 +14,7 @@ export function toAppPathname(pathname: string): string {
 export function appRouteHref(href: string): string {
 	if (!href || /^https?:\/\//.test(href) || href.startsWith('//')) return href;
 	if (base && (href === base || href.startsWith(`${base}/`))) return href;
-	return (resolve as (path: string) => string)(href);
+	return (resolve as (path: string) => string)(href.replace(/^\//, ''));
 }
 
 export function isShellRoute(pathname: string): boolean {

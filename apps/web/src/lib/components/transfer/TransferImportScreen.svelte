@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { appRouteHref } from '$lib/navigation/routes';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { appRouteHref } from '#lib/navigation/routes.ts';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { resolveLocalizedText } from '@chronos/core';
-	import { trackEvent } from '$lib/client/analytics';
-	import type { TransferStateController } from '$lib/transfer/transfer-state.svelte';
-	import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
-	import { snackbar } from '$lib/components/ui/snackbar-state.svelte';
-	import { getAppController } from '$lib/services/app-engine';
+	import { trackEvent } from '#lib/client/analytics.ts';
+	import type { TransferStateController } from '#lib/transfer/transfer-state.svelte.ts';
+	import SegmentedControl from '#lib/components/ui/SegmentedControl.svelte';
+	import { snackbar } from '#lib/components/ui/snackbar-state.svelte.ts';
+	import { getAppController } from '#lib/services/app-engine.ts';
 
 	import { MountableSlotOutlet, SchemaForm } from '@chronos/ui-kit';
 

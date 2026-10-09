@@ -1,5 +1,5 @@
 import { tick } from 'svelte';
-import { ImageRepository, CUSTOM_WALLPAPER_KEY } from '$lib/storage/image-repository';
+import { ImageRepository, CUSTOM_WALLPAPER_KEY } from '#lib/storage/image-repository.ts';
 import { resolveWallpaper } from './wallpaper-policy';
 import type { WallpaperSource } from '@chronos/core';
 

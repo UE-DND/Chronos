@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Switch } from 'bits-ui';
-	import { haptic } from '$lib/haptic/haptic';
+	import { haptic } from '#lib/haptic/haptic.ts';
 
 	let {
 		checked = $bindable(false),

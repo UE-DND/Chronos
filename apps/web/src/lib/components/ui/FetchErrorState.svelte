@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import { InfoFill, WifiOffFill } from '$lib/icons';
-	import { offlineCopy } from '$lib/platform/offline-copy';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import Button from '#lib/components/ui/Button.svelte';
+	import Card from '#lib/components/ui/Card.svelte';
+	import { InfoFill, WifiOffFill } from '#lib/icons/index.ts';
+	import { offlineCopy } from '#lib/platform/offline-copy.ts';
 
 	let {
 		offline = false,

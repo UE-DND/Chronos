@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { slide } from 'svelte/transition';
-	import type { AppShellController } from '$lib/app/app-shell.svelte';
+	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
 	import type { CoursePaletteEntry } from '@chronos/core';
 	import {
 		assignCourseDisplayColors,
@@ -9,10 +9,10 @@
 		resolveLocalizedText
 	} from '@chronos/core';
 	import { createFitWidthFontAttachment } from '@chronos/ui-kit/utils/fit-width-font.svelte';
-	import { timetableDayLabel } from '$lib/timetable/day-labels';
-	import { formatPeriodRange } from '$lib/timetable/course-a11y';
-	import { getAppController, getAppEngine } from '$lib/services/app-engine';
-	import Button from '$lib/components/ui/Button.svelte';
+	import { timetableDayLabel } from '#lib/timetable/day-labels.ts';
+	import { formatPeriodRange } from '#lib/timetable/course-a11y.ts';
+	import { getAppController, getAppEngine } from '#lib/services/app-engine.ts';
+	import Button from '#lib/components/ui/Button.svelte';
 
 	const HEADLINE_SMALL_FONT_PX = 24;
 	const FIT_MIN_FONT_PX = 12;

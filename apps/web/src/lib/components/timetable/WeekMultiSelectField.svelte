@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import { haptic } from '$lib/haptic/haptic';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import { haptic } from '#lib/haptic/haptic.ts';
 	import {
 		applyWeekDragSelection,
 		resolveWeekDragSelectionMode,
 		type WeekDragSelectionMode
-	} from '$lib/timetable/week-drag-selection';
-	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
+	} from '#lib/timetable/week-drag-selection.ts';
+	import BottomSheet from '#lib/components/ui/BottomSheet.svelte';
 
 	interface WeekDragSession {
 		pointerId: number;

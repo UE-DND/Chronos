@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { onMount } from 'svelte';
-	import { staticPath } from '$lib/config/static-path';
-	import { connectivity } from '$lib/platform/connectivity.svelte';
-	import { resolveFetchErrorMessage } from '$lib/client/fetch-error-message';
-	import { getAppController } from '$lib/services/app-engine';
+	import { staticPath } from '#lib/config/static-path.ts';
+	import { connectivity } from '#lib/platform/connectivity.svelte.ts';
+	import { resolveFetchErrorMessage } from '#lib/client/fetch-error-message.ts';
+	import { getAppController } from '#lib/services/app-engine.ts';
 
-	import FetchErrorState from '$lib/components/ui/FetchErrorState.svelte';
-	import LoadingIndicator from '$lib/components/ui/LoadingIndicator.svelte';
+	import FetchErrorState from '#lib/components/ui/FetchErrorState.svelte';
+	import LoadingIndicator from '#lib/components/ui/LoadingIndicator.svelte';
 
 	interface ThirdPartyLicense {
 		name: string;

@@ -1,6 +1,6 @@
-import { snackbar } from '$lib/components/ui/snackbar-state.svelte';
-import type { ConnectivityReader } from '$lib/platform/connectivity.svelte';
-import { offlineCopy } from '$lib/platform/offline-copy';
+import { snackbar } from '#lib/components/ui/snackbar-state.svelte.ts';
+import type { ConnectivityReader } from '#lib/platform/connectivity.svelte.ts';
+import { offlineCopy } from '#lib/platform/offline-copy.ts';
 
 const ONLINE_SNACKBAR_DURATION = 2000;
 

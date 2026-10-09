@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { getOverlayHistoryPort } from '$lib/navigation';
-	import { getAppController } from '$lib/services/app-engine';
-	import { createHostDateFieldLabels } from '$lib/components/ui/host-form-labels';
+	import { getOverlayHistoryPort } from '#lib/navigation/index.ts';
+	import { getAppController } from '#lib/services/app-engine.ts';
+	import { createHostDateFieldLabels } from '#lib/components/ui/host-form-labels.ts';
 	import {
 		DateField as UiDateField,
 		appLocaleToBcp47,

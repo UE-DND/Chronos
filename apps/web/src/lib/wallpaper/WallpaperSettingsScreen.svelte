@@ -1,19 +1,19 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import {
 		DEFAULT_USER_PREFERENCES,
 		resolveLocalizedText,
 		type WallpaperSource
 	} from '@chronos/core';
-	import type { AppShellController } from '$lib/app/app-shell.svelte';
-	import { getAppEngine, getOfficialPluginService } from '$lib/services/app-engine';
-	import { normalizeAppLocale } from '$lib/i18n/locale-sync';
-	import { trackEvent } from '$lib/client/analytics';
-	import { haptic } from '$lib/haptic/haptic';
-	import Radio from '$lib/components/ui/Radio.svelte';
-	import Switch from '$lib/components/ui/Switch.svelte';
-	import MineSection from '$lib/components/mine/MineSection.svelte';
-	import MineRow from '$lib/components/mine/MineRow.svelte';
+	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
+	import { getAppEngine, getOfficialPluginService } from '#lib/services/app-engine.ts';
+	import { normalizeAppLocale } from '#lib/i18n/locale-sync.ts';
+	import { trackEvent } from '#lib/client/analytics.ts';
+	import { haptic } from '#lib/haptic/haptic.ts';
+	import Radio from '#lib/components/ui/Radio.svelte';
+	import Switch from '#lib/components/ui/Switch.svelte';
+	import MineSection from '#lib/components/mine/MineSection.svelte';
+	import MineRow from '#lib/components/mine/MineRow.svelte';
 	let { shell }: { shell: AppShellController } = $props();
 	const visualThemeId = $derived(shell.controller.activeThemeId);
 	const wallpaperColorsSelected = $derived(

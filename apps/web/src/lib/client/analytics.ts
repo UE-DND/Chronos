@@ -1,8 +1,8 @@
-import { env } from '$env/dynamic/public';
+import { PUBLIC_POSTHOG_KEY, PUBLIC_POSTHOG_HOST } from '$app/env/public';
 import type { PostHog } from 'posthog-js';
 import type { IAnalyticsService } from '@chronos/core';
-import { resolveActiveProfile } from '$lib/boot/profile-registry';
-import { getHostPlatform } from '$lib/platform/host-platform';
+import { resolveActiveProfile } from '#lib/boot/profile-registry.ts';
+import { getHostPlatform } from '#lib/platform/host-platform.ts';
 
 /** Host-owned analytics events (apps/web UI, PWA, settings). Plugin events use `trackPluginAnalytics`. */
 export type HostAnalyticsEvent =
@@ -83,14 +83,14 @@ export function bindAnalyticsPort(service: IAnalyticsService): void {
 export function initAnalytics() {
 	if (import.meta.env.DEV || !__ANALYTICS_ENABLED__) return;
 
-	const key = env.PUBLIC_POSTHOG_KEY;
+	const key = PUBLIC_POSTHOG_KEY;
 	if (!key) return;
 
 	pending = [];
 	void import('posthog-js')
 		.then(({ default: posthog }) => {
 			posthog.init(key, {
-				api_host: env.PUBLIC_POSTHOG_HOST,
+				api_host: PUBLIC_POSTHOG_HOST,
 				defaults: '2026-05-30',
 				autocapture: false,
 				disable_session_recording: true,

@@ -184,7 +184,7 @@ describe('OnboardingController', () => {
 
 	describe('native platform', () => {
 		it('omits the install step when in native platform', async () => {
-			const { setHostPlatform, resetHostPlatform } = await import('$lib/platform/host-platform');
+			const { setHostPlatform, resetHostPlatform } = await import('#lib/platform/host-platform.ts');
 			setHostPlatform({
 				id: 'mobile',
 				platformType: 'android',

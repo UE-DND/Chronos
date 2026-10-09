@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from 'vite-plus/test';
-import type { ImageRepository } from '$lib/storage/image-repository';
+import type { ImageRepository } from '#lib/storage/image-repository.ts';
 import { createWallpaperController } from './wallpaper-controller.svelte';
 import { tick } from 'svelte';
 

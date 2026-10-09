@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import type { CourseEditorController } from '$lib/timetable/course-editor.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import type { CourseEditorController } from '#lib/timetable/course-editor.svelte.ts';
 	import { COURSE_REMARK_MAX_LENGTH } from '@chronos/core';
-	import Button from '$lib/components/ui/Button.svelte';
-	import FormCard from '$lib/components/ui/FormCard.svelte';
-	import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
-	import TextField from '$lib/components/ui/TextField.svelte';
-	import WheelRangeField from '$lib/components/ui/WheelRangeField.svelte';
-	import WheelSelectField from '$lib/components/ui/WheelSelectField.svelte';
+	import Button from '#lib/components/ui/Button.svelte';
+	import FormCard from '#lib/components/ui/FormCard.svelte';
+	import SegmentedControl from '#lib/components/ui/SegmentedControl.svelte';
+	import TextField from '#lib/components/ui/TextField.svelte';
+	import WheelRangeField from '#lib/components/ui/WheelRangeField.svelte';
+	import WheelSelectField from '#lib/components/ui/WheelSelectField.svelte';
 	import WeekMultiSelectField from './WeekMultiSelectField.svelte';
 
 	let { editor }: { editor: CourseEditorController } = $props();
@@ -124,7 +124,7 @@
 						<p class="text-body-medium text-on-surface-variant">
 							{hostT('course.form.noPeriods')}
 						</p>
-						<Button variant="text" onclick={() => goto(resolve('/timetable/details'))}>
+						<Button variant="text" onclick={() => goto(resolve('timetable/details'))}>
 							{hostT('course.form.configurePeriods')}
 						</Button>
 					</div>

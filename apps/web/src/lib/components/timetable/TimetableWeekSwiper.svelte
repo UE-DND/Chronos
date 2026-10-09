@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { getContext, untrack } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
-	import type { AppShellController } from '$lib/app/app-shell.svelte';
-	import { trackEvent } from '$lib/client/analytics';
+	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
+	import { trackEvent } from '#lib/client/analytics.ts';
 	import type { CapsuleCornerStyle, TimetableLayoutMode } from '@chronos/core';
 	import type { CoursePaletteEntry } from '@chronos/core';
-	import type { TimetableScreenController } from '$lib/timetable/timetable-screen.svelte';
-	import { shouldPaintPagerWeek } from '$lib/timetable/week-navigation';
-	import { createWeekPagerController } from '$lib/timetable/week-pager-controller.svelte';
-	import type { CapsulePagerPreview } from '$lib/timetable/capsule-pager-preview';
+	import type { TimetableScreenController } from '#lib/timetable/timetable-screen.svelte.ts';
+	import { shouldPaintPagerWeek } from '#lib/timetable/week-navigation.ts';
+	import { createWeekPagerController } from '#lib/timetable/week-pager-controller.svelte.ts';
+	import type { CapsulePagerPreview } from '#lib/timetable/capsule-pager-preview.ts';
 	import TimetableGrid from './TimetableGrid.svelte';
 
 	let {

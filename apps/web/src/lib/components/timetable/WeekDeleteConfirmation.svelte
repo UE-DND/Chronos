@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import Button from '#lib/components/ui/Button.svelte';
 
 	let {
 		courseName,

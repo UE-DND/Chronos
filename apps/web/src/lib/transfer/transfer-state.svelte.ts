@@ -1,8 +1,8 @@
-import { hostT } from '$lib/i18n/host-i18n.svelte';
-import type { HostMessageKey } from '$lib/i18n/host-messages';
-import { createSessionPreviewPersistence } from '$lib/client/preview-persistence';
-import type { Timetable } from '$lib/models/timetable';
-import { ImportMode } from '$lib/domain/import-mode';
+import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+import type { HostMessageKey } from '#lib/i18n/host-messages.ts';
+import { createSessionPreviewPersistence } from '#lib/client/preview-persistence.ts';
+import type { Timetable } from '#lib/models/timetable.ts';
+import { ImportMode } from '#lib/domain/import-mode.ts';
 import {
 	ImportSlotError,
 	pickPrimary,
@@ -10,9 +10,9 @@ import {
 	type ChronosEngine,
 	type ImportSlotErrorKind
 } from '@chronos/core';
-import { getDefaultImportSlot } from '$lib/config/features';
-import { getAppController } from '$lib/services/app-engine';
-import { resolveDeepLinkImport } from '$lib/transfer/deep-link';
+import { getDefaultImportSlot } from '#lib/config/features.ts';
+import { getAppController } from '#lib/services/app-engine.ts';
+import { resolveDeepLinkImport } from '#lib/transfer/deep-link.ts';
 
 export interface TransferPreviewState {
 	preview: Timetable | null;

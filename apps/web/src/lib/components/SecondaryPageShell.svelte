@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import { ArrowBack } from '$lib/icons';
-	import IconButton from '$lib/components/ui/IconButton.svelte';
-	import TopAppBar from '$lib/components/TopAppBar.svelte';
-	import { haptic } from '$lib/haptic/haptic';
-	import { navigateBack, type BackFallback } from '$lib/navigation';
-	import { registerPageBackFallback } from '$lib/navigation/nav-coordinator';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import { ArrowBack } from '#lib/icons/index.ts';
+	import IconButton from '#lib/components/ui/IconButton.svelte';
+	import TopAppBar from '#lib/components/TopAppBar.svelte';
+	import { haptic } from '#lib/haptic/haptic.ts';
+	import { navigateBack, type BackFallback } from '#lib/navigation/index.ts';
+	import { registerPageBackFallback } from '#lib/navigation/nav-coordinator.ts';
 	import {
 		appShellScroll,
 		MountableSlotOutlet,
@@ -14,9 +14,9 @@
 	} from '@chronos/ui-kit';
 	import type { ChronosMountable } from '@chronos/core';
 	import { MediaQuery } from 'svelte/reactivity';
-	import { getAppController } from '$lib/services/app-engine';
-	import AdaptiveEdgeBar from '$lib/components/ui/AdaptiveEdgeBar.svelte';
-	import EdgeBarActionButtons from '$lib/components/ui/EdgeBarActionButtons.svelte';
+	import { getAppController } from '#lib/services/app-engine.ts';
+	import AdaptiveEdgeBar from '#lib/components/ui/AdaptiveEdgeBar.svelte';
+	import EdgeBarActionButtons from '#lib/components/ui/EdgeBarActionButtons.svelte';
 
 	let {
 		title,

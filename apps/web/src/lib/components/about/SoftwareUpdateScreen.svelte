@@ -1,26 +1,26 @@
 <script lang="ts">
 	import type { AppLocale } from '@chronos/core';
-	import { getAppUpdateState } from '$lib/client/app-update-ux.svelte';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import type { HostMessageKey } from '$lib/i18n/host-messages';
-	import { appLocaleToBcp47 } from '$lib/i18n/locale-sync';
+	import { getAppUpdateState } from '#lib/client/app-update-ux.svelte.ts';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import type { HostMessageKey } from '#lib/i18n/host-messages.ts';
+	import { appLocaleToBcp47 } from '#lib/i18n/locale-sync.ts';
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { type SoftwareUpdateStateController } from '$lib/content/releases/update-state.svelte';
-	import { parseMarkdown } from '$lib/content/markdown';
-	import { formatPublishedDate } from '$lib/content/releases/release-display';
-	import { SOURCE_CODE_URL } from '$lib/config/app-meta';
-	import { getAppController } from '$lib/services/app-engine';
+	import { type SoftwareUpdateStateController } from '#lib/content/releases/update-state.svelte.ts';
+	import { parseMarkdown } from '#lib/content/markdown.ts';
+	import { formatPublishedDate } from '#lib/content/releases/release-display.ts';
+	import { SOURCE_CODE_URL } from '#lib/config/app-meta.ts';
+	import { getAppController } from '#lib/services/app-engine.ts';
 
-	import AppHero from '$lib/components/AppHero.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import LoadingIndicator from '$lib/components/ui/LoadingIndicator.svelte';
-	import HighlightRow from '$lib/components/ui/HighlightRow.svelte';
-	import HighlightRowList from '$lib/components/ui/HighlightRowList.svelte';
-	import MineSection from '$lib/components/mine/MineSection.svelte';
-	import MineRow from '$lib/components/mine/MineRow.svelte';
-	import UpdateInstallProgress from '$lib/components/about/UpdateInstallProgress.svelte';
+	import AppHero from '#lib/components/AppHero.svelte';
+	import Button from '#lib/components/ui/Button.svelte';
+	import Card from '#lib/components/ui/Card.svelte';
+	import LoadingIndicator from '#lib/components/ui/LoadingIndicator.svelte';
+	import HighlightRow from '#lib/components/ui/HighlightRow.svelte';
+	import HighlightRowList from '#lib/components/ui/HighlightRowList.svelte';
+	import MineSection from '#lib/components/mine/MineSection.svelte';
+	import MineRow from '#lib/components/mine/MineRow.svelte';
+	import UpdateInstallProgress from '#lib/components/about/UpdateInstallProgress.svelte';
 	import {
 		CalendarMonthFill,
 		CheckCircleFill,
@@ -31,7 +31,7 @@
 		OpenInNewFill,
 		Refresh,
 		Update
-	} from '$lib/icons';
+	} from '#lib/icons/index.ts';
 
 	let {
 		updateState = getAppUpdateState()
@@ -227,7 +227,7 @@
 	<MineSection title={hostT('about.update.more.heading')}>
 		<MineRow
 			title={hostT('about.update.more.history')}
-			href={resolve('/about/releases')}
+			href={resolve('about/releases')}
 			icon={History}
 			iconTone="primary"
 		/>

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { ChronosEngine, HttpResponse, PluginManifest } from '@chronos/core';
-import type { ImageRepository } from '$lib/storage/image-repository';
+import type { ImageRepository } from '#lib/storage/image-repository.ts';
 import { OfficialPluginAssetPipeline } from './asset-pipeline';
 import { OfficialPluginRuntimeActivator } from './runtime-activator';
 import { OfficialPluginInstallQueue, type PluginInstallRunner } from './install-queue';

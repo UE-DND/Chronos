@@ -1,17 +1,17 @@
 import { SvelteDate } from 'svelte/reactivity';
-import { APP_VERSION, HOST_BUILD } from '$lib/config/app-meta';
-import { trackEvent } from '$lib/client/analytics';
+import { APP_VERSION, HOST_BUILD } from '#lib/config/app-meta.ts';
+import { trackEvent } from '#lib/client/analytics.ts';
 import type { AppResult } from '@chronos/core';
 import type { ReleaseCatalog } from './catalog';
 import { compareReleaseVersions, type Release } from './release';
 import { createReleaseFeedAdapter, type ReleaseFeedAdapter } from './release-feed-adapter';
-import { SwUpdateError, type ApplyUpdateOptions } from '$lib/client/pwa-sw';
+import { SwUpdateError, type ApplyUpdateOptions } from '#lib/client/pwa-sw.ts';
 import {
 	getHostPlatform,
 	type PlatformUpdateAction,
 	type HostUpdatePhase,
 	type NativeUpdateState
-} from '$lib/platform/host-platform';
+} from '#lib/platform/host-platform.ts';
 import {
 	createDefaultServiceWorkerAdapter,
 	type ServiceWorkerAdapter

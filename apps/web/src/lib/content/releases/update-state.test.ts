@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 import { createUpdateState } from './update-state.svelte';
 import { createReleaseFeedAdapter, fetchLatestProjectRelease } from './release-feed-adapter';
 import * as serviceWorkerAdapter from './service-worker-adapter';
-import { HOST_BUILD } from '$lib/config/app-meta';
+import { HOST_BUILD } from '#lib/config/app-meta.ts';
 import { AppError, failure, success } from '@chronos/core';
-import type { NativeUpdateState, PlatformUpdateAction } from '$lib/platform/host-platform';
+import type { NativeUpdateState, PlatformUpdateAction } from '#lib/platform/host-platform.ts';
 
 describe('native APK update lifecycle', () => {
 	function setup(initial: NativeUpdateState = { phase: 'idle', percent: null, canCancel: false }) {
@@ -526,7 +526,7 @@ describe('createUpdateState', () => {
 	});
 
 	it('resets updating state and stores i18n key when install fails', async () => {
-		const { SwUpdateError } = await import('$lib/client/pwa-sw');
+		const { SwUpdateError } = await import('#lib/client/pwa-sw.ts');
 		const applyUpdateMock = vi.fn().mockRejectedValue(new SwUpdateError('download_timeout'));
 		const updateState = createUpdateState({
 			currentVersion: '0.2.0',
@@ -541,7 +541,7 @@ describe('createUpdateState', () => {
 	});
 
 	it('maps download_failed install errors to the download failed message key', async () => {
-		const { SwUpdateError } = await import('$lib/client/pwa-sw');
+		const { SwUpdateError } = await import('#lib/client/pwa-sw.ts');
 		const applyUpdateMock = vi.fn().mockRejectedValue(new SwUpdateError('download_failed'));
 		const updateState = createUpdateState({
 			currentVersion: '0.2.0',

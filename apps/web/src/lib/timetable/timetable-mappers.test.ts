@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { createCourse } from '@chronos/core';
-import { createTimetable } from '$lib/models/timetable';
+import { createTimetable } from '#lib/models/timetable.ts';
 import {
 	courseToDraft,
 	reindexPeriodTimes,

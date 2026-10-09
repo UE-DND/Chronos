@@ -1,8 +1,8 @@
-import { isSwUpdatePending, onSwUpdateAvailable } from '$lib/client/pwa-sw';
+import { isSwUpdatePending, onSwUpdateAvailable } from '#lib/client/pwa-sw.ts';
 import {
 	createUpdateState,
 	type SoftwareUpdateStateController
-} from '$lib/content/releases/update-state.svelte';
+} from '#lib/content/releases/update-state.svelte.ts';
 
 const CHECK_INTERVAL_MS = 5 * 60_000;
 const RETRY_DELAYS_MS = [10_000, 30_000, 60_000, CHECK_INTERVAL_MS];

@@ -1,25 +1,25 @@
 import { ChronosEngine } from '@chronos/core';
-import { createWebChronosEnv, type WebProviderOptions } from '$lib/providers';
+import { createWebChronosEnv, type WebProviderOptions } from '#lib/providers/index.ts';
 import { ReactiveChronosController } from '@chronos/ui-kit';
-import { getOverlayHistoryPort } from '$lib/navigation/overlay-history-port';
-import { resolveActiveProfile } from '$lib/boot/profile-registry';
-import { registerHostShell } from '$lib/boot/core-shell';
-import { getHostPlatform } from '$lib/platform/host-platform';
+import { getOverlayHistoryPort } from '#lib/navigation/overlay-history-port.ts';
+import { resolveActiveProfile } from '#lib/boot/profile-registry.ts';
+import { registerHostShell } from '#lib/boot/core-shell.ts';
+import { getHostPlatform } from '#lib/platform/host-platform.ts';
 
 import {
 	createOfficialPluginService,
 	type OfficialPluginService
-} from '$lib/services/official-plugins/official-plugin-service';
-import { snackbar } from '$lib/components/ui/snackbar-state.svelte';
-import { bindAnalyticsPort, trackEvent } from '$lib/client/analytics';
-import { deploymentHasServerPlugins } from '$lib/boot/plugin-proxy-meta.generated';
-import { detectSystemAppLocale, syncAppLocaleOnStartup } from '$lib/i18n/locale-sync';
-import { HOST_MESSAGES, HOST_UI_PLUGIN_ID } from '$lib/i18n/host-messages';
+} from '#lib/services/official-plugins/official-plugin-service.ts';
+import { snackbar } from '#lib/components/ui/snackbar-state.svelte.ts';
+import { bindAnalyticsPort, trackEvent } from '#lib/client/analytics.ts';
+import { deploymentHasServerPlugins } from '#lib/boot/plugin-proxy-meta.generated.ts';
+import { detectSystemAppLocale, syncAppLocaleOnStartup } from '#lib/i18n/locale-sync.ts';
+import { HOST_MESSAGES, HOST_UI_PLUGIN_ID } from '#lib/i18n/host-messages.ts';
 import {
 	createCoursePaletteRef,
 	createWebCoursePresentationPort,
 	type CoursePaletteRef
-} from '$lib/services/course-presentation-port';
+} from '#lib/services/course-presentation-port.ts';
 
 let sharedEngine: ChronosEngine | null = null;
 let sharedController: ReactiveChronosController | null = null;
@@ -59,7 +59,7 @@ function createEngine(options?: WebProviderOptions): ChronosEngine {
 		navigation: {
 			openCourseEditor(courseId: string) {
 				trackEvent('course_editor_open', { trigger: 'plugin' });
-				void import('$lib/navigation/nav-coordinator').then(({ navigateForward }) => {
+				void import('#lib/navigation/nav-coordinator.ts').then(({ navigateForward }) => {
 					void navigateForward(`/timetable/course-editor?courseId=${encodeURIComponent(courseId)}`);
 				});
 			}

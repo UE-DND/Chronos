@@ -25,7 +25,7 @@ vi.mock('./pwa-sw', () => ({
 vi.mock('./pwa-install.svelte', () => ({}));
 vi.mock('./web-host-update', () => ({ applyPreparedWebUpdate: vi.fn() }));
 vi.mock('./analytics', () => ({ trackEvent: vi.fn() }));
-vi.mock('$lib/config/app-meta', () => ({
+vi.mock('#lib/config/app-meta.ts', () => ({
 	APP_VERSION: '1.1.2',
 	ANDROID_SIGNING_CERTIFICATE: 'c'.repeat(64),
 	HOST_BUILD: {
@@ -89,7 +89,7 @@ describe('Android automatic APK update detection', () => {
 		vi.stubGlobal('navigator', { onLine: true });
 		vi.stubGlobal('fetch', fetchFeed);
 		vi.stubGlobal('__ANDROID_RELEASE_FEED_URL__', feedUrl);
-		const { setHostPlatform } = await import('$lib/platform/host-platform');
+		const { setHostPlatform } = await import('#lib/platform/host-platform.ts');
 		setHostPlatform({
 			id: 'mobile',
 			isNative: true,
@@ -125,7 +125,8 @@ describe('Android automatic APK update detection', () => {
 	}
 
 	it('keeps Service Worker registration and signals enabled for the Web platform', async () => {
-		const { setHostPlatform, getDefaultWebPlatform } = await import('$lib/platform/host-platform');
+		const { setHostPlatform, getDefaultWebPlatform } =
+			await import('#lib/platform/host-platform.ts');
 		setHostPlatform(getDefaultWebPlatform());
 		const { appUpdateNotice } = await start();
 		expect(mocks.ensurePwaSwRegistered).toHaveBeenCalledOnce();

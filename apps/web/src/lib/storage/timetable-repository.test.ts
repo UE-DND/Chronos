@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { ChronosEngine, createCourse, createTimetable } from '@chronos/core';
 import { createMockEnv } from '@chronos/core/test-utils';
-import type { ChronosDB, CourseRow, TimetableRow } from '$lib/storage/db';
+import type { ChronosDB, CourseRow, TimetableRow } from '#lib/storage/db.ts';
 import { TimetableRepository } from './timetable-repository';
 
 function createMockDb(): ChronosDB {

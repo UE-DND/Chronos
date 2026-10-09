@@ -15,23 +15,30 @@ import type {
 	PluginBinaryRow,
 	PluginDataRow,
 	TimetableRow
-} from '$lib/storage/db';
+} from '#lib/storage/db.ts';
 
 const hostBase = vi.hoisted(() => ({ value: '' }));
 const publicEnv = vi.hoisted(() => ({ PUBLIC_CHRONOS_SHARE_IMPORT_URL: '' }));
-vi.mock('$app/paths', () => ({ base: '', resolve: (path: string) => hostBase.value + path }));
-vi.mock('$env/dynamic/public', () => ({ env: publicEnv }));
+vi.mock('$app/paths', () => ({
+	base: '',
+	resolve: (path: string) => hostBase.value + '/' + path.replace(/^\//, '')
+}));
+vi.mock('$app/env/public', () => ({
+	get PUBLIC_CHRONOS_SHARE_IMPORT_URL() {
+		return publicEnv.PUBLIC_CHRONOS_SHARE_IMPORT_URL;
+	}
+}));
 afterEach(() => {
 	vi.unstubAllGlobals();
 	hostBase.value = '';
 	publicEnv.PUBLIC_CHRONOS_SHARE_IMPORT_URL = '';
 });
 
-vi.mock('$lib/boot/plugin-proxy-meta.generated', () => ({
+vi.mock('#lib/boot/plugin-proxy-meta.generated.ts', () => ({
 	deploymentHasServerPlugins: vi.fn(() => true)
 }));
 
-import { deploymentHasServerPlugins } from '$lib/boot/plugin-proxy-meta.generated';
+import { deploymentHasServerPlugins } from '#lib/boot/plugin-proxy-meta.generated.ts';
 
 class MockStorage implements Storage {
 	private map = new Map<string, string>();

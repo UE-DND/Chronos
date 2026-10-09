@@ -4,7 +4,7 @@ const { mockCalendarMonth } = vi.hoisted(() => ({
 	mockCalendarMonth: {} as import('svelte').Component<{ class?: string }>
 }));
 
-vi.mock('$lib/boot/mine-icons', () => ({
+vi.mock('#lib/boot/mine-icons.ts', () => ({
 	SHELL_ICON_MAP: {
 		'calendar-month': mockCalendarMonth
 	}

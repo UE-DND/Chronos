@@ -1,10 +1,10 @@
-import { applyPreparedWebUpdate } from '$lib/client/web-host-update';
+import { applyPreparedWebUpdate } from '#lib/client/web-host-update.ts';
 import {
 	probeSwUpdate,
 	isSwUpdatePending,
 	type ApplyUpdateOptions,
 	type SwUpdateProgress
-} from '$lib/client/pwa-sw';
+} from '#lib/client/pwa-sw.ts';
 
 /**
  * Seam for ServiceWorker update lifecycle operations.

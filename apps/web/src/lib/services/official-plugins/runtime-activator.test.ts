@@ -3,7 +3,7 @@ import { ChronosEngine } from '@chronos/core';
 import type { ChronosEnv } from '@chronos/core';
 import { DEFAULT_USER_PREFERENCES } from '@chronos/core';
 import { OfficialPluginRuntimeActivator } from './runtime-activator';
-import type { ImageRepository } from '$lib/storage/image-repository';
+import type { ImageRepository } from '#lib/storage/image-repository.ts';
 import type { InstalledOfficialPluginRecord } from './official-plugin-types';
 
 const SAMPLE_BUNDLE = `

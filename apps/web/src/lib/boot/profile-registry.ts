@@ -1,4 +1,4 @@
-import { resolveProfile } from '$lib/profile-codegen/profile-definitions';
+import { resolveProfile } from '#lib/profile-codegen/profile-definitions.ts';
 
 declare const __CHRONOS_PROFILE__: string;
 

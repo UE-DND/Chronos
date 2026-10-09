@@ -5,9 +5,9 @@ import {
 	type Course,
 	type PlacedCourseCapsule
 } from '@chronos/core';
-import { deleteCourseForWeek } from '$lib/timetable/course-delete-week';
-import { createTimetableInteraction } from '$lib/timetable/timetable-interaction.svelte';
-import { createTimetableDropController } from '$lib/timetable/timetable-drop.svelte';
+import { deleteCourseForWeek } from '#lib/timetable/course-delete-week.ts';
+import { createTimetableInteraction } from '#lib/timetable/timetable-interaction.svelte.ts';
+import { createTimetableDropController } from '#lib/timetable/timetable-drop.svelte.ts';
 
 export function createLongPressDemo(names: () => { primary: string; secondary: string }) {
 	function sampleTimetable() {

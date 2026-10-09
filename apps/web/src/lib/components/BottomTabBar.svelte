@@ -1,21 +1,21 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { getContext } from 'svelte';
 	import { MediaQuery } from 'svelte/reactivity';
 	import type { BottomTabSlotContribution } from '@chronos/core';
 	import { HOST_DEFAULT_ICON_THEME_ID, resolveLocalizedText } from '@chronos/core';
-	import type { TimetableScreenController } from '$lib/timetable/timetable-screen.svelte';
-	import type { ShellTabController } from '$lib/shell/shell-tab.svelte';
-	import { getAppController, getAppEngine } from '$lib/services/app-engine';
+	import type { TimetableScreenController } from '#lib/timetable/timetable-screen.svelte.ts';
+	import type { ShellTabController } from '#lib/shell/shell-tab.svelte.ts';
+	import { getAppController, getAppEngine } from '#lib/services/app-engine.ts';
 
-	import { resolveShellIcon, shellIconSizeClass } from '$lib/shell/resolve-shell-icon';
-	import ShellSvgIcon from '$lib/shell/ShellSvgIcon.svelte';
-	import { haptic } from '$lib/haptic/haptic';
-	import TimetableEditBar from '$lib/components/timetable/TimetableEditBar.svelte';
-	import LayoutOptionsSheet from '$lib/components/timetable/LayoutOptionsSheet.svelte';
-	import { trackEvent } from '$lib/client/analytics';
+	import { resolveShellIcon, shellIconSizeClass } from '#lib/shell/resolve-shell-icon.ts';
+	import ShellSvgIcon from '#lib/shell/ShellSvgIcon.svelte';
+	import { haptic } from '#lib/haptic/haptic.ts';
+	import TimetableEditBar from '#lib/components/timetable/TimetableEditBar.svelte';
+	import LayoutOptionsSheet from '#lib/components/timetable/LayoutOptionsSheet.svelte';
+	import { trackEvent } from '#lib/client/analytics.ts';
 
 	const timetableScreen = getContext<TimetableScreenController>('timetableScreen');
 	const shellTab = getContext<ShellTabController>('shellTab');
@@ -86,12 +86,12 @@
 			compactLandscape={compactLandscape.current}
 			onEdit={() => {
 				haptic.light();
-				goto(resolve('/timetable/details'));
+				goto(resolve('timetable/details'));
 			}}
 			onAdd={() => {
 				haptic.light();
 				trackEvent('course_editor_open', { trigger: 'bottom_bar' });
-				goto(resolve('/timetable/course-editor'));
+				goto(resolve('timetable/course-editor'));
 			}}
 			onLayout={() => {
 				haptic.light();

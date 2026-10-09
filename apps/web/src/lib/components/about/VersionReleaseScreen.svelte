@@ -1,22 +1,22 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { onMount } from 'svelte';
-	import { parseMarkdown } from '$lib/content/markdown';
-	import { formatPublishedDate } from '$lib/content/releases/release-display';
+	import { parseMarkdown } from '#lib/content/markdown.ts';
+	import { formatPublishedDate } from '#lib/content/releases/release-display.ts';
 	import {
 		createReleaseDetailState,
 		type ReleaseDetailStateController
-	} from '$lib/content/releases/catalog-state.svelte';
-	import { trackEvent } from '$lib/client/analytics';
-	import { getAppController } from '$lib/services/app-engine';
+	} from '#lib/content/releases/catalog-state.svelte.ts';
+	import { trackEvent } from '#lib/client/analytics.ts';
+	import { getAppController } from '#lib/services/app-engine.ts';
 
-	import LoadingIndicator from '$lib/components/ui/LoadingIndicator.svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import MineSection from '$lib/components/mine/MineSection.svelte';
-	import AppHero from '$lib/components/AppHero.svelte';
-	import HighlightRow from '$lib/components/ui/HighlightRow.svelte';
-	import HighlightRowList from '$lib/components/ui/HighlightRowList.svelte';
-	import { CalendarMonthFill, DescriptionFill, InfoFill } from '$lib/icons';
+	import LoadingIndicator from '#lib/components/ui/LoadingIndicator.svelte';
+	import Card from '#lib/components/ui/Card.svelte';
+	import MineSection from '#lib/components/mine/MineSection.svelte';
+	import AppHero from '#lib/components/AppHero.svelte';
+	import HighlightRow from '#lib/components/ui/HighlightRow.svelte';
+	import HighlightRowList from '#lib/components/ui/HighlightRowList.svelte';
+	import { CalendarMonthFill, DescriptionFill, InfoFill } from '#lib/icons/index.ts';
 
 	let {
 		tag,

@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import { snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
-	import { pwaInstallController } from '$lib/client/pwa-install.svelte';
-	import { getAppController } from '$lib/services/app-engine';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import Button from '#lib/components/ui/Button.svelte';
+	import Card from '#lib/components/ui/Card.svelte';
+	import { snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
+	import { pwaInstallController } from '#lib/client/pwa-install.svelte.ts';
+	import { getAppController } from '#lib/services/app-engine.ts';
 
-	import { CheckCircleFill, IosShareFill, RocketLaunchFill } from '$lib/icons';
+	import { CheckCircleFill, IosShareFill, RocketLaunchFill } from '#lib/icons/index.ts';
 
 	let { inOnboarding = false }: { inOnboarding?: boolean } = $props();
 

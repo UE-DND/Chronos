@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import type { PeriodTimeDraft } from '$lib/models/drafts';
-	import { defaultPeriodTimes } from '$lib/models/defaults';
-	import { getAppController } from '$lib/services/app-engine';
-	import { createHostTimeWheelColumnLabels } from '$lib/components/ui/host-form-labels';
-	import { removePeriodAt, reindexPeriodTimes } from '$lib/timetable/timetable-mappers';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import type { PeriodTimeDraft } from '#lib/models/drafts.ts';
+	import { defaultPeriodTimes } from '#lib/models/defaults.ts';
+	import { getAppController } from '#lib/services/app-engine.ts';
+	import { createHostTimeWheelColumnLabels } from '#lib/components/ui/host-form-labels.ts';
+	import { removePeriodAt, reindexPeriodTimes } from '#lib/timetable/timetable-mappers.ts';
 	import {
 		countDistinctCourseNames,
 		countDistinctCoursesAffectedByPeriodDelete,
@@ -17,11 +17,11 @@
 		type PeriodProblem
 	} from '@chronos/core';
 	import { formatTimeValue, parseTimeValue, TimeWheel, type TimeValue } from '@chronos/ui-kit';
-	import Button from '$lib/components/ui/Button.svelte';
-	import Dialog from '$lib/components/ui/Dialog.svelte';
-	import IconButton from '$lib/components/ui/IconButton.svelte';
-	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
-	import { Refresh } from '$lib/icons';
+	import Button from '#lib/components/ui/Button.svelte';
+	import Dialog from '#lib/components/ui/Dialog.svelte';
+	import IconButton from '#lib/components/ui/IconButton.svelte';
+	import BottomSheet from '#lib/components/ui/BottomSheet.svelte';
+	import { Refresh } from '#lib/icons/index.ts';
 
 	let {
 		value = $bindable([])

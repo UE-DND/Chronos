@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { validatePluginManifest } from '$lib/services/official-plugins/plugin-bundle';
+import { validatePluginManifest } from '#lib/services/official-plugins/plugin-bundle.ts';
 import type { PluginManifest } from '@chronos/core';
 
 const BASE_MANIFEST: PluginManifest = {

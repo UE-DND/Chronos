@@ -4,8 +4,8 @@
 	 * Use inside `SecondaryPageShell` with `flush`.
 	 */
 	import type { Snippet } from 'svelte';
-	import ActionBottomBar from '$lib/components/ui/ActionBottomBar.svelte';
-	import EdgeBarActionButtons from '$lib/components/ui/EdgeBarActionButtons.svelte';
+	import ActionBottomBar from '#lib/components/ui/ActionBottomBar.svelte';
+	import EdgeBarActionButtons from '#lib/components/ui/EdgeBarActionButtons.svelte';
 	import { getEdgeBarActions, type EdgeBarAction } from '@chronos/ui-kit';
 	import { appShellScroll } from '@chronos/ui-kit';
 

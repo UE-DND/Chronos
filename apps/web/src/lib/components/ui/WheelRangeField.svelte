@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { PickerWheel, type PickerWheelOption } from '@chronos/ui-kit';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import BottomSheet from './BottomSheet.svelte';
 
 	let {

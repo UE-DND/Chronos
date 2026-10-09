@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { staticPath } from '$lib/config/static-path';
+	import { staticPath } from '#lib/config/static-path.ts';
 
 	let {
 		title = '',

@@ -1,16 +1,16 @@
-import { createClassNotificationsController } from '$lib/platform/class-notifications.svelte';
-import { getHostPlatform } from '$lib/platform/host-platform';
-import { createAppearance } from '$lib/appearance/appearance.svelte';
-import { createWallpaperController } from '$lib/wallpaper/wallpaper-controller.svelte';
-import { hostT } from '$lib/i18n/host-i18n.svelte';
-import { pwaInstallController } from '$lib/client/pwa-install.svelte';
+import { createClassNotificationsController } from '#lib/platform/class-notifications.svelte.ts';
+import { getHostPlatform } from '#lib/platform/host-platform.ts';
+import { createAppearance } from '#lib/appearance/appearance.svelte.ts';
+import { createWallpaperController } from '#lib/wallpaper/wallpaper-controller.svelte.ts';
+import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+import { pwaInstallController } from '#lib/client/pwa-install.svelte.ts';
 import {
 	getAppController,
 	getAppEngine,
 	getSharedCoursePaletteRef,
 	notifyCoursePaletteChanged,
 	resetAppToInitialState
-} from '$lib/services/app-engine';
+} from '#lib/services/app-engine.ts';
 import {
 	DEFAULT_USER_PREFERENCES,
 	type CapsuleCornerStyle,

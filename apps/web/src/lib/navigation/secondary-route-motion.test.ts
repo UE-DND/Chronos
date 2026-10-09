@@ -1,11 +1,16 @@
+import type { OnNavigate } from '$app/navigation';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import type { OnNavigate } from '@sveltejs/kit';
+
 import {
 	createSecondaryTransitionGate,
 	setupSecondaryPageViewTransition,
 	updateTransitionDirection
 } from './page-view-transition.svelte';
-import { getHostPlatform, resetHostPlatform, setHostPlatform } from '$lib/platform/host-platform';
+import {
+	getHostPlatform,
+	resetHostPlatform,
+	setHostPlatform
+} from '#lib/platform/host-platform.ts';
 
 const captured = vi.hoisted(() => ({
 	callback: undefined as ((nav: OnNavigate) => unknown) | undefined
@@ -71,6 +76,21 @@ function fixture() {
 afterEach(() => resetHostPlatform());
 
 describe('native route motion coordination', () => {
+	it('does not cancel an entrance when Kit reports a shallow history update', async () => {
+		const { gate, enter, motion, navigate } = fixture();
+		const forward = navigate('/', '/about');
+		gate.syncRoute('/about');
+		forward.complete.resolve();
+		await flushPromises();
+		const cancellations = motion.cancelMotion.mock.calls.length;
+		const shallow = captured.callback!({ type: 'goto', shallow: true } as OnNavigate);
+		expect(shallow).toBeUndefined();
+		expect(motion.cancelMotion).toHaveBeenCalledTimes(cancellations);
+		enter.resolve(true);
+		await flushPromises();
+		expect(gate.frozen).toBe(true);
+	});
+
 	it('keeps the shell paintable through the forward route commit and freezes only after animation', async () => {
 		const { gate, enter, motion, navigate } = fixture();
 		const nav = navigate('/', '/about');

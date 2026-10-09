@@ -27,7 +27,7 @@ describe('workspace boundaries', () => {
 			'packages/plugins/b/package.json': '{"name":"@chronos/plugin-b"}',
 			'packages/plugins/a/src/main.ts': 'const x = import("@chronos/plugin-b");',
 			'packages/plugins/a/src/View.svelte':
-				'<script lang="ts">import x from "$lib/private";</script><p>test</p>'
+				'<script lang="ts">import x from "#lib/private.ts";</script><p>test</p>'
 		});
 		expect(checkBoundaries(root).map((error) => error.source)).toEqual(
 			expect.arrayContaining([

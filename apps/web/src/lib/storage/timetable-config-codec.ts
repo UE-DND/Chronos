@@ -1,5 +1,5 @@
 import type { AcademicConfig, ImportMetadata, PeriodTime, TimetableViewPrefs } from '@chronos/core';
-import type { TimetableConfig, TimetableImportMetadata } from '$lib/models/timetable';
+import type { TimetableConfig, TimetableImportMetadata } from '#lib/models/timetable.ts';
 
 const SCHEMA_VERSION = 1;
 

@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { type CapsuleCornerStyle, type ThemeMode, type TimetableLayoutMode } from '@chronos/core';
-	import type { AppShellController } from '$lib/app/app-shell.svelte';
-	import { trackEvent } from '$lib/client/analytics';
+	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
+	import { trackEvent } from '#lib/client/analytics.ts';
 
-	import Radio from '$lib/components/ui/Radio.svelte';
-	import Switch from '$lib/components/ui/Switch.svelte';
-	import MineSection from '$lib/components/mine/MineSection.svelte';
-	import MineRow from '$lib/components/mine/MineRow.svelte';
-	import { haptic } from '$lib/haptic/haptic';
+	import Radio from '#lib/components/ui/Radio.svelte';
+	import Switch from '#lib/components/ui/Switch.svelte';
+	import MineSection from '#lib/components/mine/MineSection.svelte';
+	import MineRow from '#lib/components/mine/MineRow.svelte';
+	import { haptic } from '#lib/haptic/haptic.ts';
 
 	let { shell }: { shell: AppShellController } = $props();
 	let themeMode = $derived(shell.controller.userPreferences?.themeMode ?? 'auto');

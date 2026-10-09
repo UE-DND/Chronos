@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import { getHostPlatform, resetHostPlatform, setHostPlatform } from '$lib/platform/host-platform';
+import {
+	getHostPlatform,
+	resetHostPlatform,
+	setHostPlatform
+} from '#lib/platform/host-platform.ts';
 import {
 	createSecondaryTransitionGate,
 	clearSuppressedTransition,

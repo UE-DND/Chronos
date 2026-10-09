@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { getContext } from 'svelte';
-	import type { AppShellController } from '$lib/app/app-shell.svelte';
+	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
 	import type { TimetableViewPrefs } from '@chronos/core';
-	import { getAppController } from '$lib/services/app-engine';
-	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
-	import MineRow from '$lib/components/mine/MineRow.svelte';
-	import Switch from '$lib/components/ui/Switch.svelte';
-	import { createViewPrefsSaver } from '$lib/timetable/view-prefs-save';
+	import { getAppController } from '#lib/services/app-engine.ts';
+	import BottomSheet from '#lib/components/ui/BottomSheet.svelte';
+	import MineRow from '#lib/components/mine/MineRow.svelte';
+	import Switch from '#lib/components/ui/Switch.svelte';
+	import { createViewPrefsSaver } from '#lib/timetable/view-prefs-save.ts';
 
 	let {
 		open = $bindable(false)

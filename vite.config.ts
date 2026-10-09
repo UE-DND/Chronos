@@ -17,7 +17,7 @@ export default defineConfig({
 	defaultPackage: './apps/web',
 	resolve: {
 		alias: [
-			{ find: '$lib', replacement: fileURLToPath(new URL('./apps/web/src/lib', import.meta.url)) },
+			{ find: '#lib', replacement: fileURLToPath(new URL('./apps/web/src/lib', import.meta.url)) },
 			{
 				find: '$chronos-platform-adapter',
 				replacement: fileURLToPath(
@@ -25,12 +25,9 @@ export default defineConfig({
 				)
 			},
 			{
-				find: '$app/environment',
+				find: /^\$app\/env$/,
 				replacement: fileURLToPath(
-					new URL(
-						'./node_modules/@sveltejs/kit/src/runtime/app/environment/index.js',
-						import.meta.url
-					)
+					new URL('./node_modules/@sveltejs/kit/src/runtime/app/env/index.js', import.meta.url)
 				)
 			},
 			{
@@ -52,27 +49,15 @@ export default defineConfig({
 				)
 			},
 			{
-				find: '$app/stores',
-				replacement: fileURLToPath(
-					new URL('./node_modules/@sveltejs/kit/src/runtime/app/stores.js', import.meta.url)
-				)
-			},
-			{
 				find: '$app/state',
 				replacement: fileURLToPath(
 					new URL('./node_modules/@sveltejs/kit/src/runtime/app/state/index.js', import.meta.url)
 				)
 			},
 			{
-				find: '$env/dynamic/public',
+				find: '$app/env/public',
 				replacement: fileURLToPath(
-					new URL('./apps/web/src/lib/config/env-dynamic-public-mock.ts', import.meta.url)
-				)
-			},
-			{
-				find: '$env/static/public',
-				replacement: fileURLToPath(
-					new URL('./apps/web/src/lib/config/env-dynamic-public-mock.ts', import.meta.url)
+					new URL('./apps/web/src/test-mocks/app-env-public.ts', import.meta.url)
 				)
 			},
 			...chronosAlias

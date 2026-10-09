@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { onMount } from 'svelte';
-	import type { BackFallback } from '$lib/navigation';
-	import { staticPath } from '$lib/config/static-path';
-	import { parseMarkdown } from '$lib/content/markdown';
-	import { connectivity } from '$lib/platform/connectivity.svelte';
-	import { resolveFetchErrorMessage } from '$lib/client/fetch-error-message';
+	import type { BackFallback } from '#lib/navigation/index.ts';
+	import { staticPath } from '#lib/config/static-path.ts';
+	import { parseMarkdown } from '#lib/content/markdown.ts';
+	import { connectivity } from '#lib/platform/connectivity.svelte.ts';
+	import { resolveFetchErrorMessage } from '#lib/client/fetch-error-message.ts';
 
-	import SecondaryPageShell from '$lib/components/SecondaryPageShell.svelte';
-	import FetchErrorState from '$lib/components/ui/FetchErrorState.svelte';
-	import LoadingIndicator from '$lib/components/ui/LoadingIndicator.svelte';
+	import SecondaryPageShell from '#lib/components/SecondaryPageShell.svelte';
+	import FetchErrorState from '#lib/components/ui/FetchErrorState.svelte';
+	import LoadingIndicator from '#lib/components/ui/LoadingIndicator.svelte';
 
 	let {
 		title,

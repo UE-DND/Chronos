@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
-import { createTransitionStateScheduler } from '$lib/timetable/capsule-indicator-transition';
+import { createTransitionStateScheduler } from '#lib/timetable/capsule-indicator-transition.ts';
 
 describe('createTransitionStateScheduler', () => {
 	it('runs onComplete after the delay', () => {

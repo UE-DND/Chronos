@@ -7,7 +7,7 @@ const { setParaglideLocale, getTextDirection } = vi.hoisted(() => ({
 	getTextDirection: vi.fn(() => 'ltr' as const)
 }));
 
-vi.mock('$lib/paraglide/runtime', () => ({
+vi.mock('#lib/paraglide/runtime.js', () => ({
 	setLocale: setParaglideLocale,
 	getTextDirection
 }));
@@ -18,7 +18,7 @@ import {
 	detectSystemAppLocale,
 	syncAppLocaleOnStartup,
 	syncParaglideLocale
-} from '$lib/i18n/locale-sync';
+} from '#lib/i18n/locale-sync.ts';
 
 function createTestEnv(): ChronosEnv {
 	return {

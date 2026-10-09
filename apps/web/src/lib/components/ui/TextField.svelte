@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import type { HTMLInputAttributes, HTMLTextareaAttributes } from 'svelte/elements';
-	import IconButton from '$lib/components/ui/IconButton.svelte';
-	import { Visibility, VisibilityOff } from '$lib/icons';
+	import IconButton from '#lib/components/ui/IconButton.svelte';
+	import { Visibility, VisibilityOff } from '#lib/icons/index.ts';
 
 	let {
 		label,

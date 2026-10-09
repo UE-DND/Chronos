@@ -1,7 +1,7 @@
 import { COURSE_PALETTE_ENTRIES, type CoursePaletteEntry } from '@chronos/core';
-import type { CoursePaletteRef } from '$lib/services/course-presentation-port';
-import { getAppEngine } from '$lib/services/app-engine';
-import { createWallpaperPixelReader } from '$lib/wallpaper/wallpaper-theme';
+import type { CoursePaletteRef } from '#lib/services/course-presentation-port.ts';
+import { getAppEngine } from '#lib/services/app-engine.ts';
+import { createWallpaperPixelReader } from '#lib/wallpaper/wallpaper-theme.ts';
 import { applyAppearance, type ApplyAppearanceInput } from './apply-appearance';
 import { applyActiveTheme } from './apply-active-theme';
 

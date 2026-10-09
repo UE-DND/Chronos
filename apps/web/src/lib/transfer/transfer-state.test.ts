@@ -1,8 +1,8 @@
 import { describe, expect, it, beforeEach, vi } from 'vite-plus/test';
-import { ImportMode } from '$lib/domain/import-mode';
+import { ImportMode } from '#lib/domain/import-mode.ts';
 import { createTransferState, shareImportErrorSnackbarKey } from './transfer-state.svelte';
 
-vi.mock('$lib/i18n/host-i18n.svelte', () => ({
+vi.mock('#lib/i18n/host-i18n.svelte.ts', () => ({
 	hostT: (key: string) => key
 }));
 
@@ -11,7 +11,7 @@ const finalizePreview = vi.fn(async (preview: { name: string }) => ({
 	name: 'Finalized'
 }));
 
-vi.mock('$lib/services/app-engine', () => ({
+vi.mock('#lib/services/app-engine.ts', () => ({
 	getAppController: () => ({
 		getSlots: (slot: string) =>
 			slot === 'import.source.tab'
@@ -230,7 +230,7 @@ describe('createTransferState', () => {
 			state: { currentTimetable: null }
 		} as unknown as Parameters<typeof createTransferState>[0];
 
-		const { checkPrimaryExportWarning } = await import('$lib/transfer/transfer-state.svelte');
+		const { checkPrimaryExportWarning } = await import('#lib/transfer/transfer-state.svelte.ts');
 		const warning = await checkPrimaryExportWarning(mockEngine!);
 		expect(warning).toBeNull();
 	});

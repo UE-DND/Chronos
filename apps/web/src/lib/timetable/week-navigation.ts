@@ -1,4 +1,4 @@
-import type { Timetable } from '$lib/models/timetable';
+import type { Timetable } from '#lib/models/timetable.ts';
 
 export function buildWeekList(startWeek: number, endWeek: number): number[] {
 	const start = Math.min(startWeek, endWeek);

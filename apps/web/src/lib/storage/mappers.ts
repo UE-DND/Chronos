@@ -1,5 +1,5 @@
 import type { Course } from '@chronos/core';
-import { normalizeTimetableName, type Timetable } from '$lib/models/timetable';
+import { normalizeTimetableName, type Timetable } from '#lib/models/timetable.ts';
 import type { CourseRow, TimetableRow } from './db';
 import { encodeTimetableConfig, decodeTimetableConfig } from './timetable-config-codec';
 

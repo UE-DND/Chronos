@@ -26,9 +26,9 @@
 	"devDependencies": {
 		"@chronos/plugin-theme-yumemita": "workspace:*",
 		"@inlang/paraglide-js": "^2.25.0",
-		"@sveltejs/adapter-static": "^3.0.10",
-		"@sveltejs/adapter-vercel": "^6.3.3",
-		"@sveltejs/kit": "^2.70.3",
+		"@sveltejs/adapter-static": "^4.0.0",
+		"@sveltejs/adapter-vercel": "^7.0.0",
+		"@sveltejs/kit": "^3.0.0",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@tailwindcss/forms": "^0.5.11",
 		"@tailwindcss/typography": "^0.5.19",
@@ -37,7 +37,7 @@
 		"@vite-pwa/sveltekit": "^1.1.0",
 		"rolldown-license-plugin": "^3.0.14",
 		"smol-toml": "^1.9.0",
-		"svelte": "^5.57.0",
+		"svelte": "^5.57.1",
 		"svelte-check": "^4.7.6",
 		"tailwindcss": "^4.3.0",
 		"typescript": "^6.0.3",
@@ -46,5 +46,8 @@
 	},
 	"optionalDependencies": {
 		"@chronos/plugin-source-cqut": "workspace:*"
+	},
+	"imports": {
+		"#lib/*": "./src/lib/*"
 	}
 }

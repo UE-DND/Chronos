@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
-vi.mock('$lib/client/analytics', () => ({
+vi.mock('#lib/client/analytics.ts', () => ({
 	trackEvent: vi.fn()
 }));
 
 const snackbarKey = vi.fn();
-vi.mock('$lib/components/ui/snackbar-state.svelte', () => ({
+vi.mock('#lib/components/ui/snackbar-state.svelte.ts', () => ({
 	snackbarKey: (...args: unknown[]) => snackbarKey(...args)
 }));
 

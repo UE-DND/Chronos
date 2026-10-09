@@ -1,16 +1,16 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { onMount } from 'svelte';
-	import { navigateForward } from '$lib/navigation/nav-coordinator';
+	import { navigateForward } from '#lib/navigation/nav-coordinator.ts';
 	import { resolve } from '$app/paths';
-	import { browser } from '$app/environment';
-	import { trackEvent } from '$lib/client/analytics';
-	import { snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
-	import { ensureEngineFullyReady } from '$lib/services/app-engine';
+	import { browser } from '$app/env';
+	import { trackEvent } from '#lib/client/analytics.ts';
+	import { snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
+	import { ensureEngineFullyReady } from '#lib/services/app-engine.ts';
 	import {
 		createTransferState,
 		shareImportErrorSnackbarKey
-	} from '$lib/transfer/transfer-state.svelte';
+	} from '#lib/transfer/transfer-state.svelte.ts';
 
 	let status = $state<'loading' | 'error'>('loading');
 
@@ -31,7 +31,7 @@
 				}
 
 				trackEvent('share_link_decode_success');
-				navigateForward(resolve('/transfer/import/confirm'), { replace: true });
+				navigateForward(resolve('transfer/import/confirm'), { replace: true });
 			} catch {
 				trackEvent('share_link_decode_fail');
 				status = 'error';
@@ -46,8 +46,9 @@
 		<p class="text-body-large text-on-surface">{hostT('share.loading')}</p>
 	{:else}
 		<p class="text-body-large text-on-surface-variant">{hostT('share.failed')}</p>
-		<a href={resolve('/transfer/import')} class="text-label-large text-brand">
-			{hostT('share.manualImport')}
-		</a>
+
+		<a href={resolve('transfer/import')} class="text-label-large text-brand"
+			>{hostT('share.manualImport')}</a
+		>
 	{/if}
 </div>

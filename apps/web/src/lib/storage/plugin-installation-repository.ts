@@ -2,11 +2,11 @@ import type { ChronosDB } from './db';
 import {
 	parseInstallationState,
 	type PluginInstallationRepository
-} from '$lib/services/official-plugins/installed-store';
+} from '#lib/services/official-plugins/installed-store.ts';
 import {
 	INSTALLED_STORAGE_KEY,
 	OFFICIAL_PLUGINS_PLUGIN_ID
-} from '$lib/services/official-plugins/official-plugin-types';
+} from '#lib/services/official-plugins/official-plugin-types.ts';
 
 /** All installation changes merge against the latest row under an IndexedDB write transaction. */
 export function createPluginInstallationRepository(

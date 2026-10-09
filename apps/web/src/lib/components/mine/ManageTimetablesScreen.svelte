@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { resolve } from '$app/paths';
-	import type { AppShellController } from '$lib/app/app-shell.svelte';
-	import { trackEvent } from '$lib/client/analytics';
-	import Button from '$lib/components/ui/Button.svelte';
-	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
-	import FormScreenLayout from '$lib/components/ui/FormScreenLayout.svelte';
+	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
+	import { trackEvent } from '#lib/client/analytics.ts';
+	import Button from '#lib/components/ui/Button.svelte';
+	import BottomSheet from '#lib/components/ui/BottomSheet.svelte';
+	import FormScreenLayout from '#lib/components/ui/FormScreenLayout.svelte';
 	import type { EdgeBarAction } from '@chronos/ui-kit';
-	import SelectableOption from '$lib/components/ui/SelectableOption.svelte';
-	import { DeleteFill } from '$lib/icons';
-	import { snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
+	import SelectableOption from '#lib/components/ui/SelectableOption.svelte';
+	import { DeleteFill } from '#lib/icons/index.ts';
+	import { snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
 
 	let {
 		shell
@@ -112,7 +112,7 @@
 				<Button
 					variant="outlined"
 					class="mt-4"
-					href={resolve('/transfer/import')}
+					href={resolve('transfer/import')}
 					onclick={handleImportClick}
 				>
 					{hostT('timetable.empty.import')}

@@ -1,6 +1,6 @@
-import type { HostMessageKey } from '$lib/i18n/host-messages';
-import { HOST_UI_PLUGIN_ID } from '$lib/i18n/host-messages';
-import { getAppEngine } from '$lib/services/app-engine';
+import type { HostMessageKey } from '#lib/i18n/host-messages.ts';
+import { HOST_UI_PLUGIN_ID } from '#lib/i18n/host-messages.ts';
+import { getAppEngine } from '#lib/services/app-engine.ts';
 
 let localeVersion = $state(0);
 let configured = false;

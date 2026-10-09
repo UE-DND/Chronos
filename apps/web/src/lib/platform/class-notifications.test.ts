@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { ChronosEngine, createCourse, createTimetable } from '@chronos/core';
 import { createMockEnv } from '@chronos/core/test-utils';
-vi.mock('$lib/i18n/host-i18n.svelte', async () => {
+vi.mock('#lib/i18n/host-i18n.svelte.ts', async () => {
 	const { zhCn } = await import('../i18n/host-messages/zh-cn');
 	return {
 		hostT: (key: keyof typeof zhCn, params: Record<string, string> = {}) =>

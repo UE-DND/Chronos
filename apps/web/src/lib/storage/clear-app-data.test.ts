@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { estimateStorageBytes } from './clear-app-data';
-import { formatBytes } from '$lib/utils/format-bytes';
+import { formatBytes } from '#lib/utils/format-bytes.ts';
 
 function createMemoryStorage(initial: Record<string, string> = {}): Storage {
 	const map = new Map(Object.entries(initial));

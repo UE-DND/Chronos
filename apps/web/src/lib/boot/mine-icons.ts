@@ -26,7 +26,7 @@ import {
 	ScheduleFill,
 	ViewWeek,
 	ViewWeekFill
-} from '$lib/icons';
+} from '#lib/icons/index.ts';
 import type { Component } from 'svelte';
 
 /** Host icon registry for shell.bottom-bar.tab, mine.item, and theme shell overrides. */

@@ -3,8 +3,7 @@ import { secondaryRouteRoots } from '../../routes/(secondary)/navigation';
 import { appRouteHref, isSecondaryRoute, isShellRoute, toAppPathname } from './routes';
 
 vi.mock('$app/paths', () => ({
-	base: '/Chronos',
-	resolve: (path: string) => `/Chronos${path}`
+	resolve: (path: string) => `/Chronos/${path.replace(/^\//, '')}`
 }));
 
 describe('navigation routes', () => {

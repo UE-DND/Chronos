@@ -1,20 +1,20 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { fade } from 'svelte/transition';
 	import { getContext } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
-	import type { AppShellController } from '$lib/app/app-shell.svelte';
-	import { trackEvent } from '$lib/client/analytics';
-	import { onboardingController, ONBOARDING_STEPS } from '$lib/client/onboarding.svelte';
+	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
+	import { trackEvent } from '#lib/client/analytics.ts';
+	import { onboardingController, ONBOARDING_STEPS } from '#lib/client/onboarding.svelte.ts';
 	import type { TimetableLayoutMode } from '@chronos/core';
-	import Button from '$lib/components/ui/Button.svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import AppHero from '$lib/components/AppHero.svelte';
-	import HighlightRowList from '$lib/components/ui/HighlightRowList.svelte';
-	import HighlightRow from '$lib/components/ui/HighlightRow.svelte';
-	import InstallGuideCard from '$lib/components/pwa/InstallGuideCard.svelte';
+	import Button from '#lib/components/ui/Button.svelte';
+	import Card from '#lib/components/ui/Card.svelte';
+	import AppHero from '#lib/components/AppHero.svelte';
+	import HighlightRowList from '#lib/components/ui/HighlightRowList.svelte';
+	import HighlightRow from '#lib/components/ui/HighlightRow.svelte';
+	import InstallGuideCard from '#lib/components/pwa/InstallGuideCard.svelte';
 	import LongPressDemo from './LongPressDemo.svelte';
 	import LayoutModePreview from './LayoutModePreview.svelte';
 	import {
@@ -25,9 +25,9 @@
 		ShieldFill,
 		WifiOffFill,
 		ChevronRight
-	} from '$lib/icons';
+	} from '#lib/icons/index.ts';
 	import { isReducedMotionActive } from '@chronos/ui-kit';
-	import { haptic } from '$lib/haptic/haptic';
+	import { haptic } from '#lib/haptic/haptic.ts';
 
 	const shell = getContext<AppShellController>('appShell');
 	const onboardingState = $derived(onboardingController.state);
@@ -131,7 +131,7 @@
 	function handleStartImport() {
 		trackEvent('onboarding_start_import');
 		completeOnboarding();
-		void goto(resolve('/transfer/import'));
+		void goto(resolve('transfer/import'));
 	}
 
 	function handleLater() {
@@ -234,13 +234,13 @@
 										GavelFill,
 										hostT('about.legal.terms'),
 										hostT('onboarding.legal.terms.desc'),
-										resolve('/legal/terms')
+										resolve('legal/terms')
 									)}
 									{@render legalLinkCard(
 										ShieldFill,
 										hostT('about.legal.privacy'),
 										hostT('onboarding.legal.privacy.desc'),
-										resolve('/legal/privacy')
+										resolve('legal/privacy')
 									)}
 								</div>
 								<p class="text-body-small text-center text-on-surface-variant">

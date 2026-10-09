@@ -1,5 +1,5 @@
 import { createHorizontalGesture } from '@chronos/ui-kit';
-import { haptic } from '$lib/haptic/haptic';
+import { haptic } from '#lib/haptic/haptic.ts';
 
 const SCROLL_SURFACE_SELECTOR = '.native-overscroll-y, .secondary-scroll';
 const MAX_PULL_PX = 56;

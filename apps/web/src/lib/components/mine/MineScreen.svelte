@@ -1,17 +1,17 @@
 <script lang="ts">
-	import { appUpdateNotice } from '$lib/client/app-update-ux.svelte';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import type { AppShellController } from '$lib/app/app-shell.svelte';
-	import { resolveMineSectionId } from '$lib/components/mine/mine-section-id';
-	import MineSection from '$lib/components/mine/MineSection.svelte';
-	import MineRow, { type MineIconTone } from '$lib/components/mine/MineRow.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import SearchField from '$lib/components/ui/SearchField.svelte';
-	import { getAppController } from '$lib/services/app-engine';
+	import { appUpdateNotice } from '#lib/client/app-update-ux.svelte.ts';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
+	import { resolveMineSectionId } from '#lib/components/mine/mine-section-id.ts';
+	import MineSection from '#lib/components/mine/MineSection.svelte';
+	import MineRow, { type MineIconTone } from '#lib/components/mine/MineRow.svelte';
+	import Button from '#lib/components/ui/Button.svelte';
+	import SearchField from '#lib/components/ui/SearchField.svelte';
+	import { getAppController } from '#lib/services/app-engine.ts';
 
 	import { DEFAULT_MINE_SECTION_ID, resolveLocalizedText } from '@chronos/core';
-	import { ChevronRight, CodeFill } from '$lib/icons';
-	import { resolveShellIcon } from '$lib/shell/resolve-shell-icon';
+	import { ChevronRight, CodeFill } from '#lib/icons/index.ts';
+	import { resolveShellIcon } from '#lib/shell/resolve-shell-icon.ts';
 	import type { Component } from 'svelte';
 
 	let { shell }: { shell: AppShellController } = $props();

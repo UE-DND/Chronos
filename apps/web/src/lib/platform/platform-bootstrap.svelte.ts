@@ -1,23 +1,23 @@
-import { checkAppUpdateOnResume } from '$lib/client/app-update-ux.svelte';
-import type { AppShellController } from '$lib/app/app-shell.svelte';
-import { connectivity } from '$lib/platform/connectivity.svelte';
-import { onboardingController } from '$lib/client/onboarding.svelte';
-import { isPwaStandalone, pwaInstallController } from '$lib/client/pwa-install.svelte';
-import { initAnalytics } from '$lib/client/analytics';
+import { checkAppUpdateOnResume } from '#lib/client/app-update-ux.svelte.ts';
+import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
+import { connectivity } from '#lib/platform/connectivity.svelte.ts';
+import { onboardingController } from '#lib/client/onboarding.svelte.ts';
+import { isPwaStandalone, pwaInstallController } from '#lib/client/pwa-install.svelte.ts';
+import { initAnalytics } from '#lib/client/analytics.ts';
 
-import { attachOfflineUx } from '$lib/platform/offline-ux.svelte';
+import { attachOfflineUx } from '#lib/platform/offline-ux.svelte.ts';
 import {
 	ensureEngineFullyReady,
 	ensureEngineReady,
 	getAppController,
 	getOfficialPluginService
-} from '$lib/services/app-engine';
-import { configureHostI18n } from '$lib/i18n/host-i18n.svelte';
-import { getHostPlatform } from '$lib/platform/host-platform';
-import { installScrollBoundaryFeedback } from '$lib/platform/scroll-boundary-feedback';
-import { dispatchSystemBack } from '$lib/navigation/nav-coordinator';
-import type { TimetableScreenController } from '$lib/timetable/timetable-screen.svelte';
-import type { ShellTabController } from '$lib/shell/shell-tab.svelte';
+} from '#lib/services/app-engine.ts';
+import { configureHostI18n } from '#lib/i18n/host-i18n.svelte.ts';
+import { getHostPlatform } from '#lib/platform/host-platform.ts';
+import { installScrollBoundaryFeedback } from '#lib/platform/scroll-boundary-feedback.ts';
+import { dispatchSystemBack } from '#lib/navigation/nav-coordinator.ts';
+import type { TimetableScreenController } from '#lib/timetable/timetable-screen.svelte.ts';
+import type { ShellTabController } from '#lib/shell/shell-tab.svelte.ts';
 import { createTodayWidgetSyncService, type TodayWidgetSyncService } from './today-widget-sync';
 import { registerHyperellipse } from 'hyperellipse';
 
@@ -88,7 +88,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 										.some((tab) => tab.id === 'today');
 									deps.shellTab.setActiveTab(hasTodayTab ? 'today' : 'timetable');
 									if (!hasTodayTab) deps.timetableScreen.jumpToCurrentWeek();
-									const { navigateForward } = await import('$lib/navigation/nav-coordinator');
+									const { navigateForward } = await import('#lib/navigation/nav-coordinator.ts');
 									if (session.alive) await navigateForward('/', { replace: true });
 								})
 								.catch((error) =>
@@ -99,7 +99,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 						const path =
 							url.hostname === 's' || url.pathname.startsWith('/s') ? '/s' : url.pathname;
 						const target = `${path}${url.search}${url.hash}`;
-						void import('$lib/navigation/nav-coordinator')
+						void import('#lib/navigation/nav-coordinator.ts')
 							.then(({ navigateForward }) => {
 								if (session.alive) void navigateForward(target);
 							})
@@ -131,7 +131,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 					void getOfficialPluginService().retryPendingUpdates();
 				if (platform.isNative)
 					void platform.getUpdateAction?.()?.native?.getState().catch(console.error);
-				void import('$lib/client/web-host-update')
+				void import('#lib/client/web-host-update.ts')
 					.then((module) => {
 						if (session.alive) return module.recoverInterruptedWebUpdate();
 					})
@@ -153,7 +153,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 					configureHostI18n({
 						onLocaleChanged: (handler) => engine.events.on('i18n:localeChanged', handler)
 					});
-					void import('$lib/client/web-host-update')
+					void import('#lib/client/web-host-update.ts')
 						.then((module) => {
 							if (session.alive) return module.recoverInterruptedWebUpdate();
 						})

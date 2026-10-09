@@ -1,6 +1,6 @@
-import { HOST_BUILD } from '$lib/config/app-meta';
-import { dev } from '$app/environment';
-import { fetchLatestProjectRelease } from '$lib/content/releases/release-feed-adapter';
+import { HOST_BUILD } from '#lib/config/app-meta.ts';
+import { dev } from '$app/env';
+import { fetchLatestProjectRelease } from '#lib/content/releases/release-feed-adapter.ts';
 import { applyUpdateAndReload, readWorkerIdentity, type ApplyUpdateOptions } from './pwa-sw';
 
 let applying: Promise<void> | undefined;
@@ -9,17 +9,19 @@ const progressListeners = new Set<NonNullable<ApplyUpdateOptions['onProgress']>>
 
 /** Re-read persisted ownership before deciding whether a preparation can be released. */
 async function reconcile(expectedToken?: string): Promise<boolean> {
-	const { getOfficialPluginService } = await import('$lib/services/app-engine');
+	const { getOfficialPluginService } = await import('#lib/services/app-engine.ts');
 	const service = getOfficialPluginService();
 	const store = service.installationStore;
 	await store.load();
 	const prepared = store.prepared;
+
 	if (
 		!prepared ||
 		prepared.target.buildId === HOST_BUILD.buildId ||
 		(expectedToken && prepared.token !== expectedToken)
 	)
 		return false;
+
 	const registration = await navigator.serviceWorker.getRegistration();
 	if (
 		registration?.active &&
@@ -36,7 +38,7 @@ async function reconcile(expectedToken?: string): Promise<boolean> {
 
 async function apply(options?: ApplyUpdateOptions): Promise<void> {
 	const { ensureEngineFullyReady, getOfficialPluginService } =
-		await import('$lib/services/app-engine');
+		await import('#lib/services/app-engine.ts');
 	await ensureEngineFullyReady();
 	const service = getOfficialPluginService();
 	await service.installationStore.load();

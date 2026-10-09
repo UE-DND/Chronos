@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import type { TimetableDetailsController } from '$lib/timetable/timetable-details.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import Dialog from '$lib/components/ui/Dialog.svelte';
-	import FormScreenLayout from '$lib/components/ui/FormScreenLayout.svelte';
-	import TimetableDetailsEditor from '$lib/components/timetable/TimetableDetailsEditor.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import type { TimetableDetailsController } from '#lib/timetable/timetable-details.svelte.ts';
+	import Button from '#lib/components/ui/Button.svelte';
+	import Dialog from '#lib/components/ui/Dialog.svelte';
+	import FormScreenLayout from '#lib/components/ui/FormScreenLayout.svelte';
+	import TimetableDetailsEditor from '#lib/components/timetable/TimetableDetailsEditor.svelte';
 	import type { EdgeBarAction } from '@chronos/ui-kit';
-	import { Check, Refresh } from '$lib/icons';
+	import { Check, Refresh } from '#lib/icons/index.ts';
 	import { validatePeriodTimes } from '@chronos/core';
-	import { getAppController } from '$lib/services/app-engine';
+	import { getAppController } from '#lib/services/app-engine.ts';
 
 	let {
 		editor

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import type { PreparedPluginUpdate } from '$lib/services/official-plugins/installed-store';
+import type { PreparedPluginUpdate } from '#lib/services/official-plugins/installed-store.ts';
 import type { HostBuildIdentity } from '@chronos/core';
 
 const mocks = vi.hoisted(() => ({
@@ -20,10 +20,10 @@ const current: HostBuildIdentity = {
 	target: 'pages'
 };
 const target = { ...current, buildId: 'c'.repeat(64) };
-vi.mock('$lib/config/app-meta', () => ({
+vi.mock('#lib/config/app-meta.ts', () => ({
 	HOST_BUILD: { buildId: 'a'.repeat(64), target: 'pages' }
 }));
-vi.mock('$lib/services/app-engine', () => ({
+vi.mock('#lib/services/app-engine.ts', () => ({
 	ensureEngineFullyReady: vi.fn(),
 	getOfficialPluginService: () => ({
 		installationStore: {
@@ -36,14 +36,14 @@ vi.mock('$lib/services/app-engine', () => ({
 		cancelHostPreparation: mocks.cancel
 	})
 }));
-vi.mock('$lib/content/releases/release-feed-adapter', () => ({
+vi.mock('#lib/content/releases/release-feed-adapter.ts', () => ({
 	fetchLatestProjectRelease: mocks.feed
 }));
 vi.mock('./pwa-sw', () => ({
 	applyUpdateAndReload: mocks.apply,
 	readWorkerIdentity: mocks.identity
 }));
-vi.mock('$app/environment', () => ({ dev: false }));
+vi.mock('$app/env', () => ({ dev: false }));
 import { applyPreparedWebUpdate, recoverInterruptedWebUpdate } from './web-host-update';
 
 beforeEach(() => {

@@ -1,4 +1,4 @@
-import type { ChronosDB } from '$lib/storage/db';
+import type { ChronosDB } from '#lib/storage/db.ts';
 
 /** Dexie-backed plugin key-value storage. */
 export class PluginDataRepository {

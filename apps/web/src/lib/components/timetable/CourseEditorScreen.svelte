@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import type { CourseEditorController } from '$lib/timetable/course-editor.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
-	import CourseEditorForm from '$lib/components/timetable/CourseEditorForm.svelte';
-	import FormScreenLayout from '$lib/components/ui/FormScreenLayout.svelte';
-	import LoadingIndicator from '$lib/components/ui/LoadingIndicator.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import type { CourseEditorController } from '#lib/timetable/course-editor.svelte.ts';
+	import Button from '#lib/components/ui/Button.svelte';
+	import BottomSheet from '#lib/components/ui/BottomSheet.svelte';
+	import CourseEditorForm from '#lib/components/timetable/CourseEditorForm.svelte';
+	import FormScreenLayout from '#lib/components/ui/FormScreenLayout.svelte';
+	import LoadingIndicator from '#lib/components/ui/LoadingIndicator.svelte';
 	import type { EdgeBarAction } from '@chronos/ui-kit';
-	import { Check, DeleteFill } from '$lib/icons';
+	import { Check, DeleteFill } from '#lib/icons/index.ts';
 
 	let { editor }: { editor: CourseEditorController } = $props();
 

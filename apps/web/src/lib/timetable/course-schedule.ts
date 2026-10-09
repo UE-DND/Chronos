@@ -1,5 +1,5 @@
 import type { AcademicConfig, Course } from '@chronos/core';
-import type { CourseDraft } from '$lib/models/drafts';
+import type { CourseDraft } from '#lib/models/drafts.ts';
 
 export type CourseRecurrenceMode = CourseDraft['recurrenceMode'];
 export type CourseScheduleDraft = Pick<

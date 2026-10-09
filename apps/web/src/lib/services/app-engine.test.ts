@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { APP_VERSION } from '$lib/config/app-meta';
+import { APP_VERSION } from '#lib/config/app-meta.ts';
 import { readFile } from 'node:fs/promises';
 import { afterAll } from 'vite-plus/test';
 import { describe, it, expect, beforeEach, vi } from 'vite-plus/test';
@@ -12,7 +12,7 @@ import {
 	getOfficialPluginService,
 	resetAppToInitialState
 } from './app-engine';
-import type { ChronosDB } from '$lib/storage/db';
+import type { ChronosDB } from '#lib/storage/db.ts';
 import {
 	INSTALLED_STORAGE_KEY,
 	OFFICIAL_PLUGINS_PLUGIN_ID,

@@ -1,5 +1,5 @@
 {
-	"extends": "./apps/web/.svelte-kit/tsconfig.json",
+	"extends": "./apps/web/node_modules/$app/tsconfig.json",
 	"compilerOptions": {
 		"rewriteRelativeImportExtensions": true,
 		"allowJs": true,
@@ -10,6 +10,21 @@
 		"skipLibCheck": true,
 		"sourceMap": true,
 		"strict": true,
-		"moduleResolution": "bundler"
-	}
+		"moduleResolution": "bundler",
+		"types": ["node"]
+	},
+	"include": [
+		"apps/**/*.ts",
+		"packages/**/*.ts",
+		"scripts/**/*.ts",
+		"*.ts",
+		"apps/web/node_modules/$app/types/**/*.d.ts"
+	],
+	"exclude": [
+		"**/node_modules/**",
+		"**/static/**",
+		"**/.svelte-kit/**",
+		"**/build/**",
+		"apps/mobile/android/**"
+	]
 }

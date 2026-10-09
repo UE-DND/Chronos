@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { COURSE_PALETTE_ENTRIES } from '@chronos/core';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import { CalendarMonthFill, Person } from '$lib/icons';
-	import TimetableGrid from '$lib/components/timetable/TimetableGrid.svelte';
-	import TimetableEditBar from '$lib/components/timetable/TimetableEditBar.svelte';
-	import WeekDeleteConfirmation from '$lib/components/timetable/WeekDeleteConfirmation.svelte';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import { CalendarMonthFill, Person } from '#lib/icons/index.ts';
+	import TimetableGrid from '#lib/components/timetable/TimetableGrid.svelte';
+	import TimetableEditBar from '#lib/components/timetable/TimetableEditBar.svelte';
+	import WeekDeleteConfirmation from '#lib/components/timetable/WeekDeleteConfirmation.svelte';
 	import { attachDemoMotion, createLongPressTimeline } from './demo-motion';
 	import { createLongPressDemo } from './long-press-demo.svelte';
 

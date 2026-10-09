@@ -1,22 +1,22 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { hostT } from '$lib/i18n/host-i18n.svelte';
-	import { trackEvent } from '$lib/client/analytics';
-	import { ImportMode } from '$lib/domain/import-mode';
+	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
+	import { trackEvent } from '#lib/client/analytics.ts';
+	import { ImportMode } from '#lib/domain/import-mode.ts';
 	import {
 		resolveSlotTitle,
 		type TransferStateController
-	} from '$lib/transfer/transfer-state.svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import FormScreenLayout from '$lib/components/ui/FormScreenLayout.svelte';
+	} from '#lib/transfer/transfer-state.svelte.ts';
+	import Card from '#lib/components/ui/Card.svelte';
+	import FormScreenLayout from '#lib/components/ui/FormScreenLayout.svelte';
 	import type { EdgeBarAction } from '@chronos/ui-kit';
-	import SelectableOption from '$lib/components/ui/SelectableOption.svelte';
-	import { snackbar, snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
-	import { getAppController } from '$lib/services/app-engine';
+	import SelectableOption from '#lib/components/ui/SelectableOption.svelte';
+	import { snackbar, snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
+	import { getAppController } from '#lib/services/app-engine.ts';
 
-	import { DownloadFill } from '$lib/icons';
+	import { DownloadFill } from '#lib/icons/index.ts';
 	import { listDistinctCourses } from '@chronos/core';
-	import { createHostDateFieldLabels } from '$lib/components/ui/host-form-labels';
+	import { createHostDateFieldLabels } from '#lib/components/ui/host-form-labels.ts';
 	import {
 		ImportCourseList,
 		MountableSlotOutlet,

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { ChronosEngine, type ChronosEnv } from '@chronos/core';
-import { HOST_MESSAGES, HOST_UI_PLUGIN_ID } from '$lib/i18n/host-messages';
+import { HOST_MESSAGES, HOST_UI_PLUGIN_ID } from '#lib/i18n/host-messages.ts';
 
 function createTestEnv(): ChronosEnv {
 	return {
@@ -32,11 +32,11 @@ const engine = new ChronosEngine({
 	presetI18nCatalogs: [{ pluginId: HOST_UI_PLUGIN_ID, messages: HOST_MESSAGES }]
 });
 
-vi.mock('$lib/services/app-engine', () => ({
+vi.mock('#lib/services/app-engine.ts', () => ({
 	getAppEngine: () => engine
 }));
 
-import { configureHostI18n, hostT } from '$lib/i18n/host-i18n.svelte';
+import { configureHostI18n, hostT } from '#lib/i18n/host-i18n.svelte.ts';
 
 configureHostI18n({
 	onLocaleChanged: (handler) => engine.events.on('i18n:localeChanged', handler)

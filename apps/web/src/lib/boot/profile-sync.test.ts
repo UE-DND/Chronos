@@ -3,8 +3,8 @@ import {
 	CHRONOS_PROFILES,
 	resolveProfile,
 	resolveProfileId
-} from '$lib/profile-codegen/profile-definitions';
-import { resolveDeployment } from '$lib/profile-codegen/deployment-definitions';
+} from '#lib/profile-codegen/profile-definitions.ts';
+import { resolveDeployment } from '#lib/profile-codegen/deployment-definitions.ts';
 import { OFFICIAL_PLUGINS } from '../../../../../scripts/official-plugins.config';
 import { resolveOfficialServerPlugin } from '../../../../../scripts/official-plugin-build/server-definition';
 import { fileURLToPath } from 'node:url';

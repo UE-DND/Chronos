@@ -3,7 +3,7 @@ import {
 	getTextDirection,
 	setLocale as setParaglideLocale,
 	type Locale
-} from '$lib/paraglide/runtime';
+} from '#lib/paraglide/runtime.js';
 
 export const APP_LOCALES: ReadonlyArray<{ id: AppLocale; label: string }> = [
 	{ id: 'zh-cn', label: '简体中文' },

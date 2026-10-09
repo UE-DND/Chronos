@@ -1,13 +1,13 @@
-import type { AppShellController } from '$lib/app/app-shell.svelte';
-import type { TimetableSettingsDraft } from '$lib/models/drafts';
+import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
+import type { TimetableSettingsDraft } from '#lib/models/drafts.ts';
 import type { Timetable } from '@chronos/core';
-import { trackEvent } from '$lib/client/analytics';
-import { toSettingsDraft } from '$lib/timetable/timetable-mappers';
+import { trackEvent } from '#lib/client/analytics.ts';
+import { toSettingsDraft } from '#lib/timetable/timetable-mappers.ts';
 import { validatePeriodTimes } from '@chronos/core';
-import { getAppController } from '$lib/services/app-engine';
+import { getAppController } from '#lib/services/app-engine.ts';
 import { currentWeekMonday, todayIsoDate } from '@chronos/core';
-import { defaultPeriodTimes } from '$lib/models/defaults';
-import { snackbarKey } from '$lib/components/ui/snackbar-state.svelte';
+import { defaultPeriodTimes } from '#lib/models/defaults.ts';
+import { snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
 
 export class TimetableDetailsEditor {
 	draft = $state<TimetableSettingsDraft | null>(null);
