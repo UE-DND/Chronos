@@ -55,6 +55,6 @@
 	</select>
 
 	{#if description}
-		<span class="text-body-small text-on-surface-variant">{description}</span>
+		<span class="text-body-small text-supporting text-on-surface-variant">{description}</span>
 	{/if}
 </div>

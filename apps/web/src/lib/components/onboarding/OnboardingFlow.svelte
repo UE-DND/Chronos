@@ -165,7 +165,7 @@
 			</span>
 			<div class="flex min-w-0 flex-1 flex-col justify-center">
 				<p class="text-body-large text-on-surface">{title}</p>
-				<p class="text-body-small text-on-surface-variant">{description}</p>
+				<p class="text-body-small text-supporting text-on-surface-variant">{description}</p>
 			</div>
 			<ChevronRight
 				class="size-4.5 shrink-0 self-center text-on-surface-variant"
@@ -226,7 +226,7 @@
 								>
 									{hostT('onboarding.legal.title')}
 								</h2>
-								<p class="text-body-small text-center text-on-surface-variant">
+								<p class="text-body-small text-supporting text-center text-on-surface-variant">
 									{hostT('onboarding.legal.subtitle')}
 								</p>
 								<div class="flex flex-col gap-3">
@@ -243,7 +243,7 @@
 										resolve('legal/privacy')
 									)}
 								</div>
-								<p class="text-body-small text-center text-on-surface-variant">
+								<p class="text-body-small text-supporting text-center text-on-surface-variant">
 									{hostT('legal.zhOnlyNotice')}
 								</p>
 							</div>
@@ -281,7 +281,7 @@
 								>
 									{hostT('onboarding.install.title')}
 								</h2>
-								<p class="text-body-small text-center text-on-surface-variant">
+								<p class="text-body-small text-supporting text-center text-on-surface-variant">
 									{hostT('onboarding.install.subtitle')}
 								</p>
 								<InstallGuideCard inOnboarding />
@@ -294,7 +294,7 @@
 								>
 									{hostT('onboarding.layout.title')}
 								</h2>
-								<p class="text-body-small text-center text-on-surface-variant">
+								<p class="text-body-small text-supporting text-center text-on-surface-variant">
 									{hostT('onboarding.layout.hint')}
 								</p>
 								<div class="grid grid-cols-2 gap-3" role="radiogroup" aria-labelledby={stepTitleId}>
@@ -340,11 +340,11 @@
 										</label>
 									{/each}
 								</div>
-								<p class="text-body-small text-center text-on-surface-variant">
+								<p class="text-body-small text-supporting text-center text-on-surface-variant">
 									{layoutOptions.find((option) => option.mode === layoutMode)?.description}
 								</p>
 								{#if compactLandscape}
-									<p class="text-body-small text-center text-on-surface-variant">
+									<p class="text-body-small text-supporting text-center text-on-surface-variant">
 										{hostT('onboarding.layout.compact.landscapeUnavailable')}
 									</p>
 								{/if}

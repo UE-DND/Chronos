@@ -73,7 +73,7 @@
 		{#each licenses as entry (entry.name)}
 			<li class="flex flex-col gap-0.5 py-3">
 				<span class="text-title-small text-on-surface">{entry.name}</span>
-				<span class="text-body-small text-on-surface-variant">{entry.license}</span>
+				<span class="text-body-small text-supporting text-on-surface-variant">{entry.license}</span>
 			</li>
 		{/each}
 	</ul>

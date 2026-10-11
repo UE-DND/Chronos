@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import '@chronos/ui-kit/theme/font-families.css';
 @source '..';
 @source '../../../../packages/ui-kit/src';
 @import '../../../../packages/ui-kit/src/timetable-preview/timetable-dynamic-tint.css';
@@ -364,6 +365,7 @@
 		}
 
 		.edge-bar-title {
+			font-family: var(--font-command);
 			width: 3.5rem;
 			max-height: 4.5rem;
 			overflow: hidden;

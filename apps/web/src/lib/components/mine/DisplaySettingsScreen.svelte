@@ -45,7 +45,9 @@
 	function previewFont(event: Event) {
 		const index = Number((event.currentTarget as HTMLInputElement).value);
 		const scale = FONT_SIZE_SCALE_OPTIONS[index];
-		if (scale !== undefined) fontSettings.preview(scale);
+		if (scale === undefined || scale === fontSettings.state.draft) return;
+		haptic.medium();
+		fontSettings.preview(scale);
 	}
 	function commitFont() {
 		void fontSettings.commit();
@@ -164,7 +166,7 @@
 		<div class="min-w-0 px-4 pt-4 pb-5">
 			<div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3">
 				<span
-					class="flex h-11 min-h-[44px] items-center text-sm font-medium text-on-surface-variant"
+					class="flex h-11 min-h-[44px] items-center text-sm font-semibold text-on-surface-variant"
 					aria-hidden="true">A</span
 				>
 				<div class="relative min-w-0 pb-5">
@@ -193,7 +195,7 @@
 								<span class="size-1 shrink-0 rounded-full bg-on-surface-variant/40"></span>
 								{#if scale === 1}
 									<span
-										class="text-body-small absolute top-2 font-medium whitespace-nowrap text-on-surface-variant"
+										class="text-body-small text-supporting absolute top-2 whitespace-nowrap text-on-surface-variant"
 										>{hostT('display.font.standard')}</span
 									>
 								{/if}

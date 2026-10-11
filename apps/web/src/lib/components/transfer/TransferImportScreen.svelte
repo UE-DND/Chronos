@@ -77,7 +77,7 @@
 					aria-selected={isSelected}
 					tabindex={isSelected ? 0 : -1}
 					class="ui-segmented-tab text-label-large relative flex shrink-0 items-center gap-1.5 rounded-control px-4 py-2 text-center transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 {isSelected
-						? 'bg-secondary-container font-medium text-on-secondary-container'
+						? 'bg-secondary-container text-on-secondary-container'
 						: 'bg-surface-variant/40 text-on-surface-variant hover:bg-surface-variant/70 hover:text-on-surface'}"
 					onclick={() => handleSourceChange(slot.id)}
 				>
@@ -111,7 +111,7 @@
 							{resolveLocalizedText(activeSlot.title)}
 						</h2>
 						{#if activeSlot.supportingText}
-							<p class="text-body-small mt-0.5 text-on-surface-variant">
+							<p class="text-body-small text-supporting mt-0.5 text-on-surface-variant">
 								{resolveLocalizedText(activeSlot.supportingText)}
 							</p>
 						{/if}

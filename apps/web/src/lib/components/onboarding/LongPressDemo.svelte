@@ -35,7 +35,7 @@
 	function ignoreAction() {}
 </script>
 
-<p class="text-body-small max-w-sm text-center text-on-surface-variant">
+<p class="text-body-small text-supporting max-w-sm text-center text-on-surface-variant">
 	{hostT('onboarding.longPress.description')}
 </p>
 <div

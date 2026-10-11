@@ -44,7 +44,9 @@
 			</h2>
 		</div>
 		<div class="shrink-0 px-6 pb-5">
-			<p class="text-body-medium text-center leading-relaxed text-on-surface-variant">
+			<p
+				class="text-body-medium text-supporting text-center leading-relaxed text-on-surface-variant"
+			>
 				{description}
 			</p>
 		</div>

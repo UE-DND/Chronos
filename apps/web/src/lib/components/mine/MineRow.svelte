@@ -39,7 +39,9 @@
 	<div class="flex min-w-0 flex-1 flex-col justify-center text-left">
 		<span class="row-title text-body-large break-words text-on-surface">{title}</span>
 		{#if supporting}
-			<span class="text-body-small break-words text-on-surface-variant">{supporting}</span>
+			<span class="text-body-small text-supporting break-words text-on-surface-variant"
+				>{supporting}</span
+			>
 		{/if}
 	</div>
 	{#if trailing}
@@ -79,6 +81,6 @@
 
 <style>
 	.row-title {
-		font-weight: 450;
+		font-weight: var(--font-weight-label-medium);
 	}
 </style>

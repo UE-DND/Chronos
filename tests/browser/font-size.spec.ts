@@ -75,6 +75,53 @@ for (const locale of ['zh-CN', 'en-US']) {
 	});
 }
 
+test('font step changes use medium native haptics once and honor the feedback preference', async ({
+	page,
+	request
+}) => {
+	await request.post('/__e2e/deploy?build=old');
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
+	await page.goto('/Chronos/display-settings');
+	await page.evaluate(() => {
+		const calls: { method: string; params: unknown }[] = [];
+		Object.assign(window, {
+			fontHapticCalls: calls,
+			__CHRONOS_NATIVE__: {
+				async callNative(plugin: string, method: string, params: unknown) {
+					if (plugin === 'haptic') calls.push({ method, params });
+				}
+			}
+		});
+	});
+	const calls = () => page.evaluate(() => Reflect.get(window, 'fontHapticCalls'));
+	const medium = { method: 'impact', params: { style: 'medium' } };
+	const slider = page.getByRole('slider');
+	await slider.focus();
+	await slider.press('ArrowRight');
+	await slider.press('End');
+	await slider.press('End');
+	await slider.dispatchEvent('input');
+	expect(await calls()).toEqual([medium, medium]);
+	const rect = (await slider.boundingBox())!;
+	await page.mouse.move(rect.x + rect.width - 8, rect.y + rect.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(rect.x + 8, rect.y + rect.height / 2);
+	await expect(slider).toHaveValue('0');
+	await slider.dispatchEvent('input');
+	await page.mouse.up();
+	expect(await calls()).toEqual([medium, medium, medium]);
+	await page.evaluate(
+		(key) => localStorage.setItem(key, '0'),
+		PREFERENCE_STORAGE_KEYS.hapticFeedbackEnabled
+	);
+	await slider.focus();
+	await slider.press('ArrowRight');
+	await expect(slider).toHaveValue('1');
+	expect(await calls()).toEqual([medium, medium, medium]);
+});
+
 test('large course text retains compact layout and full details', async ({
 	page,
 	request
@@ -97,6 +144,7 @@ test('large course text retains compact layout and full details', async ({
 	const card = page.locator('.timetable-week-page button.course-capsule').first();
 	await expect(card).toBeVisible();
 	const title = card.locator('span.break-all');
+	await expect(title).toHaveCSS('font-weight', '600');
 	const before = await title.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
 	await page.goto('/Chronos/display-settings');
 	const slider = page.getByRole('slider');
@@ -118,6 +166,7 @@ test('large course text retains compact layout and full details', async ({
 	const detail = page.locator('h2');
 	await expect(detail).toContainText('一段用于验证大字号换行的完整课程名称');
 	await expect(detail).toHaveCSS('white-space', 'normal');
+	await expect(detail).toHaveCSS('font-weight', '400');
 	await expect
 		.poll(() =>
 			page
@@ -228,6 +277,12 @@ test('maximum text size fits the Arknights theme in portrait and landscape', asy
 		const response = await route.fetch({ url: `http://127.0.0.1:4179${path}${url.search}` });
 		await route.fulfill({ response });
 	});
+	const source = structuredClone(timetable) as Timetable;
+	for (const course of source.courses) course.name += ' · 大字号预览中的完整课程名称';
+	const payload = await encodeSharePayload(source);
+	await page.goto(`/Chronos/s#${payload}`);
+	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
+	await expect(page.locator('.timetable-week-pager')).toBeVisible();
 	await page.goto('/Chronos/plugins');
 	await page.getByRole('tab', { name: '插件市场', exact: true }).click();
 	const row = page
@@ -245,10 +300,13 @@ test('maximum text size fits the Arknights theme in portrait and landscape', asy
 	await page.goto('/Chronos/display-settings');
 	for (const viewport of [
 		{ width: 390, height: 844 },
-		{ width: 844, height: 390 }
+		{ width: 844, height: 390 },
+		{ width: 1280, height: 900 }
 	]) {
 		await page.setViewportSize(viewport);
+		await page.goto('/Chronos/display-settings');
 		await expect(page.getByRole('slider')).toHaveValue('3');
+		await expect(page.getByRole('heading', { level: 1 }).first()).toHaveCSS('font-family', 'serif');
 		await page.getByRole('slider').scrollIntoViewIfNeeded();
 		expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
 			true
@@ -257,5 +315,17 @@ test('maximum text size fits the Arknights theme in portrait and landscape', asy
 			path: testInfo.outputPath(`arknights-font-${viewport.width}.png`),
 			fullPage: true
 		});
+		await page.goto('/Chronos/wallpaper/preview');
+		const previewTitle = page
+			.getByRole('region', { name: '课表预览', exact: true })
+			.locator('.course-capsule span.break-all')
+			.first();
+		await expect(previewTitle).toBeVisible();
+		await expect(previewTitle).toHaveCSS('font-weight', '600');
+		await expect(previewTitle).toHaveCSS('font-family', 'system-ui, sans-serif');
+		expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+			true
+		);
+		await page.screenshot({ path: testInfo.outputPath(`arknights-preview-${viewport.width}.png`) });
 	}
 });

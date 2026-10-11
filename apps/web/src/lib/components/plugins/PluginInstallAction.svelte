@@ -50,7 +50,7 @@
 <div class="flex items-center justify-end">
 	{#if task?.status === 'downloading' || task?.status === 'verifying' || task?.status === 'installing'}
 		<div class="flex items-center gap-2">
-			<span class="text-caption font-mono text-[11px] font-medium text-primary">
+			<span class="text-caption font-mono text-[11px] text-primary">
 				{stageText}
 			</span>
 			<div class="group relative size-8">
@@ -103,7 +103,7 @@
 		</div>
 	{:else if task?.status === 'queued'}
 		<div class="flex items-center gap-1.5">
-			<span class="text-caption text-[11px] font-medium text-on-surface-variant">
+			<span class="text-caption text-[11px] text-on-surface-variant">
 				{hostT('plugins.status.queued')}
 			</span>
 			<button

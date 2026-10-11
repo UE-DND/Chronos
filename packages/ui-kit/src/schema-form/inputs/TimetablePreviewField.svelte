@@ -67,9 +67,9 @@
 </script>
 
 <div class="flex flex-col gap-1.5 text-left">
-	<span class="text-sm font-medium text-on-surface">{label}</span>
+	<span class="text-sm font-semibold text-on-surface">{label}</span>
 	{#if description}
-		<span class="text-xs text-on-surface-variant">{description}</span>
+		<span class="text-supporting text-xs text-on-surface-variant">{description}</span>
 	{/if}
 	<div class="overflow-hidden rounded-xl border border-outline/20">
 		{#if timetable && gridModel}

@@ -143,7 +143,7 @@
 					<h2 class="text-title-medium text-on-surface">
 						{resolveLocalizedText(selectedAction.title)}
 					</h2>
-					<p class="text-body-small mt-0.5 text-on-surface-variant">
+					<p class="text-body-small text-supporting mt-0.5 text-on-surface-variant">
 						{actionDescription(selectedAction)}
 					</p>
 				</div>

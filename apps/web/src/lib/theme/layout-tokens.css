@@ -64,6 +64,7 @@
 
 	html {
 		font-size: calc(93.75% * var(--font-size-scale, 1));
+		font-weight: var(--font-weight-body-large);
 		line-height: 1.47;
 		touch-action: pan-x pan-y;
 		-webkit-tap-highlight-color: transparent;

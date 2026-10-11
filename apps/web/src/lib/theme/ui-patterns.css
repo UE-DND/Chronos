@@ -18,7 +18,7 @@
 .ui-field-label {
 	font-size: 0.75rem;
 	line-height: 1.33;
-	font-weight: 500;
+	font-weight: var(--font-weight-field-label);
 	color: var(--color-on-surface-variant);
 }
 
@@ -37,7 +37,7 @@
 	padding: 0;
 	font-size: max(16px, 1rem);
 	line-height: 1.5;
-	font-weight: 400;
+	font-weight: var(--font-weight-body-large);
 	color: var(--color-on-surface);
 	outline: none;
 	appearance: none;
@@ -116,7 +116,6 @@
 
 .ui-form-field-counter--limit {
 	color: var(--color-error);
-	font-weight: 500;
 }
 
 .ui-form-field--embedded {
@@ -192,11 +191,12 @@ button.ui-date-field-input {
 }
 
 .ui-section-title {
+	font-family: var(--font-command);
 	margin: 0;
 	padding: 0.25rem 0.5rem;
 	font-size: 1rem;
 	line-height: 1.5;
-	font-weight: 500;
+	font-weight: var(--font-weight-title-medium);
 	color: var(--color-on-surface-variant);
 }
 
@@ -230,7 +230,7 @@ button.ui-date-field-input {
 
 /* Shared button patterns — host Button.svelte and plugin CTAs */
 .ui-btn {
-	font-family: var(--font-command);
+	font-family: var(--font-sans);
 	display: inline-flex;
 	min-height: 2.75rem;
 	align-items: center;

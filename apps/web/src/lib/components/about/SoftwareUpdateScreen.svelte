@@ -169,7 +169,7 @@
 						</p>
 					{/if}
 					{#if updateState.updateAction?.mode === 'external-link' && !androidUpdateUrl}
-						<p class="text-body-small text-on-surface-variant">
+						<p class="text-body-small text-supporting text-on-surface-variant">
 							{hostT('about.update.unavailable')}
 						</p>
 					{:else}
@@ -211,7 +211,7 @@
 				<h3 class="text-title-medium text-on-surface">
 					{hostT('about.update.upToDate.title')}
 				</h3>
-				<p class="text-body-small mt-1 text-on-surface-variant">
+				<p class="text-body-small text-supporting mt-1 text-on-surface-variant">
 					{hostT('about.update.upToDate.lastChecked', {
 						time: formatCheckTime(updateState.state.lastChecked)
 					})}

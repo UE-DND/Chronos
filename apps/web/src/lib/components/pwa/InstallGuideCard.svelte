@@ -42,7 +42,7 @@
 			<CheckCircleFill class="h-5 w-5" />
 			<span>{hostT('pwa.guide.installed.title')}</span>
 		</p>
-		<p class="text-body-small text-on-surface-variant">
+		<p class="text-body-small text-supporting text-on-surface-variant">
 			{#if inOnboarding}
 				{hostT('pwa.guide.installed.onboarding')}
 			{:else}
@@ -56,7 +56,7 @@
 			<CheckCircleFill class="h-5 w-5" />
 			<span>{hostT('pwa.guide.local.title')}</span>
 		</p>
-		<p class="text-body-small text-on-surface-variant">
+		<p class="text-body-small text-supporting text-on-surface-variant">
 			{hostT('pwa.guide.local.onboarding')}
 		</p>
 	</Card>
@@ -67,7 +67,7 @@
 				<CheckCircleFill class="h-5 w-5" />
 				<span>{hostT('pwa.guide.installed.title')}</span>
 			</p>
-			<p class="text-body-small text-center text-on-surface-variant">
+			<p class="text-body-small text-supporting text-center text-on-surface-variant">
 				{hostT('pwa.guide.local.hint')}
 			</p>
 			<Button variant="filled" class="w-full" onclick={() => pwaInstallController.openInApp()}>

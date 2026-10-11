@@ -41,7 +41,7 @@
 			{/if}
 		</h3>
 		{#if description}
-			<p class="text-body-small mt-1 text-on-surface-variant">{description}</p>
+			<p class="text-body-small text-supporting mt-1 text-on-surface-variant">{description}</p>
 		{/if}
 	</div>
 

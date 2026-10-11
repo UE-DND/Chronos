@@ -147,7 +147,7 @@
 	</MineSection>
 
 	<footer class="copyright">
-		<p class="text-body-small text-on-surface-variant">
+		<p class="text-body-small text-supporting text-on-surface-variant">
 			© {formatCopyrightYearRange()}
 			{COPYRIGHT_HOLDER} ·
 			<a href={resolve('open-source-licenses/project')} class="license-link">

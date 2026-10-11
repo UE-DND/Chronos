@@ -37,9 +37,9 @@
 		class="size-5 shrink-0 rounded border-outline/40 text-brand accent-brand transition focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
 	/>
 	<span class="flex min-w-0 flex-col">
-		<span class="text-body-medium font-medium text-on-surface">{label}</span>
+		<span class="text-body-medium font-semibold text-on-surface">{label}</span>
 		{#if description}
-			<span class="text-body-small text-on-surface-variant">{description}</span>
+			<span class="text-body-small text-supporting text-on-surface-variant">{description}</span>
 		{/if}
 	</span>
 </label>

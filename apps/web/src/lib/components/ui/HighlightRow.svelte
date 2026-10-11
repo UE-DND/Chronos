@@ -19,7 +19,7 @@
 	<div class="flex min-w-0 flex-1 flex-col justify-center">
 		<p class="text-body-large text-on-surface">{title}</p>
 		{#if subtitle}
-			<p class="text-body-small text-on-surface-variant">{subtitle}</p>
+			<p class="text-body-small text-supporting text-on-surface-variant">{subtitle}</p>
 		{/if}
 	</div>
 </li>

@@ -106,7 +106,7 @@
 				<p class="text-body-medium text-on-surface">
 					{hostT('timetable.manage.empty.title')}
 				</p>
-				<p class="text-body-small mt-1 text-on-surface-variant">
+				<p class="text-body-small text-supporting mt-1 text-on-surface-variant">
 					{hostT('timetable.manage.empty.desc')}
 				</p>
 				<Button

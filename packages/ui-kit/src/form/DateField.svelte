@@ -146,7 +146,7 @@
 				{/if}
 			</h3>
 			{#if description}
-				<p class="text-body-small mt-1 text-on-surface-variant">{description}</p>
+				<p class="text-body-small text-supporting mt-1 text-on-surface-variant">{description}</p>
 			{/if}
 		</div>
 	{/if}
@@ -291,7 +291,7 @@
 																						class="flex h-10 w-full items-center justify-center p-0"
 																					>
 																						<DatePicker.Day
-																							class="ui-date-picker-day text-body-medium inline-flex size-10 items-center justify-center rounded-full border border-transparent text-on-surface transition-colors hover:bg-on-surface/5 data-disabled:pointer-events-none data-disabled:text-on-surface/30 data-outside-month:text-on-surface-variant/50 data-selected:bg-brand data-selected:font-medium data-selected:text-on-primary data-unavailable:text-on-surface-variant data-unavailable:line-through"
+																							class="ui-date-picker-day text-body-medium inline-flex size-10 items-center justify-center rounded-full border border-transparent text-on-surface transition-colors hover:bg-on-surface/5 data-disabled:pointer-events-none data-disabled:text-on-surface/30 data-outside-month:text-on-surface-variant/50 data-selected:bg-brand data-selected:font-semibold data-selected:text-on-primary data-unavailable:text-on-surface-variant data-unavailable:line-through"
 																						>
 																							{date.day}
 																						</DatePicker.Day>

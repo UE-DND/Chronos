@@ -742,7 +742,7 @@
 		{/if}
 		<MiddleTruncateText
 			text={placed.course.name}
-			class="min-h-0 flex-1 leading-tight font-medium"
+			class="min-h-0 flex-1 leading-tight font-semibold"
 			style="font-size: {scale.titlePx}px"
 		/>
 		{#if locationLines.length > 0}

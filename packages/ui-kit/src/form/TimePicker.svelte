@@ -88,7 +88,7 @@
 		<div class="px-1">
 			<h3 id={labelId} class="text-title-medium text-on-surface">{label}</h3>
 			{#if description}
-				<p class="text-body-small mt-1 text-on-surface-variant">{description}</p>
+				<p class="text-body-small text-supporting mt-1 text-on-surface-variant">{description}</p>
 			{/if}
 		</div>
 	{/if}

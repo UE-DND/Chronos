@@ -68,8 +68,8 @@
 		{/if}
 		<div>
 			<h2 class="text-title-medium text-on-surface">{title}</h2>
-			<p class="text-body-small mt-0.5 text-on-surface-variant">{intro}</p>
-			<p class="text-body-small mt-1 text-on-surface-variant/80">{attribution}</p>
+			<p class="text-body-small text-supporting mt-0.5 text-on-surface-variant">{intro}</p>
+			<p class="text-body-small text-supporting mt-1 text-on-surface-variant/80">{attribution}</p>
 		</div>
 
 		<div class="flex flex-col gap-3">

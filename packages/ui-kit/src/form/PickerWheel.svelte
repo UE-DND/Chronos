@@ -162,7 +162,7 @@
 				aria-selected={option.value === value}
 				class="picker-wheel-row text-body-large flex cursor-pointer items-center justify-center text-center tabular-nums transition-colors {option.value ===
 				value
-					? 'font-medium text-on-surface'
+					? 'font-semibold text-on-surface'
 					: 'text-on-surface-variant/60'}"
 				style:height="{ROW_HEIGHT}px"
 				onclick={() => pick(index)}

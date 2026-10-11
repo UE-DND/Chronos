@@ -143,7 +143,7 @@
 						<div
 							class="flex flex-col items-center justify-center rounded-2xl bg-surface/80 p-3 text-center transition-colors dark:bg-surface/50"
 						>
-							<span class="text-body-small text-on-surface-variant">
+							<span class="text-body-small text-supporting text-on-surface-variant">
 								{hostT('transfer.confirm.stats.courses')}
 							</span>
 							<span class="text-title-large mt-0.5 font-bold text-on-surface"
@@ -153,7 +153,7 @@
 						<div
 							class="flex flex-col items-center justify-center rounded-2xl bg-surface/80 p-3 text-center transition-colors dark:bg-surface/50"
 						>
-							<span class="text-body-small text-on-surface-variant">
+							<span class="text-body-small text-supporting text-on-surface-variant">
 								{hostT('transfer.confirm.stats.startWeek')}
 							</span>
 							<span class="text-title-large mt-0.5 font-bold text-on-surface"
@@ -163,7 +163,7 @@
 						<div
 							class="flex flex-col items-center justify-center rounded-2xl bg-surface/80 p-3 text-center transition-colors dark:bg-surface/50"
 						>
-							<span class="text-body-small text-on-surface-variant">
+							<span class="text-body-small text-supporting text-on-surface-variant">
 								{hostT('transfer.confirm.stats.endWeek')}
 							</span>
 							<span class="text-title-large mt-0.5 font-bold text-on-surface"

@@ -317,10 +317,10 @@
 		{#if activeInstallTasks.length > 0}
 			<section class="ui-section">
 				<div class="flex items-center justify-between px-1">
-					<h3 class="text-label-large font-medium text-on-surface">
+					<h3 class="text-label-large font-command font-medium text-on-surface">
 						{hostT('plugins.installing.heading')}
 					</h3>
-					<span class="text-label-small text-on-surface-variant">
+					<span class="text-label-small text-supporting text-on-surface-variant">
 						{hostT('plugins.builtin.count', { count: activeInstallTasks.length })}
 					</span>
 				</div>
@@ -333,11 +333,13 @@
 							class="flex items-center justify-between gap-3 p-3 transition-colors hover:bg-surface-variant/30"
 						>
 							<div class="flex min-w-0 flex-1 flex-col justify-center">
-								<span class="text-body-medium line-clamp-1 font-medium text-on-surface">
+								<span class="text-body-medium line-clamp-1 font-semibold text-on-surface">
 									{name}
 								</span>
 								{#if desc}
-									<p class="text-body-small mt-0.5 line-clamp-1 text-on-surface-variant">
+									<p
+										class="text-body-small text-supporting mt-0.5 line-clamp-1 text-on-surface-variant"
+									>
 										{desc}
 									</p>
 								{/if}
@@ -359,10 +361,10 @@
 
 		<section class="ui-section">
 			<div class="flex items-center justify-between px-1">
-				<h3 class="text-label-large font-medium text-on-surface">
+				<h3 class="text-label-large font-command font-medium text-on-surface">
 					{hostT('plugins.installed.heading')}
 				</h3>
-				<span class="text-label-small text-on-surface-variant"
+				<span class="text-label-small text-supporting text-on-surface-variant"
 					>{hostT('plugins.builtin.count', {
 						count: installedRecords.length
 					})}</span
@@ -397,17 +399,19 @@
 							<div class="flex min-w-0 flex-1 flex-col gap-2">
 								<div>
 									<div class="flex flex-wrap items-center gap-1.5">
-										<span class="text-body-medium line-clamp-1 font-medium text-on-surface">
+										<span class="text-body-medium line-clamp-1 font-semibold text-on-surface">
 											{name}
 										</span>
 										<span
-											class="text-label-small py-0.2 text-caption rounded-full px-1.5 font-medium {meta.badgeClass}"
+											class="text-label-small py-0.2 text-caption rounded-full px-1.5 {meta.badgeClass}"
 										>
 											{meta.label}
 										</span>
 									</div>
 									{#if desc}
-										<p class="text-body-small mt-0.5 line-clamp-1 text-on-surface-variant">
+										<p
+											class="text-body-small text-supporting mt-0.5 line-clamp-1 text-on-surface-variant"
+										>
 											{desc}
 										</p>
 									{/if}
@@ -419,7 +423,10 @@
 								</div>
 
 								{#if update && update.status !== 'ready'}
-									<p class="text-body-small text-on-surface-variant" title={update.error}>
+									<p
+										class="text-body-small text-supporting text-on-surface-variant"
+										title={update.error}
+									>
 										{hostT(`plugins.update.${update.status}`)}
 									</p>
 									{#if update.status === 'confirmation-required'}
@@ -442,7 +449,7 @@
 									<div class="flex items-center gap-1.5">
 										<Button
 											variant="outlined"
-											class="text-label-small h-7 px-2.5 font-normal"
+											class="text-label-small h-7 px-2.5"
 											disabled={isBusy || update?.status === 'confirmation-required'}
 											onclick={() =>
 												handleOpenConfig(record.manifest.id, name, record.manifest.configSchema)}
@@ -483,7 +490,7 @@
 			{#if loadingCatalog}
 				<div class="flex flex-col items-center justify-center py-12">
 					<LoadingIndicator size="large" />
-					<p class="text-body-small mt-2 text-on-surface-variant">
+					<p class="text-body-small text-supporting mt-2 text-on-surface-variant">
 						{hostT('plugins.catalog.loading')}
 					</p>
 				</div>
@@ -494,7 +501,7 @@
 					<p class="text-body-medium font-medium text-error">
 						{hostT('plugins.catalog.error.title')}
 					</p>
-					<p class="text-body-small mt-1 text-on-surface-variant">{catalogError}</p>
+					<p class="text-body-small text-supporting mt-1 text-on-surface-variant">{catalogError}</p>
 					<Button variant="outlined" class="mt-3 h-8 px-4 text-xs" onclick={loadOfficialCatalog}>
 						{hostT('plugins.catalog.retry')}
 					</Button>
@@ -511,7 +518,7 @@
 						{@const groupMeta = getPluginCategoryMeta(group.category)}
 						<div class="flex flex-col gap-2">
 							<div class="px-1">
-								<h3 class="text-label-large font-medium text-on-surface">
+								<h3 class="text-label-large font-command font-medium text-on-surface">
 									{groupMeta.label}
 								</h3>
 							</div>
@@ -526,17 +533,19 @@
 									>
 										<div class="flex min-w-0 flex-1 flex-col justify-center">
 											<div class="flex flex-wrap items-center gap-1.5">
-												<span class="text-body-medium line-clamp-1 font-medium text-on-surface">
+												<span class="text-body-medium line-clamp-1 font-semibold text-on-surface">
 													{name}
 												</span>
 											</div>
 											{#if desc}
-												<p class="text-body-small mt-0.5 line-clamp-1 text-on-surface-variant">
+												<p
+													class="text-body-small text-supporting mt-0.5 line-clamp-1 text-on-surface-variant"
+												>
 													{desc}
 												</p>
 											{/if}
 											{#if manifest.optionalServerCapabilities?.some((cap) => !getAppEngine().http.supportsPluginServer?.(cap.pluginId, cap.action))}
-												<p class="text-body-small mt-1 text-on-surface-variant">
+												<p class="text-body-small text-supporting mt-1 text-on-surface-variant">
 													{hostT('plugins.online.unavailable')}
 												</p>
 											{/if}
@@ -627,7 +636,7 @@
 			/>
 		</div>
 		{#if linkInstallSource}
-			<p class="text-body-small text-on-surface-variant">
+			<p class="text-body-small text-supporting text-on-surface-variant">
 				{hostT('plugins.link.source', { origin: linkInstallSource })}
 			</p>
 		{/if}

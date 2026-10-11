@@ -144,7 +144,7 @@
 						>
 							{pt('screen.intro.source')}
 						</a>
-						<p class="text-body-small text-right text-on-surface-variant">
+						<p class="text-body-small text-supporting text-right text-on-surface-variant">
 							{formatSyncedAt(holidayCalendar?.syncedAt)}
 						</p>
 					</div>

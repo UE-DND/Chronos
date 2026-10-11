@@ -1,9 +1,11 @@
 .markdown-prose {
 	min-width: 0;
+	font-weight: var(--font-weight-body-large);
 	overflow-wrap: anywhere;
 }
 
 .markdown-prose h1 {
+	font-family: var(--font-command);
 	margin: 0 0 1rem;
 	font-size: 1.25rem;
 	line-height: 1.4;
@@ -12,6 +14,7 @@
 }
 
 .markdown-prose h2 {
+	font-family: var(--font-command);
 	margin: 1.75rem 0 0.75rem;
 	font-size: 1.0625rem;
 	line-height: 1.5;
@@ -20,6 +23,7 @@
 }
 
 .markdown-prose h3 {
+	font-family: var(--font-command);
 	margin: 1.25rem 0 0.5rem;
 	font-size: 0.9375rem;
 	line-height: 1.5;

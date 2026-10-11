@@ -97,7 +97,7 @@
 			<DeleteFill class="size-6 text-error" />
 		</span>
 		{#key deleteHint}
-			<span class="edit-bottom-bar-delete-text text-label-large truncate font-medium text-error">
+			<span class="edit-bottom-bar-delete-text text-label-large truncate text-error">
 				{deleteHint}
 			</span>
 		{/key}

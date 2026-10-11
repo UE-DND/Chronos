@@ -17,6 +17,29 @@ Theme plugins own color values and algorithms. The host generates first-paint CS
 
 Normal dev/build generates resources in ignored directories. Use `vp run theme:generate` when intentionally updating default-theme source snapshots and first-paint colors; do not edit generated CSS directly.
 
+## Typography
+
+The host and plugin Tailwind entries share `packages/ui-kit/src/theme/font-families.css`:
+`--font-sans` uses `system-ui, sans-serif`, `--font-serif` uses `serif`, and
+`--font-mono` uses `monospace`. These select local system fonts without bundled
+font files or font downloads. Themes override the heading role `--font-command`;
+the default uses `--font-sans`, while Arknights uses `serif`. Buttons and form
+content use `--font-sans`; Arknights navigation retains `--font-mono`.
+
+| Role                                                                | Weight |
+| ------------------------------------------------------------------- | ------ |
+| Headline and large title defaults                                   | 400    |
+| Medium/small title and section heading defaults                     | 500    |
+| Buttons, field/navigation labels and course names                   | 600    |
+| Body text, input values, course location and teacher                | 500    |
+| Supporting descriptions, captions, counters and version information | 400    |
+
+Heading weights retain their existing component and theme overrides. Supporting
+descriptions use `text-supporting` without changing their font size. Arknights
+retains its 700 headline, 750 page title and 650 section heading weights; its
+buttons use 700. Existing 800-weight date/period indicators and selected
+navigation retain their emphasis. System font availability determines the rendered face and closest supported weight.
+
 ## Plugin styles
 
 UI plugins import `@chronos/ui-kit/theme/plugin-tailwind.css` and declare their own Tailwind `@source`. This provides utilities without Preflight and bridges semantic colors to host CSS variables. The host supplies shared `text-*` and `ui-*` patterns; it does not scan business plugin source.

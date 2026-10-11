@@ -24,7 +24,7 @@
 				<h1 id={titleId} class="text-headline-small font-semibold text-on-surface">{title}</h1>
 			{/if}
 			{#if subtitle}
-				<p class="text-body-small text-on-surface-variant">{subtitle}</p>
+				<p class="text-body-small text-supporting text-on-surface-variant">{subtitle}</p>
 			{/if}
 		</div>
 	{/if}

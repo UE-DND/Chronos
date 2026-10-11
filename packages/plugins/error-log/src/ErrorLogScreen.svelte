@@ -102,7 +102,7 @@
 					{#each entries as entry (entry.id)}
 						<div class="flex items-start justify-between gap-3 p-3">
 							<div class="min-w-0 flex-1">
-								<p class="text-body-small text-on-surface-variant">
+								<p class="text-body-small text-supporting text-on-surface-variant">
 									{formatTimestamp(entry.ts)} · {entry.source}
 								</p>
 								{#if entry.name}
@@ -111,7 +111,7 @@
 								<p class="text-body-medium text-on-surface">{entry.message}</p>
 								{#if entry.stack}
 									<pre
-										class="text-body-small mt-2 max-h-40 overflow-auto font-mono whitespace-pre-wrap text-on-surface-variant">{entry.stack}</pre>
+										class="text-body-small text-supporting mt-2 max-h-40 overflow-auto font-mono whitespace-pre-wrap text-on-surface-variant">{entry.stack}</pre>
 								{/if}
 							</div>
 							<button

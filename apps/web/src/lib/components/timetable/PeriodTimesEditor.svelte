@@ -258,7 +258,7 @@
 
 	{#if hiddenCourseCount > 0}
 		<div class="flex items-center justify-between gap-2 px-1">
-			<p class="text-body-small text-on-surface-variant">
+			<p class="text-body-small text-supporting text-on-surface-variant">
 				{hostT('timetable.details.periods.hiddenHint', { count: hiddenCourseCount })}
 			</p>
 			<Button variant="text" class="shrink-0 px-2" disabled={!canAddPeriod} onclick={addPeriod}>

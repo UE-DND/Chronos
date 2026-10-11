@@ -44,7 +44,7 @@
 	<div class="flex flex-col gap-4">
 		<div>
 			<h2 class="text-title-medium text-on-surface">{title}</h2>
-			<p class="text-body-small mt-0.5 text-on-surface-variant">{intro}</p>
+			<p class="text-body-small text-supporting mt-0.5 text-on-surface-variant">{intro}</p>
 		</div>
 		<input
 			bind:this={fileInput}

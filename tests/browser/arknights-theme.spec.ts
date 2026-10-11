@@ -30,6 +30,7 @@ for (const viewport of [
 			await row.getByRole('button', { name: '安装', exact: true }).click();
 			await expect(row.getByText('已安装', { exact: true })).toBeVisible();
 		}
+		await expect(page.locator('html')).toHaveCSS('font-family', 'system-ui, sans-serif');
 		await page.goto('/Chronos/wallpaper');
 		await expect(page.getByText('Arknights 主题', { exact: true })).toBeVisible();
 		await expect(page.getByText('Material 3 主题', { exact: false })).toBeVisible();
@@ -39,7 +40,11 @@ for (const viewport of [
 			.filter({ has: page.getByText('ArKnights', { exact: true }) })
 			.click();
 		await expect(page.locator('html')).toHaveClass(/chronos-theme-arknights/);
-		await expect(page.locator('h1').first()).toHaveCSS('font-family', /Songti SC/);
+		await expect(page.locator('h1').first()).toHaveCSS('font-family', 'serif');
+		await expect(page.locator('h1').first()).toHaveCSS('font-weight', '700');
+		await page.reload();
+		await expect(page.locator('h1').first()).toHaveCSS('font-family', 'serif');
+		await expect(page.locator('html')).toHaveCSS('font-family', 'system-ui, sans-serif');
 		await expect(page.locator('.secondary-scroll')).toHaveCSS(
 			'background-image',
 			/data:image\/jpeg/
@@ -77,6 +82,8 @@ for (const viewport of [
 			const mineTab = page.getByRole('tab', { name: '我的', exact: true });
 			await mineTab.click();
 			await expect(mineTab).toHaveAttribute('aria-selected', 'true');
+			await expect(mineTab.locator('.tab-label')).toHaveCSS('font-family', 'monospace');
+			await expect(mineTab.locator('.tab-label')).toHaveCSS('font-weight', '800');
 			await expect(mineTab).toHaveCSS('outline-style', 'none');
 			await expect(page.locator('.mine-menu-background')).toHaveCSS(
 				'background-image',
@@ -104,6 +111,9 @@ for (const viewport of [
 			.filter({ has: page.getByText('自定义时间', { exact: true }) })
 			.last()
 			.getByRole('button', { name: '安装', exact: true });
+		await expect(page.getByRole('heading', { level: 3 }).first()).toHaveCSS('font-family', 'serif');
+		await expect(marketInstallBtn).toHaveCSS('font-family', 'system-ui, sans-serif');
+		await expect(marketInstallBtn).toHaveCSS('font-weight', '700');
 		await expect(marketInstallBtn).toHaveCSS(
 			'background-color',
 			/rgb\(74,\s*171,\s*234\)|rgb\(0,\s*106,\s*147\)/
@@ -129,7 +139,12 @@ for (const viewport of [
 		const htmlButton = page.getByRole('button', { name: '选择 HTML 文件', exact: true });
 		await expect(htmlButton).toHaveCSS('border-radius', '0px');
 		const selectedTab = page.getByRole('tab', { name: '教务 HTML', exact: true });
-		await expect(selectedTab).toHaveCSS('font-family', /monospace/);
+		await expect(selectedTab).toHaveCSS('font-family', 'monospace');
+		await expect(selectedTab).toHaveCSS('font-weight', '700');
+		await expect(htmlButton).toHaveCSS('font-family', 'system-ui, sans-serif');
+		await expect(htmlButton).toHaveCSS('font-weight', '700');
+		await expect(page.getByRole('heading', { level: 2 }).first()).toHaveCSS('font-family', 'serif');
+		await expect(page.getByRole('heading', { level: 2 }).first()).toHaveCSS('font-weight', '500');
 		const selectedPaint = await selectedTab.evaluate((el) => {
 			const style = getComputedStyle(el);
 			return { fill: style.backgroundColor, text: style.color, signal: style.borderBottomColor };
@@ -156,7 +171,7 @@ for (const viewport of [
 			.filter({ has: page.getByText('Material 3', { exact: true }) })
 			.click();
 		await expect(page.locator('html')).not.toHaveClass(/chronos-theme-arknights/);
-		await expect(page.locator('h1').first()).not.toHaveCSS('font-family', /Songti SC/);
+		await expect(page.locator('h1').first()).toHaveCSS('font-family', 'system-ui, sans-serif');
 		await expect(page.locator('.secondary-scroll')).toHaveCSS('background-image', 'none');
 		await expect
 			.poll(() =>
@@ -219,5 +234,28 @@ for (const viewport of [
 		await expect
 			.poll(() => htmlButton.evaluate((el) => parseFloat(getComputedStyle(el).borderRadius)))
 			.toBeGreaterThan(0);
+		await expect(htmlButton).toHaveCSS('font-family', 'system-ui, sans-serif');
+		await expect(htmlButton).toHaveCSS('font-weight', '600');
+		await page.goto('/Chronos/wallpaper');
+		await page
+			.locator('label')
+			.filter({ has: page.getByText('ArKnights', { exact: true }) })
+			.click();
+		await expect(page.locator('h1').first()).toHaveCSS('font-family', 'serif');
+		await page.goto('/Chronos/plugins');
+		const installedRow = page
+			.locator('div.flex.items-center.justify-between')
+			.filter({ has: page.getByText('Arknights', { exact: true }) })
+			.last();
+		await installedRow.getByRole('button', { name: '卸载', exact: true }).click();
+		const dialog = page.getByRole('dialog');
+		await expect(dialog.getByRole('heading')).toHaveCSS('font-weight', '700');
+		await expect(dialog.getByRole('heading')).toHaveCSS('font-family', 'serif');
+		await dialog.getByRole('button', { name: '卸载', exact: true }).click();
+		await expect(page.locator('html')).not.toHaveClass(/chronos-theme-arknights/);
+		await expect(page.locator('style[data-plugin-id="theme-arknights"]')).toHaveCount(0);
+		await expect(page.locator('h1').first()).toHaveCSS('font-family', 'system-ui, sans-serif');
+		await page.reload();
+		await expect(page.locator('h1').first()).toHaveCSS('font-family', 'system-ui, sans-serif');
 	});
 }

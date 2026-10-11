@@ -1,5 +1,6 @@
 @import 'tailwindcss/theme' layer(theme) source(none);
 @import 'tailwindcss/utilities' layer(utilities) source(none);
+@import './font-families.css';
 @import './theme-inline.generated.css';
 @import './radius.css';
 

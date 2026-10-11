@@ -272,7 +272,7 @@
 							{#if description}
 								<Dialog.Description
 									class={[
-										'text-body-medium leading-relaxed text-on-surface-variant',
+										'text-body-medium text-supporting leading-relaxed text-on-surface-variant',
 										!showHandle && 'text-center'
 									]}
 								>

@@ -129,7 +129,7 @@
 </script>
 
 <div class="flex flex-col gap-3 text-left">
-	<label for={inputId} class="text-sm font-medium text-on-surface">
+	<label for={inputId} class="text-sm font-semibold text-on-surface">
 		{label}
 		{#if required}<span class="ml-0.5 text-error">*</span>{/if}
 	</label>
@@ -145,7 +145,7 @@
 			{disabled}
 			{required}
 			onchange={handleFileChange}
-			class="w-full rounded-xl border border-outline/30 bg-surface-container px-3.5 py-2 text-sm text-on-surface file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1 file:text-xs file:font-medium file:text-on-primary hover:file:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+			class="w-full rounded-xl border border-outline/30 bg-surface-container px-3.5 py-2 text-sm text-on-surface file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1 file:text-xs file:font-semibold file:text-on-primary hover:file:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 		/>
 	</div>
 	{#if selectedFileName}
@@ -194,7 +194,9 @@
 					<div
 						class="absolute inset-x-0 bottom-0 bg-surface-variant/80 px-3 py-2 text-center backdrop-blur-sm"
 					>
-						<p class="text-body-small text-on-surface-variant">选择壁纸后可预览效果</p>
+						<p class="text-body-small text-supporting text-on-surface-variant">
+							选择壁纸后可预览效果
+						</p>
 					</div>
 				{/if}
 			</div>

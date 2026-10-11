@@ -319,7 +319,7 @@
 										{/if}
 										<MiddleTruncateText
 											text={item.course.name}
-											class="min-h-0 flex-1 leading-tight font-medium"
+											class="min-h-0 flex-1 leading-tight font-semibold"
 											style="font-size: {item.scale.titlePx}px"
 										/>
 										{#if item.locationLines.length > 0}
@@ -369,7 +369,7 @@
 										{/if}
 										<MiddleTruncateText
 											text={item.course.name}
-											class="min-h-0 flex-1 leading-tight font-medium"
+											class="min-h-0 flex-1 leading-tight font-semibold"
 											style="font-size: {item.scale.titlePx}px"
 										/>
 										{#if item.locationLines.length > 0}
