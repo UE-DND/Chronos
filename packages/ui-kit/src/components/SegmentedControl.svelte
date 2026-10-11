@@ -20,6 +20,17 @@
 	const segmentCount = $derived(segments.length);
 	const safeIndex = $derived(selectedIndex < 0 ? 0 : selectedIndex);
 
+	function attachThumb(node: HTMLDivElement) {
+		let previousIndex: number | undefined;
+		$effect.pre(() => {
+			const index = safeIndex;
+			const movingRight = previousIndex === undefined || index > previousIndex;
+			node.style.setProperty('--left-delay', movingRight ? '80ms' : '0ms');
+			node.style.setProperty('--right-delay', movingRight ? '0ms' : '80ms');
+			previousIndex = index;
+		});
+	}
+
 	function handleSegmentClick(segmentValue: string) {
 		if (segmentValue !== value) {
 			haptic.medium();
@@ -41,11 +52,11 @@
 <div class="ui-segmented-track {className}" role="tablist">
 	{#if segmentCount > 0 && selectedIndex >= 0}
 		<div
-			class="ui-segmented-thumb {animateThumb
-				? 'transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]'
-				: ''}"
+			class="ui-segmented-thumb"
 			style:left="calc(0.375rem + {safeIndex} * ((100% - 0.75rem) / {segmentCount}))"
-			style:width="calc((100% - 0.75rem) / {segmentCount})"
+			style:right="calc(0.375rem + {segmentCount - safeIndex - 1} * ((100% - 0.75rem) / {segmentCount}))"
+			style:transition={animateThumb ? undefined : 'none'}
+			{@attach attachThumb}
 			aria-hidden="true"
 		></div>
 	{/if}
@@ -56,7 +67,7 @@
 			role="tab"
 			aria-selected={value === segment.value}
 			tabindex={value === segment.value || (selectedIndex < 0 && index === 0) ? 0 : -1}
-			class="ui-segmented-tab text-label-large relative z-10 flex-1 cursor-pointer rounded-control py-2 text-center transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 active:bg-on-surface/10 {value ===
+			class="ui-segmented-tab text-label-large relative z-10 flex-1 cursor-pointer rounded-control py-2 text-center transition-[color] duration-150 outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 {value ===
 			segment.value
 				? 'text-on-secondary-container'
 				: 'text-on-surface-variant hover:text-on-surface'}"
@@ -67,3 +78,18 @@
 		</button>
 	{/each}
 </div>
+
+<style>
+	.ui-segmented-thumb {
+		/* The leading edge extends first; the trailing edge then catches up. */
+		transition:
+			left 260ms cubic-bezier(0.2, 0, 0, 1) var(--left-delay, 0ms),
+			right 260ms cubic-bezier(0.2, 0, 0, 1) var(--right-delay, 0ms);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.ui-segmented-thumb {
+			transition: none;
+		}
+	}
+</style>
