@@ -47,11 +47,61 @@
 	let contentRef = $state<HTMLElement | null>(null);
 	let overlayRef = $state<HTMLElement | null>(null);
 	let dragHandleRef = $state<HTMLElement | null>(null);
+	let sheetHeight = $state(0);
+	let frozenTransform: string | null = null;
+	let frozenOpacity: string | null = null;
+
+	function animateSheet(from: number, target: number, complete: () => void) {
+		const content = contentRef;
+		const overlay = overlayRef;
+		if (!content) {
+			complete();
+			return () => {};
+		}
+		const transform = `translate3d(0, ${target}px, 0)`;
+		const opacity = `${overlayOpacityFromDrag(target, sheetHeight)}`;
+		const timing = {
+			duration: 240,
+			easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+			fill: 'both' as const
+		};
+		const contentAnimation = content.animate(
+			[{ transform: frozenTransform ?? `translate3d(0, ${from}px, 0)` }, { transform }],
+			timing
+		);
+		const overlayAnimation = overlay?.animate(
+			[{ opacity: frozenOpacity ?? `${overlayOpacityFromDrag(from, sheetHeight)}` }, { opacity }],
+			timing
+		);
+		frozenTransform = null;
+		frozenOpacity = null;
+		contentAnimation.onfinish = () => {
+			content.style.transform = transform;
+			if (overlay) overlay.style.opacity = opacity;
+			contentAnimation.cancel();
+			overlayAnimation?.cancel();
+			complete();
+		};
+		return () => {
+			// Programmatic reopening can still replace a pending close without a jump.
+			frozenTransform = getComputedStyle(content).transform;
+			frozenOpacity = overlay ? getComputedStyle(overlay).opacity : null;
+			content.style.transform = frozenTransform;
+			if (overlay && frozenOpacity) overlay.style.opacity = frozenOpacity;
+			contentAnimation.onfinish = null;
+			contentAnimation.cancel();
+			overlayAnimation?.cancel();
+		};
+	}
 
 	const pointer = createSinglePointerSession();
 	const motion = createBottomSheetMotion({
-		height: () => contentRef?.getBoundingClientRect().height ?? 0,
+		height: () => {
+			sheetHeight = contentRef?.getBoundingClientRect().height ?? 0;
+			return sheetHeight;
+		},
 		reduced: isReducedMotionActive,
+		animate: animateSheet,
 		onClosed: () => {
 			pointer.end();
 			open = false;
@@ -61,15 +111,14 @@
 	});
 	const sheetOpen = $derived(motion.state.present);
 	const isDragging = $derived(motion.state.phase === 'dragging');
-	const contentTransformStyle = $derived(`transform: translateY(${motion.state.offset}px)`);
+	const contentTransformStyle = $derived(`transform: translate3d(0, ${motion.state.offset}px, 0)`);
 	const overlayStyle = $derived(
-		`opacity: ${overlayOpacityFromDrag(motion.state.offset, contentRef?.getBoundingClientRect().height ?? 0)}`
+		`opacity: ${overlayOpacityFromDrag(motion.state.offset, sheetHeight)}`
 	);
 	function onHandlePointerDown(event: PointerEvent) {
-		if (!showHandle || !pointer.start(event, dragHandleRef)) return;
+		if (motion.state.phase !== 'open' || !showHandle || !pointer.start(event, dragHandleRef))
+			return;
 		motion.start(event.clientY);
-		open = true;
-		historySync.syncOpenState(true);
 	}
 	function onWindowPointerMove(event: PointerEvent) {
 		if (pointer.owns(event)) motion.move(event.clientY);
@@ -160,7 +209,7 @@
 				handleDialogOpenChange(false);
 			}}
 		>
-			<!-- Keep the dialog and its body lock mounted until spring completion. -->
+			<!-- Keep the dialog and its body lock mounted until animation completion. -->
 			{#snippet child({ props })}
 				<div {...props}>
 					{#if showHandle}

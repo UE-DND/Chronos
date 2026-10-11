@@ -1,9 +1,10 @@
-import { createGestureVelocity, createScalarSpring, rubberband } from '../motion/gesture-motion';
+import { createGestureVelocity, rubberband } from '../motion/gesture-motion';
 import { shouldDismissSheet } from './bottom-sheet-drag';
 
 export function createBottomSheetMotion(options: {
 	height: () => number;
 	reduced: () => boolean;
+	animate: (from: number, target: number, onComplete: () => void) => () => void;
 	onClosed: () => void;
 	onComplete: (open: boolean) => void;
 }) {
@@ -13,22 +14,33 @@ export function createBottomSheetMotion(options: {
 		'hidden'
 	);
 	let startY = 0;
-	let startOffset = 0;
 	let dragDimension = 1;
 	let opened = false;
+	let generation = 0;
+	let cancelAnimation = () => {};
 	const samples = createGestureVelocity();
-	const spring = createScalarSpring((value) => {
-		offset = value;
-	});
-	function animate(target: number, velocity: number, complete: () => void) {
-		if (options.reduced()) {
-			spring.jump(target);
-			complete();
-		} else spring.animate(target, velocity, complete);
+	function cancel() {
+		generation++;
+		cancelAnimation();
+		cancelAnimation = () => {};
 	}
-	function returnHome(velocity = 0) {
+	function animate(target: number, complete: () => void) {
+		cancel();
+		const task = generation;
+		const from = offset;
+		offset = target;
+		if (options.reduced()) complete();
+		else {
+			cancelAnimation = options.animate(from, target, () => {
+				if (task !== generation) return;
+				cancelAnimation = () => {};
+				complete();
+			});
+		}
+	}
+	function returnHome() {
 		phase = opened ? 'returning' : 'entering';
-		animate(0, velocity, () => {
+		animate(0, () => {
 			phase = 'open';
 			if (!opened) {
 				opened = true;
@@ -36,10 +48,10 @@ export function createBottomSheetMotion(options: {
 			}
 		});
 	}
-	function close(velocity = 0) {
+	function close() {
 		if (!present || phase === 'closing') return;
 		phase = 'closing';
-		animate(Math.max(options.height(), 1), velocity, () => {
+		animate(Math.max(options.height(), 1), () => {
 			present = false;
 			phase = 'hidden';
 			opened = false;
@@ -60,21 +72,16 @@ export function createBottomSheetMotion(options: {
 				present = true;
 				phase = 'entering';
 				opened = false;
-			} else if (phase === 'closing') returnHome(spring.velocity);
+			} else if (phase === 'closing') returnHome();
 		},
 		mount() {
 			if (phase !== 'entering') return;
-			spring.jump(options.height());
+			offset = options.height();
 			returnHome();
 		},
 		start(y: number) {
-			if (!present) return;
-			spring.cancel();
-			// Recover the unresisted coordinate so grabbing above the top keeps its visible offset.
-			const visible = spring.value;
-			dragDimension = Math.max(options.height(), -visible * 2, 1);
-			startOffset =
-				visible < 0 ? (visible * dragDimension) / (0.55 * (dragDimension + visible)) : visible;
+			if (phase !== 'open') return;
+			dragDimension = Math.max(options.height(), 1);
 			startY = y;
 			samples.reset(y);
 			phase = 'dragging';
@@ -82,19 +89,16 @@ export function createBottomSheetMotion(options: {
 		move(y: number) {
 			if (phase !== 'dragging') return;
 			samples.add(y);
-			const next = startOffset + y - startY;
-			spring.jump(next >= 0 ? next : rubberband(next, dragDimension));
+			const next = y - startY;
+			offset = next >= 0 ? next : rubberband(next, dragDimension);
 		},
 		release(y: number, canceled = false) {
 			if (phase !== 'dragging') return;
 			samples.add(y);
 			const velocity = canceled ? 0 : samples.velocity();
-			if (!canceled && shouldDismissSheet(offset, options.height(), 0.25, velocity))
-				close(velocity);
-			else returnHome(velocity);
+			if (!canceled && shouldDismissSheet(offset, dragDimension, 0.25, velocity)) close();
+			else returnHome();
 		},
-		destroy() {
-			spring.cancel();
-		}
+		destroy: cancel
 	};
 }

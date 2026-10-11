@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
-test('grabs a history-closing sheet from its visible position and restores its history entry', async ({
+test('ignores grabs during compositor closing, then restores focus and history once', async ({
 	page,
 	request
 }) => {
@@ -18,12 +18,19 @@ test('grabs a history-closing sheet from its visible position and restores its h
 		dialog.evaluate((el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).m42);
 	await expect.poll(offset).toBe(0);
 	const url = page.url();
-	const instant = new Date();
-	await page.clock.install({ time: instant });
-	await page.clock.pauseAt(new Date(instant.getTime() + 1000));
-	await page.evaluate(() => history.back());
+	// Pause the browser animation itself; JS clock mocks do not control compositor frames.
+	await page.evaluate(() => {
+		const animate = Object.getOwnPropertyDescriptor(Element.prototype, 'animate')!
+			.value as Element['animate'];
+		Element.prototype.animate = function (...args) {
+			const animation = animate.apply(this, args);
+			animation.pause();
+			animation.currentTime = 64;
+			return animation;
+		};
+		history.back();
+	});
 	await expect(dialog).toHaveAttribute('data-closing', '');
-	await page.clock.runFor(64);
 	const before = await offset();
 	expect(before).toBeGreaterThan(0);
 	const handle = dialog.locator('.touch-none').first();
@@ -32,24 +39,21 @@ test('grabs a history-closing sheet from its visible position and restores its h
 	const cdp = await page.context().newCDPSession(page);
 	try {
 		await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
-		await expect(dialog).toHaveAttribute('data-dragging', '');
+		await expect(dialog).not.toHaveAttribute('data-dragging', '');
+		await expect(dialog).toHaveAttribute('data-closing', '');
 		expect(await offset()).toBeCloseTo(before);
-		await page.clock.runFor(20);
 		await cdp.send('Input.dispatchTouchEvent', {
 			type: 'touchMove',
 			touchPoints: [{ ...point, y: point.y - 40 }]
 		});
 		await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
-		await page.clock.runFor(1500);
-		await expect.poll(offset).toBe(0);
-		await expect(page).toHaveURL(url);
-		// A second Back must still dismiss this sheet instead of leaving its route.
-		await page.evaluate(() => history.back());
 		await expect(dialog).toHaveAttribute('data-closing', '');
-		await page.clock.runFor(1500);
+		await dialog.evaluate((el) => el.getAnimations().forEach((animation) => animation.finish()));
 		await expect(dialog).toBeHidden();
 		await expect(page).toHaveURL(url);
 		await expect(row).toBeFocused();
+		await page.evaluate(() => history.back());
+		await expect(page).not.toHaveURL(url);
 	} finally {
 		await cdp.detach();
 	}
