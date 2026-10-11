@@ -1,0 +1,56 @@
+{
+	"formatVersion": 1,
+	"release": {
+		"tagName": "v1.2.7",
+		"name": "Chronos 1.2.7",
+		"body": "## 新增\n\n- 在课程周次选择器中标记当前教学周。\n- 当前教学周到周六或周日时，课表临时显示对应周末列；此显示不会修改已保存的周末开关。\n\n## 优化\n\n- 统一系统字体与字重规范，优化标题、正文、按钮和说明文字在应用及插件中的显示。\n- 优化底部弹层动画的连续性，并调整动画期间的拖动时机，减少位置跳变。\n- 优化分段选择控件的滑块过渡效果，并支持减少动态效果设置。\n\n## 修复\n\n- 修复手势结束前已反向滑动时，课表翻周或侧滑返回仍沿原方向触发的问题。",
+		"publishedAt": "2026-10-12"
+	},
+	"packageId": "org.uednd.chronos",
+	"versionCode": 1002007,
+	"signingCertificateSha256": "5cda4a196759e80ce99f77bd18d8f662a82054ae8d9e56b8be9b491f7f4e649e",
+	"profiles": {
+		"chronos-default": {
+			"host": {
+				"version": "1.2.7",
+				"buildId": "eb209214a0df567eea61b011bddb607e28ed35a0a89350d64ffd5e656d4dcd14",
+				"sourceCommit": "fa576354460f637beb820d3deb167e699834004d",
+				"profileId": "chronos-default",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.7/Chronos-default-1.2.7.apk",
+			"sha256": "a0b68869f7300462bd5602aaf7f12278c2826f5b9f2309a865dd676abd51642d",
+			"sizeBytes": 1842287,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.7/catalog.json"
+		},
+		"chronos-cqut": {
+			"host": {
+				"version": "1.2.7",
+				"buildId": "2ff69009b63389bd7029792d4d6f05faf5d433d2668bb01b6f8f9ca3d48baf0f",
+				"sourceCommit": "fa576354460f637beb820d3deb167e699834004d",
+				"profileId": "chronos-cqut",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.7/Chronos-cqut-1.2.7.apk",
+			"sha256": "7194390e8ce10d2e7802c0b7fbb0d2f98f687c0ae5415b17b4cb4c30aa2f38f1",
+			"sizeBytes": 1874068,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.7/catalog.json"
+		},
+		"chronos-cqut-offline": {
+			"host": {
+				"version": "1.2.7",
+				"buildId": "716b23008712ba4a1f3612064ccb073c3a16a86b25cae76fb57ac0b434d64f54",
+				"sourceCommit": "fa576354460f637beb820d3deb167e699834004d",
+				"profileId": "chronos-cqut-offline",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.7/Chronos-cqut-offline-1.2.7.apk",
+			"sha256": "78ebb8e0ad3a6ba4c43302c47c070c5beedd7b7b2b2447b7c157c1da2229cf61",
+			"sizeBytes": 1839818,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.7/catalog.json"
+		}
+	}
+}
