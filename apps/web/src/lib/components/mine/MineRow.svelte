@@ -37,9 +37,9 @@
 		</span>
 	{/if}
 	<div class="flex min-w-0 flex-1 flex-col justify-center text-left">
-		<span class="row-title text-body-large line-clamp-1 text-on-surface">{title}</span>
+		<span class="row-title text-body-large break-words text-on-surface">{title}</span>
 		{#if supporting}
-			<span class="text-body-small line-clamp-1 text-on-surface-variant">{supporting}</span>
+			<span class="text-body-small break-words text-on-surface-variant">{supporting}</span>
 		{/if}
 	</div>
 	{#if trailing}
@@ -54,7 +54,7 @@
 		href={appRouteHref(href)}
 		{onclick}
 		{...props}
-		class="relative flex h-16 w-full cursor-pointer items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-variant/40 active:bg-surface-variant/60"
+		class="relative flex min-h-16 w-full cursor-pointer items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-variant/40 active:bg-surface-variant/60"
 	>
 		{@render rowContent()}
 	</a>
@@ -62,7 +62,7 @@
 	<label
 		{onclick}
 		{...props}
-		class="relative flex h-16 w-full cursor-pointer items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-variant/40 active:bg-surface-variant/60"
+		class="relative flex min-h-16 w-full cursor-pointer items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-variant/40 active:bg-surface-variant/60"
 	>
 		{@render rowContent()}
 	</label>
@@ -71,7 +71,7 @@
 		type="button"
 		{onclick}
 		{...props}
-		class="relative flex h-16 w-full cursor-pointer items-center gap-4 border-none bg-transparent px-4 py-3 text-left transition-colors hover:bg-surface-variant/40 active:bg-surface-variant/60"
+		class="relative flex min-h-16 w-full cursor-pointer items-center gap-4 border-none bg-transparent px-4 py-3 text-left transition-colors hover:bg-surface-variant/40 active:bg-surface-variant/60"
 	>
 		{@render rowContent()}
 	</button>

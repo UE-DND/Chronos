@@ -54,6 +54,13 @@
 		<script>
 			(function () {
 				try {
+					var fontScale = Number(
+						localStorage.getItem(
+							'chronos:' + ('%sveltekit.assets%' || '/') + ':chronos_preferences:font_size_scale'
+						)
+					);
+					if ([0.9, 1, 1.15, 1.3].includes(fontScale))
+						document.documentElement.style.setProperty('--font-size-scale', String(fontScale));
 					var mode = localStorage.getItem(
 						'chronos:' + ('%sveltekit.assets%' || '/') + ':chronos_preferences:theme_mode'
 					);

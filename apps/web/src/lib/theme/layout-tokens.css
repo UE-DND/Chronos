@@ -63,7 +63,7 @@
 	}
 
 	html {
-		font-size: 15px;
+		font-size: calc(93.75% * var(--font-size-scale, 1));
 		line-height: 1.47;
 		touch-action: pan-x pan-y;
 		-webkit-tap-highlight-color: transparent;
@@ -90,13 +90,13 @@
 
 	@media (min-width: 768px) {
 		html {
-			font-size: 16px;
+			font-size: calc(100% * var(--font-size-scale, 1));
 		}
 	}
 
 	@media (min-width: 1366px) {
 		html {
-			font-size: 17px;
+			font-size: calc(106.25% * var(--font-size-scale, 1));
 		}
 	}
 

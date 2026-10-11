@@ -655,3 +655,13 @@ function courseModel(
 		isInDisplayedWeek: options?.isInDisplayedWeek ?? true
 	};
 }
+
+describe('font scaling', () => {
+	it('scales compact text once without changing geometry', () => {
+		const regular = resolveCapsuleTypeScale(70, 1, true);
+		const large = resolveCapsuleTypeScale(70, 1, true, 1.3);
+		expect(large.titlePx).toBeCloseTo(regular.titlePx * 1.3);
+		expect(large.detailPx).toBeCloseTo(regular.detailPx * 1.3);
+		expect(large.badgePx).toBeCloseTo(regular.badgePx * 1.3);
+	});
+});

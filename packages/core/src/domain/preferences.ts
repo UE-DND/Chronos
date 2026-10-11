@@ -4,6 +4,11 @@ export type WallpaperSource = 'custom' | 'theme' | 'none';
 
 export type TimetableLayoutMode = 'fixed' | 'compact';
 export type CapsuleCornerStyle = 'rounded' | 'sharp' | 'pill';
+export const FONT_SIZE_SCALE_OPTIONS = [0.9, 1, 1.15, 1.3] as const;
+export type FontSizeScale = (typeof FONT_SIZE_SCALE_OPTIONS)[number];
+export function isFontSizeScale(value: unknown): value is FontSizeScale {
+	return FONT_SIZE_SCALE_OPTIONS.some((scale) => scale === value);
+}
 
 export const CURRENT_PREFERENCES_SCHEMA_VERSION = 1;
 
@@ -18,6 +23,7 @@ export function isPrepareReminderMinutes(value: unknown): value is number {
 export const PREFERENCE_STORAGE_KEYS = {
 	currentTimetableId: 'chronos_preferences:current_timetable_id',
 	themeMode: 'chronos_preferences:theme_mode',
+	fontSizeScale: 'chronos_preferences:font_size_scale',
 	timetableLayoutMode: 'chronos_preferences:timetable_layout_mode',
 	wallpaperSource: 'chronos_preferences:wallpaper_source',
 	wallpaperColorEnabled: 'chronos_preferences:wallpaper_color_enabled',
@@ -35,6 +41,7 @@ export const PREFERENCE_STORAGE_KEYS = {
 export interface UserPreferences {
 	schemaVersion: number;
 	themeMode: ThemeMode;
+	fontSizeScale: FontSizeScale;
 	wallpaperSource: WallpaperSource;
 	wallpaperColorEnabled: boolean;
 	wallpaperMaskEnabled: boolean;
@@ -57,6 +64,7 @@ export interface UserPreferences {
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 	schemaVersion: CURRENT_PREFERENCES_SCHEMA_VERSION,
 	themeMode: 'auto',
+	fontSizeScale: 1,
 	wallpaperSource: 'none',
 	wallpaperColorEnabled: false,
 	wallpaperMaskEnabled: true,

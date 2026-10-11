@@ -80,6 +80,7 @@ export interface PlacedOverlapPlaceholder {
 export type PlacedItem = PlacedCourseCapsule | PlacedOverlapPlaceholder;
 
 export interface PlaceCapsulesInput {
+	fontScale?: number;
 	/** Clip geometry to grid rows without changing source courses or slot keys. */
 	displayedPeriodCount?: number;
 	courseDisplayModels: TimetableCourseDisplayModel[];
@@ -140,6 +141,7 @@ export function placeCapsules(input: PlaceCapsulesInput): PlacedItem[] {
 		courseDisplayModels,
 		visibleDays,
 		columnWidthPx,
+		fontScale = 1,
 		expandedSlotKeys,
 		layoutMode = DEFAULT_USER_PREFERENCES.timetableLayoutMode,
 		coursePalette = COURSE_PALETTE_ENTRIES,
@@ -176,6 +178,7 @@ export function placeCapsules(input: PlaceCapsulesInput): PlacedItem[] {
 					coursePalette,
 					paletteByName,
 					compact,
+					fontScale,
 					key: `${key}:${displayModel.course.id}`
 				})
 			);
@@ -183,7 +186,7 @@ export function placeCapsules(input: PlaceCapsulesInput): PlacedItem[] {
 		}
 
 		if (!expandedSlotKeys.has(key)) {
-			const scale = resolveCapsuleTypeScale(columnWidthPx, 1, compact);
+			const scale = resolveCapsuleTypeScale(columnWidthPx, 1, compact, fontScale);
 			items.push({
 				kind: 'overlap-placeholder',
 				key,
@@ -212,6 +215,7 @@ export function placeCapsules(input: PlaceCapsulesInput): PlacedItem[] {
 					coursePalette,
 					paletteByName,
 					compact,
+					fontScale,
 					key: `${key}:${displayModel.course.id}`
 				})
 			);
@@ -244,6 +248,7 @@ function placeCourseCapsule(options: {
 	coursePalette: readonly CoursePaletteEntry[];
 	paletteByName: Map<string, CoursePaletteEntry>;
 	compact: boolean;
+	fontScale: number;
 	key: string;
 }): PlacedCourseCapsule {
 	const {
@@ -255,16 +260,18 @@ function placeCourseCapsule(options: {
 		coursePalette,
 		paletteByName,
 		compact,
+		fontScale,
 		key
 	} = options;
 	const course = displayModel.course;
 	const showCampus = shouldShowLocationCampus(columnWidthPx, overlapCount);
 	const locationLines = locationDisplayLines(course.location, { includeCampus: showCampus });
-	const scale = resolveCapsuleTypeScale(columnWidthPx, overlapCount, compact);
+	const scale = resolveCapsuleTypeScale(columnWidthPx, overlapCount, compact, fontScale);
 	const locationMetrics = resolveLocationBlockMetrics(
 		scale.detailPx,
 		showCampus,
-		locationLines.length
+		locationLines.length,
+		fontScale
 	);
 
 	return {
@@ -409,10 +416,11 @@ export function shouldShowLocationCampus(columnWidthPx: number, overlapCount = 1
 export function resolveLocationBlockMetrics(
 	detailPx: number,
 	showCampus: boolean,
-	visibleLineCount: number
+	visibleLineCount: number,
+	fontScale = 1
 ): { fontPx: number; heightPx: number } {
 	const reservedLines = showCampus ? Math.min(Math.max(visibleLineCount, 1), 3) : 3;
-	const fontPx = roundPx(showCampus ? detailPx : detailPx + LOCATION_FONT_BUMP_PX);
+	const fontPx = roundPx(showCampus ? detailPx : detailPx + LOCATION_FONT_BUMP_PX * fontScale);
 	const heightPx = reservedLines * detailPx * LOCATION_LINE_HEIGHT_RATIO;
 	return { fontPx, heightPx };
 }
@@ -425,7 +433,8 @@ export function resolveLocationBlockMetrics(
 export function resolveCapsuleTypeScale(
 	columnWidthPx: number,
 	overlapCount = 1,
-	compact = false
+	compact = false,
+	fontScale = 1
 ): CapsuleTypeScale {
 	const overlap = Math.max(1, overlapCount);
 	const effective = Math.max(0, columnWidthPx) / overlap;
@@ -442,7 +451,12 @@ export function resolveCapsuleTypeScale(
 
 	const placeholderPx = roundPx(Math.max(11, titlePx - 1));
 
-	return { titlePx, detailPx, badgePx, placeholderPx };
+	return {
+		titlePx: roundPx(titlePx * fontScale),
+		detailPx: roundPx(detailPx * fontScale),
+		badgePx: roundPx(badgePx * fontScale),
+		placeholderPx: roundPx(placeholderPx * fontScale)
+	};
 }
 
 export function buildSlotGroups(

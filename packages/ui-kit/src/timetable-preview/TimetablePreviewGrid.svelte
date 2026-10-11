@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { rootFontMetrics } from '../theme/font-size.svelte';
 	import './timetable-dynamic-tint.css';
 	import type { Attachment } from 'svelte/attachments';
 	import {
@@ -10,10 +11,6 @@
 	import { capsuleCornerAttrs } from '../timetable/capsule-corners';
 	import { timetableDayColumnHeaderLabel } from './day-labels';
 	import MiddleTruncateText from './MiddleTruncateText.svelte';
-	import {
-		courseCapsuleInnerWidthPx,
-		createFitWidthFontAttachment
-	} from '../utils/fit-width-font.svelte';
 	import {
 		timetableBodyTintClass,
 		timetableDayColumnDateClass,
@@ -35,7 +32,6 @@
 
 	const ROW_HEIGHT = '5.5rem';
 	const SIDEBAR_WIDTH = '3.25rem';
-	const FIT_MIN_FONT_PX = 6;
 
 	function setCapsulePressed(el: HTMLButtonElement, pressed: boolean) {
 		if (pressed) {
@@ -107,6 +103,7 @@
 	const placements = $derived(
 		paintReady
 			? placeCapsules({
+					fontScale: rootFontMetrics.scale,
 					courseDisplayModels,
 					visibleDays: gridModel.visibleDays,
 					displayedPeriodCount: gridModel.displayedPeriodCount,
@@ -283,11 +280,6 @@
 							{:else}
 								{@const courseBadgesForThis = courseBadges[item.course.id] ?? []}
 								{@const badgeText = item.badgeLabel || courseBadgesForThis[0]?.text}
-								{@const innerWidthPx = courseCapsuleInnerWidthPx(
-									columnWidthPx,
-									item.geometry.widthPercent,
-									visibleDayCount
-								)}
 								{@const isCurrent = isCurrentCourseCapsule({
 									displayModel: item.displayModel,
 									isCurrentWeek,
@@ -320,12 +312,6 @@
 													style:background-color="color-mix(in srgb, currentColor 12%, transparent)"
 													style:color="color-mix(in srgb, currentColor 80%, transparent)"
 													style:font-size="{item.scale.badgePx}px"
-													{@attach createFitWidthFontAttachment(() => ({
-														lines: [badgeText],
-														maxFontPx: item.scale.badgePx,
-														fromParent: true,
-														availableWidthPx: innerWidthPx
-													}))}
 												>
 													{badgeText}
 												</span>
@@ -341,27 +327,17 @@
 												class="mt-1.5 shrink-0 overflow-hidden leading-tight"
 												style="color: color-mix(in srgb, currentColor 80%, transparent); font-size: {item
 													.locationMetrics.fontPx}px; height: {item.locationMetrics.heightPx}px"
-												{@attach createFitWidthFontAttachment(() => ({
-													lines: item.locationLines,
-													maxFontPx: item.locationMetrics.fontPx,
-													availableWidthPx: innerWidthPx
-												}))}
 											>
 												{#each item.locationLines as line, lineIndex (`${lineIndex}:${line}`)}
-													<div class="overflow-hidden whitespace-nowrap">{line}</div>
+													<div class="truncate">{line}</div>
 												{/each}
 											</div>
 										{/if}
 										{#if item.teacher}
 											<div
-												class="mt-0.5 shrink-0 overflow-hidden leading-tight whitespace-nowrap"
+												class="mt-0.5 shrink-0 truncate leading-tight"
 												style="color: color-mix(in srgb, currentColor 80%, transparent); font-size: {item
 													.scale.detailPx}px"
-												{@attach createFitWidthFontAttachment(() => ({
-													lines: [item.teacher],
-													maxFontPx: item.scale.detailPx,
-													availableWidthPx: innerWidthPx
-												}))}
 											>
 												{item.teacher}
 											</div>
@@ -386,12 +362,6 @@
 													style:background-color="color-mix(in srgb, currentColor 12%, transparent)"
 													style:color="color-mix(in srgb, currentColor 80%, transparent)"
 													style:font-size="{item.scale.badgePx}px"
-													{@attach createFitWidthFontAttachment(() => ({
-														lines: [badgeText],
-														maxFontPx: item.scale.badgePx,
-														fromParent: true,
-														availableWidthPx: innerWidthPx
-													}))}
 												>
 													{badgeText}
 												</span>
@@ -407,27 +377,17 @@
 												class="mt-1.5 shrink-0 overflow-hidden leading-tight"
 												style="color: color-mix(in srgb, currentColor 80%, transparent); font-size: {item
 													.locationMetrics.fontPx}px; height: {item.locationMetrics.heightPx}px"
-												{@attach createFitWidthFontAttachment(() => ({
-													lines: item.locationLines,
-													maxFontPx: item.locationMetrics.fontPx,
-													availableWidthPx: innerWidthPx
-												}))}
 											>
 												{#each item.locationLines as line, lineIndex (`${lineIndex}:${line}`)}
-													<div class="overflow-hidden whitespace-nowrap">{line}</div>
+													<div class="truncate">{line}</div>
 												{/each}
 											</div>
 										{/if}
 										{#if item.teacher}
 											<div
-												class="mt-0.5 shrink-0 overflow-hidden leading-tight whitespace-nowrap"
+												class="mt-0.5 shrink-0 truncate leading-tight"
 												style="color: color-mix(in srgb, currentColor 80%, transparent); font-size: {item
 													.scale.detailPx}px"
-												{@attach createFitWidthFontAttachment(() => ({
-													lines: [item.teacher],
-													maxFontPx: item.scale.detailPx,
-													availableWidthPx: innerWidthPx
-												}))}
 											>
 												{item.teacher}
 											</div>

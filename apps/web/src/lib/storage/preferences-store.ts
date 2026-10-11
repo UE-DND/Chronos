@@ -11,6 +11,7 @@ import {
 	CURRENT_PREFERENCES_SCHEMA_VERSION,
 	DEFAULT_USER_PREFERENCES,
 	PREFERENCE_STORAGE_KEYS,
+	isFontSizeScale,
 	isPrepareReminderMinutes
 } from '@chronos/core';
 
@@ -70,6 +71,11 @@ export class PreferencesStore {
 		if (!this.localStore) return { ...DEFAULT_USER_PREFERENCES };
 
 		const themeMode = normalizeThemeMode(this.localStore.getItem(SETTINGS_KEYS.themeMode));
+		const fontScaleRaw = this.localStore.getItem(SETTINGS_KEYS.fontSizeScale);
+		const fontScaleValue = fontScaleRaw === null ? undefined : Number(fontScaleRaw);
+		const fontSizeScale = isFontSizeScale(fontScaleValue)
+			? fontScaleValue
+			: DEFAULT_USER_PREFERENCES.fontSizeScale;
 		const timetableLayoutMode = normalizeLayoutMode(
 			this.localStore.getItem(SETTINGS_KEYS.timetableLayoutMode)
 		);
@@ -104,6 +110,7 @@ export class PreferencesStore {
 		return {
 			schemaVersion: CURRENT_PREFERENCES_SCHEMA_VERSION,
 			themeMode,
+			fontSizeScale,
 			wallpaperSource,
 			wallpaperColorEnabled,
 			wallpaperMaskEnabled,
@@ -121,6 +128,9 @@ export class PreferencesStore {
 	}
 
 	async savePreferences(patch: Partial<UserPreferences>): Promise<void> {
+		if ('fontSizeScale' in patch && !isFontSizeScale(patch.fontSizeScale)) {
+			throw new RangeError('fontSizeScale must be 0.9, 1, 1.15 or 1.3');
+		}
 		if (
 			'classNotificationsEnabled' in patch &&
 			typeof patch.classNotificationsEnabled !== 'boolean'
@@ -137,6 +147,9 @@ export class PreferencesStore {
 
 		if (patch.themeMode !== undefined) {
 			this.localStore.setItem(SETTINGS_KEYS.themeMode, patch.themeMode);
+		}
+		if (patch.fontSizeScale !== undefined) {
+			this.localStore.setItem(SETTINGS_KEYS.fontSizeScale, String(patch.fontSizeScale));
 		}
 		if (patch.timetableLayoutMode !== undefined) {
 			this.localStore.setItem(SETTINGS_KEYS.timetableLayoutMode, patch.timetableLayoutMode);

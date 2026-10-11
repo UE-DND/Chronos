@@ -9,7 +9,6 @@
 		type ChronosUiController
 	} from '@chronos/ui-kit';
 	import { fromStore } from 'svelte/store';
-	import { createFitWidthFontAttachment } from '@chronos/ui-kit/utils/fit-width-font.svelte';
 	import {
 		AcademicCalendarService,
 		COURSE_PALETTE_ENTRIES,
@@ -32,9 +31,6 @@
 
 	const ui = $derived(fromStore(controller.snapshot));
 	const compactLandscape = new MediaQuery('(orientation: landscape) and (max-height: 500px)');
-
-	const HEADLINE_SMALL_FONT_PX = 24;
-	const PERIOD_LABEL_MIN_FONT_PX = 6;
 
 	const calendarService = new AcademicCalendarService();
 	const screen = createTodayScreenController();
@@ -199,13 +195,7 @@
 										{/if}
 										<div class="flex min-h-0 w-full flex-1 flex-col items-center justify-center">
 											<p
-												class="text-headline-small w-full min-w-0 text-center font-bold whitespace-nowrap text-on-surface-variant"
-												{@attach createFitWidthFontAttachment(() => ({
-													lines: [periodLabel],
-													maxFontPx: HEADLINE_SMALL_FONT_PX,
-													minFontPx: PERIOD_LABEL_MIN_FONT_PX,
-													fromParent: true
-												}))}
+												class="text-headline-small w-full min-w-0 text-center font-bold break-all whitespace-normal text-on-surface-variant"
 											>
 												{periodLabel}
 											</p>

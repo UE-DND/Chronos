@@ -8,14 +8,10 @@
 		lookupCoursePaint,
 		resolveLocalizedText
 	} from '@chronos/core';
-	import { createFitWidthFontAttachment } from '@chronos/ui-kit/utils/fit-width-font.svelte';
 	import { timetableDayLabel } from '#lib/timetable/day-labels.ts';
 	import { formatPeriodRange } from '#lib/timetable/course-a11y.ts';
 	import { getAppController, getAppEngine } from '#lib/services/app-engine.ts';
 	import Button from '#lib/components/ui/Button.svelte';
-
-	const HEADLINE_SMALL_FONT_PX = 24;
-	const FIT_MIN_FONT_PX = 12;
 
 	let {
 		shell,
@@ -118,14 +114,7 @@
 			style:--capsule={paint?.background}
 			style:--capsule-fg={paint?.foreground}
 		></span>
-		<h2
-			class="text-headline-small min-w-0 flex-1 font-bold whitespace-nowrap text-on-surface"
-			{@attach createFitWidthFontAttachment(() => ({
-				lines: [course.name],
-				maxFontPx: HEADLINE_SMALL_FONT_PX,
-				minFontPx: FIT_MIN_FONT_PX
-			}))}
-		>
+		<h2 class="text-headline-small min-w-0 flex-1 font-bold break-words text-on-surface">
 			{course.name}
 		</h2>
 	</div>

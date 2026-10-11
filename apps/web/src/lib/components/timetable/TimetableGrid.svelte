@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { rootFontMetrics } from '@chronos/ui-kit/theme/font-size.svelte.ts';
 	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import type { Attachment } from 'svelte/attachments';
 	import {
@@ -14,10 +15,6 @@
 	import type { CapsuleCornerStyle, CapsuleCorners, TimetableLayoutMode } from '@chronos/core';
 	import MiddleTruncateText from '@chronos/ui-kit/timetable-preview/MiddleTruncateText.svelte';
 	import { capsuleCornerAttrs } from '@chronos/ui-kit/timetable/capsule-corners';
-	import {
-		courseCapsuleInnerWidthPx,
-		createFitWidthFontAttachment
-	} from '@chronos/ui-kit/utils/fit-width-font.svelte';
 	import { timetableDayColumnHeaderLabel } from '#lib/timetable/day-labels.ts';
 	import {
 		buildCourseCapsuleAriaLabel,
@@ -63,7 +60,7 @@
 
 	function estimateGridBodyWidth(): number {
 		if (typeof window === 'undefined') return 0;
-		const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+		const rem = rootFontMetrics.pixels;
 		return Math.max(0, window.innerWidth - SIDEBAR_WIDTH_REM * rem);
 	}
 
@@ -159,6 +156,7 @@
 
 	const placements = $derived(
 		placeCapsules({
+			fontScale: rootFontMetrics.scale,
 			courseDisplayModels,
 			visibleDays: gridModel.visibleDays,
 			displayedPeriodCount: gridModel.displayedPeriodCount,
@@ -188,7 +186,7 @@
 			return bodyViewportHeight / gridModel.displayedPeriodCount;
 		}
 		if (typeof window === 'undefined') return 88;
-		const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+		const rem = rootFontMetrics.pixels;
 		return 5.5 * rem;
 	});
 
@@ -649,12 +647,6 @@
 							</span>
 							<span
 								class="inline-flex max-w-full items-center justify-center rounded-full bg-surface-container-highest/90 px-1.5 py-0.5 text-center leading-none font-medium whitespace-nowrap text-on-surface tabular-nums"
-								{@attach createFitWidthFontAttachment(() => ({
-									lines: [periodLabel],
-									maxFontPx: 11,
-									minFontPx: 7,
-									fromParent: true
-								}))}
 							>
 								{periodLabel}
 							</span>
@@ -694,11 +686,6 @@
 	})}
 	{@const pluginBadges = courseBadges[placed.course.id] ?? []}
 	{@const badgeText = placed.badgeLabel || pluginBadges[0]?.text}
-	{@const innerWidthPx = courseCapsuleInnerWidthPx(
-		columnWidthPx,
-		placed.geometry.widthPercent,
-		visibleDayCount
-	)}
 	<button
 		type="button"
 		draggable="false"
@@ -748,12 +735,6 @@
 					style:background-color="color-mix(in srgb, currentColor 12%, transparent)"
 					style:color="color-mix(in srgb, currentColor 80%, transparent)"
 					style:font-size="{scale.badgePx}px"
-					{@attach createFitWidthFontAttachment(() => ({
-						lines: [badgeText],
-						maxFontPx: scale.badgePx,
-						fromParent: true,
-						availableWidthPx: innerWidthPx
-					}))}
 				>
 					{badgeText}
 				</span>
@@ -768,26 +749,16 @@
 			<div
 				class="mt-1.5 shrink-0 overflow-hidden leading-tight"
 				style="color: color-mix(in srgb, currentColor 80%, transparent); font-size: {locationMetrics.fontPx}px; height: {locationMetrics.heightPx}px"
-				{@attach createFitWidthFontAttachment(() => ({
-					lines: locationLines,
-					maxFontPx: locationMetrics.fontPx,
-					availableWidthPx: innerWidthPx
-				}))}
 			>
 				{#each locationLines as line, lineIndex (`${lineIndex}:${line}`)}
-					<div class="overflow-hidden whitespace-nowrap">{line}</div>
+					<div class="truncate">{line}</div>
 				{/each}
 			</div>
 		{/if}
 		{#if teacher}
 			<div
-				class="mt-0.5 shrink-0 overflow-hidden leading-tight whitespace-nowrap"
+				class="mt-0.5 shrink-0 truncate leading-tight"
 				style="color: color-mix(in srgb, currentColor 80%, transparent); font-size: {scale.detailPx}px"
-				{@attach createFitWidthFontAttachment(() => ({
-					lines: [teacher],
-					maxFontPx: scale.detailPx,
-					availableWidthPx: innerWidthPx
-				}))}
 			>
 				{teacher}
 			</div>

@@ -59,6 +59,7 @@ describe('applyActiveTheme', () => {
 					getPreferences: async () => ({
 						schemaVersion: 1,
 						themeMode: 'auto',
+						fontSizeScale: 1,
 						wallpaperSource: 'theme',
 						wallpaperColorEnabled: false,
 						wallpaperMaskEnabled: true,
@@ -138,6 +139,7 @@ describe('applyActiveTheme', () => {
 					getPreferences: async () => ({
 						schemaVersion: 1,
 						themeMode: 'auto',
+						fontSizeScale: 1,
 						wallpaperSource: 'theme',
 						wallpaperColorEnabled: false,
 						wallpaperMaskEnabled: true,

@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { onDestroy, untrack } from 'svelte';
+	import { FONT_SIZE_SCALE_OPTIONS } from '@chronos/core';
+	import { createFontSizeSettings } from './font-size-settings.svelte';
 	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { type CapsuleCornerStyle, type ThemeMode, type TimetableLayoutMode } from '@chronos/core';
 	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
@@ -20,6 +23,33 @@
 	let currentPeriodHighlightEnabled = $derived(
 		shell.controller.userPreferences?.currentPeriodHighlightEnabled ?? false
 	);
+
+	const fontSettings = createFontSizeSettings({
+		initial: untrack(() => shell.controller.userPreferences?.fontSizeScale ?? 1),
+		preview: (scale) => shell.previewFontSizeScale(scale),
+		save: (scale) => shell.setFontSizeScale(scale),
+		onError: () => shell.controller.notify(hostT('wallpaper.settings.saveFailed'), 'error')
+	});
+	const fontIndex = $derived(FONT_SIZE_SCALE_OPTIONS.indexOf(fontSettings.state.draft));
+	const fontLabels = $derived([
+		hostT('display.font.small'),
+		hostT('display.font.standard'),
+		hostT('display.font.large'),
+		hostT('display.font.maximum')
+	]);
+	$effect(() => {
+		const saved = shell.controller.userPreferences?.fontSizeScale ?? 1;
+		untrack(() => fontSettings.sync(saved));
+	});
+	onDestroy(() => fontSettings.destroy());
+	function previewFont(event: Event) {
+		const index = Number((event.currentTarget as HTMLInputElement).value);
+		const scale = FONT_SIZE_SCALE_OPTIONS[index];
+		if (scale !== undefined) fontSettings.preview(scale);
+	}
+	function commitFont() {
+		void fontSettings.commit();
+	}
 
 	const themeOptions = $derived.by(() => {
 		void shell.controller.locale;
@@ -115,7 +145,7 @@
 </script>
 
 <div class="flex flex-col gap-5">
-	<MineSection title={hostT('display.section.themeMode')}>
+	<MineSection title={hostT('display.section.themeAppearance')}>
 		{#each themeOptions as option (option.mode)}
 			{@const selected = themeMode === option.mode}
 			<MineRow label={true} title={option.label}>
@@ -128,6 +158,55 @@
 				{/snippet}
 			</MineRow>
 		{/each}
+	</MineSection>
+
+	<MineSection title={hostT('display.font.title')}>
+		<div class="min-w-0 px-4 pt-4 pb-5">
+			<div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3">
+				<span
+					class="flex h-11 min-h-[44px] items-center text-sm font-medium text-on-surface-variant"
+					aria-hidden="true">A</span
+				>
+				<div class="relative min-w-0 pb-5">
+					<input
+						id="font-size-slider"
+						class="block h-11 min-h-[44px] w-full cursor-pointer accent-brand"
+						type="range"
+						min="0"
+						max="3"
+						step="1"
+						value={fontIndex}
+						aria-label={hostT('display.font.title')}
+						aria-valuetext={fontLabels[fontIndex]}
+						oninput={previewFont}
+						onchange={commitFont}
+						onpointerup={commitFont}
+						onpointercancel={commitFont}
+						onkeyup={commitFont}
+					/>
+					<div
+						class="pointer-events-none absolute inset-x-2 top-[calc(max(1.375rem,22px)+0.75rem)] flex justify-between"
+						aria-hidden="true"
+					>
+						{#each FONT_SIZE_SCALE_OPTIONS as scale (scale)}
+							<div class="relative flex w-0 justify-center">
+								<span class="size-1 shrink-0 rounded-full bg-on-surface-variant/40"></span>
+								{#if scale === 1}
+									<span
+										class="text-body-small absolute top-2 font-medium whitespace-nowrap text-on-surface-variant"
+										>{hostT('display.font.standard')}</span
+									>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</div>
+				<span
+					class="flex h-11 min-h-[44px] items-center text-[2.5rem] leading-none text-on-surface-variant"
+					aria-hidden="true">A</span
+				>
+			</div>
+		</div>
 	</MineSection>
 
 	<MineSection title={hostT('display.section.layout')}>

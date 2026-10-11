@@ -33,6 +33,7 @@ function createMockEnv(): ChronosEnv {
 			getPreferences: vi.fn(async (): Promise<UserPreferences> => ({
 				schemaVersion: 1,
 				themeMode: 'auto',
+				fontSizeScale: 1,
 				wallpaperSource: 'theme',
 				wallpaperColorEnabled: false,
 				wallpaperMaskEnabled: true,

@@ -1,4 +1,10 @@
 export const en = {
+	'display.font.title': 'Font size',
+	'display.font.small': 'Small',
+	'display.font.standard': 'Standard',
+	'display.font.large': 'Large',
+	'display.font.maximum': 'Largest',
+
 	'plugins.online.unavailable':
 		'Online sync is unavailable in this deployment; HTML import is available.',
 	'plugins.preinstall.retry': 'Retry preinstallation',
@@ -84,7 +90,7 @@ export const en = {
 
 	// display
 	'display.section.locale': 'Language',
-	'display.section.themeMode': 'Theme mode',
+	'display.section.themeAppearance': 'Theme appearance',
 	'display.section.layout': 'Timetable page style',
 	'display.periodHighlight.label': 'Highlight current period',
 	'display.section.capsule': 'Course capsule style',

@@ -1,4 +1,10 @@
 export const zhCn = {
+	'display.font.title': '字体大小',
+	'display.font.small': '小',
+	'display.font.standard': '标准',
+	'display.font.large': '大',
+	'display.font.maximum': '最大',
+
 	'plugins.online.unavailable': '当前部署不提供在线同步，仍可导入 HTML 课表。',
 	'plugins.preinstall.retry': '重试预安装',
 	'plugins.preinstall.label': '预安装',
@@ -83,7 +89,7 @@ export const zhCn = {
 
 	// display
 	'display.section.locale': '语言',
-	'display.section.themeMode': '主题模式',
+	'display.section.themeAppearance': '主题外观',
 	'display.section.layout': '课表页样式',
 	'display.periodHighlight.label': '高亮当前节次',
 	'display.section.capsule': '课程胶囊样式',

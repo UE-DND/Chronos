@@ -19,6 +19,8 @@ import {
 	type UserPreferences
 } from '@chronos/core';
 import { applyReduceMotionClass } from '@chronos/ui-kit';
+import { applyFontSizeScale } from '@chronos/ui-kit/theme/font-size.svelte.ts';
+import type { FontSizeScale } from '@chronos/core';
 import { untrack } from 'svelte';
 
 function resolveDark(themeMode: ThemeMode, systemPrefersDark: boolean): boolean {
@@ -29,6 +31,7 @@ function resolveDark(themeMode: ThemeMode, systemPrefersDark: boolean): boolean 
 
 export function createAppShell() {
 	let systemPrefersDark = $state(false);
+	let fontSizePreview = $state<FontSizeScale | null>(null);
 	let compactLandscape = $state(false);
 	let mediaQueryCleanup: (() => void) | null = null;
 	let landscapeQueryCleanup: (() => void) | null = null;
@@ -174,6 +177,11 @@ export function createAppShell() {
 			});
 
 			$effect(() => {
+				const scale = fontSizePreview ?? controller.userPreferences?.fontSizeScale;
+				// Leave the boot script's restored value intact until preferences are loaded.
+				if (scale !== undefined) applyFontSizeScale(scale);
+			});
+			$effect(() => {
 				const reduceMotionEnabled = controller.userPreferences?.reduceMotionEnabled ?? false;
 				applyReduceMotionClass(reduceMotionEnabled);
 			});
@@ -297,6 +305,10 @@ export function createAppShell() {
 		destroy,
 		updatePreferences,
 		setThemeMode,
+		previewFontSizeScale: (scale: FontSizeScale | null) => {
+			fontSizePreview = scale;
+		},
+		setFontSizeScale: (fontSizeScale: FontSizeScale) => updatePreferences({ fontSizeScale }),
 		setVisualTheme,
 		setWallpaperMaskEnabled,
 		setTimetableLayoutMode,
