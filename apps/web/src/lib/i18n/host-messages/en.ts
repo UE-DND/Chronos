@@ -348,6 +348,7 @@ export const en = {
 	'course.form.weekday.6': 'Saturday',
 	'course.form.weekday.7': 'Sunday',
 	'course.form.week': 'Week {week}',
+	'course.form.currentWeek': 'This week',
 	'course.form.weekSelection': 'Weeks {weeks}',
 	'course.form.weekListSeparator': ', ',
 	'course.form.period': 'Period {period}',

@@ -337,6 +337,7 @@ export const zhCn = {
 	'course.form.weekday.6': '星期六',
 	'course.form.weekday.7': '星期日',
 	'course.form.week': '第 {week} 周',
+	'course.form.currentWeek': '当前周',
 	'course.form.weekSelection': '第 {weeks} 周',
 	'course.form.weekListSeparator': '、',
 	'course.form.period': '第 {period} 节',

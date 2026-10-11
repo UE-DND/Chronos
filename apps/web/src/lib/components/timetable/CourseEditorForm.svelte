@@ -90,6 +90,7 @@
 						label={hostT('course.form.weekRange')}
 						required
 						{weeks}
+						currentWeek={editor.academicWeek}
 						value={draft.selectedWeeks}
 						onValueChange={(weeks) => (draft.selectedWeeks = weeks)}
 					/>
@@ -137,7 +138,7 @@
 					role="status"
 					aria-live="polite"
 				>
-					<p class="text-label-large font-medium">{hostT('course.form.conflicts')}</p>
+					<p class="text-label-large">{hostT('course.form.conflicts')}</p>
 					<ul class="text-body-small mt-1 list-inside list-disc">
 						{#each editor.conflicts as course (course.id)}
 							<li>

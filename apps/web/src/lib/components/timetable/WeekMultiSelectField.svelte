@@ -17,12 +17,14 @@
 	let {
 		label,
 		weeks,
+		currentWeek = null,
 		value = [],
 		required = false,
 		onValueChange
 	}: {
 		label: string;
 		weeks: number[];
+		currentWeek?: number | null;
 		value?: number[];
 		required?: boolean;
 		onValueChange?: (weeks: number[]) => void;
@@ -171,9 +173,10 @@
 				role="checkbox"
 				aria-checked={selected}
 				aria-label={hostT('course.form.week', { week })}
+				aria-describedby={week === currentWeek ? `${fieldId}-current-week` : undefined}
 				data-week={week}
 				class={[
-					'text-title-medium flex aspect-square min-h-12 items-center justify-center rounded-2xl transition-colors',
+					'text-title-medium flex aspect-square min-h-14 flex-col items-center justify-center gap-0.5 rounded-2xl transition-colors',
 					selected
 						? 'bg-brand font-medium text-on-primary active:opacity-90'
 						: 'bg-surface-container text-on-surface hover:bg-surface-container-high active:bg-surface-container-high'
@@ -183,7 +186,12 @@
 					if (event.detail === 0) toggleWeek(week);
 				}}
 			>
-				{week}
+				<span>{week}</span>
+				<span class="text-label-small min-h-[1lh]">
+					{#if week === currentWeek}
+						<span id="{fieldId}-current-week">{hostT('course.form.currentWeek')}</span>
+					{/if}
+				</span>
 			</button>
 		{/each}
 	</div>

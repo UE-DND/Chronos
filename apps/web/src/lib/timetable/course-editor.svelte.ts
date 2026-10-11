@@ -5,6 +5,7 @@ import { courseToDraft } from '#lib/timetable/timetable-mappers.ts';
 import { getAppController } from '#lib/services/app-engine.ts';
 import { snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
 import {
+	AcademicCalendarService,
 	COURSE_REMARK_MAX_LENGTH,
 	createCourse,
 	findCourseScheduleConflicts,
@@ -58,8 +59,14 @@ export function createCourseEditor(
 	let isDeleting = $state(false);
 	let newCourseId = '';
 	const controller = getAppController();
+	const calendarService = new AcademicCalendarService();
 
 	const timetable = $derived(shell.controller.currentTimetable);
+	const academicWeek = $derived(
+		timetable
+			? calendarService.calculateAcademicWeek(shell.controller.todayIso, timetable.academicConfig)
+			: null
+	);
 	const candidate = $derived(
 		draft && timetable ? draftCourse(draft, timetable, newCourseId) : null
 	);
@@ -167,6 +174,9 @@ export function createCourseEditor(
 		},
 		get timetable() {
 			return timetable;
+		},
+		get academicWeek() {
+			return academicWeek;
 		},
 		get candidate() {
 			return candidate;
