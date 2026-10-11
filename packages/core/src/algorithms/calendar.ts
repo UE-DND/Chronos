@@ -1,8 +1,9 @@
-import type { AcademicConfig } from '../domain/timetable';
+import type { AcademicConfig, TimetableViewPrefs } from '../domain/timetable';
 import {
 	addDays,
 	addWeeks,
 	currentWeekMonday,
+	dayOfWeekFromIso,
 	formatCompactDate,
 	formatIsoDate,
 	isBefore,
@@ -96,6 +97,19 @@ export function formatShortDate(iso: string): string {
 	return formatCompactDate(iso);
 }
 
+/** Adds temporary weekend columns only to today's natural week, without changing saved preferences. */
+export function resolveEffectiveWeekendViewPrefs(
+	viewPrefs: Partial<Pick<TimetableViewPrefs, 'showSaturday' | 'showSunday'>> | undefined | null,
+	today: string,
+	weekStartIso: string
+): Pick<TimetableViewPrefs, 'showSaturday' | 'showSunday'> {
+	const currentDay = weekStartIso === currentWeekMonday(today) ? dayOfWeekFromIso(today) : 0;
+	return {
+		showSaturday: Boolean(viewPrefs?.showSaturday) || currentDay >= 6,
+		showSunday: Boolean(viewPrefs?.showSunday) || currentDay === 7
+	};
+}
+
 export function formatWeekDateRange(
 	academicConfig: AcademicConfig | undefined | null,
 	week: number,
@@ -105,9 +119,10 @@ export function formatWeekDateRange(
 ): string {
 	const config = academicConfig ?? fallbackAcademicConfig;
 	const startIso = calendarService.resolveWeekStart(config, week, today);
+	const effectivePrefs = resolveEffectiveWeekendViewPrefs(viewPrefs, today, startIso);
 	let days = 5;
-	if (viewPrefs?.showSunday) days = 7;
-	else if (viewPrefs?.showSaturday) days = 6;
+	if (effectivePrefs.showSunday) days = 7;
+	else if (effectivePrefs.showSaturday) days = 6;
 	const startDate = parseIsoDate(startIso);
 	const endDate = addDays(startDate, days - 1);
 	return `${formatCompactDate(startIso)} - ${formatCompactDate(formatIsoDate(endDate))}`;
