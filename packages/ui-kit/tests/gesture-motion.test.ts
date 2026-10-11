@@ -11,6 +11,18 @@ afterEach(() => {
 });
 
 describe('gesture motion', () => {
+	it('requires a deliberate reversal and forgets it after a hold', () => {
+		const samples = createGestureVelocity();
+		samples.reset(200, 0);
+		samples.add(50, 100);
+		samples.add(52, 110);
+		expect(samples.velocity(110)).toBeGreaterThan(0.1);
+		expect(samples.isReversing(-1, 110)).toBe(false);
+		samples.add(60, 120);
+		expect(samples.isReversing(-1, 120)).toBe(true);
+		expect(samples.isReversing(1, 120)).toBe(false);
+		expect(samples.isReversing(-1, 201)).toBe(false);
+	});
 	it('uses the last direction and forgets a held gesture', () => {
 		const samples = createGestureVelocity();
 		samples.reset(0, 0);

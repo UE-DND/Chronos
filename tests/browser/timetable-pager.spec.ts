@@ -119,6 +119,30 @@ test('keeps vertical scrolling on its week and limits a touch swipe to one week'
 	expect(page.url()).toMatch(/\/Chronos\/?$/);
 });
 
+test('commits long swipes with small lift-off jitter but rejects deliberate reversal', async ({
+	page,
+	request
+}) => {
+	const { pager, position } = await importTimetable(page, request);
+	const initial = Math.round(await position());
+	const rect = (await pager.boundingBox())!;
+	const start = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+	const direction = initial >= 15 ? 1 : -1;
+	await swipePath(page, start, [
+		{ x: direction * 60, y: 0 },
+		{ x: direction * 160, y: 0 },
+		{ x: direction * 158, y: 0 }
+	]);
+	const next = initial - direction;
+	await expect.poll(position).toBeCloseTo(next, 1);
+	await swipePath(page, start, [
+		{ x: direction * 60, y: 0 },
+		{ x: direction * 160, y: 0 },
+		{ x: direction * 120, y: 0 }
+	]);
+	await expect.poll(position).toBeCloseTo(next, 1);
+});
+
 test('keeps vertical swipes with initial sideways jitter on the current week', async ({
 	page,
 	request

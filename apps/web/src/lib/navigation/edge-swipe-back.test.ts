@@ -364,6 +364,18 @@ describe('edge-swipe-back', () => {
 		expect(onBack).not.toHaveBeenCalled();
 		expect(onGestureEnd).toHaveBeenCalledOnce();
 	});
+	it('ignores lift-off jitter after passing the distance threshold', () => {
+		const controller = makeController();
+		const touch = (type: 'touchstart' | 'touchmove' | 'touchend', x: number) =>
+			mockTouchEvent(type, [{ clientX: x, clientY: 100, identifier: 1 }]);
+		controller.handleTouchStart(touch('touchstart', 10));
+		vi.advanceTimersByTime(100);
+		controller.handleTouchMove(touch('touchmove', 180));
+		vi.advanceTimersByTime(10);
+		controller.handleTouchEnd(touch('touchend', 178));
+		vi.advanceTimersByTime(2000);
+		expect(onBack).toHaveBeenCalledOnce();
+	});
 	it('cancels even past the distance threshold when the release reverses', () => {
 		const controller = makeController();
 		controller.handleTouchStart(

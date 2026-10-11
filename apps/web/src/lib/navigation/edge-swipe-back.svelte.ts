@@ -152,7 +152,7 @@ export function createEdgeSwipeBack(options: EdgeSwipeBackOptions) {
 		const offset = Math.max(0, startOffset + touch.clientX - startX);
 		const shouldCommit =
 			axis.update(touch.clientX - startX, touch.clientY - startY) === 'horizontal' &&
-			releaseVelocity > -0.1 &&
+			!velocity.isReversing(1) &&
 			(offset / width() > 0.35 ||
 				(releaseVelocity > 0.35 &&
 					offset > 30 &&

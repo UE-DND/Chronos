@@ -178,8 +178,7 @@ export function createWeekPagerTouch(
 		const width = pageWidth;
 		velocity.add(event.clientX);
 		const releaseVelocity = velocity.velocity();
-		const reversing =
-			Math.sign(releaseVelocity) === -Math.sign(dx) && Math.abs(releaseVelocity) >= 0.1;
+		const reversing = velocity.isReversing(dx);
 		const projected = dx + projectMomentum(releaseVelocity);
 		const advance =
 			!canceled &&

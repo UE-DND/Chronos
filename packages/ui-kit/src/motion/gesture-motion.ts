@@ -19,6 +19,18 @@ export function createGestureVelocity() {
 			const first = samples[0];
 			if (!first || !last || time - last.time > 80 || last.time <= first.time) return 0;
 			return (last.position - first.position) / (last.time - first.time);
+		},
+		isReversing(direction: number, time = performance.now()): boolean {
+			const first = samples[0];
+			const last = samples.at(-1);
+			if (!first || !last) return false;
+			const distance = last.position - first.position;
+			// Lift-off jitter must not veto an otherwise deliberate horizontal drag.
+			return (
+				Math.abs(distance) >= 8 &&
+				Math.sign(distance) === -Math.sign(direction) &&
+				Math.abs(this.velocity(time)) >= 0.1
+			);
 		}
 	};
 }

@@ -427,6 +427,19 @@ describe('week pager touch', () => {
 	);
 });
 
+it.each([-1, 1])('commits a long drag despite small release jitter (%s)', (direction) => {
+	const h = createHarness({ pageWidth: 390, initialOffset: 390 * 9 });
+	h.pointer('pointerdown', 200);
+	h.advance(100);
+	h.pointer('pointermove', 200 + direction * 150);
+	h.advance(10);
+	h.pointer('pointerup', 200 + direction * 148);
+	h.advance(2000);
+	expect(h.node.scrollLeft).toBe((9 - direction) * 390);
+	expect(h.onSettled).toHaveBeenCalledOnce();
+	h.touch.destroy();
+});
+
 it('returns to the original week when release reverses a long drag', () => {
 	const h = createHarness();
 	h.pointer('pointerdown', 500);
