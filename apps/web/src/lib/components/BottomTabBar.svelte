@@ -152,6 +152,10 @@
 		height: 1.75rem;
 	}
 
+	button:active .tab-icon-shell {
+		box-shadow: inset 0 0 0 100px color-mix(in srgb, var(--color-on-surface) 10%, transparent);
+	}
+
 	@media (min-width: 640px) {
 		.tab-icon-shell {
 			width: 3.5rem;

@@ -163,8 +163,10 @@ button.ui-date-field-input {
 	transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.ui-date-field-trigger:hover:not(:disabled) {
-	background-color: color-mix(in srgb, var(--color-on-surface) 5%, transparent);
+@media (hover: hover) and (pointer: fine) {
+	.ui-date-field-trigger:hover:not(:disabled) {
+		background-color: color-mix(in srgb, var(--color-on-surface) 5%, transparent);
+	}
 }
 
 .ui-date-field-trigger:active:not(:disabled) {
@@ -272,8 +274,15 @@ button.ui-date-field-input {
 	color: var(--color-brand);
 }
 
-.ui-btn-outlined:hover:not(:disabled) {
-	background-color: color-mix(in srgb, var(--color-brand) 10%, transparent);
+@media (hover: hover) and (pointer: fine) {
+	.ui-btn-outlined:hover:not(:disabled),
+	.ui-btn-text:hover:not(:disabled) {
+		background-color: color-mix(in srgb, var(--color-brand) 10%, transparent);
+	}
+
+	.ui-btn-danger:hover:not(:disabled) {
+		opacity: 0.9;
+	}
 }
 
 .ui-btn-outlined:active:not(:disabled) {
@@ -282,10 +291,6 @@ button.ui-date-field-input {
 
 .ui-btn-text {
 	color: var(--color-brand);
-}
-
-.ui-btn-text:hover:not(:disabled) {
-	background-color: color-mix(in srgb, var(--color-brand) 10%, transparent);
 }
 
 .ui-btn-text:active:not(:disabled) {
@@ -301,7 +306,6 @@ button.ui-date-field-input {
 	box-shadow: 0 0 0 2px var(--color-error);
 }
 
-.ui-btn-danger:hover:not(:disabled),
 .ui-btn-danger:active:not(:disabled) {
 	opacity: 0.9;
 }

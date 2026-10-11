@@ -26,7 +26,7 @@
 
 	const variantClasses = {
 		standard: 'text-on-surface hover:bg-surface-variant/50 active:bg-surface-variant/80',
-		tonal: 'text-on-surface-variant hover:bg-surface-variant',
+		tonal: 'text-on-surface-variant hover:bg-surface-variant active:bg-surface-variant/80',
 		danger: 'text-error hover:bg-error/10 active:bg-error/20'
 	};
 
@@ -40,7 +40,7 @@
 	);
 
 	const baseClass = $derived(
-		`inline-flex shrink-0 cursor-pointer items-center justify-center rounded-control transition-colors outline-none focus-visible:ring-2 ${focusRingClass}`
+		`ui-icon-button inline-flex shrink-0 cursor-pointer items-center justify-center rounded-control transition-colors outline-none focus-visible:ring-2 ${focusRingClass}`
 	);
 </script>
 

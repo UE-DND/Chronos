@@ -97,10 +97,17 @@
 		background: transparent;
 		color: var(--color-on-surface-variant);
 		cursor: pointer;
+		transition: background-color 120ms ease-out;
 	}
 
-	.edge-action-icon-button:hover {
-		color: var(--color-on-surface);
+	@media (hover: hover) and (pointer: fine) {
+		.edge-action-icon-button:hover:not(:disabled) {
+			color: var(--color-on-surface);
+		}
+	}
+
+	.edge-action-icon-button:active:not(:disabled) {
+		background-color: color-mix(in srgb, var(--color-on-surface) 10%, transparent);
 	}
 
 	.edge-action-icon-button.danger {

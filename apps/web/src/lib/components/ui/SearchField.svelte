@@ -25,6 +25,7 @@
 	<Search aria-hidden="true" class="size-5 shrink-0 text-on-surface-variant" />
 	<input
 		type="search"
+		enterkeyhint="search"
 		bind:value
 		placeholder={resolvedPlaceholder}
 		aria-label={resolvedAriaLabel}

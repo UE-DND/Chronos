@@ -185,7 +185,9 @@
 		text-underline-offset: 0.125rem;
 	}
 
-	.license-link:hover {
-		opacity: 0.8;
+	@media (hover: hover) and (pointer: fine) {
+		.license-link:hover {
+			opacity: 0.8;
+		}
 	}
 </style>

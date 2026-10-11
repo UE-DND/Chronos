@@ -94,10 +94,12 @@
 	box-shadow: 3px 3px 0 var(--color-primary-container);
 }
 
-.chronos-theme-arknights .ui-btn-filled:hover:not(:disabled) {
-	background-color: var(--color-primary-dim);
-	box-shadow: 1px 1px 0 var(--color-primary-container);
-	opacity: 1;
+@media (hover: hover) and (pointer: fine) {
+	.chronos-theme-arknights .ui-btn-filled:hover:not(:disabled) {
+		background-color: var(--color-primary-dim);
+		box-shadow: 1px 1px 0 var(--color-primary-container);
+		opacity: 1;
+	}
 }
 
 .chronos-theme-arknights .ui-btn-filled:active:not(:disabled) {
@@ -105,10 +107,12 @@
 	box-shadow: none;
 }
 
-.chronos-theme-arknights .ui-btn-outlined:hover:not(:disabled),
-.chronos-theme-arknights .ui-btn-text:hover:not(:disabled) {
-	border-color: var(--color-primary);
-	background-color: var(--color-primary-container);
+@media (hover: hover) and (pointer: fine) {
+	.chronos-theme-arknights .ui-btn-outlined:hover:not(:disabled),
+	.chronos-theme-arknights .ui-btn-text:hover:not(:disabled) {
+		border-color: var(--color-primary);
+		background-color: var(--color-primary-container);
+	}
 }
 
 .chronos-theme-arknights .ui-btn:focus-visible,

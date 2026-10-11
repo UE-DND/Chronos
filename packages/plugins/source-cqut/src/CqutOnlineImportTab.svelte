@@ -81,6 +81,10 @@
 					type="text"
 					inputmode="numeric"
 					autocomplete="username"
+					autocapitalize="none"
+					autocorrect="off"
+					spellcheck={false}
+					enterkeyhint="next"
 					bind:value={account}
 				/>
 			</div>
@@ -92,11 +96,15 @@
 						class="ui-form-field-input"
 						type={passwordVisible ? 'text' : 'password'}
 						autocomplete="current-password"
+						autocapitalize="none"
+						autocorrect="off"
+						spellcheck={false}
+						enterkeyhint="done"
 						bind:value={password}
 					/>
 					<button
 						type="button"
-						class="flex size-11 shrink-0 items-center justify-center rounded-control text-on-surface-variant outline-none focus-visible:ring-2 focus-visible:ring-brand"
+						class="flex size-11 shrink-0 items-center justify-center rounded-control text-on-surface-variant transition-colors outline-none hover:bg-surface-variant/50 focus-visible:ring-2 focus-visible:ring-brand active:bg-surface-variant/80"
 						onclick={() => (passwordVisible = !passwordVisible)}
 						aria-label={passwordToggleLabel}
 					>

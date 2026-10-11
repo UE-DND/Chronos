@@ -69,8 +69,10 @@
 	text-underline-offset: 0.125rem;
 }
 
-.markdown-prose a:hover {
-	opacity: 0.8;
+@media (hover: hover) and (pointer: fine) {
+	.markdown-prose a:hover {
+		opacity: 0.8;
+	}
 }
 
 .markdown-prose hr {

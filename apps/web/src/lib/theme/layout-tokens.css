@@ -79,6 +79,18 @@
 		user-select: none;
 	}
 
+	/* Suppress long-press menus on controls while keeping content links copyable. */
+	button,
+	[role='button'],
+	a.ui-btn,
+	a.ui-icon-button,
+	.ui-section-surface > a,
+	.shell-tab-bar a,
+	.bottom-bar a,
+	.ui-shell-top-bar a {
+		-webkit-touch-callout: none;
+	}
+
 	/* Keep form fields and copyable body text selectable */
 	input,
 	textarea,
