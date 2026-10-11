@@ -68,7 +68,11 @@ describe('edge-swipe-back', () => {
 	let revealsShell: boolean;
 
 	beforeEach(() => {
-		vi.useFakeTimers();
+		vi.useFakeTimers({ toFake: ['performance', 'setTimeout', 'clearTimeout'] });
+		vi.stubGlobal('requestAnimationFrame', (fn: FrameRequestCallback) =>
+			setTimeout(() => fn(performance.now()), 16)
+		);
+		vi.stubGlobal('cancelAnimationFrame', clearTimeout);
 		secondaryEl = createMockTouchElement();
 		shellEl = createMockTouchElement();
 		onBack = vi.fn<() => void>();
@@ -174,11 +178,10 @@ describe('edge-swipe-back', () => {
 			mockTouchEvent('touchend', [{ clientX: 170, clientY: 100, identifier: 1 }])
 		);
 
-		// In-flight commit transition
-		expect(secondaryEl.style.transform).toBe('translate3d(100%, 0, 0)');
-		expect(shellEl.style.transform).toBe('translate3d(0, 0, 0)');
+		// The spring starts from the actual release position.
+		expect(secondaryEl.style.transform).toBe('translate3d(160px, 0, 0)');
 
-		vi.advanceTimersByTime(200);
+		vi.advanceTimersByTime(1000);
 		expect(onBack).toHaveBeenCalledTimes(1);
 		await Promise.resolve();
 		expect(secondaryEl.style.transform).toBe('');
@@ -199,10 +202,10 @@ describe('edge-swipe-back', () => {
 			mockTouchEvent('touchend', [{ clientX: 170, clientY: 100, identifier: 1 }])
 		);
 
-		vi.advanceTimersByTime(200);
+		vi.advanceTimersByTime(1000);
 		expect(onBackAsync).toHaveBeenCalledOnce();
-		expect(shellEl.style.transform).toBe('translate3d(0, 0, 0)');
-		expect(secondaryEl.style.transform).toBe('translate3d(100%, 0, 0)');
+		expect(shellEl.style.transform).toBe('translate3d(0%, 0, 0)');
+		expect(secondaryEl.style.transform).toBe('translate3d(400px, 0, 0)');
 		expect(onGestureEnd).not.toHaveBeenCalled();
 
 		finishNavigation();
@@ -243,10 +246,9 @@ describe('edge-swipe-back', () => {
 			mockTouchEvent('touchend', [{ clientX: 40, clientY: 100, identifier: 1 }])
 		);
 
-		expect(secondaryEl.style.transform).toBe('translate3d(0, 0, 0)');
-		expect(shellEl.style.transform).toBe('translate3d(-25%, 0, 0)');
+		expect(secondaryEl.style.transform).toBe('translate3d(30px, 0, 0)');
 
-		vi.advanceTimersByTime(200);
+		vi.advanceTimersByTime(1000);
 		expect(onBack).not.toHaveBeenCalled();
 		expect(onGestureEnd).toHaveBeenCalledTimes(1);
 	});
@@ -277,7 +279,7 @@ describe('edge-swipe-back', () => {
 			const points = [{ clientX: 170, clientY: 500, identifier: 1 }];
 			if (type === 'touchmove') controller.handleTouchMove(mockTouchEvent(type, points));
 			controller.handleTouchEnd(mockTouchEvent('touchend', points));
-			vi.advanceTimersByTime(200);
+			vi.advanceTimersByTime(1000);
 			expect(onBack).not.toHaveBeenCalled();
 		}
 	);
@@ -299,7 +301,7 @@ describe('edge-swipe-back', () => {
 		controller.handleTouchEnd(
 			mockTouchEvent('touchend', [{ clientX: 170, clientY: 500, identifier: 1 }])
 		);
-		vi.advanceTimersByTime(200);
+		vi.advanceTimersByTime(1000);
 		expect(onBack).not.toHaveBeenCalled();
 		expect(secondaryEl.style.transform).toBe('');
 	});
@@ -312,7 +314,7 @@ describe('edge-swipe-back', () => {
 		controller.handleTouchEnd(
 			mockTouchEvent('touchend', [{ clientX: 170, clientY: 500, identifier: 1 }])
 		);
-		vi.advanceTimersByTime(200);
+		vi.advanceTimersByTime(1000);
 		expect(onBack).not.toHaveBeenCalled();
 	});
 
@@ -334,7 +336,7 @@ describe('edge-swipe-back', () => {
 		controller.handleTouchEnd(
 			mockTouchEvent('touchend', [{ clientX: 170, clientY: 100, identifier: 1 }])
 		);
-		vi.advanceTimersByTime(200);
+		vi.advanceTimersByTime(1000);
 		expect(onBack).not.toHaveBeenCalled();
 	});
 
@@ -348,5 +350,54 @@ describe('edge-swipe-back', () => {
 		);
 		expect(controller.isSwiping).toBe(true);
 		expect(secondaryEl.style.boxShadow).toBe('');
+	});
+	it('does not navigate after holding a short fast swipe before release', () => {
+		const controller = makeController();
+		const touch = (type: 'touchstart' | 'touchmove' | 'touchend', x: number) =>
+			mockTouchEvent(type, [{ clientX: x, clientY: 100, identifier: 1 }]);
+		controller.handleTouchStart(touch('touchstart', 10));
+		vi.advanceTimersByTime(20);
+		controller.handleTouchMove(touch('touchmove', 70));
+		vi.advanceTimersByTime(100);
+		controller.handleTouchEnd(touch('touchend', 70));
+		vi.advanceTimersByTime(2000);
+		expect(onBack).not.toHaveBeenCalled();
+		expect(onGestureEnd).toHaveBeenCalledOnce();
+	});
+	it('cancels even past the distance threshold when the release reverses', () => {
+		const controller = makeController();
+		controller.handleTouchStart(
+			mockTouchEvent('touchstart', [{ clientX: 10, clientY: 100, identifier: 1 }])
+		);
+		vi.advanceTimersByTime(100);
+		controller.handleTouchMove(
+			mockTouchEvent('touchmove', [{ clientX: 260, clientY: 100, identifier: 1 }])
+		);
+		vi.advanceTimersByTime(20);
+		controller.handleTouchMove(
+			mockTouchEvent('touchmove', [{ clientX: 210, clientY: 100, identifier: 1 }])
+		);
+		controller.handleTouchEnd(
+			mockTouchEvent('touchend', [{ clientX: 210, clientY: 100, identifier: 1 }])
+		);
+		vi.advanceTimersByTime(2000);
+		expect(onBack).not.toHaveBeenCalled();
+	});
+	it('grabs an in-flight return from its visible position and cancels obsolete navigation', () => {
+		const controller = makeController();
+		const touch = (type: 'touchstart' | 'touchmove' | 'touchend' | 'touchcancel', x: number) =>
+			mockTouchEvent(type, [{ clientX: x, clientY: 100, identifier: 1 }]);
+		controller.handleTouchStart(touch('touchstart', 10));
+		controller.handleTouchMove(touch('touchmove', 180));
+		controller.handleTouchEnd(touch('touchend', 180));
+		vi.advanceTimersByTime(100);
+		const live = secondaryEl.style.transform;
+		controller.handleTouchStart(touch('touchstart', 10));
+		expect(secondaryEl.style.transform).toBe(live);
+		controller.handleTouchMove(touch('touchmove', 30));
+		controller.handleTouchEnd(touch('touchcancel', 30));
+		vi.advanceTimersByTime(2000);
+		expect(onBack).not.toHaveBeenCalled();
+		expect(onGestureEnd).toHaveBeenCalledOnce();
 	});
 });

@@ -1,4 +1,9 @@
-import { createHorizontalGesture } from '@chronos/ui-kit';
+import {
+	createHorizontalGesture,
+	createGestureVelocity,
+	createScalarSpring,
+	projectMomentum
+} from '@chronos/ui-kit';
 import { isReducedMotionActive } from './route-motion-controller.svelte';
 import { requestSuppressNextTransition } from './page-view-transition.svelte';
 
@@ -22,263 +27,184 @@ export function isElementSwipeDisabled(target: EventTarget | null): boolean {
 
 export function createEdgeSwipeBack(options: EdgeSwipeBackOptions) {
 	const maxEdgeX = options.maxEdgeX ?? 28;
-
+	const axis = createHorizontalGesture();
+	const velocity = createGestureVelocity();
 	let startX = 0;
 	let startY = 0;
-	let startTime = 0;
+	let startOffset = 0;
 	let isTracking = false;
-	const axis = createHorizontalGesture();
 	let isSwiping = false;
+	let gestureActive = false;
+	let navigating = false;
 	let activeTouchId: number | null = null;
 	let gestureRevealsShell = true;
+	let generation = 0;
 	let cleanupTimeout: ReturnType<typeof setTimeout> | null = null;
+	const resolveSecondary = () =>
+		options.getSecondaryElement?.() ?? document.querySelector<HTMLElement>('.secondary-root');
+	const resolveShell = () =>
+		options.getShellElement?.() ?? document.querySelector<HTMLElement>('.shell-root');
+	const width = () => window.innerWidth || 360;
+	const spring = createScalarSpring(paint);
 
-	function resolveSecondary(): HTMLElement | null {
-		return (
-			options.getSecondaryElement?.() ??
-			(typeof document !== 'undefined'
-				? document.querySelector<HTMLElement>('.secondary-root')
-				: null)
-		);
-	}
-
-	function resolveShell(): HTMLElement | null {
-		return (
-			options.getShellElement?.() ??
-			(typeof document !== 'undefined' ? document.querySelector<HTMLElement>('.shell-root') : null)
-		);
-	}
-
-	function clearStyles(secondary = resolveSecondary(), shell = resolveShell()): void {
+	function paint(offset: number) {
+		const x = Math.max(0, Math.min(width(), offset));
+		const secondary = resolveSecondary();
+		const shell = resolveShell();
 		if (secondary) {
-			secondary.style.removeProperty('transform');
-			secondary.style.removeProperty('transition');
-			secondary.style.removeProperty('box-shadow');
+			secondary.style.transition = 'none';
+			secondary.style.transform = `translate3d(${x}px, 0, 0)`;
 		}
-		if (shell) {
-			shell.style.removeProperty('transform');
-			shell.style.removeProperty('transition');
-			shell.style.removeProperty('opacity');
+		if (shell && gestureRevealsShell) {
+			const progress = x / width();
+			shell.style.transition = 'none';
+			shell.style.transform = `translate3d(${-25 * (1 - progress)}%, 0, 0)`;
+			shell.style.opacity = `${0.55 + 0.45 * progress}`;
 		}
 	}
-
-	function resetState(): void {
+	function clearStyles(secondary = resolveSecondary(), shell = resolveShell()) {
+		for (const el of [secondary, shell]) {
+			el?.style.removeProperty('transform');
+			el?.style.removeProperty('transition');
+		}
+		secondary?.style.removeProperty('box-shadow');
+		shell?.style.removeProperty('opacity');
+	}
+	function resetState() {
 		isTracking = false;
 		axis.reset();
 		isSwiping = false;
 		activeTouchId = null;
 	}
-
-	function handleTouchStart(event: TouchEvent): void {
-		if (isReducedMotionActive() || !options.canSwipeBack()) return;
+	function finish() {
+		if (cleanupTimeout) clearTimeout(cleanupTimeout);
+		cleanupTimeout = null;
+		navigating = false;
+		clearStyles();
+		if (gestureActive) {
+			gestureActive = false;
+			options.onGestureEnd?.();
+		}
+	}
+	function handleTouchStart(event: TouchEvent) {
+		if (isReducedMotionActive() || !options.canSwipeBack() || navigating) return;
 		if (event.touches.length !== 1) {
 			if (isSwiping) cancelGesture();
 			else resetState();
 			return;
 		}
 		if (isTracking) return;
-
-		const touch = event.touches[0];
-		if (touch.clientX > maxEdgeX) return;
-		if (isElementSwipeDisabled(event.target)) return;
-
-		if (cleanupTimeout) {
-			clearTimeout(cleanupTimeout);
-			cleanupTimeout = null;
-			clearStyles();
-		}
-
+		const touch = event.touches[0]!;
+		if (touch.clientX > maxEdgeX || isElementSwipeDisabled(event.target)) return;
+		generation++;
+		startOffset = spring.running ? Math.max(0, Math.min(width(), spring.value)) : 0;
+		spring.cancel();
 		startX = touch.clientX;
 		startY = touch.clientY;
-		startTime = performance.now();
+		velocity.reset(touch.clientX);
 		activeTouchId = touch.identifier;
-		gestureRevealsShell = options.revealsShell?.() ?? true;
+		if (!gestureActive) gestureRevealsShell = options.revealsShell?.() ?? true;
 		isTracking = true;
 		axis.reset();
 		isSwiping = false;
 	}
-
-	function handleTouchMove(event: TouchEvent): void {
+	function handleTouchMove(event: TouchEvent) {
 		if (!isTracking) return;
 		if (event.touches.length !== 1) {
-			if (isSwiping) cancelGesture();
+			if (isSwiping || gestureActive) cancelGesture();
 			else resetState();
 			return;
 		}
-
-		let touch: Touch | undefined;
-		for (let i = 0; i < event.touches.length; i++) {
-			if (event.touches[i].identifier === activeTouchId) {
-				touch = event.touches[i];
-				break;
-			}
-		}
+		const touch = Array.from(event.touches).find((item) => item.identifier === activeTouchId);
 		if (!touch) return;
-
+		velocity.add(touch.clientX);
 		const dx = touch.clientX - startX;
-		const dy = touch.clientY - startY;
-
-		const direction = axis.update(dx, dy);
-		if (direction === 'vertical' || (direction === 'horizontal' && dx <= 0)) {
-			if (isSwiping) cancelGesture();
+		const direction = axis.update(dx, touch.clientY - startY);
+		if (direction === 'vertical' || (direction === 'horizontal' && dx <= 0 && startOffset === 0)) {
+			if (isSwiping || gestureActive) cancelGesture();
 			else resetState();
 			return;
 		}
 		if (direction !== 'horizontal') return;
-		if (!isSwiping) {
-			isSwiping = true;
+		if (!gestureActive) {
+			gestureActive = true;
 			options.onGestureStart?.();
 		}
-
-		if (isSwiping) {
-			if (event.cancelable) event.preventDefault();
-
-			const secondary = resolveSecondary();
-			const shell = resolveShell();
-			const width = (typeof window !== 'undefined' ? window.innerWidth : 360) || 360;
-			const currentX = Math.max(0, dx);
-			const progress = Math.min(1, currentX / width);
-
-			if (secondary) {
-				secondary.style.transition = 'none';
-				secondary.style.transform = `translate3d(${currentX}px, 0, 0)`;
-			}
-
-			if (shell && gestureRevealsShell) {
-				const shellX = -25 * (1 - progress);
-				const shellOpacity = 0.55 + 0.45 * progress;
-				shell.style.transition = 'none';
-				shell.style.transform = `translate3d(${shellX}%, 0, 0)`;
-				shell.style.opacity = `${shellOpacity}`;
-			}
-		}
+		isSwiping = true;
+		if (event.cancelable) event.preventDefault();
+		spring.jump(Math.max(0, Math.min(width(), startOffset + dx)));
 	}
-
-	function handleTouchEnd(event: TouchEvent): void {
+	function handleTouchEnd(event: TouchEvent) {
 		if (!isSwiping) {
-			resetState();
+			if (gestureActive) cancelGesture();
+			else resetState();
 			return;
 		}
-
-		let touch: Touch | undefined;
-		for (let i = 0; i < event.changedTouches.length; i++) {
-			if (event.changedTouches[i].identifier === activeTouchId) {
-				touch = event.changedTouches[i];
-				break;
-			}
-		}
-
-		if (!touch) {
-			if (isSwiping) {
-				cancelGesture();
-			} else {
-				resetState();
-			}
-			return;
-		}
-
-		const dx = touch.clientX - startX;
-		const elapsed = Math.max(1, performance.now() - startTime);
-		const velocity = dx / elapsed;
-		const width = (typeof window !== 'undefined' ? window.innerWidth : 360) || 360;
-		const progress = Math.min(1, Math.max(0, dx) / width);
-
-		const shouldCommit =
-			event.type === 'touchend' &&
-			axis.update(dx, touch.clientY - startY) === 'horizontal' &&
-			(progress > 0.35 || (velocity > 0.35 && dx > 30));
-
-		if (shouldCommit) {
-			commitGesture();
-		} else {
+		const touch = Array.from(event.changedTouches).find(
+			(item) => item.identifier === activeTouchId
+		);
+		if (!touch || event.type !== 'touchend') {
 			cancelGesture();
+			return;
 		}
+		velocity.add(touch.clientX);
+		const releaseVelocity = velocity.velocity();
+		const offset = Math.max(0, startOffset + touch.clientX - startX);
+		const shouldCommit =
+			axis.update(touch.clientX - startX, touch.clientY - startY) === 'horizontal' &&
+			releaseVelocity > -0.1 &&
+			(offset / width() > 0.35 ||
+				(releaseVelocity > 0.35 &&
+					offset > 30 &&
+					(offset + projectMomentum(releaseVelocity)) / width() > 0.35));
+		if (shouldCommit) commitGesture(releaseVelocity);
+		else cancelGesture(releaseVelocity);
 	}
-
-	function commitGesture(): void {
-		const secondary = resolveSecondary();
-		const shell = resolveShell();
+	function commitGesture(releaseVelocity = 0) {
 		resetState();
-
-		if (secondary) {
-			secondary.style.transition = 'transform 200ms cubic-bezier(0.2, 0.9, 0.4, 1)';
-			secondary.style.transform = 'translate3d(100%, 0, 0)';
-		}
-		if (shell && gestureRevealsShell) {
-			shell.style.transition =
-				'transform 200ms cubic-bezier(0.2, 0.9, 0.4, 1), opacity 200ms cubic-bezier(0.2, 0.9, 0.4, 1)';
-			shell.style.transform = 'translate3d(0, 0, 0)';
-			shell.style.opacity = '1';
-		}
-
-		cleanupTimeout = setTimeout(() => {
-			cleanupTimeout = null;
+		const task = ++generation;
+		spring.animate(width(), releaseVelocity, () => {
+			if (task !== generation) return;
+			navigating = true;
 			requestSuppressNextTransition();
-			let settled = false;
+			// Keep the preview until the router commits; a teardown invalidates this completion.
 			const settle = () => {
-				if (settled) return;
-				settled = true;
-				if (cleanupTimeout) clearTimeout(cleanupTimeout);
-				cleanupTimeout = null;
-				clearStyles(secondary, shell);
-				options.onGestureEnd?.();
+				if (task === generation) finish();
 			};
-			// Keep the completed gesture frame in place until SvelteKit commits the back route.
 			cleanupTimeout = setTimeout(settle, 1500);
 			try {
 				void Promise.resolve(options.onBack()).then(settle, settle);
 			} catch {
 				settle();
 			}
-		}, 200);
+		});
 	}
-
-	function cancelGesture(): void {
-		const secondary = resolveSecondary();
-		const shell = resolveShell();
+	function cancelGesture(releaseVelocity = 0) {
 		resetState();
-
-		if (secondary) {
-			secondary.style.transition = 'transform 200ms cubic-bezier(0.2, 0.9, 0.4, 1)';
-			secondary.style.transform = 'translate3d(0, 0, 0)';
-		}
-		if (shell && gestureRevealsShell) {
-			shell.style.transition =
-				'transform 200ms cubic-bezier(0.2, 0.9, 0.4, 1), opacity 200ms cubic-bezier(0.2, 0.9, 0.4, 1)';
-			shell.style.transform = 'translate3d(-25%, 0, 0)';
-			shell.style.opacity = '0.55';
-		}
-
-		cleanupTimeout = setTimeout(() => {
-			cleanupTimeout = null;
-			clearStyles(secondary, shell);
-			options.onGestureEnd?.();
-		}, 200);
+		const task = ++generation;
+		spring.animate(0, releaseVelocity, () => {
+			if (task === generation) finish();
+		});
 	}
-
 	function attach(target: EventTarget = window): () => void {
 		target.addEventListener('touchstart', handleTouchStart as EventListener, { passive: true });
 		target.addEventListener('touchmove', handleTouchMove as EventListener, { passive: false });
 		target.addEventListener('touchend', handleTouchEnd as EventListener, { passive: true });
 		target.addEventListener('touchcancel', handleTouchEnd as EventListener, { passive: true });
-
 		return () => {
-			if (cleanupTimeout) {
-				clearTimeout(cleanupTimeout);
-				cleanupTimeout = null;
-			}
+			generation++;
+			spring.cancel();
+			finish();
+			resetState();
 			target.removeEventListener('touchstart', handleTouchStart as EventListener);
 			target.removeEventListener('touchmove', handleTouchMove as EventListener);
 			target.removeEventListener('touchend', handleTouchEnd as EventListener);
 			target.removeEventListener('touchcancel', handleTouchEnd as EventListener);
-			clearStyles();
-			resetState();
 		};
 	}
-
 	return {
 		attach,
-		get isSwiping(): boolean {
+		get isSwiping() {
 			return isSwiping;
 		},
 		handleTouchStart,

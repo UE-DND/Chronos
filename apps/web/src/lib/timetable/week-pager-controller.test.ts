@@ -155,7 +155,7 @@ describe('week pager lifecycle', () => {
 		h.node.dispatchEvent(new Event('scrollend'));
 		expect(h.calls).not.toContain('clear');
 		h.pointer('pointerup', 200);
-		vi.advanceTimersByTime(400);
+		vi.advanceTimersByTime(2000);
 		expect(h.node.scrollLeft).toBe(1000);
 		expect(h.calls).toContain('week:2');
 		expect(h.calls.at(-1)).toBe('clear');

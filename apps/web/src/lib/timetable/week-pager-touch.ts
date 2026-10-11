@@ -1,11 +1,15 @@
-import { createHorizontalGesture, isReducedMotionActive } from '@chronos/ui-kit';
+import {
+	createHorizontalGesture,
+	createGestureVelocity,
+	createScalarSpring,
+	projectMomentum,
+	isReducedMotionActive
+} from '@chronos/ui-kit';
 import { weekPagerPageWidth } from './week-pager-metrics';
 
 const COMMIT_DISTANCE_RATIO = 0.23;
 const FLING_DISTANCE_PX = 24;
 const FLING_VELOCITY_PX_MS = 0.5;
-const MIN_SETTLE_MS = 180;
-const MAX_SETTLE_MS = 300;
 
 /** Keep touch paging independent of the browser's fling distance and axis heuristic. */
 export function createWeekPagerTouch(
@@ -23,7 +27,6 @@ export function createWeekPagerTouch(
 	let direction: 'pending' | 'horizontal' | 'vertical' = 'pending';
 	let startX = 0;
 	let startY = 0;
-	let startTime = 0;
 	let startOffset = 0;
 	let startPage = 0;
 	let pageWidth = 0;
@@ -32,9 +35,17 @@ export function createWeekPagerTouch(
 	let savedSnapType = '';
 	let frame = 0;
 	let animationGeneration = 0;
+	const velocity = createGestureVelocity();
+	const spring = createScalarSpring((left) => {
+		node.scrollLeft = Math.max(
+			Math.max(0, startPage - 1) * pageWidth,
+			Math.min(Math.min(maxPage, startPage + 1) * pageWidth, left)
+		);
+	});
 
 	function stopAnimation() {
 		animationGeneration++;
+		spring.cancel();
 		if (frame) cancelAnimationFrame(frame);
 		frame = 0;
 	}
@@ -45,7 +56,7 @@ export function createWeekPagerTouch(
 	}
 
 	function cancel() {
-		const wasActive = pointerId !== null || frame !== 0;
+		const wasActive = pointerId !== null || frame !== 0 || spring.running;
 		stopAnimation();
 		pointerId = null;
 		axis.reset();
@@ -53,40 +64,25 @@ export function createWeekPagerTouch(
 		if (wasActive) restoreSnap();
 	}
 
-	function settle(target: number) {
+	function settle(target: number, releaseVelocity = 0) {
 		stopAnimation();
 		const from = node.scrollLeft;
-		const distance = target - from;
-		const duration = isReducedMotionActive()
-			? 0
-			: MIN_SETTLE_MS +
-				Math.min(1, Math.abs(distance) / pageWidth) * (MAX_SETTLE_MS - MIN_SETTLE_MS);
-		if (duration === 0 || Math.abs(target - from) < 1) {
+		if (isReducedMotionActive() || Math.abs(target - from) < 0.1) {
 			node.scrollLeft = target;
 			restoreSnap();
 			onSettled();
 			return;
 		}
 		const task = animationGeneration;
-		const started = performance.now();
-		function step(now: number) {
-			if (task !== animationGeneration) return;
-			const t = Math.min(1, Math.max(0, (now - started) / duration));
-			node.scrollLeft = from + distance * (1 - (1 - t) ** 2.25);
-			if (t < 1) {
-				frame = requestAnimationFrame(step);
-			} else {
-				node.scrollLeft = target;
-				// Let the final scroll event update the week and indicator before clearing preview.
-				frame = requestAnimationFrame(() => {
-					if (task !== animationGeneration) return;
-					frame = 0;
-					restoreSnap();
-					onSettled();
-				});
-			}
-		}
-		frame = requestAnimationFrame(step);
+		spring.jump(from);
+		spring.animate(target, releaseVelocity, () => {
+			frame = requestAnimationFrame(() => {
+				if (task !== animationGeneration) return;
+				frame = 0;
+				restoreSnap();
+				onSettled();
+			});
+		});
 	}
 
 	node.addEventListener(
@@ -103,14 +99,14 @@ export function createWeekPagerTouch(
 			pageWidth = weekPagerPageWidth(node);
 			if (pageWidth <= 0) return;
 			maxPage = Math.max(0, node.childElementCount - 1);
-			const wasSettling = frame !== 0;
+			const wasSettling = frame !== 0 || spring.running;
 			stopAnimation();
 			pointerId = event.pointerId;
 			axis.reset();
 			direction = 'pending';
 			startX = event.clientX;
 			startY = event.clientY;
-			startTime = performance.now();
+			velocity.reset(event.clientX);
 			startOffset = node.scrollLeft;
 			startPage = Math.round(startOffset / pageWidth);
 			needsSettle = wasSettling || Math.abs(startOffset - startPage * pageWidth) >= 1;
@@ -130,6 +126,7 @@ export function createWeekPagerTouch(
 				cancel();
 				return;
 			}
+			velocity.add(event.clientX);
 			const dx = event.clientX - startX;
 			const dy = event.clientY - startY;
 			if (direction === 'pending') direction = axis.update(dx, dy);
@@ -179,13 +176,20 @@ export function createWeekPagerTouch(
 		}
 		const dx = event.clientX - startX;
 		const width = pageWidth;
-		const elapsed = Math.max(1, performance.now() - startTime);
+		velocity.add(event.clientX);
+		const releaseVelocity = velocity.velocity();
+		const reversing =
+			Math.sign(releaseVelocity) === -Math.sign(dx) && Math.abs(releaseVelocity) >= 0.1;
+		const projected = dx + projectMomentum(releaseVelocity);
 		const advance =
 			!canceled &&
+			!reversing &&
 			(Math.abs(dx) >= width * COMMIT_DISTANCE_RATIO ||
-				(Math.abs(dx) >= FLING_DISTANCE_PX && Math.abs(dx) / elapsed >= FLING_VELOCITY_PX_MS));
+				(Math.abs(dx) >= FLING_DISTANCE_PX &&
+					Math.abs(releaseVelocity) >= FLING_VELOCITY_PX_MS &&
+					Math.abs(projected) >= width * COMMIT_DISTANCE_RATIO));
 		const page = Math.max(0, Math.min(maxPage, startPage + (advance ? -Math.sign(dx) : 0)));
-		settle(page * width);
+		settle(page * width, canceled ? 0 : -releaseVelocity);
 	}
 
 	node.ownerDocument.addEventListener('pointerup', (event) => release(event, false), options);
@@ -193,7 +197,7 @@ export function createWeekPagerTouch(
 
 	return {
 		get isActive() {
-			return pointerId !== null || frame !== 0;
+			return pointerId !== null || frame !== 0 || spring.running;
 		},
 		cancel,
 		destroy() {

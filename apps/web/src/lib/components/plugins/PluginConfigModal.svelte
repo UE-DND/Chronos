@@ -70,7 +70,7 @@
 </script>
 
 <Dialog bind:open title={hostT('plugins.config.title', { name: pluginName || pluginId })}>
-	<div class="app-scroll-y max-h-[60vh] overflow-y-auto py-2">
+	<div class="py-2">
 		{#if Object.keys(schema).length > 0}
 			<SchemaForm {schema} bind:value={formValues} controller={appController} disabled={saving} />
 		{:else}

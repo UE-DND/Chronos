@@ -1,15 +1,11 @@
 <script lang="ts">
-	import { getContext, setContext, onDestroy } from 'svelte';
+	import { getContext, setContext, onDestroy, untrack } from 'svelte';
 	import { Dialog } from 'bits-ui';
 	import { createSinglePointerSession } from '../gesture/single-pointer-session.svelte';
 	import type { Snippet } from 'svelte';
 	import { isReducedMotionActive } from '../motion/motion';
-	import {
-		clampDragOffset,
-		needsSnapBackAnimation,
-		overlayOpacityFromDrag,
-		shouldDismissSheet
-	} from './bottom-sheet-drag';
+	import { overlayOpacityFromDrag } from './bottom-sheet-drag';
+	import { createBottomSheetMotion } from './bottom-sheet-motion.svelte';
 	import {
 		createHistoryOverlaySync,
 		OVERLAY_LIFECYCLE_CONTEXT,
@@ -52,130 +48,41 @@
 	let overlayRef = $state<HTMLElement | null>(null);
 	let dragHandleRef = $state<HTMLElement | null>(null);
 
-	let dragOffsetPx = $state(0);
-	let isDragging = $state(false);
-	let isClosing = $state(false);
-	let isSnappingBack = $state(false);
 	const pointer = createSinglePointerSession();
-	let startY = 0;
-	let sheetOpen = $state(false);
-
-	const contentTransformStyle = $derived(
-		dragOffsetPx > 0 || isSnappingBack ? `transform: translateY(${dragOffsetPx}px)` : undefined
+	const motion = createBottomSheetMotion({
+		height: () => contentRef?.getBoundingClientRect().height ?? 0,
+		reduced: isReducedMotionActive,
+		onClosed: () => {
+			pointer.end();
+			open = false;
+			onOpenChange?.(false);
+		},
+		onComplete: (next) => onOpenChangeComplete?.(next)
+	});
+	const sheetOpen = $derived(motion.state.present);
+	const isDragging = $derived(motion.state.phase === 'dragging');
+	const contentTransformStyle = $derived(`transform: translateY(${motion.state.offset}px)`);
+	const overlayStyle = $derived(
+		`opacity: ${overlayOpacityFromDrag(motion.state.offset, contentRef?.getBoundingClientRect().height ?? 0)}`
 	);
-
-	function getSheetHeight(): number {
-		return contentRef?.getBoundingClientRect().height ?? 0;
-	}
-
-	function syncOverlayOpacity() {
-		if (!overlayRef) return;
-		const sheetHeight = getSheetHeight();
-		overlayRef.style.opacity = String(overlayOpacityFromDrag(dragOffsetPx, sheetHeight));
-	}
-
-	function clearOverlayOpacity() {
-		overlayRef?.style.removeProperty('opacity');
-	}
-
-	function resetDragState() {
-		isDragging = false;
-		isClosing = false;
-		isSnappingBack = false;
-		pointer.end();
-		clearOverlayOpacity();
-	}
-
-	function finishDismiss() {
-		resetDragState();
-		sheetOpen = false;
-		if (open) open = false;
-	}
-
-	function startDismissAnimation() {
-		const sheetHeight = getSheetHeight();
-		if (isReducedMotionActive() || sheetHeight <= 0) {
-			finishDismiss();
-			return;
-		}
-		isClosing = true;
-		requestAnimationFrame(() => {
-			dragOffsetPx = sheetHeight;
-			syncOverlayOpacity();
-		});
-	}
-
-	function startSnapBackAnimation() {
-		if (isReducedMotionActive()) {
-			dragOffsetPx = 0;
-			resetDragState();
-			return;
-		}
-		if (!needsSnapBackAnimation(dragOffsetPx)) {
-			resetDragState();
-			return;
-		}
-		isSnappingBack = true;
-		requestAnimationFrame(() => {
-			dragOffsetPx = 0;
-			syncOverlayOpacity();
-		});
-	}
-
 	function onHandlePointerDown(event: PointerEvent) {
-		if (!showHandle || event.button !== 0 || isClosing || isSnappingBack) return;
-
-		if (!pointer.start(event, dragHandleRef)) return;
-		startY = event.clientY;
-		isDragging = true;
+		if (!showHandle || !pointer.start(event, dragHandleRef)) return;
+		motion.start(event.clientY);
+		open = true;
+		historySync.syncOpenState(true);
 	}
-
 	function onWindowPointerMove(event: PointerEvent) {
-		if (!pointer.owns(event) || !isDragging) return;
-
-		dragOffsetPx = clampDragOffset(event.clientY - startY);
-		syncOverlayOpacity();
+		if (pointer.owns(event)) motion.move(event.clientY);
 	}
-
 	function onWindowPointerUp(event: PointerEvent) {
 		if (!pointer.owns(event)) return;
-
 		pointer.end();
-
-		if (!isDragging) return;
-		isDragging = false;
-
-		const sheetHeight = getSheetHeight();
-		if (shouldDismissSheet(dragOffsetPx, sheetHeight)) {
-			startDismissAnimation();
-			return;
-		}
-
-		startSnapBackAnimation();
+		motion.release(event.clientY);
 	}
-
 	function onWindowPointerCancel(event: PointerEvent) {
 		if (!pointer.owns(event)) return;
-
 		pointer.end();
-
-		if (!isDragging) return;
-		isDragging = false;
-		startSnapBackAnimation();
-	}
-
-	function onContentTransitionEnd(event: TransitionEvent) {
-		if (event.target !== contentRef || event.propertyName !== 'transform') return;
-
-		if (isClosing) {
-			finishDismiss();
-			return;
-		}
-
-		if (isSnappingBack) {
-			resetDragState();
-			dragOffsetPx = 0;
-		}
+		motion.release(event.clientY, true);
 	}
 
 	function handleOpenAutoFocus(event: Event) {
@@ -195,13 +102,13 @@
 		parent: getContext<HistoryOverlaySync | undefined>(OVERLAY_LIFECYCLE_CONTEXT),
 		setOpen: (next) => {
 			open = next;
-			sheetOpen = next;
 		}
 	});
 	setContext(OVERLAY_LIFECYCLE_CONTEXT, historySync);
 	$effect(() => historySync.syncOpenState(sheetOpen));
 	onDestroy(() => {
 		pointer.end();
+		motion.destroy();
 		historySync.dispose();
 	});
 
@@ -209,31 +116,14 @@
 		if (next) {
 			open = true;
 			onOpenChange?.(true);
-			return;
-		}
-		onOpenChange?.(false);
-		open = false;
+		} else motion.setOpen(false);
 	}
-
-	function handleOpenChangeComplete(isOpen: boolean) {
-		if (!isOpen) {
-			resetDragState();
-			sheetOpen = false;
-		}
-		onOpenChangeComplete?.(isOpen);
-	}
-
 	$effect(() => {
-		if (open) {
-			resetDragState();
-			dragOffsetPx = 0;
-			sheetOpen = true;
-			return;
-		}
-
-		if (sheetOpen) {
-			sheetOpen = false;
-		}
+		const next = open;
+		untrack(() => motion.setOpen(next));
+	});
+	$effect(() => {
+		if (contentRef) untrack(() => motion.mount());
 	});
 </script>
 
@@ -243,16 +133,13 @@
 	onpointercancel={showHandle ? onWindowPointerCancel : undefined}
 />
 
-<Dialog.Root
-	bind:open={sheetOpen}
-	onOpenChange={handleDialogOpenChange}
-	onOpenChangeComplete={handleOpenChangeComplete}
->
+<Dialog.Root bind:open={() => sheetOpen, handleDialogOpenChange}>
 	<Dialog.Portal>
 		<Dialog.Overlay
 			bind:ref={overlayRef}
 			class="bottom-sheet-overlay fixed inset-0 z-[var(--z-overlay)] bg-black/50"
 			aria-hidden="true"
+			style={overlayStyle}
 			onclick={() => handleDialogOpenChange(false)}
 		/>
 		<Dialog.Content
@@ -260,13 +147,20 @@
 			class="bottom-sheet-content rounded-t-sheet fixed inset-x-0 bottom-0 z-[var(--z-overlay)] flex max-h-[85dvh] min-h-0 flex-col overflow-hidden bg-surface-container-high text-on-surface shadow-overlay outline-none"
 			style={contentTransformStyle}
 			data-dragging={isDragging ? '' : undefined}
-			data-snapping-back={isSnappingBack ? '' : undefined}
-			data-closing={isClosing ? '' : undefined}
+			data-snapping-back={motion.state.phase === 'returning' ? '' : undefined}
+			data-closing={motion.state.phase === 'closing' ? '' : undefined}
 			restoreScrollDelay={0}
 			onOpenAutoFocus={handleOpenAutoFocus}
-			ontransitionend={onContentTransitionEnd}
+			onInteractOutside={(event) => {
+				event.preventDefault();
+				handleDialogOpenChange(false);
+			}}
+			onEscapeKeydown={(event) => {
+				event.preventDefault();
+				handleDialogOpenChange(false);
+			}}
 		>
-			<!-- The child API releases Bits UI's body lock when closed, before exit completes. -->
+			<!-- Keep the dialog and its body lock mounted until spring completion. -->
 			{#snippet child({ props })}
 				<div {...props}>
 					{#if showHandle}
@@ -315,9 +209,15 @@
 								showHandle
 									? [
 											'app-scroll-y min-h-0 flex-1 overflow-y-auto',
-											!footer && 'pb-[calc(1rem+var(--tabbar-block-safe,0px))]'
+											!footer &&
+												'pb-[calc(1rem+var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))]'
 										]
-									: 'shrink-0 px-6 pb-5'
+									: [
+											'shrink-0 px-6',
+											footer
+												? 'pb-5'
+												: 'pb-[calc(1.25rem+var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))]'
+										]
 							]}
 						>
 							{#if description}
@@ -341,8 +241,8 @@
 							class={[
 								'flex shrink-0 items-center gap-2',
 								showHandle
-									? 'mt-2 justify-end ps-4 pe-[calc(1rem+var(--tabbar-inline-safe,0px))] pb-[calc(var(--tabbar-block-safe,0px)+0.75rem)]'
-									: 'w-full justify-stretch gap-3 border-t border-outline-variant/40 ps-6 pe-[calc(1.5rem+var(--tabbar-inline-safe,0px))] pt-4 pb-[calc(var(--tabbar-block-safe,0px)+0.75rem)] [&>button]:flex-1'
+									? 'mt-2 justify-end ps-4 pe-[calc(1rem+var(--tabbar-inline-safe,0px))] pb-[calc(var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px))+0.75rem)]'
+									: 'w-full justify-stretch gap-3 border-t border-outline-variant/40 ps-6 pe-[calc(1.5rem+var(--tabbar-inline-safe,0px))] pt-4 pb-[calc(var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px))+0.75rem)] [&>button]:flex-1'
 							]}
 						>
 							{@render footer()}
@@ -364,53 +264,8 @@
 		}
 	}
 
+	:global(.bottom-sheet-content[data-dialog-content]),
 	:global(.bottom-sheet-overlay[data-dialog-overlay]) {
-		transition: opacity 300ms cubic-bezier(0.05, 0.7, 0.1, 1);
-		opacity: 1;
-	}
-
-	:global(.bottom-sheet-overlay[data-dialog-overlay][data-starting-style]),
-	:global(.bottom-sheet-overlay[data-dialog-overlay][data-ending-style]) {
-		opacity: 0;
-	}
-
-	:global(.bottom-sheet-overlay[data-dialog-overlay][data-state='closed']),
-	:global(.bottom-sheet-content[data-dialog-content][data-state='closed']) {
-		pointer-events: none !important;
-	}
-
-	:global(.bottom-sheet-content[data-dialog-content]) {
-		transition: transform 300ms cubic-bezier(0.05, 0.7, 0.1, 1);
-		transform: translateY(0);
-
-		@starting-style {
-			transform: translateY(max(100%, 16rem));
-		}
-	}
-
-	:global(.bottom-sheet-content[data-dialog-content][data-starting-style]),
-	:global(.bottom-sheet-content[data-dialog-content][data-ending-style]) {
-		transform: translateY(max(100%, 16rem));
-	}
-
-	:global(.bottom-sheet-content[data-dragging]) {
-		transition: none !important;
-	}
-
-	:global(.bottom-sheet-content[data-snapping-back]),
-	:global(.bottom-sheet-content[data-closing]) {
-		transition: transform 300ms cubic-bezier(0.05, 0.7, 0.1, 1) !important;
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		:global(.bottom-sheet-overlay[data-dialog-overlay]),
-		:global(.bottom-sheet-content[data-dialog-content]) {
-			transition-duration: 1ms;
-		}
-	}
-
-	:root.reduce-motion :global(.bottom-sheet-overlay[data-dialog-overlay]),
-	:root.reduce-motion :global(.bottom-sheet-content[data-dialog-content]) {
-		transition-duration: 1ms;
+		transition: none;
 	}
 </style>

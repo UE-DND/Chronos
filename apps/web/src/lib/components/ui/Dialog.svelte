@@ -46,30 +46,50 @@
 			class="fixed inset-0 z-[var(--z-overlay)] bg-black/50 backdrop-blur-xs transition-opacity duration-200"
 		/>
 		<Dialog.Content
-			class="fixed top-1/2 left-1/2 z-[var(--z-overlay)] flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-dialog bg-surface-container-high p-6 text-on-surface shadow-overlay transition-all duration-200 outline-none"
+			class="ui-dialog-content fixed left-1/2 z-[var(--z-overlay)] flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-hidden rounded-dialog bg-surface-container-high p-6 text-on-surface shadow-overlay transition-all duration-200 outline-none"
 		>
 			{#if title}
-				<Dialog.Title class="text-headline-small font-medium text-on-surface">
+				<Dialog.Title class="text-headline-small shrink-0 font-medium text-on-surface">
 					{title}
 				</Dialog.Title>
 			{/if}
-			{#if description}
-				<Dialog.Description class="text-body-medium text-on-surface-variant">
-					{description}
-				</Dialog.Description>
-			{/if}
-
-			{#if children}
-				<div class="flex flex-col gap-3">
-					{@render children()}
+			{#if description || children}
+				<div class="app-scroll-y flex min-h-0 flex-col gap-4 overflow-y-auto">
+					{#if description}
+						<Dialog.Description class="text-body-medium shrink-0 text-on-surface-variant">
+							{description}
+						</Dialog.Description>
+					{/if}
+					{#if children}
+						<div class="flex shrink-0 flex-col gap-3">
+							{@render children()}
+						</div>
+					{/if}
 				</div>
 			{/if}
 
 			{#if footer}
-				<div class="mt-2 flex items-center justify-end gap-2">
+				<div class="mt-2 flex shrink-0 items-center justify-end gap-2">
 					{@render footer()}
 				</div>
 			{/if}
 		</Dialog.Content>
 	</Dialog.Portal>
 </Dialog.Root>
+
+<style>
+	:global(.ui-dialog-content[data-dialog-content]) {
+		/* Center and constrain the whole dialog inside the usable viewport. */
+		top: calc(
+			(
+					100dvh + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) -
+						var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))
+				) /
+				2
+		);
+		max-height: calc(
+			100dvh - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) -
+				var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) - 2rem
+		);
+	}
+</style>

@@ -24,6 +24,96 @@ async function setNativeInsets(
 	);
 }
 
+test('dialog keeps its input and footer reachable in a short viewport with safe areas', async ({
+	page,
+	request
+}) => {
+	await request.post('/__e2e/deploy?build=old');
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
+	await page.goto('/Chronos/plugins');
+	await page.getByRole('tab', { name: '插件市场', exact: true }).click();
+	await page.getByRole('button', { name: '从链接安装', exact: true }).click();
+	const dialog = page.getByRole('dialog', { name: '从链接安装', exact: true });
+	await expect(dialog).toBeVisible();
+	await setNativeInsets(page, 24, 0, 16, 0);
+
+	for (const viewport of [
+		{ width: 430, height: 280 },
+		{ width: 932, height: 280 }
+	]) {
+		await page.setViewportSize(viewport);
+		await expect
+			.poll(async () => {
+				const bounds = (await dialog.boundingBox())!;
+				const margin = await page.evaluate(() =>
+					parseFloat(getComputedStyle(document.documentElement).fontSize)
+				);
+				return (
+					bounds.y >= 24 + margin - 1 &&
+					bounds.y + bounds.height <= viewport.height - 16 - margin + 1
+				);
+			})
+			.toBe(true);
+		const input = dialog.getByRole('textbox');
+		await input.fill('https://example.com/plugin.manifest.json');
+		await expect(input).toBeInViewport();
+		await expect(dialog.getByRole('button', { name: '取消', exact: true })).toBeInViewport({
+			ratio: 1
+		});
+	}
+	await dialog.getByRole('button', { name: '取消', exact: true }).click();
+	await expect(dialog).toBeHidden();
+});
+
+test('landscape sheet preserves the bottom safe area for its footer and scrollable content', async ({
+	page,
+	request
+}) => {
+	await request.post('/__e2e/deploy?build=old');
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
+	await page.goto(`/Chronos/s#${payload}`);
+	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
+	await expect(page).toHaveURL(/\/Chronos\/$/);
+	await page.setViewportSize({ width: 932, height: 430 });
+	await setNativeInsets(page, 24, 0, 32, 0);
+	await page.getByRole('tab', { name: '我的', exact: true }).click();
+	await page.getByText('管理课程表', { exact: true }).click();
+	await page.getByRole('button', { name: '删除课表', exact: true }).click();
+	const sheet = page.getByRole('dialog', { name: '删除课表？', exact: true });
+	await expect(sheet).toBeVisible();
+	const cancel = sheet.getByRole('button', { name: '取消', exact: true });
+	for (const bottom of [32, 0, 16]) {
+		await setNativeInsets(page, 24, 0, bottom, 0);
+		await expect
+			.poll(async () => {
+				const bounds = (await cancel.boundingBox())!;
+				return bounds.y + bounds.height <= 430 - bottom;
+			})
+			.toBe(true);
+	}
+	await cancel.click();
+	await expect(sheet).toBeHidden();
+	await page.getByRole('button', { name: '返回', exact: true }).click();
+	await page.getByRole('tab', { name: '课表', exact: true }).click();
+	await setNativeInsets(page, 24, 0, 32, 0);
+	await page.locator('.course-capsule').first().click();
+	const detail = page.getByRole('dialog', { name: '课程详情', exact: true });
+	await expect(detail).toBeVisible();
+	const content = detail.locator('.app-scroll-y');
+	await expect
+		.poll(async () =>
+			content.evaluate((node) => {
+				const padding = parseFloat(getComputedStyle(node).paddingBottom);
+				return padding >= 32;
+			})
+		)
+		.toBe(true);
+});
+
 test('clock summary below the host toolbar does not add the native top inset again', async ({
 	page,
 	context,

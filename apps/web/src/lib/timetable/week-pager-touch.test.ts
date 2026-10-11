@@ -109,7 +109,7 @@ describe('week pager touch', () => {
 			h.pointer('pointerdown', 200, 440);
 			if (kind.startsWith('vertical')) h.pointer('pointermove', 203, 420);
 			h.pointer(kind.endsWith('cancel') ? 'pointercancel' : 'pointerup', 205, 400);
-			h.advance(500);
+			h.advance(2000);
 			expect(writes).toEqual([]);
 			expect(h.node.scrollLeft).toBe(initialOffset);
 			expect(h.node.style.scrollSnapType).toBe('');
@@ -122,7 +122,7 @@ describe('week pager touch', () => {
 		const pageWidth = 412.19049;
 		const h = createHarness({ pageWidth, initialOffset: 15 * pageWidth });
 		h.drag(direction * 160);
-		h.advance(500);
+		h.advance(2000);
 		expect(h.node.scrollLeft).toBeCloseTo((15 - direction) * pageWidth, 6);
 		h.touch.destroy();
 	});
@@ -137,7 +137,7 @@ describe('week pager touch', () => {
 		h.pointer('pointerdown', 200, 440);
 		h.pointer('pointermove', 203, 410);
 		h.pointer('pointercancel', 203, 410);
-		h.advance(500);
+		h.advance(2000);
 		expect(h.node.scrollLeft).toBeCloseTo(15 * pageWidth, 6);
 		expect(h.touch.isActive).toBe(false);
 		expect(h.node.style.scrollSnapType).toBe('');
@@ -160,12 +160,12 @@ describe('week pager touch', () => {
 		enabled = true;
 		h.pointer('pointermove', 500 + dx * 2);
 		h.pointer('pointerup', 500 + dx * 2);
-		h.advance(400);
+		h.advance(2000);
 		expect(h.node.scrollLeft).toBe(9000);
 		expect(h.onSettled).not.toHaveBeenCalled();
 
 		h.drag(dx);
-		h.advance(400);
+		h.advance(2000);
 		expect(h.node.scrollLeft).toBe(dx < 0 ? 10000 : 8000);
 		h.touch.destroy();
 	});
@@ -177,7 +177,7 @@ describe('week pager touch', () => {
 		h.advance(450);
 		enabled = false;
 		h.pointer('pointerup', 200);
-		h.advance(400);
+		h.advance(2000);
 		expect(h.node.scrollLeft).toBe(9000);
 		expect(h.touch.isActive).toBe(false);
 		expect(h.node.style.scrollSnapType).toBe('');
@@ -191,7 +191,7 @@ describe('week pager touch', () => {
 		h.pointer('pointerdown', 500, 500);
 		h.pointer('pointermove', 478, 450);
 		h.pointer('pointerup', 450, 400);
-		h.advance(400);
+		h.advance(2000);
 		expect(h.node.scrollLeft).toBe(9000);
 		expect(h.node.style.scrollSnapType).toBe('');
 		h.touch.destroy();
@@ -217,7 +217,7 @@ describe('week pager touch', () => {
 		expect(h.node.scrollLeft).toBe(9300);
 		expect(h.touchMove(200, 620).defaultPrevented).toBe(true);
 		h.pointer('pointerup', 200, 620);
-		h.advance(400);
+		h.advance(2000);
 		expect(h.node.scrollLeft).toBe(10000);
 		expect(h.touchMove(200, 620).defaultPrevented).toBe(false);
 		h.touch.destroy();
@@ -232,7 +232,7 @@ describe('week pager touch', () => {
 		expect(h.touchMove(200, 470).defaultPrevented).toBe(false);
 		expect(h.node.scrollLeft).toBe(9000);
 		h.pointer('pointerup', 200, 470);
-		h.advance(400);
+		h.advance(2000);
 		expect(h.node.scrollLeft).toBe(9000);
 		h.touch.destroy();
 	});
@@ -257,7 +257,7 @@ describe('week pager touch', () => {
 	it('limits a long drag to one adjacent week', () => {
 		const h = createHarness();
 		h.drag(-2500);
-		h.advance(400);
+		h.advance(2000);
 		expect(h.node.scrollLeft).toBe(10000);
 		expect(h.onSettled).toHaveBeenCalledTimes(1);
 		expect(h.suspendSnap).toHaveBeenLastCalledWith(false);
@@ -267,7 +267,7 @@ describe('week pager touch', () => {
 	it('rejects a short slow drag but accepts a deliberate quick flick', () => {
 		const h = createHarness();
 		h.drag(-40, 200);
-		h.advance(400);
+		h.advance(2000);
 		expect(h.node.scrollLeft).toBe(9000);
 
 		h.drag(-40, 40);
@@ -275,25 +275,34 @@ describe('week pager touch', () => {
 		expect(h.node.scrollLeft).toBeGreaterThan(9040);
 		expect(h.node.scrollLeft).toBeLessThan(9900);
 		expect(h.touch.isActive).toBe(true);
-		h.advance(250);
+		h.advance(1500);
 		expect(h.node.scrollLeft).toBe(10000);
+		h.touch.destroy();
+	});
+	it('forgets flick momentum after holding the pointer before release', () => {
+		const h = createHarness();
+		h.pointer('pointerdown', 500);
+		h.advance(20);
+		h.pointer('pointermove', 460);
+		h.advance(100);
+		h.pointer('pointerup', 460);
+		h.advance(2000);
+		expect(h.node.scrollLeft).toBe(9000);
+		expect(h.onSettled).toHaveBeenCalledOnce();
 		h.touch.destroy();
 	});
 
 	it('settles a short return sooner than a nearly full-page flick', () => {
 		const h = createHarness();
 		h.drag(-40, 200);
-		h.advance(150);
-		expect(h.onSettled).not.toHaveBeenCalled();
-		h.advance(70);
+		h.advance(500);
+		expect(h.onSettled).toHaveBeenCalledTimes(1);
 		expect(h.node.scrollLeft).toBe(9000);
-		expect(h.onSettled).toHaveBeenCalledTimes(1);
-
 		h.drag(-40, 40);
-		h.advance(220);
-		expect(h.node.scrollLeft).toBeLessThan(10000);
+		h.advance(500);
 		expect(h.onSettled).toHaveBeenCalledTimes(1);
-		h.advance(110);
+		expect(h.node.scrollLeft).toBeLessThan(10000);
+		h.advance(1500);
 		expect(h.node.scrollLeft).toBe(10000);
 		expect(h.onSettled).toHaveBeenCalledTimes(2);
 		h.touch.destroy();
@@ -304,11 +313,9 @@ describe('week pager touch', () => {
 		h.drag(-300);
 		// 250 ms is a frame boundary shared by all three refresh rates.
 		h.advance(150);
-		const duration = 180 + 0.7 * 120;
-		expect(h.node.scrollLeft).toBeCloseTo(9300 + 700 * (1 - (1 - 150 / duration) ** 2.25), 6);
-		h.advance(duration - 150 - 1);
+		expect(h.node.scrollLeft).toBeGreaterThan(9300);
 		expect(h.node.scrollLeft).toBeLessThan(10000);
-		h.advance(1 + 1000 / hz);
+		h.advance(1850);
 		expect(h.node.scrollLeft).toBe(10000);
 		expect(h.positions.every((left) => left >= 9300 && left <= 10000)).toBe(true);
 		expect(h.positions.every((left, i) => i === 0 || left >= h.positions[i - 1])).toBe(true);
@@ -321,7 +328,7 @@ describe('week pager touch', () => {
 	it('keeps the final frame active until scroll observers can consume it', () => {
 		const h = createHarness({ hz: 100 });
 		h.drag(-500);
-		h.advance(240);
+		while (h.node.scrollLeft !== 10000) h.advance(10);
 		expect(h.node.scrollLeft).toBe(10000);
 		expect(h.onSettled).not.toHaveBeenCalled();
 		expect(h.touch.isActive).toBe(true);
@@ -345,7 +352,7 @@ describe('week pager touch', () => {
 			h.pointer('pointermove', 500 + direction * 300);
 			expect(h.node.scrollLeft).toBe(interruptedOffset - direction * 300);
 			h.pointer('pointerup', 500 + direction * 300);
-			h.advance(400);
+			h.advance(2000);
 			expect(h.node.scrollLeft).toBe(direction === -1 ? 11000 : 9000);
 			expect(h.onSettled).toHaveBeenCalledTimes(1);
 			expect(h.node.style.scrollSnapType).toBe('');
@@ -360,7 +367,7 @@ describe('week pager touch', () => {
 		h.advance(120);
 		h.pointer('pointerdown', 500);
 		h.pointer('pointerup', 500);
-		h.advance(400);
+		h.advance(2000);
 		expect(h.node.scrollLeft).toBe(10000);
 		expect(h.node.style.scrollSnapType).toBe('');
 		expect(h.suspendSnap).toHaveBeenLastCalledWith(false);
@@ -373,7 +380,7 @@ describe('week pager touch', () => {
 		h.pointer('pointerdown', 500);
 		h.pointer('pointermove', 100);
 		h.pointer('pointercancel', 100);
-		h.advance(400);
+		h.advance(2000);
 		expect(h.node.scrollLeft).toBe(9000);
 		expect(h.onSettled).toHaveBeenCalledTimes(1);
 		h.touch.destroy();
@@ -385,7 +392,7 @@ describe('week pager touch', () => {
 	])('stays within the boundary at $initialOffset', ({ initialOffset, dx }) => {
 		const h = createHarness({ initialOffset });
 		h.drag(dx);
-		h.advance(400);
+		h.advance(2000);
 		expect(h.node.scrollLeft).toBe(initialOffset);
 		expect(h.positions.every((left) => left >= 0 && left <= 19000)).toBe(true);
 		h.touch.destroy();
@@ -409,7 +416,7 @@ describe('week pager touch', () => {
 			h.advance(80);
 			const offset = h.node.scrollLeft;
 			h.touch[action]();
-			h.advance(400);
+			h.advance(2000);
 			expect(h.node.scrollLeft).toBe(offset);
 			expect(h.touch.isActive).toBe(false);
 			expect(h.node.style.scrollSnapType).toBe('');
@@ -418,4 +425,18 @@ describe('week pager touch', () => {
 			h.touch.destroy();
 		}
 	);
+});
+
+it('returns to the original week when release reverses a long drag', () => {
+	const h = createHarness();
+	h.pointer('pointerdown', 500);
+	h.advance(100);
+	h.pointer('pointermove', 100);
+	h.advance(20);
+	h.pointer('pointermove', 180);
+	h.pointer('pointerup', 180);
+	h.advance(2000);
+	expect(h.node.scrollLeft).toBe(9000);
+	expect(h.onSettled).toHaveBeenCalledOnce();
+	h.touch.destroy();
 });
