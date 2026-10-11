@@ -498,7 +498,7 @@ export const en = {
 		'Your data was cleared, but the app could not finish restoring its initial state. Restart the app to try again.',
 	'about.clear.title': 'Clear all data?',
 	'about.clear.desc':
-		'This will clear your timetables, wallpapers, saved credentials, and plugin data, remove extra plugins, and restore default settings. The app and preinstalled plugins will remain. This cannot be undone.',
+		'This will clear your timetables, wallpapers, and plugin data, remove extra plugins, and restore default settings. The app and preinstalled plugins will remain. This cannot be undone.',
 
 	'about.update.subtitle.new': 'Update soon for the latest features and improvements',
 	'about.update.subtitle.swOnly': 'An app update is ready. Install to apply it.',
