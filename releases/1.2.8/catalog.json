@@ -1,0 +1,16 @@
+{
+	"version": 1,
+	"updatedAt": 1791811387,
+	"manifests": [
+		"./manifests/daf0261e840a92518acfa77a/codec-share.manifest.json",
+		"./manifests/cf805875f6fb7a1a77c09741/source-cqut.manifest.json",
+		"./manifests/29d1eb8c983e8f6c95e61057/theme-m3.manifest.json",
+		"./manifests/f199e969b1d6e6bb38445e2e/theme-arknights.manifest.json",
+		"./manifests/0521cdea474d39f3f4b0fac0/theme-yumemita.manifest.json",
+		"./manifests/86b62350f03b897770f27cb3/tool-qrcode.manifest.json",
+		"./manifests/8945ed78e5e2cd224f18edbb/tool-calendar-holidays.manifest.json",
+		"./manifests/dc065a58c1e461cf51d5da8d/tool-today.manifest.json",
+		"./manifests/e363d910ff3d631ce2060fb9/tool-error-log.manifest.json",
+		"./manifests/b1d686744018f30925bc78d1/tool-clock.manifest.json"
+	]
+}
