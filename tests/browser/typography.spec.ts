@@ -25,8 +25,8 @@ for (const locale of ['zh-CN', 'en-US']) {
 						await route.fulfill({ response });
 					}
 				);
-				await page.goto('/Chronos/display-settings');
 				for (const mode of ['light', 'dark']) {
+					await page.goto('/Chronos/wallpaper');
 					const label =
 						locale === 'zh-CN'
 							? mode === 'dark'
@@ -42,9 +42,11 @@ for (const locale of ['zh-CN', 'en-US']) {
 					await expect(page.getByRole('radio', { name: label, exact: true })).toBeChecked();
 					await expect(page.locator('html')).toHaveCSS('font-family', 'system-ui, sans-serif');
 					await expect(page.locator('html')).toHaveCSS('font-weight', '500');
-					await expect(page.locator('h1').first()).toHaveCSS('font-weight', '400');
+					await expect(page.locator('h1').first()).toHaveCSS('font-weight', '500');
 					await expect(page.locator('.ui-section-title').first()).toHaveCSS('font-weight', '500');
 					await expect(page.locator('.row-title').first()).toHaveCSS('font-weight', '600');
+					await page.goto('/Chronos/display-settings');
+					await expect(page.locator('input[name="theme-mode"]')).toHaveCount(0);
 					await page.getByRole('slider').focus();
 					await page.getByRole('slider').press('End');
 					expect(

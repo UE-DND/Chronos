@@ -3,6 +3,7 @@
 	import {
 		DEFAULT_USER_PREFERENCES,
 		resolveLocalizedText,
+		type ThemeMode,
 		type WallpaperSource
 	} from '@chronos/core';
 	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
@@ -15,6 +16,7 @@
 	import MineSection from '#lib/components/mine/MineSection.svelte';
 	import MineRow from '#lib/components/mine/MineRow.svelte';
 	let { shell }: { shell: AppShellController } = $props();
+	let themeMode = $derived(shell.controller.userPreferences?.themeMode ?? 'auto');
 	const visualThemeId = $derived(shell.controller.activeThemeId);
 	const wallpaperColorsSelected = $derived(
 		shell.state.wallpaperColorsAvailable &&
@@ -96,6 +98,29 @@
 			);
 	});
 
+	const themeOptions = $derived.by(() => {
+		void shell.controller.locale;
+		return [
+			{ mode: 'auto' as const, label: hostT('display.theme.auto') },
+			{ mode: 'light' as const, label: hostT('display.theme.light') },
+			{ mode: 'dark' as const, label: hostT('display.theme.dark') }
+		] as const;
+	});
+
+	async function selectThemeMode(mode: ThemeMode) {
+		if (themeMode === mode) return;
+		haptic.light();
+		trackEvent('settings_theme_change', { mode });
+		const previous = themeMode;
+		themeMode = mode;
+		try {
+			await shell.setThemeMode(mode);
+		} catch {
+			themeMode = previous;
+			shell.controller.notify(hostT('wallpaper.settings.saveFailed'), 'error');
+		}
+	}
+
 	async function selectTheme(themeId: string) {
 		const option = colorSchemeOptions.find((entry) => entry.id === themeId);
 		if (!option || option.disabled) return;
@@ -126,6 +151,21 @@
 </script>
 
 <div class="flex flex-col gap-5">
+	<MineSection title={hostT('display.section.themeAppearance')}>
+		{#each themeOptions as option (option.mode)}
+			{@const selected = themeMode === option.mode}
+			<MineRow label={true} title={option.label}>
+				{#snippet trailing()}
+					<Radio
+						name="theme-mode"
+						checked={selected}
+						onchange={() => selectThemeMode(option.mode)}
+					/>
+				{/snippet}
+			</MineRow>
+		{/each}
+	</MineSection>
+
 	<MineSection title={hostT('wallpaper.themes.installed')}>
 		{#each colorSchemeOptions as option (option.id)}
 			{@const selected = visualThemeId === option.id}

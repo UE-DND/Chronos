@@ -160,6 +160,14 @@
 	}
 }
 
+.ui-shell-top-bar-title .text-headline-small {
+	font-weight: max(500, var(--font-weight-headline-small));
+}
+
+.ui-shell-top-bar-title .text-title-large {
+	font-weight: max(500, var(--font-weight-title-large));
+}
+
 .text-page-title {
 	font-family: var(--font-command);
 	margin: 0;

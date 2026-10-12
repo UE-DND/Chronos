@@ -6,6 +6,65 @@ import type { Timetable } from '../../packages/core/src/domain/timetable';
 
 test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
+for (const input of ['mouse', 'touch'] as const) {
+	test(`${input} only changes font size by dragging the thumb`, async ({
+		page,
+		context,
+		request
+	}) => {
+		await request.post('/__e2e/deploy?build=old');
+		await page.addInitScript(() =>
+			localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+		);
+		await page.goto('/Chronos/display-settings');
+		const slider = page.getByRole('slider');
+		await expect(slider).toHaveValue('1');
+		await slider.scrollIntoViewIfNeeded();
+		const rect = (await slider.boundingBox())!;
+		const y = rect.y + rect.height / 2;
+		const savedScale = () =>
+			page.evaluate((key) => localStorage.getItem(key), PREFERENCE_STORAGE_KEYS.fontSizeScale);
+		const initialScale = await savedScale();
+		for (const x of [rect.x + 8, rect.x + rect.width - 8]) {
+			if (input === 'mouse') await page.mouse.click(x, y);
+			else await page.touchscreen.tap(x, y);
+			await expect(slider).toHaveValue('1');
+			await expect(page.locator('html')).toHaveCSS('font-size', '15px');
+			expect(await savedScale()).toBe(initialScale);
+		}
+
+		const startX = rect.x + 8 + (rect.width - 16) / 3;
+		const endX = rect.x + rect.width - 8;
+		const session = input === 'touch' ? await context.newCDPSession(page) : null;
+		if (session) {
+			await session.send('Input.dispatchTouchEvent', {
+				type: 'touchStart',
+				touchPoints: [{ x: startX, y }]
+			});
+		} else {
+			await page.mouse.move(startX, y);
+			await page.mouse.down();
+		}
+		await expect(slider).toHaveValue('1');
+		if (session) {
+			await session.send('Input.dispatchTouchEvent', {
+				type: 'touchMove',
+				touchPoints: [{ x: endX, y }]
+			});
+		} else await page.mouse.move(endX, y);
+		await expect(slider).toHaveValue('3');
+		await expect(page.locator('html')).toHaveCSS('font-size', '19.5px');
+		expect(await savedScale()).toBe(initialScale);
+		if (session) {
+			await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+			await session.detach();
+		} else await page.mouse.up();
+		await expect.poll(savedScale).toBe('1.3');
+		await page.reload();
+		await expect(slider).toHaveValue('3');
+	});
+}
+
 for (const locale of ['zh-CN', 'en-US']) {
 	test.describe(locale, () => {
 		test.use({ locale });

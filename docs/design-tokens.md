@@ -29,6 +29,7 @@ content use `--font-sans`; Arknights navigation retains `--font-mono`.
 | Role                                                                | Weight |
 | ------------------------------------------------------------------- | ------ |
 | Headline and large title defaults                                   | 400    |
+| Top app bar page and timetable week titles                          | 500    |
 | Medium/small title and section heading defaults                     | 500    |
 | Buttons, field/navigation labels and course names                   | 600    |
 | Body text, input values, course location and teacher                | 500    |

@@ -7,7 +7,7 @@ const payload = await encodeSharePayload(timetable as Timetable);
 
 test.use({ viewport: { width: 390, height: 844 } });
 
-test('display settings write once for row, radio and keyboard activation', async ({
+test('theme and display settings write once for row, radio and keyboard activation', async ({
 	page,
 	request
 }) => {
@@ -15,10 +15,6 @@ test('display settings write once for row, radio and keyboard activation', async
 	await page.addInitScript(() => {
 		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1');
 		localStorage.setItem('chronos:/Chronos:chronos_preferences:timetable_layout_mode', 'fixed');
-	});
-	await page.goto('/Chronos/display-settings');
-	await expect(page.getByText('暗色主题', { exact: true })).toBeVisible();
-	await page.evaluate(() => {
 		const writes: string[] = [];
 		const otherWrites: { key: string; value: string }[] = [];
 		Object.assign(window, { preferenceWrites: writes, otherPreferenceWrites: otherWrites });
@@ -34,6 +30,9 @@ test('display settings write once for row, radio and keyboard activation', async
 			setItem.call(this, key, value);
 		};
 	});
+	await page.goto('/Chronos/wallpaper');
+	await expect(page.getByText('主题外观', { exact: true })).toBeVisible();
+	await expect(page.getByText('暗色主题', { exact: true })).toBeVisible();
 	const writes = () =>
 		page.evaluate(() => (window as unknown as { preferenceWrites: string[] }).preferenceWrites);
 	await page.getByText('暗色主题', { exact: true }).click();
@@ -48,6 +47,9 @@ test('display settings write once for row, radio and keyboard activation', async
 	await page.getByRole('radio', { name: '跟随系统' }).press('Space');
 	await expect(page.getByRole('radio', { name: '跟随系统' })).toBeChecked();
 	expect(await writes()).toEqual(['dark', 'light', 'auto']);
+	await page.goto('/Chronos/display-settings');
+	await expect(page.getByText('主题外观', { exact: true })).toHaveCount(0);
+	await expect(page.locator('input[name="theme-mode"]')).toHaveCount(0);
 	await page.getByText('一屏显示', { exact: true }).click();
 	await page.getByText('一屏显示', { exact: true }).click();
 	await page.getByText('合并圆角', { exact: true }).click();
@@ -89,7 +91,7 @@ for (const activation of ['row', 'keyboard'] as const) {
 			target: '高亮当前节次'
 		}
 	]) {
-		test(`display settings recover and retry ${setting.key} with ${activation} after storage failure`, async ({
+		test(`appearance settings recover and retry ${setting.key} with ${activation} after storage failure`, async ({
 			page,
 			request
 		}) => {
@@ -101,7 +103,9 @@ for (const activation of ['row', 'keyboard'] as const) {
 			}, setting);
 			const errors: string[] = [];
 			page.on('pageerror', (error) => errors.push(error.message));
-			await page.goto('/Chronos/display-settings');
+			await page.goto(
+				setting.key === 'theme_mode' ? '/Chronos/wallpaper' : '/Chronos/display-settings'
+			);
 			const control = page.getByRole(setting.initial ? 'radio' : 'switch', {
 				name: setting.target
 			});

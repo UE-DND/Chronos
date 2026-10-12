@@ -52,7 +52,7 @@ for (const viewport of [
 		await expect(page.getByText('当前主题未提供壁纸', { exact: true })).toHaveCount(0);
 
 		for (const mode of ['亮色主题', '暗色主题']) {
-			await page.goto('/Chronos/display-settings');
+			await page.goto('/Chronos/wallpaper');
 			await page
 				.locator('label')
 				.filter({ has: page.getByText(mode, { exact: true }) })
@@ -67,6 +67,7 @@ for (const viewport of [
 				/data:image\/jpeg/
 			);
 			await expect(page.locator('.ui-section-surface').first()).toHaveCSS('border-radius', '0px');
+			await page.goto('/Chronos/display-settings');
 			const toggle = page.getByRole('switch', { name: '高亮当前节次', exact: true });
 			await expect(toggle).toHaveCSS('border-radius', '0px');
 			await expect(toggle.locator('[data-switch-thumb]')).toHaveCSS('border-radius', '0px');

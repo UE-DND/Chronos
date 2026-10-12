@@ -3,7 +3,7 @@
 	import { FONT_SIZE_SCALE_OPTIONS } from '@chronos/core';
 	import { createFontSizeSettings } from './font-size-settings.svelte';
 	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
-	import { type CapsuleCornerStyle, type ThemeMode, type TimetableLayoutMode } from '@chronos/core';
+	import { type CapsuleCornerStyle, type TimetableLayoutMode } from '@chronos/core';
 	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
 	import { trackEvent } from '#lib/client/analytics.ts';
 
@@ -14,7 +14,6 @@
 	import { haptic } from '#lib/haptic/haptic.ts';
 
 	let { shell }: { shell: AppShellController } = $props();
-	let themeMode = $derived(shell.controller.userPreferences?.themeMode ?? 'auto');
 	let layoutMode = $derived(shell.state.effectiveTimetableLayoutMode);
 	const compactLandscape = $derived(shell.state.compactLandscape);
 	let capsuleCornerStyle = $derived(
@@ -53,15 +52,6 @@
 		void fontSettings.commit();
 	}
 
-	const themeOptions = $derived.by(() => {
-		void shell.controller.locale;
-		return [
-			{ mode: 'auto' as const, label: hostT('display.theme.auto') },
-			{ mode: 'light' as const, label: hostT('display.theme.light') },
-			{ mode: 'dark' as const, label: hostT('display.theme.dark') }
-		] as const;
-	});
-
 	const layoutOptions = $derived.by(() => {
 		void shell.controller.locale;
 		return [
@@ -91,20 +81,6 @@
 			}
 		] as const;
 	});
-
-	async function selectThemeMode(mode: ThemeMode) {
-		if (themeMode === mode) return;
-		haptic.light();
-		trackEvent('settings_theme_change', { mode });
-		const previous = themeMode;
-		themeMode = mode;
-		try {
-			await shell.setThemeMode(mode);
-		} catch {
-			themeMode = previous;
-			shell.controller.notify(hostT('wallpaper.settings.saveFailed'), 'error');
-		}
-	}
 
 	async function selectLayoutMode(mode: TimetableLayoutMode) {
 		if (layoutMode === mode || (compactLandscape && mode === 'compact')) return;
@@ -147,21 +123,6 @@
 </script>
 
 <div class="flex flex-col gap-5">
-	<MineSection title={hostT('display.section.themeAppearance')}>
-		{#each themeOptions as option (option.mode)}
-			{@const selected = themeMode === option.mode}
-			<MineRow label={true} title={option.label}>
-				{#snippet trailing()}
-					<Radio
-						name="theme-mode"
-						checked={selected}
-						onchange={() => selectThemeMode(option.mode)}
-					/>
-				{/snippet}
-			</MineRow>
-		{/each}
-	</MineSection>
-
 	<MineSection title={hostT('display.font.title')}>
 		<div class="min-w-0 px-4 pt-4 pb-5">
 			<div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3">
@@ -172,7 +133,7 @@
 				<div class="relative min-w-0 pb-5">
 					<input
 						id="font-size-slider"
-						class="block h-11 min-h-[44px] w-full cursor-pointer accent-brand"
+						class="pointer-events-none block h-11 min-h-[44px] w-full accent-brand"
 						type="range"
 						min="0"
 						max="3"
@@ -260,3 +221,16 @@
 		{/each}
 	</MineSection>
 </div>
+
+<style>
+	/* Keep native thumb dragging while ignoring accidental track taps. */
+	#font-size-slider::-webkit-slider-thumb {
+		pointer-events: auto;
+		cursor: ew-resize;
+	}
+
+	#font-size-slider::-moz-range-thumb {
+		pointer-events: auto;
+		cursor: ew-resize;
+	}
+</style>
