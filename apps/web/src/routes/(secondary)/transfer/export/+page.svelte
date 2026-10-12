@@ -12,10 +12,12 @@
 	let ready = $state(false);
 	let exportWarning = $state<string | null>(null);
 
-	onMount(async () => {
-		await ensureEngineFullyReady();
-		exportWarning = await checkPrimaryExportWarning(engine);
-		ready = true;
+	onMount(() => {
+		void (async () => {
+			await ensureEngineFullyReady();
+			exportWarning = await checkPrimaryExportWarning(engine);
+			ready = true;
+		})().catch((error) => console.error('[page-startup]', error));
 	});
 </script>
 

@@ -112,11 +112,13 @@
 	}
 
 	onMount(() => {
-		void ensureEngineFullyReady().then(async () => {
-			refreshInstalled();
-			refreshQueue();
-			await loadOfficialCatalog();
-		});
+		void ensureEngineFullyReady()
+			.then(async () => {
+				refreshInstalled();
+				refreshQueue();
+				await loadOfficialCatalog();
+			})
+			.catch((error) => console.error('[plugins-startup]', error));
 
 		const subInstalled = officialPlugins.onChanged(() => {
 			refreshInstalled();

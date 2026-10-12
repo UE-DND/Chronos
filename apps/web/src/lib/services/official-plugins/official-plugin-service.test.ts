@@ -1,6 +1,11 @@
 import { describe, expect, it, vi, beforeEach, afterEach, type Mock } from 'vite-plus/test';
 import type { ImageRepository } from '#lib/storage/image-repository.ts';
 import { HOST_BUILD } from '#lib/config/app-meta.ts';
+import {
+	getDefaultWebPlatform,
+	setHostPlatform,
+	resetHostPlatform
+} from '#lib/platform/host-platform.ts';
 
 const environment = vi.hoisted(() => ({ dev: false }));
 vi.mock('$app/env', () => ({
@@ -163,6 +168,7 @@ describe('OfficialPluginService', () => {
 	let onNotification: ReturnType<typeof vi.fn>;
 
 	afterEach(() => {
+		resetHostPlatform();
 		environment.dev = false;
 		vi.unstubAllGlobals();
 		vi.useRealTimers();
@@ -200,6 +206,42 @@ describe('OfficialPluginService', () => {
 		});
 		await engine.init();
 		service = createService(engine);
+	});
+	it('keeps ownership unchanged when native recovery times out, even if its response arrives later', async () => {
+		vi.useFakeTimers();
+		let finish!: () => void;
+		const state = { phase: 'idle' as const, percent: null, canCancel: false };
+		setHostPlatform({
+			...getDefaultWebPlatform(),
+			isNative: true,
+			platformType: 'android',
+			getUpdateAction: () => ({
+				mode: 'native-apk',
+				canApplyInApp: true,
+				actionLabelKey: 'test',
+				applyUpdate: async () => {},
+				native: {
+					getState: () =>
+						new Promise((resolve) => {
+							finish = () => resolve(state);
+						}),
+					subscribe: async () => () => {},
+					continueUpdate: async () => state,
+					cancelUpdate: async () => state
+				}
+			})
+		});
+		service = createService(engine, HOST_BUILD.version, { ...HOST_BUILD, target: 'mobile' });
+		const startHost = vi.spyOn(service.installationStore, 'startHost');
+		const pending = service.init();
+		const rejected = expect(pending).rejects.toThrow('native-recovery');
+		await vi.advanceTimersByTimeAsync(3000);
+		await rejected;
+		finish();
+		await Promise.resolve();
+		expect(startHost).not.toHaveBeenCalled();
+		expect(service.installationStore.hostGeneration).toBe('');
+		service.dispose();
 	});
 
 	it('fetches and parses official plugin catalog', async () => {

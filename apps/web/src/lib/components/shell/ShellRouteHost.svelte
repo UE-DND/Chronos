@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/env';
-	import { onMount } from 'svelte';
+	import { appStartup } from '#lib/boot/startup.svelte.ts';
 	import { getContext } from 'svelte';
 	import { MediaQuery } from 'svelte/reactivity';
 	import { page } from '$app/state';
@@ -21,7 +21,7 @@
 	} from '@chronos/ui-kit';
 	import { resolveLocalizedText } from '@chronos/core';
 	import EdgeBarActionButtons from '#lib/components/ui/EdgeBarActionButtons.svelte';
-	import { ensureEngineFullyReady, getAppController } from '#lib/services/app-engine.ts';
+	import { getAppController } from '#lib/services/app-engine.ts';
 	import { isShellRoute } from '#lib/navigation/routes.ts';
 	import { secondaryTransitionGate } from '#lib/navigation/index.ts';
 
@@ -71,21 +71,18 @@
 		})
 	);
 
-	let ready = $state(false);
+	const ready = $derived(
+		appStartup.state.plugins === 'ready' || appStartup.state.timetableFallback
+	);
 	let markedVisible = false;
 
-	onMount(async () => {
-		await ensureEngineFullyReady();
-		ready = true;
-	});
-
 	$effect(() => {
-		if (!ready) return;
+		if (appStartup.state.core !== 'ready') return;
 		const pathname = page.url.pathname;
 		if (isShellRoute(pathname)) {
 			gate.syncRoute(pathname);
-			shellTab.init();
-			if (!markedVisible && typeof performance !== 'undefined') {
+			if (ready) shellTab.init();
+			if (ready && !markedVisible && typeof performance !== 'undefined') {
 				markedVisible = true;
 				performance.mark('chronos-timetable-visible');
 			}
@@ -99,14 +96,14 @@
 
 		return scheduleIdle(() => {
 			gate.enableShellHost();
-			shellTab.init();
+			if (ready) shellTab.init();
 			if (!gate.transitioning) gate.syncRoute(pathname);
 		});
 	});
 
 	function scheduleIdle(callback: () => void): () => void {
 		if (typeof requestIdleCallback === 'function') {
-			const id = requestIdleCallback(callback);
+			const id = requestIdleCallback(callback, { timeout: 1000 });
 			return () => cancelIdleCallback(id);
 		}
 		const id = setTimeout(callback, 0);

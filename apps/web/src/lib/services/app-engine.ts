@@ -6,6 +6,7 @@ import { getOverlayHistoryPort } from '#lib/navigation/overlay-history-port.ts';
 import { resolveActiveProfile } from '#lib/boot/profile-registry.ts';
 import { registerHostShell } from '#lib/boot/core-shell.ts';
 import { getHostPlatform } from '#lib/platform/host-platform.ts';
+import { appStartup } from '#lib/boot/startup.svelte.ts';
 
 import {
 	createOfficialPluginService,
@@ -90,6 +91,7 @@ async function applyThemeFromPreferences(engine: ChronosEngine): Promise<void> {
 }
 
 async function bootstrapEnginePhase1(engine: ChronosEngine): Promise<void> {
+	if (sharedEngine !== engine) throw new Error('Startup session disposed');
 	registerHostShell(engine);
 	sharedOfficialPlugins ??= createOfficialPluginService(engine);
 	await sharedOfficialPlugins.prepareProfile(resolveActiveProfile());
@@ -97,6 +99,7 @@ async function bootstrapEnginePhase1(engine: ChronosEngine): Promise<void> {
 }
 
 async function bootstrapEnginePhase2(engine: ChronosEngine): Promise<void> {
+	if (sharedEngine !== engine) throw new Error('Startup session disposed');
 	if (!sharedOfficialPlugins) throw new Error('Plugin service not prepared');
 	await sharedOfficialPlugins.init();
 	const preferred = engine.state.userPreferences.visualThemeId;
@@ -116,24 +119,19 @@ async function bootstrapEnginePhase2(engine: ChronosEngine): Promise<void> {
 	await applyThemeFromPreferences(engine);
 }
 
-function waitForIdleTurn(): Promise<void> {
+function waitForStartupTurn(): Promise<void> {
 	return new Promise((resolve) => {
-		if (typeof requestIdleCallback !== 'undefined') {
-			requestIdleCallback(() => resolve());
-		} else {
-			queueMicrotask(() => resolve());
-		}
+		setTimeout(resolve, 0);
 	});
 }
 
 function scheduleBootstrapPhase2(engine: ChronosEngine): void {
 	if (enginePhase2Promise) return;
-	enginePhase2Promise = waitForIdleTurn()
-		.then(() => bootstrapEnginePhase2(engine))
-		.catch((err) => {
-			console.error('[app-engine] Phase 2 bootstrap failed:', err);
-			enginePhase2Promise = null;
-		});
+	enginePhase2Promise = appStartup.restorePlugins(async () => {
+		await waitForStartupTurn();
+		await bootstrapEnginePhase2(engine);
+	});
+	void enginePhase2Promise.catch(() => {});
 }
 
 export async function ensureEngineReady(options?: WebProviderOptions): Promise<ChronosEngine> {
@@ -141,12 +139,16 @@ export async function ensureEngineReady(options?: WebProviderOptions): Promise<C
 		sharedEngine = createEngine(options);
 	}
 	if (!enginePhase1Promise) {
-		enginePhase1Promise = sharedEngine!
-			.init()
-			.then(() => bootstrapEnginePhase1(sharedEngine!))
+		const engine = sharedEngine;
+		enginePhase1Promise = appStartup
+			.prepareCore(async () => {
+				await engine.init();
+				await bootstrapEnginePhase1(engine);
+				return engine;
+			})
 			.then(() => {
-				scheduleBootstrapPhase2(sharedEngine!);
-				return sharedEngine!;
+				scheduleBootstrapPhase2(engine);
+				return engine;
 			});
 	}
 	return enginePhase1Promise;
@@ -308,6 +310,7 @@ async function performAppReset(afterClear?: () => Promise<void>): Promise<ResetA
 
 /** Disposes the shared host engine and teardown state. */
 export function disposeAppEngine(): void {
+	appStartup.reset();
 	sharedOfficialPlugins?.dispose();
 	sharedOfficialPlugins = null;
 	sharedController?.dispose();

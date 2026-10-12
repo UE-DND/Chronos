@@ -75,3 +75,4 @@
 - [0047：宿主更新与插件安装事务](0047-host-update-transactions.md)
 
 - [0048：Android 原生自更新](0048-android-native-self-update.md)
+- [0049：有界的宿主启动与首屏衔接](0049-bounded-host-startup.md)

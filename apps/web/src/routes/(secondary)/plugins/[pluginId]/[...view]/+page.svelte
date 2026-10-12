@@ -24,9 +24,11 @@
 			: undefined
 	);
 
-	onMount(async () => {
-		await ensureEngineFullyReady();
-		ready = true;
+	onMount(() => {
+		void (async () => {
+			await ensureEngineFullyReady();
+			ready = true;
+		})().catch((error) => console.error('[page-startup]', error));
 	});
 
 	const pageTitle = $derived(

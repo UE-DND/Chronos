@@ -191,7 +191,7 @@ describe('createPlatformBootstrap', () => {
 		mocks.onboardingState.open = true;
 		expect(installPromptGate()).toBe(true);
 		expect(mocks.attachOfflineUx).toHaveBeenCalled();
-		expect(window.__chronosHideBootFallback).toHaveBeenCalled();
+		expect(window.__chronosHideBootFallback).not.toHaveBeenCalled();
 
 		teardown();
 		expect(mocks.connectivityDestroy).toHaveBeenCalled();

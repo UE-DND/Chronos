@@ -1,3 +1,5 @@
+import { appStartup } from '#lib/boot/startup.svelte.ts';
+import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 import { SvelteDate } from 'svelte/reactivity';
 import { APP_VERSION, HOST_BUILD } from '#lib/config/app-meta.ts';
 import { trackEvent } from '#lib/client/analytics.ts';
@@ -303,6 +305,10 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 			: undefined;
 
 	async function installUpdate() {
+		if (appStartup.state.failure) {
+			errorMessage = hostT('startup.pluginsFailed');
+			return;
+		}
 		if (updating) return;
 		updating = true;
 		errorMessage = null;

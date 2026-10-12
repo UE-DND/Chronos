@@ -181,8 +181,6 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 					});
 					void pwaInstallController.init(() => session.alive).catch(console.error);
 					initAnalytics();
-					window.__chronosHideBootFallback?.();
-					platform.hideBootSplash?.();
 
 					own(attachOfflineUx(connectivity));
 

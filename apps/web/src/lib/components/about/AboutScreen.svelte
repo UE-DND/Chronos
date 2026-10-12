@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appStartup } from '#lib/boot/startup.svelte.ts';
 	import { appUpdateNotice } from '#lib/client/app-update-ux.svelte.ts';
 	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { goto } from '$app/navigation';
@@ -167,7 +168,11 @@
 		<Button variant="text" onclick={() => (clearDialogOpen = false)} disabled={clearing}>
 			{hostT('common.cancel')}
 		</Button>
-		<Button variant="danger" disabled={clearing} onclick={confirmClear}>
+		<Button
+			variant="danger"
+			disabled={clearing || appStartup.state.failure !== null}
+			onclick={confirmClear}
+		>
 			{hostT('common.clear')}
 		</Button>
 	{/snippet}

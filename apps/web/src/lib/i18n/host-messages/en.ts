@@ -1,4 +1,11 @@
 export const en = {
+	'startup.loading': 'Preparing your home page…',
+	'startup.failed': 'Startup incomplete',
+	'startup.coreFailed': 'Local app data could not be prepared. Restart to try again.',
+	'startup.pluginsFailed':
+		'Some features could not finish initializing. Restart or open your timetable.',
+	'startup.restart': 'Restart',
+	'startup.enterTimetable': 'Open timetable',
 	'display.font.title': 'Font size',
 	'display.font.small': 'Small',
 	'display.font.standard': 'Standard',

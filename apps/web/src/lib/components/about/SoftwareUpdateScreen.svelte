@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appStartup } from '#lib/boot/startup.svelte.ts';
 	import type { AppLocale } from '@chronos/core';
 	import { getAppUpdateState } from '#lib/client/app-update-ux.svelte.ts';
 	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
@@ -176,7 +177,7 @@
 						<Button
 							variant="filled"
 							class="w-full"
-							disabled={updateState.state.updating}
+							disabled={updateState.state.updating || appStartup.state.failure !== null}
 							onclick={() => void updateState.installUpdate()}
 						>
 							{#if updateState.updateAction && !updateState.updateAction.canApplyInApp}

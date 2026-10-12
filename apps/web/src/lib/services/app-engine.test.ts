@@ -234,39 +234,36 @@ describe('app-engine bootstrap', () => {
 		}
 	});
 
-	it('waits for idle-scheduled phase 2 before listing deferred builtins', async () => {
-		let idleQueued: (() => void) | undefined;
-		vi.stubGlobal('requestIdleCallback', (cb: () => void) => {
-			idleQueued = cb;
-			return 1;
-		});
-
+	it('restores plugins without waiting for an idle callback', async () => {
+		const idle = vi.fn(() => 1);
+		vi.stubGlobal('requestIdleCallback', idle);
 		try {
-			const mockDb = createMockDb();
-			const mockStore = new MockLocalStorage();
-			const fullyReady = ensureEngineFullyReady({ database: mockDb, localStorage: mockStore });
-
-			await ensureEngineReady({ database: mockDb, localStorage: mockStore });
-			expect(typeof idleQueued).toBe('function');
-
-			let settled = false;
-			void fullyReady.then(() => {
-				settled = true;
+			await ensureEngineFullyReady({
+				database: createMockDb(),
+				localStorage: new MockLocalStorage()
 			});
-			await Promise.resolve();
-			expect(settled).toBe(false);
-
-			idleQueued?.();
-			await fullyReady;
-			expect(settled).toBe(true);
-
-			const ids = getOfficialPluginService()
-				.listInstalled()
-				.map((plugin) => plugin.manifest.id);
-			expect(ids).toContain('codec-share');
-			expect(ids.length).toBeGreaterThan(1);
+			expect(idle).not.toHaveBeenCalled();
+			expect(
+				getOfficialPluginService()
+					.listInstalled()
+					.map((plugin) => plugin.manifest.id)
+			).toContain('codec-share');
 		} finally {
 			vi.unstubAllGlobals();
+		}
+	});
+	it('retains a failed full-readiness attempt without restarting plugin initialization', async () => {
+		await ensureEngineReady({ database: createMockDb(), localStorage: new MockLocalStorage() });
+		const initialize = vi
+			.spyOn(getOfficialPluginService(), 'init')
+			.mockRejectedValue(new Error('plugin initialization failed'));
+		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			await expect(ensureEngineFullyReady()).rejects.toThrow('plugin initialization failed');
+			await expect(ensureEngineFullyReady()).rejects.toThrow('plugin initialization failed');
+			expect(initialize).toHaveBeenCalledOnce();
+		} finally {
+			log.mockRestore();
 		}
 	});
 

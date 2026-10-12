@@ -34,6 +34,7 @@
 		getPendingTraversal
 	} from '#lib/navigation/nav-coordinator.ts';
 	import ShellRouteHost from '#lib/components/shell/ShellRouteHost.svelte';
+	import StartupStatus from '#lib/components/shell/StartupStatus.svelte';
 	import { PREVIEW_PAINT_READY_CONTEXT, TIMETABLE_PRESENTATION_CONTEXT } from '@chronos/ui-kit';
 	import { toStore } from 'svelte/store';
 	import { locales, localizeHref } from '#lib/paraglide/runtime.js';
@@ -201,6 +202,7 @@
 	<OnboardingFlow />
 {/if}
 <Snackbar />
+<StartupStatus />
 
 <div style="display:none">
 	{#each locales as locale (locale)}

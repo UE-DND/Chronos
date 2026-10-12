@@ -14,10 +14,12 @@
 
 	let ready = $state(false);
 
-	onMount(async () => {
-		await ensureEngineFullyReady();
-		transfer.clearPersistedPreview();
-		ready = true;
+	onMount(() => {
+		void (async () => {
+			await ensureEngineFullyReady();
+			transfer.clearPersistedPreview();
+			ready = true;
+		})().catch((error) => console.error('[page-startup]', error));
 	});
 
 	function continueToConfirm() {

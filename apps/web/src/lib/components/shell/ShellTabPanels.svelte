@@ -119,7 +119,7 @@
 
 	function scheduleIdle(callback: () => void): () => void {
 		if (typeof requestIdleCallback === 'function') {
-			const id = requestIdleCallback(callback);
+			const id = requestIdleCallback(callback, { timeout: 1000 });
 			return () => cancelIdleCallback(id);
 		}
 		const id = setTimeout(callback, 0);

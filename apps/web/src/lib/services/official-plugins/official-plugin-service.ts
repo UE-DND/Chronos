@@ -1,4 +1,5 @@
 import { planPreinstall } from './preinstall-policy';
+import { appStartup } from '#lib/boot/startup.svelte.ts';
 import { dev } from '$app/env';
 import { ImageRepository } from '#lib/storage/image-repository.ts';
 import { resolveManifestForDownload } from './manifest-url';
@@ -241,8 +242,8 @@ export class OfficialPluginService implements Disposable {
 	private async initialize(): Promise<void> {
 		if (this.initialized || this.disposed) return;
 		await this.loadInstalledStore();
-		await this.retryPreinstall();
 		await this.activateInstalledFromCache();
+		await this.retryPreinstall();
 		this.initialized = true;
 		this.installedStore.notify();
 		if (!this.skipNextHostSync && this.hostBuild?.target !== 'mobile')
@@ -270,13 +271,17 @@ export class OfficialPluginService implements Disposable {
 		if (this.hostBuild?.target === 'mobile') {
 			const { getHostPlatform } = await import('#lib/platform/host-platform.ts');
 			// Recover an orphaned native lock before profile installation can write the store.
-			await getHostPlatform()
-				.getUpdateAction?.()
-				?.native?.getState()
-				.catch((error) => {
-					// Unknown ownership keeps the lock; cached old-host functionality remains usable.
-					console.error('[plugin-update] Native preparation recovery unavailable', error);
-				});
+			const { withStartupDeadline } = await import('#lib/boot/startup-deadline.ts');
+			await withStartupDeadline(
+				'native-recovery',
+				3000,
+				async () => {
+					await getHostPlatform().getUpdateAction?.()?.native?.getState();
+				},
+				this.lifecycle.signal
+			);
+			this.lifecycle.signal.throwIfAborted();
+			performance.mark?.('chronos-native-recovery-ready');
 			await this.installedStore.load();
 		}
 		const generation = this.installedStore.hostGeneration;
@@ -343,6 +348,7 @@ export class OfficialPluginService implements Disposable {
 		return this.installedStore;
 	}
 	async retryPendingUpdates(): Promise<void> {
+		if (appStartup.state.core === 'failed' || appStartup.state.plugins === 'failed') return;
 		if (this.disposed || this.factoryResetting || this.installedStore.isFrozen) return;
 		if (this.syncPromise) return this.syncPromise;
 		const signal = this.lifecycle.signal;

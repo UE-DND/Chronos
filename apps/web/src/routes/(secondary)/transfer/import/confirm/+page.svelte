@@ -21,17 +21,19 @@
 	const currentTimetableName = $derived(controller.currentTimetable?.name ?? null);
 	let ready = $state(false);
 
-	onMount(async () => {
-		await ensureEngineFullyReady();
-		const loaded = transfer.loadPersistedPreview();
-		if (!loaded) {
-			navigateBack({ kind: 'route', href: '/transfer/import' });
-			return;
-		}
-		if (!currentTimetableName && transfer.state.importMode === ImportMode.OVERWRITE_CURRENT) {
-			transfer.setImportMode(ImportMode.AS_NEW);
-		}
-		ready = true;
+	onMount(() => {
+		void (async () => {
+			await ensureEngineFullyReady();
+			const loaded = transfer.loadPersistedPreview();
+			if (!loaded) {
+				navigateBack({ kind: 'route', href: '/transfer/import' });
+				return;
+			}
+			if (!currentTimetableName && transfer.state.importMode === ImportMode.OVERWRITE_CURRENT) {
+				transfer.setImportMode(ImportMode.AS_NEW);
+			}
+			ready = true;
+		})().catch((error) => console.error('[page-startup]', error));
 	});
 
 	function handleConfirmed() {

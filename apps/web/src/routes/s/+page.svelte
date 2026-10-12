@@ -7,6 +7,7 @@
 	import { trackEvent } from '#lib/client/analytics.ts';
 	import { snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
 	import { ensureEngineFullyReady } from '#lib/services/app-engine.ts';
+	import { appStartup } from '#lib/boot/startup.svelte.ts';
 	import {
 		createTransferState,
 		shareImportErrorSnackbarKey
@@ -33,6 +34,7 @@
 				trackEvent('share_link_decode_success');
 				navigateForward(resolve('transfer/import/confirm'), { replace: true });
 			} catch {
+				if (appStartup.state.failure) return;
 				trackEvent('share_link_decode_fail');
 				status = 'error';
 				snackbarKey('share.error.parseFailed');
