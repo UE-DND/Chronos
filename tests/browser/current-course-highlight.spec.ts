@@ -6,7 +6,7 @@ import { PREFERENCE_STORAGE_KEYS } from './storage-keys';
 
 const timetable: Timetable = {
 	...fixture,
-	name: '课程边框高亮',
+	name: '当前课程高亮',
 	courses: [
 		{ ...fixture.courses[0]!, id: 'current', name: '今天跨节', weeks: [1, 2] },
 		{ ...fixture.courses[0]!, id: 'other-day', name: '明天同节', dayOfWeek: 2, weeks: [1, 2] },
@@ -45,21 +45,27 @@ async function setTime(page: Page, time: string) {
 	await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
 }
 
-async function expectPrimaryBorder(capsule: Locator) {
+async function expectCurrentCourseHighlight(capsule: Locator) {
 	const colors = await capsule.evaluate((node) => {
 		const probe = document.createElement('span');
-		probe.style.color = 'var(--color-primary)';
-		document.body.append(probe);
+		probe.style.backgroundColor = 'var(--color-primary)';
+		probe.style.color = 'var(--color-on-primary)';
+		probe.style.boxShadow = '0 3px 10px color-mix(in srgb, var(--color-primary) 25%, transparent)';
+		node.append(probe);
+		const style = getComputedStyle(probe);
 		const result = {
-			border: getComputedStyle(node).borderColor,
-			primary: getComputedStyle(probe).color
+			background: style.backgroundColor,
+			foreground: style.color,
+			shadow: style.boxShadow
 		};
 		probe.remove();
 		return result;
 	});
-	expect(colors.border).toBe(colors.primary);
+	await expect(capsule).toHaveCSS('background-color', colors.background);
+	await expect(capsule).toHaveCSS('color', colors.foreground);
+	await expect(capsule).toHaveCSS('border-color', 'rgba(0, 0, 0, 0)');
 	await expect(capsule).toHaveCSS('border-top-width', '1px');
-	await expect(capsule).toHaveCSS('box-shadow', /0px 0px 0px 1px inset/);
+	await expect(capsule).toHaveCSS('box-shadow', colors.shadow);
 }
 
 test.beforeEach(async ({ page, request }) => {
@@ -93,7 +99,8 @@ test('switch, live time and week changes highlight only the current course', asy
 	await page.getByRole('tab', { name: '课表', exact: true }).click();
 	await expect(current(pager)).toHaveCount(1);
 	await expect(current(week)).toContainText('今天跨节');
-	await expectPrimaryBorder(current(week));
+	await expect(current(week)).toHaveAttribute('aria-current', 'true');
+	await expectCurrentCourseHighlight(current(week));
 	const after = await current(week).boundingBox();
 	expect(after?.width).toBe(before?.width);
 	expect(after?.height).toBe(before?.height);
@@ -134,7 +141,7 @@ test('switch, live time and week changes highlight only the current course', asy
 	await expect(current(pager)).toHaveCount(0);
 });
 
-test('overlap placeholders stay neutral and expanded current courses each get a border', async ({
+test('overlap placeholders stay neutral and expanded current courses each get highlighted', async ({
 	page
 }) => {
 	await page.addInitScript((key) => {
@@ -151,8 +158,8 @@ test('overlap placeholders stay neutral and expanded current courses each get a 
 	await expect(current(week)).toHaveCount(0);
 	await placeholder.click();
 	await expect(current(week)).toHaveCount(2);
-	await expectPrimaryBorder(current(week).nth(0));
-	await expectPrimaryBorder(current(week).nth(1));
+	await expectCurrentCourseHighlight(current(week).nth(0));
+	await expectCurrentCourseHighlight(current(week).nth(1));
 	await setTime(page, '2026-03-02T08:50:00+08:00');
 	await expect(current(week)).toHaveCount(0);
 });
@@ -163,7 +170,7 @@ for (const variant of [
 	{ mode: 'light', layout: 'fixed', corners: 'pill' },
 	{ mode: 'dark', layout: 'fixed', corners: 'sharp' }
 ]) {
-	test(`border and wallpaper preview in ${variant.mode}/${variant.layout}/${variant.corners}`, async ({
+	test(`highlight and wallpaper preview in ${variant.mode}/${variant.layout}/${variant.corners}`, async ({
 		page
 	}, testInfo) => {
 		await page.addInitScript(
@@ -179,7 +186,7 @@ for (const variant of [
 		await importTimetable(page);
 		const pager = page.locator('.timetable-week-pager');
 		await expect(current(pager)).toHaveCount(1);
-		await expectPrimaryBorder(current(pager));
+		await expectCurrentCourseHighlight(current(pager));
 		await page.screenshot({ path: testInfo.outputPath('main.png') });
 
 		await page.goto('/Chronos/wallpaper/preview');
@@ -199,7 +206,7 @@ for (const variant of [
 		});
 		const preview = page.getByRole('region', { name: '课表预览', exact: true });
 		await expect(current(preview)).toHaveCount(1);
-		await expectPrimaryBorder(current(preview));
+		await expectCurrentCourseHighlight(current(preview));
 		await expect(preview.locator('.period-active')).toHaveCount(0);
 		await page.screenshot({ path: testInfo.outputPath('crop-preview.png') });
 		await setTime(page, '2026-03-02T08:50:00+08:00');
@@ -212,7 +219,7 @@ for (const variant of [
 			.click();
 		await expect(page.getByLabel('画布裁剪手势', { exact: true })).toHaveCount(0);
 		await expect(current(preview)).toHaveCount(1);
-		await expectPrimaryBorder(current(preview));
+		await expectCurrentCourseHighlight(current(preview));
 		await page.screenshot({ path: testInfo.outputPath('wallpaper-preview.png') });
 
 		await page.goto('/Chronos/display-settings');
