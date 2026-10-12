@@ -143,6 +143,7 @@ test('font step changes use medium native haptics once and honor the feedback pr
 		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
 	);
 	await page.goto('/Chronos/display-settings');
+	await expect(page.locator('#chronos-boot-fallback')).toBeHidden();
 	await page.evaluate(() => {
 		const calls: { method: string; params: unknown }[] = [];
 		Object.assign(window, {
