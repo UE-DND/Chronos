@@ -9,7 +9,7 @@
 		type TimetableGridModel
 	} from '@chronos/core';
 	import { capsuleCornerAttrs } from '../timetable/capsule-corners';
-	import { timetableDayColumnHeaderLabel } from './day-labels';
+	import { timetableDayColumnHeaderLabel, timetableMonthLabel } from './day-labels';
 	import MiddleTruncateText from './MiddleTruncateText.svelte';
 	import {
 		timetableBodyTintClass,
@@ -174,10 +174,10 @@
 	>
 		<div class="flex shrink-0 items-center py-2 {timetableSidebarTintClass(hasDynamicBackground)}">
 			<div
-				class="text-body-small flex w-[var(--sidebar-width)] flex-col items-center text-center {timetableTopTextClass()}"
+				class="text-body-small flex w-[var(--sidebar-width)] translate-x-[2px] items-center justify-center whitespace-nowrap {timetableTopTextClass()}"
 			>
-				<span data-adaptive-text="">{gridModel.monthLabel}</span>
-				<span data-adaptive-text="">月</span>
+				<span data-adaptive-text="">{timetableMonthLabel(gridModel.monthLabel, hostTranslate)}</span
+				>
 			</div>
 			<div class="flex min-w-0 flex-1">
 				{#each gridModel.visibleDays as day (day.dayOfWeek)}
@@ -186,13 +186,13 @@
 							data-adaptive-text=""
 							class="text-body-small max-w-full truncate {timetableTopTextClass()}"
 						>
-							{timetableDayColumnHeaderLabel(day, hostTranslate)}
+							{dayOfMonth(day.date)}
 						</span>
 						<div
 							data-adaptive-text={!day.holiday && !day.isToday ? '' : undefined}
 							class="{timetableDayColumnDateShellClass()} {timetableDayColumnDateClass(day)}"
 						>
-							{dayOfMonth(day.date)}
+							{timetableDayColumnHeaderLabel(day, hostTranslate)}
 						</div>
 					</div>
 				{/each}

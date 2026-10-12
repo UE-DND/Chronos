@@ -23,7 +23,7 @@ export function timetableDayColumnDateClass(day: { isToday?: boolean; holiday?: 
 }
 
 export function timetableDayColumnDateShellClass(): string {
-	return 'text-body-medium mt-1 flex size-[26px] items-center justify-center rounded-full font-extrabold';
+	return 'text-body-medium mt-1 flex h-[26px] min-w-[26px] max-w-full items-center justify-center overflow-hidden rounded-full px-1 font-extrabold whitespace-nowrap';
 }
 
 export function timetablePeriodIndexClass(): string {

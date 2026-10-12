@@ -38,3 +38,15 @@ export function timetableDayColumnHeaderLabel(
 	if (day.holiday) return truncateHolidayLabel(day.holiday.label);
 	return timetableDayShortLabel(day.dayOfWeek, t);
 }
+
+export function timetableMonthLabel(monthLabel: string, t: HostDayLabelTranslate): string {
+	if (!monthLabel) return '';
+	const months = monthLabel.split('/').map((month) => {
+		const key = `timetable.monthShort.${month}`;
+		const translated = t(key);
+		return translated === key ? month : translated;
+	});
+	const suffixKey = 'timetable.grid.monthSuffix';
+	const suffix = t(suffixKey);
+	return months.join('/') + (suffix === suffixKey ? '月' : suffix);
+}
