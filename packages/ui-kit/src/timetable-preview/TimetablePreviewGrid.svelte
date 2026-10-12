@@ -290,6 +290,7 @@
 									<button
 										type="button"
 										data-current-course={isCurrent ? '' : undefined}
+										aria-current={isCurrent ? 'true' : undefined}
 										class="course-capsule course-capsule--pressable flex h-full min-h-0 w-full flex-col overflow-hidden border p-2 text-left {item
 											.displayModel.isHolidayMuted
 											? 'opacity-40'
