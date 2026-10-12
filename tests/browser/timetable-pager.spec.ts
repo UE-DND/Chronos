@@ -119,7 +119,7 @@ test('keeps vertical scrolling on its week and limits a touch swipe to one week'
 	expect(page.url()).toMatch(/\/Chronos\/?$/);
 });
 
-test('commits long swipes with small lift-off jitter but rejects deliberate reversal', async ({
+test('commits long swipes by net distance despite lift-off jitter or a small reversal', async ({
 	page,
 	request
 }) => {
@@ -140,7 +140,7 @@ test('commits long swipes with small lift-off jitter but rejects deliberate reve
 		{ x: direction * 160, y: 0 },
 		{ x: direction * 120, y: 0 }
 	]);
-	await expect.poll(position).toBeCloseTo(next, 1);
+	await expect.poll(position).toBeCloseTo(next - direction, 1);
 });
 
 test('keeps vertical swipes with initial sideways jitter on the current week', async ({
@@ -529,6 +529,18 @@ test('keeps readable travel and synchronizes the capsule during repeated and rev
 	expect(Math.max(...moving.map((sample) => sample.dotError))).toBeLessThan(0.02);
 	await expect(indicator).toHaveClass(/capsule-indicator--glass/);
 	await expect(indicator).not.toHaveClass(/capsule-indicator--glass/);
+	await page.clock.install();
+	await page.clock.pauseAt(new Date());
+	for (let cycle = 0; cycle < 5; cycle++) {
+		for (const direction of [-1, 1]) {
+			await swipe(page, start, direction * 110, 0);
+			await page.clock.runFor(350);
+			expect(await position()).toBe(direction === -1 ? 7 : 6);
+			await expect(pager).toHaveCSS('scroll-snap-type', 'x mandatory');
+			await expect(indicator.locator('.indicator-dot--interpolating')).toHaveCount(0);
+		}
+	}
+	await page.clock.resume();
 
 	const capsule = pager.locator('.timetable-week-page').nth(6).locator('.course-capsule').first();
 	await capsule.click();
