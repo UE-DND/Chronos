@@ -1,6 +1,6 @@
 import type { PeriodTime } from '../domain/timetable';
 
-export type PeriodLookupFallback = 'none' | 'upcomingOrLast';
+export type PeriodLookupFallback = 'none' | 'upcomingOrLast' | 'withinDay';
 
 export interface ParsedPeriodRange {
 	index: number;
@@ -29,11 +29,18 @@ export function currentTimeMinutes(date: Date): number {
 	return date.getHours() * 60 + date.getMinutes();
 }
 
+/** withinDay assigns pre-class time and breaks to the next period, from midnight through the last end. */
 export function findCurrentPeriodIndex(
 	periods: ParsedPeriodRange[],
 	nowMinutes: number,
 	fallback: PeriodLookupFallback = 'upcomingOrLast'
 ): number | null {
+	if (fallback === 'withinDay') {
+		const last = periods.at(-1);
+		if (!last || nowMinutes < 0 || nowMinutes > last.endMinutes) {
+			return null;
+		}
+	}
 	let upcomingIndex: number | null = null;
 	for (const period of periods) {
 		if (nowMinutes >= period.startMinutes && nowMinutes <= period.endMinutes) {

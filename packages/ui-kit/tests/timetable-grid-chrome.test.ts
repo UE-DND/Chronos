@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
+import { findCurrentPeriodIndex, parsePeriodRanges } from '@chronos/core';
 import {
 	timetableDayColumnDateClass,
 	isCurrentCourseCapsule
@@ -40,13 +41,36 @@ const currentCourse = {
 };
 
 describe('isCurrentCourseCapsule', () => {
+	it('highlights the next course during a break and leaves an empty period without a match', () => {
+		const ranges = parsePeriodRanges([
+			{ index: 1, startTime: '08:00', endTime: '08:45' },
+			{ index: 2, startTime: '09:00', endTime: '09:45' },
+			{ index: 5, startTime: '14:00', endTime: '14:45' }
+		]);
+		expect(
+			isCurrentCourseCapsule({
+				...currentCourse,
+				currentPeriodIndex: findCurrentPeriodIndex(ranges, 8 * 60 + 50, 'withinDay')
+			})
+		).toBe(true);
+		expect(
+			isCurrentCourseCapsule({
+				...currentCourse,
+				currentPeriodIndex: findCurrentPeriodIndex(ranges, 12 * 60, 'withinDay')
+			})
+		).toBe(false);
+	});
+
 	it.each([2, 3, 4])('matches the start, middle and end of a course: period %s', (period) => {
 		expect(isCurrentCourseCapsule({ ...currentCourse, currentPeriodIndex: period })).toBe(true);
 	});
 
-	it.each([1, 5, null])('does not match outside the course or during a break: %s', (period) => {
-		expect(isCurrentCourseCapsule({ ...currentCourse, currentPeriodIndex: period })).toBe(false);
-	});
+	it.each([1, 5, null])(
+		'does not match outside the course or without a current period: %s',
+		(period) => {
+			expect(isCurrentCourseCapsule({ ...currentCourse, currentPeriodIndex: period })).toBe(false);
+		}
+	);
 
 	it('requires today to be visible in the current academic week', () => {
 		expect(isCurrentCourseCapsule({ ...currentCourse, todayDayOfWeek: 2 })).toBe(false);

@@ -168,7 +168,7 @@ function createTimetableScreen() {
 		const currentPeriodIndex = findCurrentPeriodIndex(
 			parsedPeriods,
 			currentTimeMinutes(now),
-			'none'
+			'withinDay'
 		);
 		const scrollPeriodIndex = findCurrentPeriodIndex(parsedPeriods, currentTimeMinutes(now));
 

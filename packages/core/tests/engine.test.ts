@@ -602,7 +602,7 @@ describe('ChronosEngine in @chronos/core', () => {
 		const lastTick = onTick.mock.calls.at(-1)![0];
 		expect(lastTick).toMatchObject({
 			currentWeek: expect.any(Number),
-			currentPeriod: null,
+			currentPeriod: 1,
 			now: expect.any(Date),
 			todayIso: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
 			frozen: false
@@ -619,6 +619,23 @@ describe('ChronosEngine in @chronos/core', () => {
 		);
 
 		const localMidnight = new Date(2026, 8, 11, 0, 30, 0);
+		for (const [hours, minutes, expectedPeriod] of [
+			[0, 0, 1],
+			[7, 59, 1],
+			[8, 0, 1],
+			[8, 45, 1],
+			[8, 50, 2],
+			[9, 0, 2],
+			[9, 45, 2],
+			[9, 46, null]
+		] as const) {
+			engine.updateTime(new Date(2026, 2, 2, hours, minutes));
+			expect(engine.state.currentPeriodIndex).toBe(expectedPeriod);
+			expect(onTick).toHaveBeenLastCalledWith(
+				expect.objectContaining({ currentPeriod: expectedPeriod })
+			);
+		}
+
 		engine.updateTime(localMidnight);
 		expect(onTick).toHaveBeenLastCalledWith(
 			expect.objectContaining({

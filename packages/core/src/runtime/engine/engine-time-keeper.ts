@@ -71,7 +71,7 @@ export class EngineTimeKeeper {
 				? findCurrentPeriodIndex(
 						parsePeriodRanges(academicConfig.periodTimes),
 						currentTimeMinutes(now),
-						'none'
+						'withinDay'
 					)
 				: null;
 

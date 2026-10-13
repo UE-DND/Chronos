@@ -12,6 +12,7 @@ export interface TimetableSummary {
 export interface ChronosState {
 	readonly currentTimetable: Readonly<Timetable> | null;
 	readonly activeWeek: number;
+	/** First period from midnight, then active or next period during breaks; null after the last end. */
 	readonly currentPeriodIndex: number | null;
 	readonly activeThemeId: string | null;
 	readonly activeIconThemeId: string;

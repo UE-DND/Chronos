@@ -19,9 +19,41 @@ describe('period-clock', () => {
 	});
 
 	it('upcomingOrLast prefers active then next then last', () => {
+		expect(findCurrentPeriodIndex(periods, 7 * 60)).toBe(1);
 		expect(findCurrentPeriodIndex(periods, 9 * 60 + 15, 'upcomingOrLast')).toBe(2);
 		expect(findCurrentPeriodIndex(periods, 9 * 60 + 50, 'upcomingOrLast')).toBe(3);
 		expect(findCurrentPeriodIndex(periods, 11 * 60 + 10, 'upcomingOrLast')).toBe(3);
+	});
+
+	it.each([
+		[0, 1],
+		[7 * 60 + 59, 1],
+		[8 * 60, 1],
+		[8 * 60 + 30, 1],
+		[8 * 60 + 45, 1],
+		[8 * 60 + 46, 2],
+		[9 * 60, 2],
+		[10 * 60 + 45, 3],
+		[10 * 60 + 46, null]
+	] as const)('withinDay maps minute %s to period %s', (minutes, expected) => {
+		expect(findCurrentPeriodIndex(periods, minutes, 'withinDay')).toBe(expected);
+	});
+
+	it('withinDay maps long breaks to the next configured period, even with skipped indices', () => {
+		const ranges = parsePeriodRanges([
+			{ index: 5, startTime: '14:00', endTime: '14:45' },
+			{ index: 1, startTime: '08:00', endTime: '08:45' }
+		]);
+		expect(findCurrentPeriodIndex(ranges, 12 * 60, 'withinDay')).toBe(5);
+	});
+
+	it('withinDay handles an empty timetable and a single period', () => {
+		expect(findCurrentPeriodIndex([], 8 * 60, 'withinDay')).toBeNull();
+		const single = periods.slice(0, 1);
+		expect(findCurrentPeriodIndex(single, 8 * 60 - 1, 'withinDay')).toBe(1);
+		expect(findCurrentPeriodIndex(single, 8 * 60, 'withinDay')).toBe(1);
+		expect(findCurrentPeriodIndex(single, 8 * 60 + 45, 'withinDay')).toBe(1);
+		expect(findCurrentPeriodIndex(single, 8 * 60 + 46, 'withinDay')).toBeNull();
 	});
 });
 

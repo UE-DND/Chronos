@@ -110,6 +110,7 @@ export interface ChronosEvents {
 	'preferences:updated': { preferences: UserPreferences };
 	'time:tick': {
 		currentWeek: number;
+		/** First period from midnight, then active or next period during breaks; null after the last end. */
 		currentPeriod: number | null;
 		now: Date;
 		todayIso: string;

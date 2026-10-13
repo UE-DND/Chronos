@@ -110,7 +110,9 @@ test('switch, live time and week changes highlight only the current course', asy
 	await expect(card(week, '未来周课程')).toHaveCount(0);
 
 	await setTime(page, '2026-03-02T08:50:00+08:00');
-	await expect(current(pager)).toHaveCount(0);
+	await expect(current(week)).toContainText('今天跨节');
+	await setTime(page, '2026-03-02T09:50:00+08:00');
+	await expect(current(week)).toContainText('今天后续');
 	await setTime(page, '2026-03-02T09:10:00+08:00');
 	await expect(current(week)).toContainText('今天跨节');
 	await setTime(page, '2026-03-02T10:10:00+08:00');
@@ -161,6 +163,8 @@ test('overlap placeholders stay neutral and expanded current courses each get hi
 	await expectCurrentCourseHighlight(current(week).nth(0));
 	await expectCurrentCourseHighlight(current(week).nth(1));
 	await setTime(page, '2026-03-02T08:50:00+08:00');
+	await expect(current(week)).toHaveCount(2);
+	await setTime(page, '2026-03-02T09:50:00+08:00');
 	await expect(current(week)).toHaveCount(0);
 });
 
@@ -210,6 +214,8 @@ for (const variant of [
 		await expect(preview.locator('.period-active')).toHaveCount(0);
 		await page.screenshot({ path: testInfo.outputPath('crop-preview.png') });
 		await setTime(page, '2026-03-02T08:50:00+08:00');
+		await expect(current(preview)).toHaveCount(1);
+		await setTime(page, '2026-03-02T12:00:00+08:00');
 		await expect(current(preview)).toHaveCount(0);
 		await setTime(page, '2026-03-02T09:10:00+08:00');
 		await expect(current(preview)).toHaveCount(1);

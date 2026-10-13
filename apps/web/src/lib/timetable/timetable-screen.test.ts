@@ -175,12 +175,18 @@ describe('TimetableScreenController', () => {
 		heavySpy.mockRestore();
 		setHostPlatform({ ...getHostPlatform(), isNative: false });
 	});
-	it('keeps a scroll target but no current course period during breaks and after classes', () => {
+	it('assigns breaks to the next period while preserving scroll targets outside the school day', () => {
 		const screen = getTimetableScreen();
-		for (const [hours, minutes, expectedScroll] of [
-			[8, 50, 2],
-			[10, 0, 2]
-		]) {
+		for (const [hours, minutes, expectedPeriod, expectedScroll] of [
+			[0, 0, 1, 1],
+			[7, 59, 1, 1],
+			[8, 0, 1, 1],
+			[8, 45, 1, 1],
+			[8, 50, 2, 2],
+			[8, 55, 2, 2],
+			[9, 40, 2, 2],
+			[10, 0, null, 2]
+		] as const) {
 			screen.destroy();
 			const shell = {
 				...mockShell,
@@ -191,7 +197,7 @@ describe('TimetableScreenController', () => {
 				}
 			} as AppShellController;
 			screen.init(shell);
-			expect(screen.state.currentPeriodIndex).toBeNull();
+			expect(screen.state.currentPeriodIndex).toBe(expectedPeriod);
 			expect(screen.state.scrollPeriodIndex).toBe(expectedScroll);
 		}
 		screen.destroy();
