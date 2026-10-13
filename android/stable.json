@@ -1,56 +1,56 @@
 {
 	"formatVersion": 1,
 	"release": {
-		"tagName": "v1.2.8",
-		"name": "Chronos 1.2.8",
-		"body": "## 优化\n\n- 分阶段准备宿主数据与插件，并在启动超时或失败时显示明确状态；插件恢复受阻时可选择先进入课表，Android 启动屏也有超时兜底。\n- 优化课表周视图的触控翻页动画，连续往返翻页时保持位置与分页状态同步。\n- 调整课表日期栏的星期、日期和月份布局，并为中英文提供对应的月份缩写。\n- 使用主色实心背景突出当前课程，并在课表和预览课表中提供当前状态语义。\n- 将主题外观选项移入壁纸设置，字体大小滑块仅在拖动滑块时调整；增强应用栏页面标题的字重。\n\n## 修复\n\n- 限制 Android 原生更新状态恢复的等待时间；状态未知时保留更新锁，避免迟到响应错误改变宿主归属。\n- 修复浏览器空闲回调长期未执行时，应用启动与进入课表可能一直等待的问题。",
-		"publishedAt": "2026-10-12"
+		"tagName": "v1.2.9",
+		"name": "Chronos 1.2.9",
+		"body": "## 新增\n\n- 在“今日”插件中点击课程可查看详情；从其他课表打开时显示该课表中的课程，并可切换到所属课表进行编辑。\n\n## 优化\n\n- 课间时将下一节课程标记为当前课程，并在首节课开始前提前显示。\n- Android 启动屏等待应用显示启动结果，延长超时兜底时间，避免启动失败提示被启动屏遮挡。\n- 优化“今日”课程时间与节次的展示，字体放大后仍保持紧凑清晰。\n\n## 修复\n\n- 修复课表和课程时间状态在上课前、课间及当天课程结束后的当前课时判断。",
+		"publishedAt": "2026-10-13"
 	},
 	"packageId": "org.uednd.chronos",
-	"versionCode": 1002008,
+	"versionCode": 1002009,
 	"signingCertificateSha256": "5cda4a196759e80ce99f77bd18d8f662a82054ae8d9e56b8be9b491f7f4e649e",
 	"profiles": {
 		"chronos-default": {
 			"host": {
-				"version": "1.2.8",
-				"buildId": "efc11e979fbbeb79f1644a1f7b619cc9f79b3849665b761b767b4f393d9c8007",
-				"sourceCommit": "02a2e3eca246a788292398134e2fe6bd870b329e",
+				"version": "1.2.9",
+				"buildId": "d87eaf669e0412c3a878e5aa3e4fe1a3624165f7cd84c1bfe5dabeaad48814dc",
+				"sourceCommit": "461520a8ae3deb81ddceb6b0d6ce336eb65f21ab",
 				"profileId": "chronos-default",
 				"deploymentId": "mobile",
 				"target": "mobile"
 			},
-			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.8/Chronos-default-1.2.8.apk",
-			"sha256": "3a9aca9e9f21bce499d1e0d2521672d1e45eb245d30835717f6bd5429bbe2574",
-			"sizeBytes": 1846617,
-			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.8/catalog.json"
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.9/Chronos-default-1.2.9.apk",
+			"sha256": "fb1408f82c0b2553ac89920080966ae7280702402b92e7baa4ba6e786b243cba",
+			"sizeBytes": 1847290,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.9/catalog.json"
 		},
 		"chronos-cqut": {
 			"host": {
-				"version": "1.2.8",
-				"buildId": "fb25ed31ce5b7ce984516979eb927b93248963b3c30046837174eb3f86488490",
-				"sourceCommit": "02a2e3eca246a788292398134e2fe6bd870b329e",
+				"version": "1.2.9",
+				"buildId": "4e8437128f413f3a66d4dc2efcc926dba69b3fec36cdccd8675a2b673189719d",
+				"sourceCommit": "461520a8ae3deb81ddceb6b0d6ce336eb65f21ab",
 				"profileId": "chronos-cqut",
 				"deploymentId": "mobile",
 				"target": "mobile"
 			},
-			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.8/Chronos-cqut-1.2.8.apk",
-			"sha256": "b52fd5734d1a7cf53645112db8190a7562dea6e5d0e2c1640815b4d40b95dbcb",
-			"sizeBytes": 1878238,
-			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.8/catalog.json"
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.9/Chronos-cqut-1.2.9.apk",
+			"sha256": "af55495fd83774e54cce4e1f654eef01ba251e407eae3f466923b439ad0714d9",
+			"sizeBytes": 1878908,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.9/catalog.json"
 		},
 		"chronos-cqut-offline": {
 			"host": {
-				"version": "1.2.8",
-				"buildId": "7e5693e7268864aef5ba40187ff30e705b859e1808f9337186a61378d9eda581",
-				"sourceCommit": "02a2e3eca246a788292398134e2fe6bd870b329e",
+				"version": "1.2.9",
+				"buildId": "d280fc76cb09b99b28e6e85d27ac5a5b8eb251288d88b6e5e68153b030b9727b",
+				"sourceCommit": "461520a8ae3deb81ddceb6b0d6ce336eb65f21ab",
 				"profileId": "chronos-cqut-offline",
 				"deploymentId": "mobile",
 				"target": "mobile"
 			},
-			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.8/Chronos-cqut-offline-1.2.8.apk",
-			"sha256": "3c786d135bc2ccdd4a5790263b6e4e1bd73c42770f72b39f12ad4d3e3a99ce2e",
-			"sizeBytes": 1843934,
-			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.8/catalog.json"
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.9/Chronos-cqut-offline-1.2.9.apk",
+			"sha256": "58e6a3c653af20c89a0522b2229f27a36ceb416274769504abb0f6036141d1d5",
+			"sizeBytes": 1844512,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.9/catalog.json"
 		}
 	}
 }
