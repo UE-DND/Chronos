@@ -187,31 +187,21 @@
 										})}
 							<li>
 								{#snippet courseRowContent()}
-									<div class="flex w-11 shrink-0 flex-col items-center self-stretch">
+									<div class="flex w-11 shrink-0 flex-col items-center gap-1 self-stretch">
 										{#if timeRange}
-											<p class="text-label-medium text-on-surface tabular-nums">
+											<p class="text-label-large whitespace-nowrap text-on-surface tabular-nums">
 												{timeRange.startTime}
 											</p>
-										{/if}
-										<div class="flex min-h-0 w-full flex-1 flex-col items-center justify-center">
-											<p
-												class="text-headline-small w-full min-w-0 text-center font-bold break-all whitespace-normal text-on-surface-variant"
-											>
-												{periodLabel}
-											</p>
-										</div>
-										{#if timeRange}
-											<p class="text-label-medium text-on-surface tabular-nums">
+											<div
+												class="min-h-4 w-1 flex-1 rounded-full"
+												style:background-color={paint.background}
+												aria-hidden="true"
+											></div>
+											<p class="text-label-large whitespace-nowrap text-on-surface tabular-nums">
 												{timeRange.endTime}
 											</p>
 										{/if}
 									</div>
-
-									<div
-										class="w-1 shrink-0 self-stretch rounded-full"
-										style:background-color={paint.background}
-										aria-hidden="true"
-									></div>
 
 									<div class="min-w-0 flex-1">
 										<div class="flex items-start justify-between gap-2">
@@ -250,6 +240,28 @@
 												{/if}
 											</div>
 										{/if}
+
+										<div
+											role="img"
+											aria-label={periodLabel}
+											class="mt-2 inline-flex items-center gap-0.5"
+										>
+											<span
+												aria-hidden="true"
+												class="text-caption grid size-5 shrink-0 place-items-center rounded-full tabular-nums"
+												style:background-color={paint.background}
+												style:color={paint.foreground}>{entry.hit.course.startPeriod}</span
+											>
+											{#if entry.hit.course.endPeriod !== entry.hit.course.startPeriod}
+												<span class="h-px w-2 bg-outline/50" aria-hidden="true"></span>
+												<span
+													aria-hidden="true"
+													class="text-caption grid size-5 shrink-0 place-items-center rounded-full tabular-nums"
+													style:background-color={paint.background}
+													style:color={paint.foreground}>{entry.hit.course.endPeriod}</span
+												>
+											{/if}
+										</div>
 									</div>
 								{/snippet}
 
