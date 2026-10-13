@@ -92,7 +92,10 @@ test.describe('bounded startup failures', () => {
 	}) => {
 		await page.clock.install();
 		await context.route('**/theme-m3.manifest.json*', () => new Promise<void>(() => {}));
+		const themeRequested = page.waitForRequest('**/theme-m3.manifest.json*');
 		await page.goto('/Chronos/');
+		// The core deadline starts after hydration, before the theme request.
+		await themeRequested;
 		await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1000)));
 		await page.clock.runFor(25_100);
 		await expect(page.locator('[data-startup-state="failed"]')).toBeVisible();
