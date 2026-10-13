@@ -29,6 +29,7 @@
 				if (!alive) return;
 				appStartup.markDisplayed(display);
 				window.__chronosHideBootFallback?.();
+				if (display !== 'loading') window.__chronosStartupDisplayReady = true;
 			});
 		});
 		return () => {
@@ -62,7 +63,6 @@
 			{/if}
 		{:else}
 			<LoadingIndicator />
-			<p class="text-body-large" role="status">{hostT('startup.loading')}</p>
 		{/if}
 	</div>
 {/if}

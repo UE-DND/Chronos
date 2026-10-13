@@ -15,7 +15,18 @@ import com.capacitorjs.plugins.splashscreen.SplashScreenPlugin;
 public class MainActivity extends BridgeActivity {
 	private final Handler startupHandler = new Handler(Looper.getMainLooper());
 	private final Runnable splashDeadline = this::hideStartupSplash;
+	private final Runnable splashReadyCheck = this::checkStartupDisplay;
 	private boolean startupSplashHidden;
+
+	private void checkStartupDisplay() {
+		if (startupSplashHidden || bridge == null || bridge.getWebView() == null) return;
+		// Read readiness directly, independently of the native plugin call queue.
+		bridge.getWebView().evaluateJavascript("window.__chronosStartupDisplayReady === true", result -> {
+			if (startupSplashHidden) return;
+			if ("true".equals(result)) hideStartupSplash();
+			else startupHandler.postDelayed(splashReadyCheck, 100);
+		});
+	}
 
 	private void hideStartupSplash() {
 		if (startupSplashHidden || bridge == null) return;
@@ -23,6 +34,7 @@ public class MainActivity extends BridgeActivity {
 		if (handle == null || !(handle.getInstance() instanceof SplashScreenPlugin)) return;
 		startupSplashHidden = true;
 		startupHandler.removeCallbacks(splashDeadline);
+		startupHandler.removeCallbacks(splashReadyCheck);
 		// Run on the main thread, independently of a stalled native plugin call queue.
 		((SplashScreenPlugin) handle.getInstance()).hide(new PluginCall(
 			null, "SplashScreen", PluginCall.CALLBACK_ID_DANGLING, "hide", new JSObject()
@@ -33,6 +45,7 @@ public class MainActivity extends BridgeActivity {
 
 	@Override
 	public void onDestroy() {
+		startupSplashHidden = true;
 		startupHandler.removeCallbacksAndMessages(null);
 		super.onDestroy();
 	}
@@ -43,7 +56,8 @@ public class MainActivity extends BridgeActivity {
 		registerPlugin(ChronosWidgetPlugin.class);
 		registerPlugin(ChronosClassNotificationsPlugin.class);
 		super.onCreate(savedInstanceState);
-		startupHandler.postDelayed(splashDeadline, 8000);
+		// Allow the core (25s) and plugin (10s) deadlines to reveal their error UI first.
+		startupHandler.postDelayed(splashDeadline, 40000);
 		if (bridge != null && bridge.getWebView() != null) {
 			bridge.getWebView().setHapticFeedbackEnabled(false);
 			bridge.addWebViewListener(new WebViewListener() {
@@ -53,8 +67,12 @@ public class MainActivity extends BridgeActivity {
 					if (loaded == null) return;
 					Uri url = Uri.parse(loaded);
 					Uri app = Uri.parse(bridge.getAppUrl());
-					if ((app.getScheme().equals(url.getScheme()) && app.getAuthority().equals(url.getAuthority())) ||
-						loaded.equals(bridge.getErrorUrl())) hideStartupSplash();
+					if (loaded.equals(bridge.getErrorUrl())) {
+						hideStartupSplash();
+					} else if (app.getScheme().equals(url.getScheme()) && app.getAuthority().equals(url.getAuthority())) {
+						startupHandler.removeCallbacks(splashReadyCheck);
+						checkStartupDisplay();
+					}
 				}
 			});
 		}

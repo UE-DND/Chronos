@@ -1,5 +1,4 @@
 export const en = {
-	'startup.loading': 'Preparing your home page…',
 	'startup.failed': 'Startup incomplete',
 	'startup.coreFailed': 'Local app data could not be prepared. Restart to try again.',
 	'startup.pluginsFailed':

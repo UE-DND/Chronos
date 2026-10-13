@@ -16,6 +16,7 @@ interface Window {
 	__chronosHideBootFallback?: () => void;
 	__chronosShowBootFailure?: () => void;
 	__chronosAppMounted?: boolean;
+	__chronosStartupDisplayReady?: boolean;
 }
 
 declare module 'virtual:pwa-info' {

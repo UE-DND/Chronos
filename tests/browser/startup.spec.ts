@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test';
 
+declare global {
+	interface Window {
+		__chronosStartupDisplayReady?: boolean;
+	}
+}
+
 test.use({ viewport: { width: 430, height: 932 }, isMobile: true, hasTouch: true });
 
 test.beforeEach(async ({ page, request }) => {
@@ -31,6 +37,7 @@ test('starts and reloads offline without idle callbacks or a touch', async ({ pa
 	);
 	await expect(page.locator('#chronos-boot-fallback')).toBeHidden();
 	await expect(page.locator('[data-startup-state]')).toHaveCount(0);
+	await expect.poll(() => page.evaluate(() => window.__chronosStartupDisplayReady)).toBe(true);
 });
 
 test('restores a cached plugin default home without briefly selecting the timetable', async ({
@@ -92,6 +99,7 @@ test.describe('bounded startup failures', () => {
 		await expect(page.getByRole('button', { name: '重新启动', exact: true })).toBeVisible();
 		await expect(page.getByRole('button', { name: '进入课表', exact: true })).toHaveCount(0);
 		await expect(page.locator('#chronos-boot-fallback')).toBeHidden();
+		await expect.poll(() => page.evaluate(() => window.__chronosStartupDisplayReady)).toBe(true);
 	});
 	test('shows plugin timeout and keeps an explicit timetable choice after a late response', async ({
 		page,
@@ -114,10 +122,12 @@ test.describe('bounded startup failures', () => {
 		});
 		await page.goto('/Chronos/');
 		await expect(page.locator('[data-startup-state="loading"]')).toBeVisible();
+		expect(await page.evaluate(() => window.__chronosStartupDisplayReady === true)).toBe(false);
 		await expect(page.locator('#chronos-boot-fallback')).toBeHidden();
 		await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1000)));
 		await page.clock.runFor(10_100);
 		await expect(page.locator('[data-startup-state="failed"]')).toBeVisible();
+		await expect.poll(() => page.evaluate(() => window.__chronosStartupDisplayReady)).toBe(true);
 		await page.getByRole('button', { name: '进入课表', exact: true }).click();
 		await page.clock.runFor(100);
 		await expect(page.getByRole('tab', { name: '课表', exact: true })).toHaveAttribute(

@@ -1,5 +1,4 @@
 export const zhCn = {
-	'startup.loading': '正在准备首页…',
 	'startup.failed': '启动未完成',
 	'startup.coreFailed': '无法准备本地应用数据，请重新启动后重试。',
 	'startup.pluginsFailed': '部分功能未能完成初始化。你可以重新启动，或先进入课表。',
