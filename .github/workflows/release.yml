@@ -72,7 +72,8 @@ jobs:
       CHRONOS_PROFILE: ${{ matrix.profile }}
       PUBLIC_ANDROID_RELEASE_FEED_URL: https://ue-dnd.github.io/Chronos/android/stable.json
       SOURCE_DATE_EPOCH: ${{ needs.version.outputs.epoch }}
-    needs: [version, quality]
+    # Build artifacts while Quality runs; publication still requires Quality below.
+    needs: version
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -100,6 +101,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            apps/mobile/android/**/*.gradle*
+            apps/mobile/android/gradle/wrapper/gradle-wrapper.properties
+            apps/mobile/android/gradle.properties
+            pnpm-lock.yaml
       - name: Setup Android SDK
         uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
       - name: Install Android SDK packages
@@ -161,7 +168,7 @@ jobs:
           set -euo pipefail
           vp run mobile:build
           cd apps/mobile/android
-          ./gradlew --no-daemon assembleRelease
+          ./gradlew --no-daemon --build-cache assembleRelease
           APK="app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
           python3 - "$APK" <<'PY'
@@ -318,7 +325,7 @@ jobs:
 
   publish-release:
     name: Publish GitHub release & APKs
-    needs: [version, verify, android-apk]
+    needs: [version, quality, verify, android-apk]
     runs-on: ubuntu-latest
     permissions:
       contents: write
