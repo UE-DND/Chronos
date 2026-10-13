@@ -163,6 +163,7 @@ export const IAnalyticsService = createServiceIdentifier<IAnalyticsService>('ana
 // 6. Host navigation port (optional — opens host-specific routes from plugins)
 export interface IHostNavigation {
 	openCourseEditor(courseId: string): void;
+	openCourseDetail?(courseId: string, timetableId?: string): void;
 }
 export const IHostNavigation = createServiceIdentifier<IHostNavigation>('hostNavigation');
 

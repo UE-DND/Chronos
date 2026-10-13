@@ -6,6 +6,7 @@ import type {
 	IErrorCaptureService,
 	IStorageService,
 	IHostLinks,
+	IHostNavigation,
 	VaultSecretOptions
 } from './services';
 
@@ -71,10 +72,8 @@ export interface ChronosEnv {
 		sha256(data: string | Uint8Array): Promise<string>;
 	};
 
-	/** Optional host navigation (route transitions owned by the host shell) */
-	navigation?: {
-		openCourseEditor(courseId: string): void;
-	};
+	/** Optional host navigation (routes and detail overlays owned by the host shell) */
+	navigation?: IHostNavigation;
 
 	/** Optional host course palette and per-timetable paint assignment */
 	coursePresentation?: Pick<

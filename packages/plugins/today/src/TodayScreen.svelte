@@ -64,7 +64,7 @@
 		return screen.paintByCourseKey.get(key) ?? COURSE_PALETTE_ENTRIES[0]!;
 	}
 
-	const courseEditorNavigation = $derived.by(() => {
+	const courseNavigation = $derived.by(() => {
 		try {
 			return controller.getPluginContext(pluginId).tryService(IHostNavigation);
 		} catch {
@@ -72,8 +72,8 @@
 		}
 	});
 
-	function openCourseEditor(courseId: string) {
-		courseEditorNavigation?.openCourseEditor(courseId);
+	function openCourseDetail(courseId: string, timetableId: string) {
+		courseNavigation?.openCourseDetail?.(courseId, timetableId);
 	}
 
 	$effect(() => {
@@ -253,14 +253,14 @@
 									</div>
 								{/snippet}
 
-								{#if courseEditorNavigation}
+								{#if courseNavigation?.openCourseDetail}
 									<button
 										type="button"
 										class="flex w-full gap-3 px-4 py-4 text-left transition-colors hover:bg-surface-container-low {entry.status ===
 										'past'
 											? 'opacity-60'
 											: ''}"
-										onclick={() => openCourseEditor(entry.hit.course.id)}
+										onclick={() => openCourseDetail(entry.hit.course.id, entry.hit.timetableId)}
 									>
 										{@render courseRowContent()}
 									</button>

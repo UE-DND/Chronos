@@ -28,7 +28,18 @@ const other: Timetable = {
 			{ index: 2, startTime: '09:00', endTime: '09:45' }
 		]
 	},
-	courses: [{ ...current.courses[0]!, id: 'later', name: '晚课', startPeriod: 2, endPeriod: 2 }]
+	courses: [
+		{
+			...current.courses[0]!,
+			id: 'later',
+			name: '晚课',
+			teacher: '晚课教师',
+			location: 'B202',
+			remark: '另一课表的课程备注',
+			startPeriod: 2,
+			endPeriod: 2
+		}
+	]
 };
 const payload = await encodeSharePayload(current);
 
@@ -108,16 +119,36 @@ for (const viewport of [
 			await page.getByRole('tab', { name: '今日', exact: true }).click();
 			await expect(early).toContainText('08:00');
 			await expect(later).toHaveCount(0);
+			const detail = page.getByRole('dialog', { name: '课程详情', exact: true });
+			await early.getByRole('button').click();
+			await expect(detail).toBeVisible();
+			await expect(detail.getByRole('heading', { name: '早课', exact: true })).toBeVisible();
+			await expect(page).toHaveURL(/\/Chronos\/$/);
+			await page.keyboard.press('Escape');
+			await expect(detail).toBeHidden();
 			await page.getByRole('tab', { name: '全部课表', exact: true }).click();
 			await expect(later).toContainText('09:00');
 			await expect(later).toContainText('09:45');
 			await expect(later).toContainText('准备上课');
+			await later.getByRole('button').click();
+			await expect(detail.getByRole('heading', { name: '晚课', exact: true })).toBeVisible();
+			await expect(detail).toContainText('晚课教师');
+			await expect(detail).toContainText('B202');
+			await expect(detail).toContainText('另一课表的课程备注');
+			await expect(page).toHaveURL(/\/Chronos\/$/);
+			await page.keyboard.press('Escape');
+			await expect(detail).toBeHidden();
 			await expect(early.getByRole('button')).toHaveClass(/opacity-60/);
 			await page.screenshot({ path: testInfo.outputPath('today-preparing.png') });
 
 			await page.goto('/Chronos/plugins/tool-today');
 			await expect(later).toContainText('准备上课');
 			await expect(later).toContainText('09:00');
+			await later.getByRole('button').click();
+			await expect(detail.getByRole('heading', { name: '晚课', exact: true })).toBeVisible();
+			await expect(page).toHaveURL(/\/Chronos\/plugins\/tool-today$/);
+			await page.keyboard.press('Escape');
+			await expect(detail).toBeHidden();
 			await page.getByRole('tab', { name: '当前课表', exact: true }).click();
 			await expect(later).toHaveCount(0);
 			await page.getByRole('button', { name: '返回', exact: true }).click();
@@ -172,6 +203,23 @@ for (const viewport of [
 			await expect(page.getByText('今天没有课', { exact: true })).toBeVisible();
 			await page.getByRole('tab', { name: '当前课表', exact: true }).click();
 			await expect(page.getByText('今天没有课', { exact: true })).toBeVisible();
+
+			await page.clock.setFixedTime(new Date('2026-03-02T08:50:00+08:00'));
+			await page.goto('/Chronos/manage-timetables');
+			await page.getByRole('button', { name: /早课课表/ }).click();
+			await page.goto('/Chronos/');
+			await page.getByRole('tab', { name: '今日', exact: true }).click();
+			await page.getByRole('tab', { name: '全部课表', exact: true }).click();
+			await later.getByRole('button').click();
+			await expect(detail.getByRole('heading', { name: '晚课', exact: true })).toBeVisible();
+			await detail.getByRole('button', { name: '编辑课程', exact: true }).click();
+			await expect(page).toHaveURL(/\/timetable\/course-editor\?courseId=later$/);
+			await expect(page.getByRole('textbox', { name: '课程名称', exact: true })).toHaveValue(
+				'晚课'
+			);
+			await expect(page.getByRole('textbox', { name: '教师', exact: true })).toHaveValue(
+				'晚课教师'
+			);
 			expect(errors).toEqual([]);
 		});
 	});

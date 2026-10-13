@@ -33,9 +33,7 @@ export interface WebProviderOptions {
 	wrapHttpService?: (
 		inner: import('@chronos/core').IHttpService
 	) => import('@chronos/core').IHttpService;
-	navigation?: {
-		openCourseEditor(courseId: string): void;
-	};
+	navigation?: import('@chronos/core').IHostNavigation;
 	coursePresentation?: import('@chronos/core').ICoursePresentationService;
 }
 

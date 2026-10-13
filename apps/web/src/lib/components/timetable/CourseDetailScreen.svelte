@@ -2,7 +2,7 @@
 	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { slide } from 'svelte/transition';
 	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
-	import type { CoursePaletteEntry } from '@chronos/core';
+	import type { CoursePaletteEntry, Timetable } from '@chronos/core';
 	import {
 		assignCourseDisplayColors,
 		lookupCoursePaint,
@@ -15,10 +15,12 @@
 
 	let {
 		shell,
-		courseId
+		courseId,
+		timetable
 	}: {
 		shell: AppShellController;
 		courseId: string | null;
+		timetable: Timetable | null;
 	} = $props();
 
 	let remarkExpanded = $state(true);
@@ -26,18 +28,16 @@
 	const courseActions = $derived(controller.getSlots('course.detail.action'));
 
 	const course = $derived(
-		courseId
-			? (shell.controller.currentTimetable?.courses.find((entry) => entry.id === courseId) ?? null)
-			: null
+		courseId ? (timetable?.courses.find((entry) => entry.id === courseId) ?? null) : null
 	);
 	let paint = $state<CoursePaletteEntry | null>(null);
 
 	$effect(() => {
 		const currentCourse = course;
-		const timetable = shell.controller.currentTimetable;
+		const currentTimetable = timetable;
 		void controller.coursePaletteRevision;
 
-		if (!currentCourse || !timetable) {
+		if (!currentCourse || !currentTimetable) {
 			paint = null;
 			return;
 		}
@@ -45,14 +45,14 @@
 		const presentation = getAppEngine().coursePresentation;
 		if (!presentation) {
 			const palette = shell.appearance.coursePalette;
-			const lookup = assignCourseDisplayColors(timetable.courses, palette);
+			const lookup = assignCourseDisplayColors(currentTimetable.courses, palette);
 			paint = lookupCoursePaint(lookup, currentCourse, palette);
 			return;
 		}
 
 		let cancelled = false;
 		void presentation
-			.resolveCoursePaint({ timetableId: timetable.id, course: currentCourse })
+			.resolveCoursePaint({ timetableId: currentTimetable.id, course: currentCourse })
 			.then((resolved) => {
 				if (!cancelled) paint = resolved;
 			})
@@ -60,7 +60,7 @@
 				if (cancelled) return;
 				const palette = shell.appearance.coursePalette;
 				paint = lookupCoursePaint(
-					assignCourseDisplayColors(timetable.courses, palette),
+					assignCourseDisplayColors(currentTimetable.courses, palette),
 					currentCourse,
 					palette
 				);

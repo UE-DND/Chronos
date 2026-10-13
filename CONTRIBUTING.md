@@ -233,7 +233,7 @@ UI 插件在 `bundle/entry.ts` 中导入 `bundle/styles.css`。样式文件需�
 
 需要 Android 原生代理实现的官方插件还可导出 `./mobile` 与 `./mobile/definition`。移动端定义应声明相同的插件 ID 和服务端 action，以及需要在 session 结束时清理 Cookie 的 HTTPS 来源。handler 通过 `MobilePluginServerContext.createHttpSession()` 获取受限 session，返回 `PluginServerResponse`；不要在插件中导入 Capacitor API。构建会校验定义并生成静态注册表。无原生实现的插件无需添加移动端声明。详见 [ADR 0046](.agents/docs/adr/0046-mobile-plugin-server-execution.md)。
 
-打开宿主课程编辑器时使用 `IHostNavigation.openCourseEditor`。获取公开导入链接时使用 `IHostLinks.getImportUrl`。不要自行拼接宿主内部路径。
+打开宿主课程详情时使用可选的 `IHostNavigation.openCourseDetail(courseId, timetableId)`，传入课程所属课表 ID；打开课程编辑器时使用 `IHostNavigation.openCourseEditor`。获取公开导入链接时使用 `IHostLinks.getImportUrl`。不要自行拼接宿主内部路径。
 
 ## 新增官方插件
 
@@ -268,7 +268,7 @@ Bundle、Manifest 和 Catalog 都由构建生成，不需要提交到版本库�
 | `IRuntimeService`                           | 提供平台标识和 SHA-256 计算。                                                           |
 | `IVaultService`                             | 可选的凭据加密存储。Web 端未实现。                                                      |
 | `IAnalyticsService`、`IErrorCaptureService` | 提供可选的产品统计和错误捕获。                                                          |
-| `IHostNavigation`、`IHostLinks`             | 提供可选的宿主课程编辑器导航和公开导入链接查询。                                        |
+| `IHostNavigation`、`IHostLinks`             | 提供可选的宿主课程详情、编辑器导航和公开导入链接查询。                                  |
 | `ICoursePresentationService`                | 查询课程调色板，以及按课表获取课程颜色。                                                |
 
 插件 KV 支持 JSON 和二进制数据。二进制数据可以写入 `Blob` 或 `Uint8Array`，读取时统一返回 `Blob`。同一个键只能保存一种数据。写入 JSON 会替换原有二进制数据，反之亦然。详情见 [ADR 0036](.agents/docs/adr/0036-plugin-kv-binary-storage.md)。

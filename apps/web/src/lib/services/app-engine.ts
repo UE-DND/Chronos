@@ -17,6 +17,7 @@ import { bindAnalyticsPort, trackEvent } from '#lib/client/analytics.ts';
 import { deploymentHasServerPlugins } from '#lib/boot/plugin-proxy-meta.generated.ts';
 import { detectSystemAppLocale, syncAppLocaleOnStartup } from '#lib/i18n/locale-sync.ts';
 import { HOST_MESSAGES, HOST_UI_PLUGIN_ID } from '#lib/i18n/host-messages.ts';
+import { openCourseDetail } from '#lib/timetable/course-detail.svelte.ts';
 import {
 	createCoursePaletteRef,
 	createWebCoursePresentationPort,
@@ -59,6 +60,7 @@ function createEngine(options?: WebProviderOptions): ChronosEngine {
 		enablePluginProxy: deploymentHasServerPlugins(),
 		coursePresentation,
 		navigation: {
+			openCourseDetail,
 			openCourseEditor(courseId: string) {
 				trackEvent('course_editor_open', { trigger: 'plugin' });
 				void import('#lib/navigation/nav-coordinator.ts').then(({ navigateForward }) => {

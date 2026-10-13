@@ -35,6 +35,7 @@
 	} from '#lib/navigation/nav-coordinator.ts';
 	import ShellRouteHost from '#lib/components/shell/ShellRouteHost.svelte';
 	import StartupStatus from '#lib/components/shell/StartupStatus.svelte';
+	import { courseDetailState } from '#lib/timetable/course-detail.svelte.ts';
 	import { PREVIEW_PAINT_READY_CONTEXT, TIMETABLE_PRESENTATION_CONTEXT } from '@chronos/ui-kit';
 	import { toStore } from 'svelte/store';
 	import { locales, localizeHref } from '#lib/paraglide/runtime.js';
@@ -118,6 +119,18 @@
 
 	let InstallPrompt = $state<Component | null>(null);
 	let OnboardingFlow = $state<Component | null>(null);
+	let CourseDetailSheet = $state<Component<{
+		open: boolean;
+		courseId: string | null;
+		timetableId: string | null;
+	}> | null>(null);
+
+	$effect(() => {
+		if (!courseDetailState.open || CourseDetailSheet) return;
+		void import('#lib/components/timetable/CourseDetailSheet.svelte').then((module) => {
+			CourseDetailSheet = module.default;
+		});
+	});
 
 	setContext('appShell', shell);
 	setContext('timetableScreen', timetableScreen);
@@ -203,6 +216,14 @@
 {/if}
 <Snackbar />
 <StartupStatus />
+
+{#if CourseDetailSheet}
+	<CourseDetailSheet
+		bind:open={courseDetailState.open}
+		bind:courseId={courseDetailState.courseId}
+		bind:timetableId={courseDetailState.timetableId}
+	/>
+{/if}
 
 <div style="display:none">
 	{#each locales as locale (locale)}

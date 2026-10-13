@@ -2,7 +2,7 @@
 	import { browser } from '$app/env';
 	import { getContext } from 'svelte';
 	import type { Component, Snippet } from 'svelte';
-	import { trackEvent } from '#lib/client/analytics.ts';
+	import { openCourseDetail } from '#lib/timetable/course-detail.svelte.ts';
 	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
 	import type { ShellTabController } from '#lib/shell/shell-tab.svelte.ts';
 	import type { TimetableScreenController } from '#lib/timetable/timetable-screen.svelte.ts';
@@ -42,14 +42,7 @@
 		tabs.filter((tab) => !tab.hostPanel && shellTab.mountedTabIds.has(tab.id))
 	);
 
-	let detailOpen = $state(false);
-	let detailCourseId = $state<string | null>(null);
-
 	let MineScreen = $state<Component<{ shell: AppShellController }> | null>(null);
-	let CourseDetailSheet = $state<Component<{
-		open: boolean;
-		courseId: string | null;
-	}> | null>(null);
 	let PluginScreenContainer = $state<Component<{
 		controller: ReturnType<typeof getAppController>;
 		pluginId: string;
@@ -60,14 +53,6 @@
 		if (mineMounted && !MineScreen) {
 			void import('#lib/components/mine/MineScreen.svelte').then((module) => {
 				MineScreen = module.default;
-			});
-		}
-	});
-
-	$effect(() => {
-		if (ready && timetableMounted && screen.state.hasLoadedAppState && !CourseDetailSheet) {
-			void import('#lib/components/timetable/CourseDetailSheet.svelte').then((module) => {
-				CourseDetailSheet = module.default;
 			});
 		}
 	});
@@ -110,12 +95,6 @@
 			});
 		}
 	});
-
-	function openCourseDetail(courseId: string) {
-		detailCourseId = courseId;
-		detailOpen = true;
-		trackEvent('course_detail_open');
-	}
 
 	function scheduleIdle(callback: () => void): () => void {
 		if (typeof requestIdleCallback === 'function') {
@@ -197,10 +176,6 @@
 		<EmptyTimetableState />
 	{:else if screen.state.hasLoadedAppState}
 		<TimetableScreen {screen} active={timetableActive} onCourseClick={openCourseDetail} />
-
-		{#if CourseDetailSheet}
-			<CourseDetailSheet bind:open={detailOpen} bind:courseId={detailCourseId} />
-		{/if}
 	{:else}
 		{@render loading()}
 	{/if}
