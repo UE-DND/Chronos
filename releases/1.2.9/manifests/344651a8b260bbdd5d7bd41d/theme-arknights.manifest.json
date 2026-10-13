@@ -1,0 +1,25 @@
+{
+	"id": "theme-arknights",
+	"name": {
+		"zh-CN": "Arknights",
+		"en": "Arknights"
+	},
+	"version": "1.2.9",
+	"description": {
+		"zh-CN": "Arknights 主题",
+		"en": "Arknights theme"
+	},
+	"author": "Chronos",
+	"type": "theme",
+	"bundleFormat": "esm",
+	"downloadSizeBytes": 1693419,
+	"colorsUrl": "../../bundles/theme-arknights/344651a8b260bbdd5d7bd41d/colors.json",
+	"colorsSha256": "a2819321f19496c958b8807ee4d2df588ce023911b131f8c95e6cceb852dc0c3",
+	"themeId": "arknights",
+	"iconThemeUrl": "../../bundles/theme-arknights/344651a8b260bbdd5d7bd41d/icons.json",
+	"iconThemeSha256": "988ff6fec21eb0294201956122c0f8dc2776937097cc82262a7d59687401c1c5",
+	"bundleUrl": "../../bundles/theme-arknights/344651a8b260bbdd5d7bd41d/bundle.js",
+	"sha256": "0c369c310bf2e637d4be4f5143fbb97ae2c3763b5bd5b647f28239d52d14e132",
+	"cssUrl": "../../bundles/theme-arknights/344651a8b260bbdd5d7bd41d/bundle.css",
+	"cssSha256": "449a85031b3dbe921a6595d8f6c6cb6af55827805a376968ae587011808bc6ba"
+}
