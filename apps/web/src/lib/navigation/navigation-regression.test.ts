@@ -280,6 +280,16 @@ describe('navigation and overlay browser contract', () => {
 		expect(browser.getPage().url.pathname).toBe('/');
 		expect(browser.historyGo).not.toHaveBeenCalled();
 	});
+	it('does not carry a pending shell fallback into a newly configured coordinator', async () => {
+		browserAdapter('/about');
+		registerPageBackFallback({ kind: 'shell', tab: 'mine' });
+		navigateBack();
+
+		const nextBrowser = browserAdapter('/');
+		await navigateForward('/?fresh');
+		expect(nextBrowser.setActiveTab).not.toHaveBeenCalled();
+		expect(getTopFrame()).not.toHaveProperty('shellTab');
+	});
 	it('old page cleanup cannot clear new page fallback', async () => {
 		const browser = browserAdapter('/about');
 		const remove = registerPageBackFallback({ kind: 'route', href: '/settings' });
