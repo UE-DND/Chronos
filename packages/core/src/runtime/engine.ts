@@ -29,7 +29,6 @@ import type {
 	TimetableDetailsPatch
 } from '../types/actions';
 import type { ChronosEngineState, TimetableSummary } from '../types/state';
-import { createEngineActionHost } from './engine/create-action-host';
 import { planRevertToDefaultThemes } from './engine/revert-default-themes';
 import { EngineTimeKeeper } from './engine/engine-time-keeper';
 import { TimetableSelection } from './engine/timetable-selection';
@@ -112,7 +111,7 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 			this.i18nCatalog.register(pluginId, messages);
 		}
 
-		this.actionHost = createEngineActionHost({
+		this.actionHost = {
 			storage: this.storage,
 			events: this.events,
 			badges: this.badges,
@@ -149,7 +148,7 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 			emit: (event, payload) => {
 				this.events.emit(event, payload);
 			}
-		});
+		};
 		this.timeKeeper = new EngineTimeKeeper(
 			this.events,
 			() => this._currentTimetable,
