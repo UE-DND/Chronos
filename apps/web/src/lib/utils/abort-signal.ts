@@ -1,7 +1,7 @@
 /**
  * Merges multiple AbortSignals into one that aborts when any source aborts.
- * Does not rely on AbortSignal.any for broader runtime compatibility.
- * Dispose after the operation settles to release listeners on non-aborted sources.
+ * Dispose disconnects the merged signal from its sources after an operation settles.
+ * AbortSignal.any alone cannot provide this explicit lifetime boundary.
  */
 export function mergeAbortSignals(signals: AbortSignal[]): {
 	signal: AbortSignal;

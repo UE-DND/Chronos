@@ -45,3 +45,13 @@ describe('merged abort signal lifetime', () => {
 		expect(merged.signal.reason).toBe('direct signal');
 	});
 });
+
+it('disconnects a merged signal after disposal without aborting it', () => {
+	const first = new AbortController();
+	const second = new AbortController();
+	const merged = mergeAbortSignals([first.signal, second.signal]);
+	merged.dispose();
+	first.abort('after completion');
+	second.abort('also after completion');
+	expect(merged.signal.aborted).toBe(false);
+});
