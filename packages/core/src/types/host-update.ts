@@ -112,6 +112,26 @@ export function validateWebUpdate(value: unknown, current: HostBuildIdentity): W
 	return update;
 }
 
+function isPinnedAndroidApk(
+	apk: URL,
+	profileId: string,
+	version: string,
+	tagName: string
+): boolean {
+	const profileFlavor = profileId.replace(/^chronos-/, '');
+	const expectedPath = `/UE-DND/Chronos/releases/download/${tagName}/Chronos-${profileFlavor}-${version}.apk`;
+	return (
+		apk.protocol === 'https:' &&
+		apk.hostname === 'github.com' &&
+		!apk.port &&
+		!apk.username &&
+		!apk.password &&
+		!apk.search &&
+		!apk.hash &&
+		apk.pathname === expectedPath
+	);
+}
+
 export function selectAndroidUpdate(
 	value: unknown,
 	profileId: string,
@@ -132,7 +152,6 @@ export function selectAndroidUpdate(
 	assertRelease(update.release, entry.host.version);
 	assertCatalog(entry.pluginCatalogUrl, entry.host.version);
 	const apk = new URL(entry.apkUrl);
-	const profileFlavor = profileId.replace(/^chronos-/, '');
 	if (
 		entry.host.target !== 'mobile' ||
 		entry.host.profileId !== profileId ||
@@ -140,15 +159,7 @@ export function selectAndroidUpdate(
 		!/^[a-f0-9]{64}$/.test(entry.sha256) ||
 		!Number.isSafeInteger(entry.sizeBytes) ||
 		entry.sizeBytes < 1 ||
-		apk.protocol !== 'https:' ||
-		apk.hostname !== 'github.com' ||
-		apk.port ||
-		apk.username ||
-		apk.password ||
-		apk.search ||
-		apk.hash ||
-		apk.pathname !==
-			`/UE-DND/Chronos/releases/download/${update.release.tagName}/Chronos-${profileFlavor}-${entry.host.version}.apk`
+		!isPinnedAndroidApk(apk, profileId, entry.host.version, update.release.tagName)
 	)
 		throw new Error('Invalid pinned Android artifact');
 	return {

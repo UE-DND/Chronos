@@ -90,4 +90,40 @@ describe('published host updates', () => {
 		expect(() => validateWebUpdate(update, { ...host, profileId: 'chronos-cqut' })).toThrow();
 		expect(() => validateWebUpdate(update, { ...host, target: 'mobile' })).toThrow();
 	});
+	it.each([
+		'http://github.com/UE-DND/Chronos/releases/download/v1.0.3/Chronos-default-1.0.3.apk',
+		'https://github.com:444/UE-DND/Chronos/releases/download/v1.0.3/Chronos-default-1.0.3.apk',
+		'https://user@github.com/UE-DND/Chronos/releases/download/v1.0.3/Chronos-default-1.0.3.apk',
+		'https://github.com/UE-DND/Chronos/releases/download/v1.0.3/Chronos-default-1.0.3.apk?token=x',
+		'https://github.com/UE-DND/Chronos/releases/download/v1.0.3/Chronos-default-1.0.3.apk#fragment',
+		'https://github.com/UE-DND/Chronos/releases/download/v1.0.3/Chronos-cqut-1.0.3.apk',
+		'https://example.com/UE-DND/Chronos/releases/download/v1.0.3/Chronos-default-1.0.3.apk'
+	])('rejects an APK URL outside the pinned profile artifact: %s', (apkUrl) => {
+		const candidate = structuredClone(feed);
+		candidate.profiles['chronos-default'].apkUrl = apkUrl;
+		expect(() =>
+			selectAndroidUpdate(
+				candidate,
+				'chronos-default',
+				feed.packageId,
+				feed.signingCertificateSha256
+			)
+		).toThrow('Invalid pinned Android artifact');
+	});
+
+	it.each([{ sha256: 'invalid' }, { sizeBytes: 0 }, { sizeBytes: 1.5 }, { sizeBytes: Infinity }])(
+		'rejects invalid APK integrity metadata: %j',
+		(patch) => {
+			const candidate = structuredClone(feed);
+			Object.assign(candidate.profiles['chronos-default'], patch);
+			expect(() =>
+				selectAndroidUpdate(
+					candidate,
+					'chronos-default',
+					feed.packageId,
+					feed.signingCertificateSha256
+				)
+			).toThrow('Invalid pinned Android artifact');
+		}
+	);
 });
