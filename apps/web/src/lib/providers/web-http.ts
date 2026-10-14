@@ -29,12 +29,12 @@ function isPrivateOrLoopbackHost(hostname: string): boolean {
 	// IPv4 private ranges: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16
 	const ipv4Match = normalized.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
 	if (ipv4Match) {
-		const [_, a, b] = ipv4Match.map(Number);
-		if (a === 10) return true;
-		if (a === 172 && b !== undefined && b >= 16 && b <= 31) return true;
-		if (a === 192 && b === 168) return true;
-		if (a === 169 && b === 254) return true;
-		if (a === 127) return true;
+		const firstOctet = Number(ipv4Match[1]);
+		const secondOctet = Number(ipv4Match[2]);
+		if (firstOctet === 10 || firstOctet === 127) return true;
+		if (firstOctet === 172 && secondOctet >= 16 && secondOctet <= 31) return true;
+		if (firstOctet === 192 && secondOctet === 168) return true;
+		if (firstOctet === 169 && secondOctet === 254) return true;
 	}
 
 	return false;
@@ -55,6 +55,39 @@ function isDomainAllowed(hostname: string, allowedDomains: string[]): boolean {
 		}
 		return lowerHost === lowerPattern;
 	});
+}
+
+function assertProxyDestinationAllowed(url: string, allowedDomains: string[]): void {
+	let parsed: URL;
+	try {
+		parsed = new URL(url);
+	} catch {
+		// Relative requests use the host's own routes.
+		return;
+	}
+	if (isPrivateOrLoopbackHost(parsed.hostname)) {
+		throw new Error(
+			`SSRF Protection: Requests to private host "${parsed.hostname}" are forbidden.`
+		);
+	}
+	if (!isDomainAllowed(parsed.hostname, allowedDomains)) {
+		throw new Error(`Domain "${parsed.hostname}" is not in the allowed proxy whitelist.`);
+	}
+}
+
+function resolveRequestUrl(url: string): string {
+	if (!base) return url;
+	if (url.startsWith('/official-plugins/')) return `${base}${url}`;
+	if (typeof window === 'undefined') return url;
+	const parsed = new URL(url, window.location.origin);
+	if (
+		parsed.origin === window.location.origin &&
+		parsed.pathname.startsWith('/official-plugins/')
+	) {
+		parsed.pathname = `${base}${parsed.pathname}`;
+		return parsed.href;
+	}
+	return url;
 }
 
 async function readResponseBytes(
@@ -140,30 +173,7 @@ export class WebHttpProxyProvider implements IHttpService {
 				throw new Error('Server-side proxy is not available in this build');
 			}
 
-			// Validate URL and security constraints if bypassCors is requested
-			if (options?.bypassCors) {
-				try {
-					const parsedUrl = new URL(url);
-					if (isPrivateOrLoopbackHost(parsedUrl.hostname)) {
-						throw new Error(
-							`SSRF Protection: Requests to private host "${parsedUrl.hostname}" are forbidden.`
-						);
-					}
-					if (!isDomainAllowed(parsedUrl.hostname, this.allowedDomains)) {
-						throw new Error(
-							`Domain "${parsedUrl.hostname}" is not in the allowed proxy whitelist.`
-						);
-					}
-				} catch (err: unknown) {
-					if (
-						err instanceof Error &&
-						(err.message.startsWith('SSRF') || err.message.startsWith('Domain'))
-					) {
-						throw err;
-					}
-					// If not a full URL, continue
-				}
-			}
+			if (options?.bypassCors) assertProxyDestinationAllowed(url, this.allowedDomains);
 
 			const headers = new Headers(options?.headers);
 
@@ -176,19 +186,7 @@ export class WebHttpProxyProvider implements IHttpService {
 				}
 			}
 
-			let requestUrl = url;
-			if (base && url.startsWith('/official-plugins/')) requestUrl = `${base}${url}`;
-			else if (base && typeof window !== 'undefined') {
-				const parsed = new URL(url, window.location.origin);
-				if (
-					parsed.origin === window.location.origin &&
-					parsed.pathname.startsWith('/official-plugins/')
-				) {
-					parsed.pathname = `${base}${parsed.pathname}`;
-					requestUrl = parsed.href;
-				}
-			}
-			const response = await fetch(requestUrl, {
+			const response = await fetch(resolveRequestUrl(url), {
 				method: options?.method ?? 'GET',
 				headers,
 				body,
