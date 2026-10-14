@@ -109,3 +109,29 @@ it('keeps installation metadata when a resource is missing so recovery can repai
 	expect(state.records[0]!.manifest.id).toBe('plugin');
 	expect(state.records[0]!.code).toBeUndefined();
 });
+
+it('preserves absent, null and empty resource fields when replacing bodies', async () => {
+	const { repository, resources, database } = fixture();
+	const input = { ...record(''), colorsJson: null, iconThemeJson: undefined };
+	await repository.transaction((state) => {
+		state.records = [input];
+	});
+	const resource = [...resources.values()][0]!;
+	expect(resource).toMatchObject({ code: '', colorsJson: null });
+	expect(Object.hasOwn(resource, 'iconThemeJson')).toBe(true);
+	expect(input).not.toHaveProperty('resourceId');
+
+	database.pluginResources.put.mockClear();
+	await repository.transaction((state) => {
+		state.records[0]!.installedAt++;
+	});
+	expect(database.pluginResources.put).not.toHaveBeenCalled();
+
+	await repository.transaction((state) => {
+		delete state.records[0]!.colorsJson;
+	});
+	expect(resources.size).toBe(1);
+	const replacement = [...resources.values()][0]!;
+	expect(Object.hasOwn(replacement, 'colorsJson')).toBe(false);
+	expect((await repository.read()).records[0]!.code).toBe('');
+});

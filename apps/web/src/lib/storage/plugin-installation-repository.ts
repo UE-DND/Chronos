@@ -12,25 +12,50 @@ import {
 
 const resourceFields = ['code', 'cssCode', 'colorsJson', 'iconThemeJson'] as const;
 
+function hasInlineResources(record: InstalledOfficialPluginRecord): boolean {
+	return resourceFields.some((field) => Object.hasOwn(record, field));
+}
+
+function resourceMatchesRecord(
+	resource: PluginResourceRow,
+	record: InstalledOfficialPluginRecord
+): boolean {
+	return resourceFields.every((field) => resource[field] === record[field]);
+}
+
+function createResourceRow(record: InstalledOfficialPluginRecord): PluginResourceRow {
+	const resource: PluginResourceRow = { id: crypto.randomUUID(), pluginId: record.manifest.id };
+	for (const field of resourceFields) {
+		if (Object.hasOwn(record, field)) resource[field] = record[field];
+	}
+	return resource;
+}
+
+function copyInstallationRecords(state: PluginInstallationState): void {
+	// Transactions must not strip resource bodies from snapshots supplied by callers.
+	state.records = state.records.map((record) => ({ ...record }));
+	if (state.prepared) {
+		state.prepared = {
+			...state.prepared,
+			records: state.prepared.records.map((record) => ({ ...record }))
+		};
+	}
+}
+
 /** Metadata and resource references commit together; metadata-only changes never rewrite bodies. */
 export function createPluginInstallationRepository(
 	database: ChronosDB
 ): PluginInstallationRepository {
 	const id = `${OFFICIAL_PLUGINS_PLUGIN_ID}:${INSTALLED_STORAGE_KEY}`;
 	const cached = new Map<string, PluginResourceRow>();
-	const records = (state: PluginInstallationState) => [
+	const allRecords = (state: PluginInstallationState) => [
 		...state.records,
 		...(state.prepared?.records ?? [])
 	];
 	const readMetadata = async () => {
 		const row = await database.pluginData.get(id);
 		const state = parseInstallationState(row ? JSON.parse(row.valueJson) : null);
-		if (
-			records(state).some(
-				(record) =>
-					!record.resourceId || resourceFields.some((field) => Object.hasOwn(record, field))
-			)
-		) {
+		if (allRecords(state).some((record) => !record.resourceId || hasInlineResources(record))) {
 			throw new Error('Invalid plugin resource references; reset development data manually');
 		}
 		return state;
@@ -40,7 +65,7 @@ export function createPluginInstallationRepository(
 		assets: Map<string, PluginResourceRow>,
 		refresh = false
 	) => {
-		const ids = [...new Set(records(state).map((record) => record.resourceId!))].filter(
+		const ids = [...new Set(allRecords(state).map((record) => record.resourceId!))].filter(
 			(key) => refresh || !assets.has(key)
 		);
 		if (ids.length) {
@@ -73,34 +98,17 @@ export function createPluginInstallationRepository(
 				[database.pluginData, database.pluginResources],
 				async () => {
 					const state = await hydrate(await readMetadata(), assets);
-					const previous = new Set(records(state).map((record) => record.resourceId!));
+					const previous = new Set(allRecords(state).map((record) => record.resourceId!));
 					change(state);
-					// Copy records before stripping bodies; callers may reuse installed snapshots.
-					state.records = state.records.map((record) => ({ ...record }));
-					if (state.prepared)
-						state.prepared = {
-							...state.prepared,
-							records: state.prepared.records.map((record) => ({ ...record }))
-						};
-					for (const record of records(state)) {
-						if (
-							resourceFields.some((field) => Object.hasOwn(record, field)) ||
-							!record.resourceId
-						) {
+					copyInstallationRecords(state);
+					for (const record of allRecords(state)) {
+						if (hasInlineResources(record) || !record.resourceId) {
 							const existing = record.resourceId
 								? (assets.get(record.resourceId) ??
 									(await database.pluginResources.get(record.resourceId)))
 								: undefined;
-							if (!existing || resourceFields.some((field) => existing[field] !== record[field])) {
-								const resource = {
-									id: crypto.randomUUID(),
-									pluginId: record.manifest.id,
-									...Object.fromEntries(
-										resourceFields
-											.filter((field) => Object.hasOwn(record, field))
-											.map((field) => [field, record[field]])
-									)
-								};
+							if (!existing || !resourceMatchesRecord(existing, record)) {
+								const resource = createResourceRow(record);
 								await database.pluginResources.put(resource);
 								assets.set(resource.id, resource);
 								record.resourceId = resource.id;
@@ -108,7 +116,7 @@ export function createPluginInstallationRepository(
 						}
 						for (const field of resourceFields) delete record[field];
 					}
-					const retained = new Set(records(state).map((record) => record.resourceId!));
+					const retained = new Set(allRecords(state).map((record) => record.resourceId!));
 					const obsolete = [...previous].filter((key) => !retained.has(key));
 					await database.pluginResources.bulkDelete(obsolete);
 					for (const key of assets.keys()) if (!retained.has(key)) assets.delete(key);
