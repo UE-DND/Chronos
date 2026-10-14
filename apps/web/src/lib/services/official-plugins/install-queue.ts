@@ -30,6 +30,12 @@ export type {
 	PluginInstallTask
 };
 
+interface ActiveInstall {
+	pluginId: string;
+	controller: AbortController;
+	attempt: symbol;
+}
+
 /**
  * OfficialPluginInstallQueue manages sequential (FIFO, concurrency = 1)
  * plugin installations with progress tracking, stage transitions, cancellation,
@@ -39,10 +45,7 @@ export class OfficialPluginInstallQueue implements Disposable {
 	private readonly tasks = new Map<string, PluginInstallTask>();
 	private readonly attempts = new Map<string, symbol>();
 	private readonly listeners = new Set<(change: { kind: InstallQueueChangeKind }) => void>();
-	private isProcessing = false;
-	private activeTaskId: string | null = null;
-	private activeController: AbortController | null = null;
-	private activeAttempt: symbol | null = null;
+	private active?: ActiveInstall;
 	private disposed = false;
 
 	constructor(private readonly deps: OfficialPluginInstallQueueDeps) {}
@@ -56,18 +59,11 @@ export class OfficialPluginInstallQueue implements Disposable {
 		if (this.disposed) return;
 		const existing = this.tasks.get(manifest.id);
 
-		if (existing) {
-			if (isInFlightInstallStatus(existing.status)) {
-				return;
-			}
-			this.tasks.set(manifest.id, requeueTask(existing, manifest, manifestUrl));
-			this.attempts.set(manifest.id, Symbol());
-			this.notifyState();
-			void this.processNext();
-			return;
-		}
-
-		this.tasks.set(manifest.id, createQueuedTask(manifest, manifestUrl));
+		if (existing && isInFlightInstallStatus(existing.status)) return;
+		const task = existing
+			? requeueTask(existing, manifest, manifestUrl)
+			: createQueuedTask(manifest, manifestUrl);
+		this.tasks.set(manifest.id, task);
 		this.attempts.set(manifest.id, Symbol());
 		this.notifyState();
 		void this.processNext();
@@ -90,9 +86,7 @@ export class OfficialPluginInstallQueue implements Disposable {
 		}
 
 		if (isInFlightInstallStatus(task.status)) {
-			if (this.activeTaskId === pluginId && this.activeController) {
-				this.activeController.abort();
-			}
+			if (this.active?.pluginId === pluginId) this.active.controller.abort();
 			this.tasks.set(pluginId, markTaskCanceled(task));
 			this.notifyState();
 		}
@@ -127,14 +121,12 @@ export class OfficialPluginInstallQueue implements Disposable {
 			}
 		}
 
-		if (this.activeController) {
-			this.activeController.abort();
-		}
+		this.active?.controller.abort();
 
-		if (this.activeTaskId) {
-			const activeTask = this.tasks.get(this.activeTaskId);
+		if (this.active?.pluginId) {
+			const activeTask = this.tasks.get(this.active.pluginId);
 			if (activeTask && activeTask.status !== 'canceled') {
-				this.tasks.set(this.activeTaskId, markTaskCanceled(activeTask));
+				this.tasks.set(this.active.pluginId, markTaskCanceled(activeTask));
 				changed = true;
 			}
 		}
@@ -180,9 +172,9 @@ export class OfficialPluginInstallQueue implements Disposable {
 	}
 
 	getActiveTask(): PluginInstallTask | undefined {
-		if (!this.activeTaskId) return undefined;
-		if (this.attempts.get(this.activeTaskId) !== this.activeAttempt) return undefined;
-		return this.tasks.get(this.activeTaskId);
+		if (!this.active?.pluginId) return undefined;
+		if (this.attempts.get(this.active.pluginId) !== this.active.attempt) return undefined;
+		return this.tasks.get(this.active.pluginId);
 	}
 
 	getQueuedTasks(): ReadonlyArray<PluginInstallTask> {
@@ -223,7 +215,7 @@ export class OfficialPluginInstallQueue implements Disposable {
 	}
 
 	private async processNext(): Promise<void> {
-		if (this.disposed || this.isProcessing) return;
+		if (this.disposed || this.active) return;
 
 		// FIFO with concurrency=1: only one active runner at a time.
 		const nextTask = pickNextQueuedTask(this.tasks.values());
@@ -231,13 +223,10 @@ export class OfficialPluginInstallQueue implements Disposable {
 			return;
 		}
 
-		this.isProcessing = true;
-		this.activeTaskId = nextTask.pluginId;
-		this.activeController = new AbortController();
-		const controller = this.activeController;
+		const controller = new AbortController();
 		const activeId = nextTask.pluginId;
 		const attempt = this.attempts.get(activeId)!;
-		this.activeAttempt = attempt;
+		this.active = { pluginId: activeId, controller, attempt };
 
 		this.tasks.set(activeId, markTaskDownloading(nextTask));
 		this.notifyState();
@@ -290,10 +279,7 @@ export class OfficialPluginInstallQueue implements Disposable {
 				this.deps.onTaskFailed?.(failed);
 			}
 		} finally {
-			this.isProcessing = false;
-			this.activeTaskId = null;
-			this.activeController = null;
-			this.activeAttempt = null;
+			this.active = undefined;
 			void this.processNext();
 		}
 	}

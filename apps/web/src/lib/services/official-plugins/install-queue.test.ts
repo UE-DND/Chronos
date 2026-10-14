@@ -432,4 +432,21 @@ describe('OfficialPluginInstallQueue', () => {
 		expect(onTaskFailed.mock.calls[0]?.[0]?.status).toBe('failed');
 		expect(queue.getTask('broken-plugin')?.status).toBe('failed');
 	});
+	it('queues work enqueued by a completion callback until the current runner finishes', async () => {
+		const runner = vi.fn<PluginInstallRunner>().mockResolvedValue(undefined);
+		const callsDuringCompletion: number[] = [];
+		const queue = new OfficialPluginInstallQueue({
+			runner,
+			onTaskCompleted: (task) => {
+				if (task.pluginId !== 'first') return;
+				queue.enqueue(createManifest('second'));
+				callsDuringCompletion.push(runner.mock.calls.length);
+			}
+		});
+		queue.enqueue(createManifest('first'));
+		await vi.waitFor(() => expect(queue.getTasks()).toEqual([]));
+		expect(callsDuringCompletion).toEqual([1]);
+		expect(runner.mock.calls.map(([manifest]) => manifest.id)).toEqual(['first', 'second']);
+		expect(queue.getActiveTask()).toBeUndefined();
+	});
 });
