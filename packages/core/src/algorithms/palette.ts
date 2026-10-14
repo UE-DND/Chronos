@@ -34,15 +34,12 @@ export function normalizedCourseName(value: string): string {
 		.replace(WHITESPACE_REGEX, ' ');
 }
 
-export function coursePalette(name: string): [string, string] {
-	const index = Math.abs(kotlinStringHashCode(name) % COURSE_PALETTE.length);
-	return COURSE_PALETTE[index] ?? COURSE_PALETTE[0]!;
+function paletteSlotForHash(hash: number): number {
+	return Math.abs(hash % COURSE_PALETTE.length);
 }
 
-function paletteSlotForName(name: string): number {
-	const [background] = coursePalette(name);
-	const index = COURSE_PALETTE.findIndex(([bg]) => bg === background);
-	return index >= 0 ? index : 0;
+export function coursePalette(name: string): [string, string] {
+	return COURSE_PALETTE[paletteSlotForHash(kotlinStringHashCode(name))] ?? COURSE_PALETTE[0]!;
 }
 
 export function resolveCoursePaint(
@@ -53,7 +50,7 @@ export function resolveCoursePaint(
 	if (!name || displayPalette.length === 0) {
 		return COURSE_PALETTE_ENTRIES[0]!;
 	}
-	const slot = paletteSlotForName(name);
+	const slot = paletteSlotForHash(kotlinStringHashCode(name));
 	return displayPalette[slot % displayPalette.length]!;
 }
 
@@ -73,14 +70,9 @@ export function assignCourseDisplayColors(
 	const preferredMap = new Map<string, CourseSlotPreference>();
 	for (const course of courses) {
 		const name = normalizedCourseName(course.name);
-		const slot = paletteSlotForName(name);
-		if (!preferredMap.has(name)) {
-			preferredMap.set(name, {
-				name,
-				slot,
-				hash: kotlinStringHashCode(name)
-			});
-		}
+		if (preferredMap.has(name)) continue;
+		const hash = kotlinStringHashCode(name);
+		preferredMap.set(name, { name, hash, slot: paletteSlotForHash(hash) });
 	}
 
 	const sortedPreferences = [...preferredMap.values()].sort(

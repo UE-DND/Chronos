@@ -39,4 +39,34 @@ describe('Palette Algorithm in @chronos/core', () => {
 		const paint = lookupCoursePaint(lookup, { name: '线性代数' });
 		expect(paint.background).toBeTruthy();
 	});
+	it('keeps deterministic collision handling when normalized duplicates outnumber the palette', () => {
+		const names = [
+			'高等数学',
+			'线性代数',
+			'大学物理',
+			'大学英语',
+			'操作系统',
+			'高等数学☆',
+			'  软件工程   原理 ',
+			'软件工程 原理',
+			''
+		];
+		const palette = ['red', 'green', 'blue'].map((background) => ({
+			background,
+			foreground: 'ink'
+		}));
+		const courses = names.map((name) => ({ name }));
+		const assigned = assignCourseDisplayColors(courses, palette);
+		expect([...assigned].map(([name, paint]) => [name, paint.background])).toEqual([
+			['软件工程 原理', 'red'],
+			['大学物理', 'green'],
+			['线性代数', 'blue'],
+			['', 'red'],
+			['大学英语', 'green'],
+			['操作系统', 'blue'],
+			['高等数学', 'red']
+		]);
+		expect(assignCourseDisplayColors([...courses].reverse(), palette)).toEqual(assigned);
+		expect(assignCourseDisplayColors(courses, [])).toEqual(new Map());
+	});
 });
