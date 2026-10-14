@@ -11,7 +11,7 @@ const androidRes = resolve(root, 'apps/mobile/android/app/src/main/res');
 
 const BG = '#FFFFFF';
 const ANDROID_NIGHT_BG = '#18212B';
-const BRAND = '#0068B7';
+const BRAND = '#087FE0';
 const SOURCE_VIEWBOX = 108;
 /** Maskable safe zone: keep artwork inside the central ~80%. */
 const MASKABLE_SAFE_RATIO = 0.8;

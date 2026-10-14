@@ -1,15 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
 	<rect id="icon-background" width="108" height="108" fill="#FFFFFF" />
+	<defs>
+		<linearGradient id="lower-ribbon" x1="22.5" y1="54" x2="54" y2="85.5" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#08B9AE" />
+			<stop offset="1" stop-color="#087FE0" />
+		</linearGradient>
+	</defs>
 	<!-- Overlapping ribbons form C; the open ring also serves as a clock face. -->
 	<g fill="none" stroke-width="17" stroke-linecap="round">
-		<path d="M78.124 33.752A31.5 31.5 0 0 0 22.5 54" stroke="#2476CC" />
-		<path d="M22.5 54A31.5 31.5 0 0 0 78.124 74.248" stroke="#27AFA7" />
-		<path d="M64.774 83.6A31.5 31.5 0 0 0 78.124 74.248" stroke="#F2B35E" />
+		<path d="M78.124 33.752A31.5 31.5 0 0 0 22.5 54" stroke="#087FE0" />
+		<path d="M22.5 54A31.5 31.5 0 0 0 78.124 74.248" stroke="url(#lower-ribbon)" />
+		<path d="M64.774 83.6A31.5 31.5 0 0 0 78.124 74.248" stroke="#E6AD45" />
 	</g>
 	<path
 		d="M54 40v14l10 6"
 		fill="none"
-		stroke="#2476CC"
+		stroke="#087FE0"
 		stroke-width="6.5"
 		stroke-linecap="round"
 		stroke-linejoin="round"
