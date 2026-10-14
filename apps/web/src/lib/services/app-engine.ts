@@ -24,41 +24,13 @@ import {
 	type CoursePaletteRef
 } from '#lib/services/course-presentation-port.ts';
 
-let sharedEngine: ChronosEngine | null = null;
-let sharedController: ReactiveChronosController | null = null;
-let sharedOfficialPlugins: OfficialPluginService | null = null;
-let enginePhase1Promise: Promise<ChronosEngine> | null = null;
-let enginePhase2Promise: Promise<void> | null = null;
-let sharedCoursePaletteRef: CoursePaletteRef | null = null;
-
-function getSharedCoursePaletteRef(): CoursePaletteRef {
-	if (!sharedCoursePaletteRef) {
-		sharedCoursePaletteRef = createCoursePaletteRef();
-	}
-	return sharedCoursePaletteRef;
-}
-
-function notifyCoursePaletteChanged(): void {
-	sharedEngine?.events.emit('coursePalette:changed', undefined);
-}
-
-function createEngine(options?: WebProviderOptions): ChronosEngine {
-	const paletteRef = getSharedCoursePaletteRef();
-	const engineRef: { current: ChronosEngine | null } = { current: null };
-	const coursePresentation = createWebCoursePresentationPort(paletteRef, () => {
-		if (!engineRef.current) {
-			throw new Error('[app-engine] ChronosEngine not initialized');
-		}
-		return engineRef.current;
-	});
-
+function createEngine(paletteRef: CoursePaletteRef, options?: WebProviderOptions): ChronosEngine {
 	const hostPlatform = getHostPlatform();
 	const env = createWebChronosEnv({
 		...options,
 		platform: options?.platform ?? hostPlatform.platformType,
 		wrapHttpService: options?.wrapHttpService ?? hostPlatform.wrapHttpService?.bind(hostPlatform),
 		enablePluginProxy: deploymentHasServerPlugins(),
-		coursePresentation,
 		navigation: {
 			openCourseDetail,
 			openCourseEditor(courseId: string) {
@@ -80,9 +52,7 @@ function createEngine(options?: WebProviderOptions): ChronosEngine {
 			}
 		}
 	});
-	sharedEngine = engine;
-	engineRef.current = engine;
-	sharedOfficialPlugins = createOfficialPluginService(engine, options?.database);
+	env.coursePresentation = createWebCoursePresentationPort(paletteRef, () => engine);
 	return engine;
 }
 
@@ -92,112 +62,144 @@ async function applyThemeFromPreferences(engine: ChronosEngine): Promise<void> {
 	engine.setTheme(engine.resolveThemeId(prefs?.visualThemeId));
 }
 
-async function bootstrapEnginePhase1(engine: ChronosEngine): Promise<void> {
-	if (sharedEngine !== engine) throw new Error('Startup session disposed');
-	registerHostShell(engine);
-	sharedOfficialPlugins ??= createOfficialPluginService(engine);
-	await sharedOfficialPlugins.prepareProfile(resolveActiveProfile());
-	await applyThemeFromPreferences(engine);
-}
+class HostBootstrapSession {
+	readonly palette = createCoursePaletteRef();
+	private engine?: ChronosEngine;
+	private controller?: ReactiveChronosController;
+	private plugins?: OfficialPluginService;
+	private coreReady?: Promise<ChronosEngine>;
+	private pluginsReady?: Promise<void>;
+	private resetting?: Promise<ResetAppResult>;
+	private disposed = false;
 
-async function bootstrapEnginePhase2(engine: ChronosEngine): Promise<void> {
-	if (sharedEngine !== engine) throw new Error('Startup session disposed');
-	if (!sharedOfficialPlugins) throw new Error('Plugin service not prepared');
-	await sharedOfficialPlugins.init();
-	const preferred = engine.state.userPreferences.visualThemeId;
-	if (preferred && !engine.themes.isSelectable(preferred)) {
-		const service = sharedOfficialPlugins;
-		const records = service.listInstalled();
-		// JSON themes declare their ID. Failed ESM plugins may contribute arbitrary theme IDs.
-		const couldRecover =
-			service.listFailures().size > 0 ||
-			records.some(
-				(record) =>
-					(!record.manifest.colorsUrl && !service.isPluginActive(record.manifest.id)) ||
-					record.manifest.themeId === preferred
-			);
-		if (!couldRecover) await engine.revertToDefaultThemes();
+	private assertActive(): void {
+		if (this.disposed) throw new Error('Startup session disposed');
 	}
-	await applyThemeFromPreferences(engine);
-}
 
-function waitForStartupTurn(): Promise<void> {
-	return new Promise((resolve) => {
-		setTimeout(resolve, 0);
-	});
-}
-
-function scheduleBootstrapPhase2(engine: ChronosEngine): void {
-	if (enginePhase2Promise) return;
-	enginePhase2Promise = appStartup.restorePlugins(async () => {
-		await waitForStartupTurn();
-		await bootstrapEnginePhase2(engine);
-	});
-	void enginePhase2Promise.catch(() => {});
-}
-
-export async function ensureEngineReady(options?: WebProviderOptions): Promise<ChronosEngine> {
-	if (!sharedEngine) {
-		sharedEngine = createEngine(options);
+	private ensureEngine(options?: WebProviderOptions): ChronosEngine {
+		this.assertActive();
+		if (!this.engine) {
+			this.engine = createEngine(this.palette, options);
+			this.plugins = createOfficialPluginService(this.engine, options?.database);
+		}
+		return this.engine;
 	}
-	if (!enginePhase1Promise) {
-		const engine = sharedEngine;
-		enginePhase1Promise = appStartup
+
+	getEngine(options?: WebProviderOptions): ChronosEngine {
+		const engine = this.ensureEngine(options);
+		if (typeof window !== 'undefined')
+			void this.ensureReady(options).catch((error) => {
+				console.error('[app-engine] Bootstrap failed', error);
+				if (typeof window !== 'undefined') window.__chronosShowBootFailure?.();
+			});
+		return engine;
+	}
+
+	getController(options?: WebProviderOptions): ReactiveChronosController {
+		return (this.controller ??= new ReactiveChronosController(this.getEngine(options), {
+			overlayHistoryPort: getOverlayHistoryPort()
+		}));
+	}
+
+	getPlugins(options?: WebProviderOptions): OfficialPluginService {
+		this.assertActive();
+		if (!this.plugins) this.getEngine(options);
+		return this.plugins!;
+	}
+
+	notifyPaletteChanged(): void {
+		this.engine?.events.emit('coursePalette:changed', undefined);
+	}
+
+	ensureReady(options?: WebProviderOptions): Promise<ChronosEngine> {
+		const engine = this.ensureEngine(options);
+		return (this.coreReady ??= appStartup
 			.prepareCore(async () => {
 				await engine.init();
-				await bootstrapEnginePhase1(engine);
+				this.assertActive();
+				registerHostShell(engine);
+				await this.plugins!.prepareProfile(resolveActiveProfile());
+				this.assertActive();
+				await applyThemeFromPreferences(engine);
 				return engine;
 			})
 			.then(() => {
-				scheduleBootstrapPhase2(engine);
+				this.schedulePlugins(engine);
 				return engine;
-			});
+			}));
 	}
-	return enginePhase1Promise;
+
+	async ensureFullyReady(options?: WebProviderOptions): Promise<ChronosEngine> {
+		const engine = await this.ensureReady(options);
+		this.schedulePlugins(engine);
+		await this.pluginsReady;
+		return engine;
+	}
+
+	private schedulePlugins(engine: ChronosEngine): void {
+		this.assertActive();
+		if (this.pluginsReady) return;
+		this.pluginsReady = appStartup.restorePlugins(async () => {
+			await new Promise<void>((resolve) => setTimeout(resolve, 0));
+			this.assertActive();
+			await this.plugins!.init();
+			this.assertActive();
+			const preferred = engine.state.userPreferences.visualThemeId;
+			if (preferred && !engine.themes.isSelectable(preferred)) {
+				const service = this.plugins!;
+				const records = service.listInstalled();
+				// JSON themes declare their ID. Failed ESM plugins may contribute arbitrary theme IDs.
+				const couldRecover =
+					service.listFailures().size > 0 ||
+					records.some(
+						(record) =>
+							(!record.manifest.colorsUrl && !service.isPluginActive(record.manifest.id)) ||
+							record.manifest.themeId === preferred
+					);
+				if (!couldRecover) await engine.revertToDefaultThemes();
+			}
+			await applyThemeFromPreferences(engine);
+		});
+		void this.pluginsReady.catch(() => {});
+	}
+
+	reset(afterClear?: () => Promise<void>): Promise<ResetAppResult> {
+		return (this.resetting ??= performAppReset(this, afterClear).finally(() => {
+			this.resetting = undefined;
+		}));
+	}
+
+	dispose(): void {
+		this.plugins?.dispose();
+		this.controller?.dispose();
+		this.engine?.dispose();
+		this.disposed = true;
+	}
 }
 
+let session = new HostBootstrapSession();
+
+export function getSharedCoursePaletteRef(): CoursePaletteRef {
+	return session.palette;
+}
+export function notifyCoursePaletteChanged(): void {
+	session.notifyPaletteChanged();
+}
+export async function ensureEngineReady(options?: WebProviderOptions): Promise<ChronosEngine> {
+	return session.ensureReady(options);
+}
 /** Waits for deferred builtins and official plugins (import/share codecs, official catalog tabs). */
 export async function ensureEngineFullyReady(options?: WebProviderOptions): Promise<ChronosEngine> {
-	const engine = await ensureEngineReady(options);
-	if (!enginePhase2Promise) {
-		scheduleBootstrapPhase2(engine);
-	}
-	if (enginePhase2Promise) {
-		await enginePhase2Promise;
-	}
-	return engine;
+	return session.ensureFullyReady(options);
 }
-
 export function getAppEngine(options?: WebProviderOptions): ChronosEngine {
-	if (!sharedEngine) {
-		sharedEngine = createEngine(options);
-	}
-	if (typeof window !== 'undefined')
-		void ensureEngineReady(options).catch((error) => {
-			console.error('[app-engine] Bootstrap failed', error);
-			if (typeof window !== 'undefined') window.__chronosShowBootFailure?.();
-		});
-	return sharedEngine;
+	return session.getEngine(options);
 }
-
-export { getSharedCoursePaletteRef, notifyCoursePaletteChanged };
-
 export function getAppController(options?: WebProviderOptions): ReactiveChronosController {
-	if (!sharedController) {
-		const engine = getAppEngine(options);
-		sharedController = new ReactiveChronosController(engine, {
-			overlayHistoryPort: getOverlayHistoryPort()
-		});
-	}
-	return sharedController;
+	return session.getController(options);
 }
-
 export function getOfficialPluginService(options?: WebProviderOptions): OfficialPluginService {
-	if (!sharedOfficialPlugins) {
-		const engine = getAppEngine(options);
-		sharedOfficialPlugins = createOfficialPluginService(engine, options?.database);
-	}
-	return sharedOfficialPlugins;
+	return session.getPlugins(options);
 }
 
 export type ResetAppResult = { status: 'complete' } | { status: 'recovery-failed' };
@@ -213,18 +215,16 @@ function getMissingPreinstalls(
 	});
 }
 
-let resetPromise: Promise<ResetAppResult> | undefined;
 export function resetAppToInitialState(afterClear?: () => Promise<void>): Promise<ResetAppResult> {
-	if (resetPromise) return resetPromise;
-	resetPromise = performAppReset(afterClear).finally(() => {
-		resetPromise = undefined;
-	});
-	return resetPromise;
+	return session.reset(afterClear);
 }
 
-async function performAppReset(afterClear?: () => Promise<void>): Promise<ResetAppResult> {
-	const engine = await ensureEngineFullyReady();
-	const service = getOfficialPluginService();
+async function performAppReset(
+	session: HostBootstrapSession,
+	afterClear?: () => Promise<void>
+): Promise<ResetAppResult> {
+	const engine = await session.ensureFullyReady();
+	const service = session.getPlugins();
 	const profile = resolveActiveProfile();
 	await service.resetAfterFactoryClear();
 	let cleanupError: unknown;
@@ -310,16 +310,9 @@ async function performAppReset(afterClear?: () => Promise<void>): Promise<ResetA
 	return { status: 'complete' };
 }
 
-/** Disposes the shared host engine and teardown state. */
+/** Disposes the shared host engine and all resources owned by its bootstrap session. */
 export function disposeAppEngine(): void {
 	appStartup.reset();
-	sharedOfficialPlugins?.dispose();
-	sharedOfficialPlugins = null;
-	sharedController?.dispose();
-	sharedController = null;
-	sharedEngine?.dispose();
-	sharedEngine = null;
-	sharedCoursePaletteRef = null;
-	enginePhase1Promise = null;
-	enginePhase2Promise = null;
+	session.dispose();
+	session = new HostBootstrapSession();
 }

@@ -4,9 +4,11 @@ import { APP_VERSION, HOST_BUILD } from '#lib/config/app-meta.ts';
 import { readFile } from 'node:fs/promises';
 import { afterAll } from 'vite-plus/test';
 import { describe, it, expect, beforeEach, vi } from 'vite-plus/test';
-import { PREFERENCE_STORAGE_KEYS } from '@chronos/core';
+import { DEFAULT_USER_PREFERENCES, PREFERENCE_STORAGE_KEYS } from '@chronos/core';
 import {
 	getAppController,
+	getAppEngine,
+	getSharedCoursePaletteRef,
 	disposeAppEngine,
 	ensureEngineReady,
 	ensureEngineFullyReady,
@@ -129,6 +131,41 @@ function createMockDb(): ChronosDB {
 describe('app-engine bootstrap', () => {
 	beforeEach(() => {
 		disposeAppEngine();
+	});
+
+	it('replaces the complete bootstrap lifetime while an old initialization is still pending', async () => {
+		const oldEngine = getAppEngine({
+			database: createMockDb(),
+			localStorage: new MockLocalStorage()
+		});
+		const oldPlugins = getOfficialPluginService();
+		const oldPalette = getSharedCoursePaletteRef();
+		const started = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		vi.spyOn(oldEngine.storage, 'getPreferences').mockImplementationOnce(async () => {
+			started.resolve();
+			await release.promise;
+			return { ...DEFAULT_USER_PREFERENCES };
+		});
+		const disposed = vi.spyOn(oldPlugins, 'dispose');
+		const pending = ensureEngineReady();
+		const rejected = expect(pending).rejects.toThrow('Startup session disposed');
+		await started.promise;
+		disposeAppEngine();
+		try {
+			const next = await ensureEngineFullyReady({
+				database: createMockDb(),
+				localStorage: new MockLocalStorage()
+			});
+			expect(next).not.toBe(oldEngine);
+			expect(getOfficialPluginService()).not.toBe(oldPlugins);
+			expect(getSharedCoursePaletteRef()).not.toBe(oldPalette);
+			expect(next.coursePresentation?.getCoursePalette()).toBe(getSharedCoursePaletteRef().current);
+			expect(disposed).toHaveBeenCalledOnce();
+		} finally {
+			release.resolve();
+			await rejected;
+		}
 	});
 
 	it('registers shell slots after profile bootstrap completes', async () => {
