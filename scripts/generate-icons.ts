@@ -15,6 +15,9 @@ const BRAND = '#0068B7';
 const SOURCE_VIEWBOX = 108;
 /** Maskable safe zone: keep artwork inside the central ~80%. */
 const MASKABLE_SAFE_RATIO = 0.8;
+/** Android magnifies adaptive foregrounds when applying the launcher mask. */
+const ANDROID_FOREGROUND_RATIO = 0.68;
+const ANDROID_LEGACY_RATIO = 0.85;
 
 mkdirSync(pwaDir, { recursive: true });
 
@@ -79,11 +82,12 @@ function writeAndroidIcons(): void {
 	for (const [density, launcherSize, foregroundSize] of densities) {
 		const mipmapDir = resolve(androidRes, `mipmap-${density}`);
 		mkdirSync(mipmapDir, { recursive: true });
-		writePng(resolve(mipmapDir, 'ic_launcher.png'), anyIconSvg(), launcherSize);
-		writePng(resolve(mipmapDir, 'ic_launcher_round.png'), anyIconSvg(), launcherSize);
+		const launcherSvg = paddedIconSvg(launcherSize, ANDROID_LEGACY_RATIO);
+		writePng(resolve(mipmapDir, 'ic_launcher.png'), launcherSvg, launcherSize);
+		writePng(resolve(mipmapDir, 'ic_launcher_round.png'), launcherSvg, launcherSize);
 		writePng(
 			resolve(mipmapDir, 'ic_launcher_foreground.png'),
-			paddedIconSvg(foregroundSize, MASKABLE_SAFE_RATIO, null),
+			paddedIconSvg(foregroundSize, ANDROID_FOREGROUND_RATIO, null),
 			foregroundSize
 		);
 	}
