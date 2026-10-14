@@ -91,6 +91,40 @@ function inferCqutTermStartDate(payload: {
 	return `${y}-${m}-${d}`;
 }
 
+function parseCourseEvent(event: CqutOnlineEventItem, index: number): Course | null {
+	const dayOfWeek = Number(event.weekDay);
+	const startPeriod = Number(event.sessionStart);
+	if (!dayOfWeek || Number.isNaN(startPeriod) || !event.eventName?.trim()) return null;
+
+	let sessionMax = Number.NEGATIVE_INFINITY;
+	if (event.sessionList?.length) {
+		event.sessionList.forEach((session) => {
+			const period = Number(session);
+			if (!Number.isNaN(period)) sessionMax = Math.max(sessionMax, period);
+		});
+	}
+	const duration = Number(event.sessionLast) || 1;
+	const endPeriod = Number.isFinite(sessionMax) ? sessionMax : startPeriod + duration - 1;
+
+	const uniqueWeeks = new Set<number>();
+	(event.weekList || []).forEach((value) => {
+		const week = Number(value);
+		if (!Number.isNaN(week)) uniqueWeeks.add(week);
+	});
+	const weeks = [...uniqueWeeks].sort((a, b) => a - b);
+	return createCourse({
+		id: event.eventID?.trim() || `cqut-${dayOfWeek}-${startPeriod}-${endPeriod}-${index}`,
+		name: normalizedCourseName(event.eventName.trim()),
+		teacher: event.memberName?.trim() ?? '',
+		location: event.address?.trim() ?? '',
+		dayOfWeek,
+		startPeriod,
+		endPeriod: Math.max(startPeriod, endPeriod),
+		weeks,
+		remark: event.remark?.trim() ?? ''
+	});
+}
+
 /** Normalize CQUT online preview JSON into a Chronos timetable. */
 export function parseCqutScheduleData(
 	rawData: CqutScheduleRawInput,
@@ -107,40 +141,14 @@ export function parseCqutScheduleData(
 		: payload.yearTerm || t('timetable.defaultName');
 	const termStartDate = inferCqutTermStartDate(payload);
 
-	const courses = payload.eventList
-		.map((event, idx) => {
-			const dayOfWeek = Number(event.weekDay);
-			const startPeriod = Number(event.sessionStart);
-			if (!dayOfWeek || Number.isNaN(startPeriod) || !event.eventName?.trim()) {
-				return null;
-			}
-
-			const duration = Number(event.sessionLast) || 1;
-			const sessionMax = event.sessionList?.length
-				? Math.max(...event.sessionList.map(Number).filter((n) => !Number.isNaN(n)))
-				: Number.NEGATIVE_INFINITY;
-			const endPeriod = Number.isFinite(sessionMax) ? sessionMax : startPeriod + duration - 1;
-
-			const weeks = [
-				...new Set((event.weekList || []).map((w) => Number(w)).filter((w) => !Number.isNaN(w)))
-			].sort((a, b) => a - b);
-
-			const eventName = event.eventName.trim();
-			const normalizedName = normalizedCourseName(eventName);
-
-			return createCourse({
-				id: event.eventID?.trim() || `cqut-${dayOfWeek}-${startPeriod}-${endPeriod}-${idx}`,
-				name: normalizedName,
-				teacher: event.memberName?.trim() ?? '',
-				location: event.address?.trim() ?? '',
-				dayOfWeek,
-				startPeriod,
-				endPeriod: Math.max(startPeriod, endPeriod),
-				weeks,
-				remark: event.remark?.trim() ?? ''
-			});
-		})
-		.filter((c): c is Course => c !== null);
+	const courses: Course[] = [];
+	let maxWeek = 20;
+	payload.eventList.forEach((event, index) => {
+		const course = parseCourseEvent(event, index);
+		if (!course) return;
+		courses.push(course);
+		for (const week of course.weeks) maxWeek = Math.max(maxWeek, week);
+	});
 
 	const resolvedCampusId = (rawData.campusId as CqutCampusId) || fallbackCampusId;
 	const campusPeriodTimes = rawData.campusPeriodTimes || CQUT_DEFAULT_CAMPUS_PERIOD_TIMES;
@@ -154,8 +162,6 @@ export function parseCqutScheduleData(
 			studentId
 		} satisfies CqutCampusScheduleMetadata
 	};
-
-	const maxWeek = Math.max(20, ...courses.flatMap((c) => c.weeks));
 
 	const academicConfig: AcademicConfig = {
 		termStartDate,
