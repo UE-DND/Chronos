@@ -1,6 +1,10 @@
 import { createClassNotificationsController } from '#lib/platform/class-notifications.svelte.ts';
 import { getHostPlatform } from '#lib/platform/host-platform.ts';
 import { createAppearance } from '#lib/appearance/appearance.svelte.ts';
+import {
+	coordinateAppearance,
+	canUseWallpaperColors
+} from '#lib/appearance/appearance-coordinator.ts';
 import { createWallpaperController } from '#lib/wallpaper/wallpaper-controller.svelte.ts';
 import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 import { pwaInstallController } from '#lib/client/pwa-install.svelte.ts';
@@ -60,20 +64,12 @@ export function createAppShell() {
 		)
 	);
 	const hasWallpaper = $derived(Boolean(wallpaperUri));
-	function canUseWallpaperColors(
-		themeId: string | null,
-		source: UserPreferences['wallpaperSource'] | undefined
-	): boolean | undefined {
-		if (!themeId || !engine.defaultThemeId) return undefined;
-		if (themeId !== engine.defaultThemeId || source !== 'custom') return false;
-		const theme = engine.themes.getTheme(themeId);
-		return theme ? Boolean(theme.resolveWallpaperColors) : undefined;
-	}
 
 	const wallpaperColorsAvailable = $derived.by(() => {
 		void controller.slotVersion;
 		return (
 			canUseWallpaperColors(
+				engine,
 				controller.activeThemeId,
 				controller.userPreferences?.wallpaperSource
 			) === true
@@ -110,70 +106,38 @@ export function createAppShell() {
 
 		wallpaper.init(() => engine.notify(hostT('wallpaper.screen.error.importFailed'), 'error'));
 
-		// The appearance pipeline lives here (not in platform-bootstrap): this
-		// controller already owns engine/theme/preference reactivity, so the
-		// effects read their inputs locally instead of being relayed across
-		// controllers.
 		disposeAppearanceEffects?.();
 		disposeAppearanceEffects = $effect.root(() => {
-			$effect(() => {
-				void controller.slotVersion;
-				const themeId = engine.resolveThemeId(controller.userPreferences?.visualThemeId);
-				untrack(() => {
-					if (engine.state.activeThemeId !== themeId) engine.setTheme(themeId);
-				});
-			});
-			$effect(() => {
-				void controller.slotVersion;
-				const theme = engine.themes.getTheme(controller.activeThemeId);
-				const source =
-					controller.userPreferences?.wallpaperSource ?? DEFAULT_USER_PREFERENCES.wallpaperSource;
-				untrack(() => wallpaper.select(source, theme?.wallpaper));
-			});
-			$effect(() => {
-				const available = wallpaperColorsAvailable;
-				const enabled = controller.userPreferences?.wallpaperColorEnabled;
-				// Wait for profile assembly before correcting restored preferences.
-				if (
-					controller.activeThemeId &&
-					engine.themes.getTheme(controller.activeThemeId) &&
-					engine.defaultThemeId &&
-					enabled &&
-					!available
-				) {
-					untrack(
-						() =>
-							void updatePreferences({ wallpaperColorEnabled: false }).catch(() => {
-								controller.notify(hostT('wallpaper.settings.saveFailed'), 'error');
-							})
+			const coordinator = coordinateAppearance({
+				engine,
+				wallpaper,
+				updatePreferences,
+				onPreferenceError: () => controller.notify(hostT('wallpaper.settings.saveFailed'), 'error'),
+				apply: ({ activeThemeId, theme, wallpaperColorEnabled }, signal) => {
+					const dark = isDark;
+					const mode = dark ? 'dark' : 'light';
+					const themePaletteEntries =
+						typeof theme?.paletteEntries === 'function'
+							? theme.paletteEntries(mode)
+							: (theme?.paletteEntries ?? null);
+					return appearance.apply(
+						{
+							isDark: dark,
+							wallpaperColorEnabled,
+							wallpaperUri,
+							activeThemeId,
+							themePaletteEntries,
+							theme
+						},
+						signal
 					);
 				}
 			});
+
 			$effect(() => {
-				const dark = isDark;
-				void controller.slotVersion;
-				const wallpaperColorEnabled =
-					wallpaperColorsAvailable && (controller.userPreferences?.wallpaperColorEnabled ?? false);
-				const activeThemeId = controller.activeThemeId;
-
-				const theme = engine.themes.getTheme(activeThemeId);
-				const mode = dark ? 'dark' : 'light';
-				const themePaletteEntries =
-					typeof theme?.paletteEntries === 'function'
-						? theme.paletteEntries(mode)
-						: (theme?.paletteEntries ?? null);
-
-				const ac = new AbortController();
-				const input = {
-					isDark: dark,
-					wallpaperColorEnabled,
-					wallpaperUri,
-					activeThemeId,
-					themePaletteEntries,
-					theme
-				};
-				untrack(() => void appearance.apply(input, ac.signal));
-				return () => ac.abort();
+				void isDark;
+				void wallpaperUri;
+				untrack(() => coordinator.refresh());
 			});
 
 			$effect(() => {
@@ -185,6 +149,7 @@ export function createAppShell() {
 				const reduceMotionEnabled = controller.userPreferences?.reduceMotionEnabled ?? false;
 				applyReduceMotionClass(reduceMotionEnabled);
 			});
+			return () => coordinator.dispose();
 		});
 	}
 
@@ -209,7 +174,7 @@ export function createAppShell() {
 		const enabled =
 			patch.wallpaperColorEnabled ?? controller.userPreferences?.wallpaperColorEnabled;
 		await controller.updatePreferences(
-			enabled && canUseWallpaperColors(themeId, source) === false
+			enabled && canUseWallpaperColors(engine, themeId, source) === false
 				? { ...patch, wallpaperColorEnabled: false }
 				: patch
 		);
