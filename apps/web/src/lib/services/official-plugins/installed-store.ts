@@ -29,41 +29,52 @@ export interface PluginInstallationRepository {
 export function emptyInstallationState(): PluginInstallationState {
 	return { records: [], removed: [], seeded: false, revision: 0, generation: '' };
 }
+function hasValidRecordBody(record: InstalledOfficialPluginRecord | undefined): boolean {
+	if (!record?.manifest?.id) return false;
+	return !Object.hasOwn(record, 'enabled');
+}
+
+function hasValidInstalledRecords(records: InstalledOfficialPluginRecord[]): boolean {
+	const valid = records.every(
+		(record) =>
+			hasValidRecordBody(record) &&
+			(record.origin?.kind === 'user' ||
+				(record.origin?.kind === 'profile' && typeof record.origin.profileId === 'string'))
+	);
+	return valid && new Set(records.map((record) => record.manifest.id)).size === records.length;
+}
+
+function hasValidPreparation(prepared: PreparedPluginUpdate): boolean {
+	return (
+		Array.isArray(prepared.records) &&
+		prepared.records.every(hasValidRecordBody) &&
+		Boolean(prepared.target?.buildId) &&
+		Number.isSafeInteger(prepared.revision) &&
+		typeof prepared.token === 'string' &&
+		(Number.isFinite(prepared.until) ||
+			(prepared.until === null && prepared.target.target === 'mobile'))
+	);
+}
+
 export function parseInstallationState(value: unknown): PluginInstallationState {
 	if (value == null) return emptyInstallationState();
 	const state = value as PluginInstallationState;
+	const validHeader =
+		Array.isArray(state.records) &&
+		Array.isArray(state.removed) &&
+		typeof state.seeded === 'boolean' &&
+		Number.isSafeInteger(state.revision) &&
+		state.revision >= 0 &&
+		typeof state.generation === 'string' &&
+		state.removed.every((id) => typeof id === 'string');
+
 	if (
-		!Array.isArray(state.records) ||
-		!Array.isArray(state.removed) ||
-		typeof state.seeded !== 'boolean' ||
-		!Number.isSafeInteger(state.revision) ||
-		state.revision < 0 ||
-		typeof state.generation !== 'string' ||
-		state.removed.some((id) => typeof id !== 'string') ||
-		state.records.some(
-			(record) =>
-				!record?.manifest?.id ||
-				Object.hasOwn(record, 'enabled') ||
-				!(
-					record.origin?.kind === 'user' ||
-					(record.origin?.kind === 'profile' && typeof record.origin.profileId === 'string')
-				)
-		) ||
-		new Set(state.records.map((record) => record.manifest.id)).size !== state.records.length ||
-		(state.prepared &&
-			(!Array.isArray(state.prepared.records) ||
-				state.prepared.records.some(
-					(record) => !record?.manifest?.id || Object.hasOwn(record, 'enabled')
-				) ||
-				!state.prepared.target?.buildId ||
-				!Number.isSafeInteger(state.prepared.revision) ||
-				typeof state.prepared.token !== 'string' ||
-				!(
-					Number.isFinite(state.prepared.until) ||
-					(state.prepared.until === null && state.prepared.target.target === 'mobile')
-				)))
-	)
+		!validHeader ||
+		!hasValidInstalledRecords(state.records) ||
+		(state.prepared && !hasValidPreparation(state.prepared))
+	) {
 		throw new Error('Invalid plugin installation state; reset development data manually');
+	}
 	return state;
 }
 

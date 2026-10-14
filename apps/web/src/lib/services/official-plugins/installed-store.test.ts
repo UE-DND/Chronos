@@ -302,3 +302,41 @@ describe('OfficialPluginInstalledStore', () => {
 		expect(later.has('optional')).toBe(false);
 	});
 });
+
+describe('installation state validation', () => {
+	const record = (id: string) => ({ manifest: { id }, origin: { kind: 'user' } });
+	const prepared = () => ({
+		target: { buildId: 'next', target: 'mobile' },
+		records: [{ manifest: { id: 'prepared' } }],
+		revision: -1,
+		token: '',
+		until: null
+	});
+
+	it('keeps prepared-record validation distinct from installed-record validation', () => {
+		const state = {
+			...emptyInstallationState(),
+			records: [record('installed')],
+			prepared: prepared()
+		};
+		expect(parseInstallationState(state)).toBe(state);
+	});
+
+	it.each([
+		{ records: [record('duplicate'), record('duplicate')] },
+		{ records: [{ manifest: { id: 'missing-origin' } }] },
+		{ records: [{ ...record('profile'), origin: { kind: 'profile', profileId: 1 } }] },
+		{ records: [null] },
+		{ removed: [1] },
+		{ revision: -1 },
+		{ prepared: { ...prepared(), records: [{ manifest: { id: 'obsolete' }, enabled: false }] } },
+		{ prepared: { ...prepared(), records: [null] } },
+		{ prepared: { ...prepared(), target: { buildId: 'web', target: 'pages' } } },
+		{ prepared: { ...prepared(), until: Infinity } },
+		{ prepared: { ...prepared(), target: undefined } }
+	])('rejects invalid state: %j', (patch) => {
+		expect(() => parseInstallationState({ ...emptyInstallationState(), ...patch })).toThrow(
+			'Invalid plugin installation state; reset development data manually'
+		);
+	});
+});
