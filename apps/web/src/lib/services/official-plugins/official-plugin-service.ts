@@ -1,6 +1,5 @@
 import { planPreinstall } from './preinstall-policy';
 import { appStartup } from '#lib/boot/startup.svelte.ts';
-import { dev } from '$app/env';
 import { ImageRepository } from '#lib/storage/image-repository.ts';
 import { resolveManifestForDownload } from './manifest-url';
 import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
@@ -37,11 +36,11 @@ import {
 	assertOfficialManifestVersion
 } from './market-config';
 
-export interface HostPluginPreparation {
-	host: HostBuildIdentity;
-	pluginCatalogUrl: string;
-	requiredPluginIds: string[];
-}
+import {
+	HostUpdateTransactionService,
+	type HostPluginPreparation
+} from './host-update-transaction-service';
+export type { HostPluginPreparation } from './host-update-transaction-service';
 
 export type { InstalledOfficialPluginRecord } from './official-plugin-types';
 export type {
@@ -93,7 +92,6 @@ export function createOfficialPluginService(engine: ChronosEngine, database?: Ch
 export class OfficialPluginService implements Disposable {
 	private readonly images: ImageRepository;
 	private profile?: ChronosProfile;
-	private loaded = false;
 	private failures = new Map<string, string>();
 	private initialized = false;
 	private initPromise?: Promise<void>;
@@ -101,9 +99,8 @@ export class OfficialPluginService implements Disposable {
 	private operations = new PluginOperationCoordinator();
 	private syncPromise?: Promise<void>;
 	private factoryResetting = false;
-	private hostPreparations = 0;
 	private skipNextHostSync = false;
-	private hostBuild?: HostBuildIdentity;
+	private readonly hostUpdates: HostUpdateTransactionService;
 	private updateStatuses = new Map<
 		string,
 		{
@@ -129,7 +126,7 @@ export class OfficialPluginService implements Disposable {
 		this.lifecycle.signal.throwIfAborted();
 		validateProfile(profile);
 		this.profile = profile;
-		await this.loadInstalledStore();
+		await this.hostUpdates.start(this.lifecycle.signal);
 		if (!this.installedStore.isSeeded) {
 			if (profile.preferences) await this.engine.updatePreferences(profile.preferences);
 			await this.installedStore.markSeeded();
@@ -217,7 +214,16 @@ export class OfficialPluginService implements Disposable {
 		this.installedStore = resolved.installedStore;
 		this.runtimeActivator = resolved.runtimeActivator;
 		this.hostVersion = resolved.hostVersion ?? APP_VERSION;
-		this.hostBuild = resolved.hostBuild;
+		this.hostUpdates = new HostUpdateTransactionService(resolved.hostBuild, {
+			installedStore: this.installedStore,
+			catalogClient: this.catalogClient,
+			assetPipeline: this.assetPipeline,
+			images: this.images,
+			waitForPluginChanges: async () => {
+				await this.operations.waitForAllSettled();
+				if (this.syncPromise) await this.syncPromise.catch(() => {});
+			}
+		});
 		this.installQueue =
 			resolved.installQueue ??
 			new OfficialPluginInstallQueue({
@@ -241,12 +247,12 @@ export class OfficialPluginService implements Disposable {
 	}
 	private async initialize(): Promise<void> {
 		if (this.initialized || this.disposed) return;
-		await this.loadInstalledStore();
+		await this.hostUpdates.start(this.lifecycle.signal);
 		await this.activateInstalledFromCache();
 		await this.retryPreinstall();
 		this.initialized = true;
 		this.installedStore.notify();
-		if (!this.skipNextHostSync && this.hostBuild?.target !== 'mobile')
+		if (!this.skipNextHostSync && this.hostUpdates.hostBuild?.target !== 'mobile')
 			void this.retryPendingUpdates();
 		this.skipNextHostSync = false;
 		this.storeSubscription = this.installedStore.onChanged(() => {
@@ -263,57 +269,6 @@ export class OfficialPluginService implements Disposable {
 					});
 		});
 		this.setupDevHmr();
-	}
-
-	private async loadInstalledStore(): Promise<void> {
-		if (this.loaded) return;
-		await this.installedStore.load();
-		if (this.hostBuild?.target === 'mobile') {
-			const { getHostPlatform } = await import('#lib/platform/host-platform.ts');
-			// Recover an orphaned native lock before profile installation can write the store.
-			const { withStartupDeadline } = await import('#lib/boot/startup-deadline.ts');
-			await withStartupDeadline(
-				'native-recovery',
-				3000,
-				async () => {
-					await getHostPlatform().getUpdateAction?.()?.native?.getState();
-				},
-				this.lifecycle.signal
-			);
-			this.lifecycle.signal.throwIfAborted();
-			performance.mark?.('chronos-native-recovery-ready');
-			await this.installedStore.load();
-		}
-		const generation = this.installedStore.hostGeneration;
-		if (this.hostBuild) {
-			if (
-				!dev &&
-				this.hostBuild.target !== 'mobile' &&
-				typeof navigator !== 'undefined' &&
-				navigator.serviceWorker?.controller
-			) {
-				const { readWorkerIdentity } = await import('#lib/client/pwa-sw.ts');
-				const controlling = await readWorkerIdentity(navigator.serviceWorker.controller);
-				if (controlling.buildId !== this.hostBuild.buildId) {
-					window.location.reload();
-					throw new Error('Host controller changed; reloading');
-				}
-			}
-
-			const previous = this.installedStore
-				.getCache()
-				.flatMap((record) => (record.wallpaperAssetId ? [record.wallpaperAssetId] : []));
-
-			this.lifecycle.signal.throwIfAborted();
-			await this.installedStore.startHost(this.hostBuild, generation);
-			const retained = new Set(
-				this.installedStore.getCache().map((record) => record.wallpaperAssetId)
-			);
-			await Promise.all(
-				previous.filter((id) => !retained.has(id)).map((id) => this.images.delete(id))
-			);
-		}
-		this.loaded = true;
 	}
 
 	private async syncWithHostCatalog(): Promise<void> {
@@ -392,111 +347,15 @@ export class OfficialPluginService implements Disposable {
 		progress?: (percent: number) => void,
 		options?: { signal?: AbortSignal }
 	): Promise<string> {
-		this.lifecycle.signal.throwIfAborted();
-		this.hostPreparations++;
-		try {
-			return await this.performHostPreparation(update, progress, options);
-		} finally {
-			this.hostPreparations--;
-		}
-	}
-	private async performHostPreparation(
-		update: HostPluginPreparation,
-		progress?: (percent: number) => void,
-		options?: { signal?: AbortSignal }
-	): Promise<string> {
-		const lifecycleSignal = this.lifecycle.signal;
-		lifecycleSignal.throwIfAborted();
-		await this.loadInstalledStore();
-		await this.operations.waitForAllSettled();
-		if (this.syncPromise) await this.syncPromise.catch(() => {});
-		await this.installedStore.load();
-		const revision = this.installedStore.revision;
-		const merged = mergeAbortSignals([
-			lifecycleSignal,
-			...(options?.signal ? [options.signal] : [])
-		]);
-		const signal = merged.signal;
-		const installed = this.listInstalled().filter(
-			(record) =>
-				isOfficialCatalogManifestUrl(record.manifestUrl, record.manifest.id) &&
-				!update.requiredPluginIds.includes(record.manifest.id)
-		);
-		const prepared: InstalledOfficialPluginRecord[] = [];
-		const wallpaperIds: string[] = [];
-		try {
-			signal.throwIfAborted();
-			const catalog = installed.length
-				? await this.catalogClient.fetchCatalog(update.pluginCatalogUrl)
-				: undefined;
-			for (const [index, record] of installed.entries()) {
-				signal.throwIfAborted();
-				const url = catalog?.manifests.find((url) =>
-					url.endsWith(`/${record.manifest.id}.manifest.json`)
-				);
-				if (!url || !url.startsWith(new URL('./manifests/', update.pluginCatalogUrl).href))
-					throw new Error(`Target plugin unavailable: ${record.manifest.id}`);
-				const manifest = await this.catalogClient.fetchManifest(url);
-				assertOfficialManifestVersion(manifest, url, update.host.version);
-				if (manifest.id !== record.manifest.id || manifest.version !== update.host.version)
-					throw new Error('Target plugin identity mismatch');
-				const assets = await this.assetPipeline.download(manifest, url, {
-					signal,
-					onProgress: ({ percent }) =>
-						progress?.(Math.round(((index + percent / 100) / installed.length) * 100))
-				});
-				let wallpaperAssetId: string | undefined;
-				if (assets.wallpaper) {
-					wallpaperAssetId = `theme:${manifest.id}:${crypto.randomUUID()}`;
-					await this.images.put(wallpaperAssetId, assets.wallpaper);
-					wallpaperIds.push(wallpaperAssetId);
-				}
-				prepared.push({
-					...record,
-					code: assets.code ?? null,
-					colorsJson: assets.colorsJson ?? null,
-					iconThemeJson: assets.iconThemeJson ?? null,
-					cssCode: assets.cssCode ?? null,
-					manifest,
-					manifestUrl: url,
-					wallpaperAssetId,
-					acceptedHostVersion: update.host.version
-				});
-				progress?.(Math.round(((index + 1) / installed.length) * 100));
-			}
-			signal.throwIfAborted();
-			const token = crypto.randomUUID();
-			await this.installedStore.prepare({
-				target: update.host,
-				revision,
-				records: prepared,
-				token,
-				until: update.host.target === 'mobile' ? null : Date.now() + 180_000
-			});
-			return token;
-		} catch (error) {
-			await Promise.all(wallpaperIds.map((id) => this.images.delete(id)));
-			throw error;
-		} finally {
-			merged.dispose();
-		}
+		return this.hostUpdates.prepare(update, {
+			lifecycleSignal: this.lifecycle.signal,
+			signal: options?.signal,
+			onProgress: progress
+		});
 	}
 
 	async cancelHostPreparation(token: string): Promise<void> {
-		await this.installedStore.load();
-		const prepared = await this.installedStore.cancelPreparation(token);
-		if (prepared) {
-			const retained = new Set(
-				this.installedStore.getCache().map((record) => record.wallpaperAssetId)
-			);
-			await Promise.all(
-				prepared.records.flatMap((record) =>
-					record.wallpaperAssetId && !retained.has(record.wallpaperAssetId)
-						? [this.images.delete(record.wallpaperAssetId)]
-						: []
-				)
-			);
-		}
+		await this.hostUpdates.cancel(token);
 	}
 
 	private setupDevHmr(): void {
@@ -921,15 +780,7 @@ export class OfficialPluginService implements Disposable {
 	}
 
 	async assertFactoryResetAllowed(): Promise<void> {
-		await this.installedStore.load();
-		if (
-			this.hostPreparations > 0 ||
-			this.installedStore.isFrozen ||
-			this.installedStore.hostChanged ||
-			(this.hostBuild && this.installedStore.hostGeneration !== this.hostBuild.buildId)
-		) {
-			throw new Error(hostT('plugins.update.locked'));
-		}
+		await this.hostUpdates.assertResetAllowed();
 	}
 
 	async resetAfterFactoryClear(): Promise<void> {
@@ -949,7 +800,7 @@ export class OfficialPluginService implements Disposable {
 		this.activeVersions.clear();
 		this.updateStatuses.clear();
 		this.initialized = false;
-		this.loaded = false;
+		this.hostUpdates.reset();
 		this.syncPromise = undefined;
 		this.initPromise = undefined;
 	}
