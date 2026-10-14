@@ -16,7 +16,8 @@ import {
 	parseLocation,
 	readRoomBytes,
 	ROOM_BYTE_LENGTH,
-	writeRoomBytes
+	writeRoomBytes,
+	type ParsedLocation
 } from './location-codec';
 import {
 	assertValidWeeks,
@@ -200,9 +201,8 @@ function unpackEndTeacher(byte: number): { endPeriod: number; teacherSlot: numbe
 
 function encodeLocation(
 	pool: StringInterner,
-	location: string
+	parsed: ParsedLocation
 ): { buildingIdx: number; room: string } {
-	const parsed = parseLocation(location);
 	if (parsed.kind === 'full') {
 		if (!parsed.value) return { buildingIdx: NO_BUILDING, room: '' };
 		return { buildingIdx: pool.intern(parsed.value), room: '' };
@@ -211,6 +211,16 @@ function encodeLocation(
 		buildingIdx: pool.intern(parsed.building),
 		room: parsed.room
 	};
+}
+
+function sharedBuildingIndex(courses: EncodedCourse[]): number {
+	let buildingIdx = -1;
+	for (const course of courses) {
+		if (!course.isSplitLocation || course.buildingIdx === NO_BUILDING) return -1;
+		if (buildingIdx === -1) buildingIdx = course.buildingIdx;
+		else if (buildingIdx !== course.buildingIdx) return -1;
+	}
+	return buildingIdx;
 }
 
 function decodeLocation(strings: string[], buildingIdx: number, room: string): string {
@@ -285,8 +295,8 @@ export function encodeTimetableToBinary(timetable: Timetable): Uint8Array {
 		const nameIdx = pool.intern(course.name);
 		const teacherSlot = teacherTable.intern(course.teacher);
 		const remarkIdx = course.remark ? pool.intern(course.remark) : -1;
-		const location = encodeLocation(pool, course.location);
 		const parsed = parseLocation(course.location);
+		const location = encodeLocation(pool, parsed);
 		return {
 			nameIdx,
 			dayPeriod: packDayPeriod(course.dayOfWeek, course.startPeriod, remarkIdx >= 0),
@@ -299,19 +309,7 @@ export function encodeTimetableToBinary(timetable: Timetable): Uint8Array {
 		};
 	});
 
-	let singleBuildingIdx = -1;
-	for (const course of encodedCourses) {
-		if (!course.isSplitLocation || course.buildingIdx === NO_BUILDING) {
-			singleBuildingIdx = -1;
-			break;
-		}
-		if (singleBuildingIdx === -1) {
-			singleBuildingIdx = course.buildingIdx;
-		} else if (singleBuildingIdx !== course.buildingIdx) {
-			singleBuildingIdx = -1;
-			break;
-		}
-	}
+	const singleBuildingIdx = sharedBuildingIndex(encodedCourses);
 	const flags =
 		(hasRemarks ? FLAG_HAS_REMARKS : 0) |
 		(endWeek !== DEFAULT_END_WEEK ? FLAG_CUSTOM_END_WEEK : 0) |
