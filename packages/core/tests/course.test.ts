@@ -91,4 +91,12 @@ describe('course counting', () => {
 		expect(countDistinctCoursesAffectedByPeriodDelete(courses, 5)).toBe(1);
 		expect(countDistinctCoursesAffectedByPeriodDelete(courses, 7)).toBe(0);
 	});
+	it('counts raw course names using the same normalization and blank-name rules as the summary', () => {
+		const courses = ['', '  ', '★', ' 数据库☆', '数据库★', '操作系统'].map((name, index) => ({
+			...createCourse({ id: String(index), name: '', dayOfWeek: 1, startPeriod: 1, endPeriod: 2 }),
+			name
+		}));
+		expect(countDistinctCourseNames(courses)).toBe(2);
+		expect(countDistinctCourseNames(courses)).toBe(listDistinctCourses(courses).length);
+	});
 });

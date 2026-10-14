@@ -50,7 +50,12 @@ export function listDistinctCourses(courses: Course[]): DistinctCourseSummary[] 
 }
 
 export function countDistinctCourseNames(courses: Course[]): number {
-	return listDistinctCourses(courses).length;
+	const names = new Set<string>();
+	for (const course of courses) {
+		const name = normalizedCourseName(course.name);
+		if (name) names.add(name);
+	}
+	return names.size;
 }
 
 /** User-facing count of distinct courses hidden when period rows are trimmed. */
