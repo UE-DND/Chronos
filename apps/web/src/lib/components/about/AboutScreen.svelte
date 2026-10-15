@@ -24,7 +24,7 @@
 	import MineSection from '#lib/components/mine/MineSection.svelte';
 	import MineRow from '#lib/components/mine/MineRow.svelte';
 	import AppHero from '#lib/components/AppHero.svelte';
-	import { ChevronRight, InfoFill, LayersClearFill, ScheduleFill } from '#lib/icons/index.ts';
+	import { ChevronRight, InfoFill, DeleteSweepFill, ScheduleFill } from '#lib/icons/index.ts';
 
 	let { shell }: { shell: AppShellController } = $props();
 
@@ -135,7 +135,7 @@
 		<MineRow
 			title={hostT('about.storage.clear')}
 			supporting={dataUsageSupporting}
-			icon={LayersClearFill}
+			icon={DeleteSweepFill}
 			iconTone="neutral"
 			onclick={() => (clearDialogOpen = true)}
 		/>

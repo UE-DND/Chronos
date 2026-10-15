@@ -23,7 +23,7 @@ export { GavelFillW700 as GavelFill } from '@material-symbols-svg/svelte/icons/g
 export { ShieldFillW700 as ShieldFill } from '@material-symbols-svg/svelte/icons/shield';
 export { OpenInNewFillW700 as OpenInNewFill } from '@material-symbols-svg/svelte/icons/open-in-new';
 export { DescriptionFillW700 as DescriptionFill } from '@material-symbols-svg/svelte/icons/description';
-export { LayersClearFillW700 as LayersClearFill } from '@material-symbols-svg/svelte/icons/layers-clear';
+export { DeleteSweepFillW700 as DeleteSweepFill } from '@material-symbols-svg/svelte/icons/delete-sweep';
 export { ScheduleFillW700 as ScheduleFill } from '@material-symbols-svg/svelte/icons/schedule';
 export { EventFillW700 as EventFill } from '@material-symbols-svg/svelte/icons/event';
 export { TodayW700 as Today } from '@material-symbols-svg/svelte/icons/today';
