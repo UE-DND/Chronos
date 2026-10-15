@@ -1,16 +1,18 @@
 <div align="center">
 
-# _Chronos_
+<img src=".github/assets/chronos-icon.svg" width="108" />
+
+# Chronos
 
 微内核、插件化的课程表应用框架
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/UE-DND/Chronos)
+**[Ask DeepWiki](https://deepwiki.com/UE-DND/Chronos)**
 
 </div>
 
-## 基础功能
-
 ![mockup](.github/assets/mockup.png)
+
+## 基础功能
 
 Chronos 的核心功能仅为查看、管理与分享课表。另外，您可在「插件中心」安装 Chronos 官方或第三方插件以个性化使用体验。
 
