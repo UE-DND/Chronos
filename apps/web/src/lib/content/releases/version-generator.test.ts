@@ -106,6 +106,17 @@ publishedAt: 2026-01-15
 		}
 	});
 
+	it('rejects incomplete release notes before writing a build descriptor', () => {
+		const outputPath = join(entriesDir, 'version.json');
+		writeFileSync(
+			join(entriesDir, 'v2.0.0.md'),
+			'---\nname: Chronos 2.0.0\npublishedAt: 2026-02-01\n---\n\n## 修复\n\n- 待填写'
+		);
+		expect(() => writeGeneratedVersionJson(host, entriesDir, outputPath, '2.0.0')).toThrow(
+			'placeholders'
+		);
+	});
+
 	it('fails when package version does not match the latest entry', () => {
 		const outputDir = mkdtempSync(join(tmpdir(), 'chronos-version-json-mismatch-'));
 		const outputPath = join(outputDir, 'version.json');

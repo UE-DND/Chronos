@@ -73,3 +73,24 @@ export function parseFrontmatter(raw: string): {
 		body: match[2].trim()
 	};
 }
+
+/** Build-time gate for the release being shipped; historical entries remain readable. */
+export function assertReleaseContent(
+	release: Pick<Release, 'tagName' | 'name' | 'publishedAt' | 'body'>
+): void {
+	if (!/^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(release.tagName))
+		throw new Error('Expected release tag vX.Y.Z');
+	if (release.name !== `Chronos ${release.tagName.slice(1)}`)
+		throw new Error('Release name must match Chronos X.Y.Z');
+	if (
+		!/^\d{4}-\d{2}-\d{2}$/.test(release.publishedAt) ||
+		!Number.isFinite(Date.parse(release.publishedAt)) ||
+		new Date(release.publishedAt).toISOString().slice(0, 10) !== release.publishedAt
+	)
+		throw new Error('Release date must be a valid YYYY-MM-DD');
+	const body = release.body.replace(/<!--[\s\S]*?-->/g, '').trim();
+	if (/\b(?:TODO|TBD|FIXME)\b|待填写|待补充|暂无待发布内容|（待发布）/i.test(body))
+		throw new Error('Release notes contain placeholders');
+	if (!body.replace(/^\s*#{1,6}[^\n]*$/gm, '').replace(/[\s*#_>~`-]/g, ''))
+		throw new Error('Release notes must contain meaningful content');
+}

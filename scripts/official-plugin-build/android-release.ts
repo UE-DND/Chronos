@@ -1,3 +1,5 @@
+import { previousReleaseTag, renderGitHubReleaseNotes } from '../release-notes.ts';
+import { assertReleaseContent } from '../../apps/web/src/lib/content/releases/release.ts';
 import { createHostIdentity } from '../../apps/web/scripts/build-config/host-identity.ts';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -220,6 +222,7 @@ export function reuseAndroidArtifact(
 /** Reuse an existing draft or published artifact only when its bytes exactly match. */
 export function publishAndroidRelease(directory: string, repository: string): AndroidStableUpdate {
 	const release = collectAndroidRelease(directory);
+	assertReleaseContent(release.release);
 	const tag = release.release.tagName;
 	const gh = (args: string[]) =>
 		execFileSync('gh', [...args, '--repo', repository], {
@@ -232,20 +235,31 @@ export function publishAndroidRelease(directory: string, repository: string): An
 	} catch (error) {
 		if (!String((error as { stderr?: unknown }).stderr).includes('release not found')) throw error;
 	}
-	if (!existing)
-		gh([
-			'release',
-			'create',
-			tag,
-			'--draft',
-			'--verify-tag',
-			'--title',
-			release.release.name,
-			'--notes',
-			release.release.body
-		]);
 	const temporary = mkdtempSync(resolve(tmpdir(), 'chronos-release-'));
 	try {
+		const notesPath = resolve(temporary, 'notes.md');
+		if (!existing || existing.isDraft) {
+			const releases = JSON.parse(
+				gh(['release', 'list', '--limit', '100', '--json', 'tagName,isDraft,isPrerelease'])
+			) as { tagName: string; isDraft: boolean; isPrerelease: boolean }[];
+			const previous = previousReleaseTag(
+				releases.filter((r) => !r.isDraft && !r.isPrerelease).map((r) => r.tagName),
+				tag
+			);
+			writeFileSync(notesPath, renderGitHubReleaseNotes(release, repository, previous));
+			if (!existing)
+				gh([
+					'release',
+					'create',
+					tag,
+					'--draft',
+					'--verify-tag',
+					'--title',
+					release.release.name,
+					'--notes-file',
+					notesPath
+				]);
+		}
 		for (const file of readdirSync(directory).filter((file) => /\.(apk|json)$/.test(file))) {
 			if (existing?.assets.some((asset) => asset.name === file)) {
 				gh(['release', 'download', tag, '--pattern', file, '--dir', temporary]);
@@ -264,7 +278,8 @@ export function publishAndroidRelease(directory: string, repository: string): An
 			)
 		)
 			throw new Error('Release upload incomplete');
-		if (complete.isDraft) gh(['release', 'edit', tag, '--draft=false', '--latest=false']);
+		if (complete.isDraft)
+			gh(['release', 'edit', tag, '--notes-file', notesPath, '--draft=false', '--latest=false']);
 		return release;
 	} finally {
 		rmSync(temporary, { recursive: true, force: true });

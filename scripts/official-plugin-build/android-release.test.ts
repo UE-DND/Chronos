@@ -1,3 +1,4 @@
+import { renderGitHubReleaseNotes } from '../release-notes';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -46,7 +47,12 @@ function release(version: string): AndroidStableUpdate {
 	const tagName = `v${version}`;
 	return {
 		formatVersion: 1,
-		release: { tagName, name: version, body: '', publishedAt: '2026-09-26' },
+		release: {
+			tagName,
+			name: `Chronos ${version}`,
+			body: '## 修复\n\n- 修复课程显示。',
+			publishedAt: '2026-09-26'
+		},
 		packageId: 'org.uednd.chronos',
 		versionCode: 1_000_000 + Number(version.split('.')[2]),
 		signingCertificateSha256: 'c'.repeat(64),
@@ -72,6 +78,67 @@ function release(version: string): AndroidStableUpdate {
 	};
 }
 describe('ready Android publishing', () => {
+	it('adds profile downloads and comparison only to GitHub notes', () => {
+		const value = release('1.0.3');
+		const original = JSON.stringify(value);
+		const body = renderGitHubReleaseNotes(value, 'UE-DND/Chronos', 'v1.0.2');
+		expect(body).toContain(value.release.body);
+		for (const entry of Object.values(value.profiles)) expect(body).toContain(entry.apkUrl);
+		expect(body).toContain('重庆理工大学在线版');
+		expect(body).toContain('不含知行理工在线同步');
+		expect(body).toContain('/compare/v1.0.2...v1.0.3');
+		expect(JSON.stringify(value)).toBe(original);
+		expect(renderGitHubReleaseNotes(value, 'UE-DND/Chronos')).toContain('/commits/v1.0.3');
+	});
+	it.each(['new', 'draft', 'published'])(
+		'handles %s releases without modifying feed prose or public notes',
+		(state) => {
+			const directory = artifacts();
+			let notes = '';
+			let views = 0;
+			vi.mocked(execFileSync).mockImplementation(((_file: unknown, args: string[]) => {
+				if (args[1] === 'list')
+					return JSON.stringify([{ tagName: 'v1.0.2', isDraft: false, isPrerelease: false }]);
+				if (args[1] === 'view') {
+					if (views++ === 0 && state === 'new')
+						throw Object.assign(new Error('not found'), { stderr: 'release not found' });
+					return JSON.stringify({
+						isDraft: state !== 'published',
+						assets: ANDROID_PROFILES.flatMap((id) =>
+							['apk', 'json'].map((ext) => ({
+								name: `${androidArtifactBaseName(id, '1.0.3')}.${ext}`
+							}))
+						)
+					});
+				}
+				if (args[1] === 'download') {
+					const file = args[args.indexOf('--pattern') + 1];
+					writeFileSync(
+						resolve(args[args.indexOf('--dir') + 1], file),
+						readFileSync(resolve(directory, file))
+					);
+				}
+				if (args[1] === 'edit' || args[1] === 'create')
+					notes = readFileSync(args[args.indexOf('--notes-file') + 1], 'utf8');
+				return '';
+			}) as typeof execFileSync);
+			const result = publishAndroidRelease(directory, 'UE-DND/Chronos');
+			if (state === 'published') {
+				expect(notes).toBe('');
+				expect(
+					vi
+						.mocked(execFileSync)
+						.mock.calls.some(
+							([, args]) => Array.isArray(args) && ['edit', 'create', 'upload'].includes(args[1])
+						)
+				).toBe(false);
+			} else {
+				expect(notes).toContain('/compare/v1.0.2...v1.0.3');
+				expect(notes).toContain('## 下载与安装');
+			}
+			expect(result.release.body).toBe(release('1.0.3').release.body);
+		}
+	);
 	it('requires PostHog configuration for every official Android profile', () => {
 		expect(androidReleaseWorkflow).toContain('PUBLIC_POSTHOG_KEY: ${{ vars.PUBLIC_POSTHOG_KEY }}');
 		expect(androidReleaseWorkflow).toContain(
@@ -106,6 +173,7 @@ describe('ready Android publishing', () => {
 		vi.mocked(execFileSync).mockImplementation(((_file: unknown, args: string[]) => {
 			calls.push(args);
 			if (args[1] === 'view') return JSON.stringify({ isDraft: true, assets: [] });
+			if (args[1] === 'list') return '[]';
 			if (args[1] === 'upload') throw new Error('upload failed');
 			return '';
 		}) as typeof execFileSync);

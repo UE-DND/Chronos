@@ -4,6 +4,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+	assertReleaseContent,
 	compareReleaseVersions,
 	normalizeReleaseTag,
 	parseFrontmatter,
@@ -77,6 +78,8 @@ export function writeGeneratedVersionJson(
 			`Latest release entry (${latest.tagName}) does not match package.json version (${expectedTag})`
 		);
 	}
+
+	assertReleaseContent(latest);
 
 	if (host.version !== resolvedPackageVersion)
 		throw new Error('Host build and package version differ');
