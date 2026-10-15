@@ -1,6 +1,6 @@
 import { createRouteMotionController } from './route-motion-controller.svelte';
 
-/** Draw the native transition under the startup splash, without changing route state. */
+/** Draw the native transition under a web startup cover, without changing route state. */
 export function warmupRouteMotion(
 	secondaryRoot: HTMLElement,
 	shellRoot: HTMLElement | null,
