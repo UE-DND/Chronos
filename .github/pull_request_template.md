@@ -18,7 +18,9 @@
 
 <!--
 填写版本号、发布日期和上一版本。
-核对 apps/web/package.json 与 apps/web/src/lib/content/releases/entries/vX.Y.Z.md。
+由本机 Agent 按 docs/release-notes.md 直接生成并核对正式发行说明。
+核对 apps/web/package.json 与 apps/web/src/lib/content/releases/entries/vX.Y.Z.md，运行 vp run release:check。
+正文标明平台限制和迁移要求，并清理已收录的 docs/release-notes-next.md 条目。
 发布 vX.Y.Z tag 会触发 GitHub Pages 部署。
 发布 PR 的目标分支为 master，提交标题为 X.Y.Z，说明使用更新摘要。
 -->
