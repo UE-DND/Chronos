@@ -37,7 +37,7 @@
 		"@vite-pwa/sveltekit": "github:UE-DND/sveltekit#359fc2e9b402a4cd56353b89fbdd1721e78040b7",
 		"rolldown-license-plugin": "^3.0.14",
 		"smol-toml": "^1.9.0",
-		"svelte": "^5.57.1",
+		"svelte": "^5.57.2",
 		"svelte-check": "^4.7.6",
 		"tailwindcss": "^4.3.0",
 		"typescript": "^6.0.3",
