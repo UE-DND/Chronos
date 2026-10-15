@@ -8,19 +8,27 @@
 	import { isShellRoute } from '#lib/navigation/routes.ts';
 	import Button from '#lib/components/ui/Button.svelte';
 	import LoadingIndicator from '#lib/components/ui/LoadingIndicator.svelte';
+	import RouteMotionWarmup from './RouteMotionWarmup.svelte';
+	import { getHostPlatform } from '#lib/platform/host-platform.ts';
+	import { isReducedMotionActive } from '#lib/navigation/route-motion-controller.svelte.ts';
 
 	const shellTab = getContext<ShellTabController>('shellTab');
-	const state = $derived(appStartup.state);
-	const failed = $derived(state.core === 'failed' || state.plugins === 'failed');
+	let motionReady = $state(false);
+	const platform = getHostPlatform();
+	const needsMotionWarmup =
+		platform.isNative && platform.platformType === 'android' && !isReducedMotionActive();
+	const startupState = $derived(appStartup.state);
+	const failed = $derived(startupState.core === 'failed' || startupState.plugins === 'failed');
 	const showing = $derived(
-		state.core === 'failed' ||
-			(state.core === 'ready' &&
-				state.plugins !== 'ready' &&
-				(!state.timetableFallback || !isShellRoute(page.url.pathname)))
+		startupState.core === 'failed' ||
+			(startupState.core === 'ready' &&
+				startupState.plugins !== 'ready' &&
+				(!startupState.timetableFallback || !isShellRoute(page.url.pathname)))
 	);
 	$effect(() => {
-		if (state.core !== 'ready' && state.core !== 'failed') return;
+		if (startupState.core !== 'ready' && startupState.core !== 'failed') return;
 		const display = showing ? (failed ? 'error' : 'loading') : 'content';
+		if (display === 'content' && needsMotionWarmup && !motionReady) return;
 		let alive = true;
 		let frame = 0;
 		void tick().then(() => {
@@ -45,6 +53,10 @@
 	}
 </script>
 
+{#if startupState.core === 'ready' && !showing && needsMotionWarmup && !motionReady}
+	<RouteMotionWarmup onready={() => (motionReady = true)} />
+{/if}
+
 {#if showing}
 	<div
 		class="fixed inset-0 z-[9998] flex min-h-dvh flex-col items-center justify-center gap-5 bg-canvas px-6 text-center text-ink"
@@ -53,10 +65,10 @@
 		{#if failed}
 			<h1 class="text-title-large">{hostT('startup.failed')}</h1>
 			<p class="text-body-medium text-on-surface-variant" role="alert">
-				{hostT(state.core === 'failed' ? 'startup.coreFailed' : 'startup.pluginsFailed')}
+				{hostT(startupState.core === 'failed' ? 'startup.coreFailed' : 'startup.pluginsFailed')}
 			</p>
 			<Button onclick={() => window.location.reload()}>{hostT('startup.restart')}</Button>
-			{#if state.core === 'ready'}
+			{#if startupState.core === 'ready'}
 				<Button variant="outlined" onclick={enterTimetable}
 					>{hostT('startup.enterTimetable')}</Button
 				>
