@@ -8,7 +8,15 @@ function createElement() {
 		animations.push(animation);
 		return animation;
 	});
-	return { animations, animate, element: { animate } as unknown as HTMLElement };
+	return {
+		animations,
+		animate,
+		element: {
+			animate,
+			style: { willChange: '', opacity: '', transform: '' },
+			inert: false
+		} as unknown as HTMLElement
+	};
 }
 
 function createAnimation() {
@@ -61,6 +69,7 @@ describe('route motion lifecycle', () => {
 		expect(secondary.animations[0].cancel).not.toHaveBeenCalled();
 		motion.cancelMotion();
 		expect(secondary.animations[0].cancel).toHaveBeenCalledOnce();
+		expect(secondary.element.style.willChange).toBe('');
 	});
 
 	it('settles a superseded motion without canceling its replacement', async () => {
@@ -142,5 +151,61 @@ describe('route motion lifecycle', () => {
 		const motion = createRouteMotionController(() => ({}));
 		expect(await motion.animateBackExit(onStart)).toBe(true);
 		expect(onStart).toHaveBeenCalledOnce();
+	});
+
+	it('paints the incoming surface before motion and restores preparation on cancellation', async () => {
+		vi.stubGlobal('requestAnimationFrame', (callback: () => void) => setTimeout(callback, 16));
+		vi.stubGlobal('cancelAnimationFrame', clearTimeout);
+		const secondary = createElement();
+		const motion = createRouteMotionController(() => ({ secondaryRoot: secondary.element }));
+		const onStart = vi.fn();
+		const pending = motion.animateForwardEnter(onStart);
+		expect(secondary.element.inert).toBe(true);
+		await vi.advanceTimersByTimeAsync(16);
+		expect(secondary.animate).not.toHaveBeenCalled();
+		motion.cancelMotion();
+		expect(await pending).toBe(false);
+		expect(secondary.element.style.opacity).toBe('');
+		expect(secondary.element.style.transform).toBe('');
+		expect(secondary.element.inert).toBe(false);
+		expect(onStart).not.toHaveBeenCalled();
+		await vi.runAllTimersAsync();
+		expect(secondary.animate).not.toHaveBeenCalled();
+	});
+
+	it('starts after preparation and bounds preparation when frame callbacks stall', async () => {
+		vi.stubGlobal('requestAnimationFrame', () => 1);
+		vi.stubGlobal('cancelAnimationFrame', vi.fn());
+		const secondary = createElement();
+		const motion = createRouteMotionController(() => ({ secondaryRoot: secondary.element }));
+		const pending = motion.animateForwardEnter();
+		await vi.advanceTimersByTimeAsync(200);
+		expect(secondary.animate).toHaveBeenCalledOnce();
+		expect(secondary.element.style.opacity).toBe('');
+		expect(secondary.element.inert).toBe(false);
+		secondary.animations[0].finish();
+		expect(await pending).toBe(true);
+	});
+
+	it('buffers back exit to allow shell surfaces to rasterize before animating', async () => {
+		vi.stubGlobal('requestAnimationFrame', (callback: () => void) => setTimeout(callback, 16));
+		vi.stubGlobal('cancelAnimationFrame', clearTimeout);
+		const secondary = createElement();
+		const shell = createElement();
+		const motion = createRouteMotionController(() => ({
+			secondaryRoot: secondary.element,
+			shellRoot: shell.element
+		}));
+		const onStart = vi.fn();
+		const pending = motion.animateBackExit(onStart);
+		expect(secondary.animate).not.toHaveBeenCalled();
+		expect(shell.animate).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(40);
+		expect(secondary.animate).toHaveBeenCalledOnce();
+		expect(shell.animate).toHaveBeenCalledOnce();
+		expect(onStart).toHaveBeenCalledOnce();
+		secondary.animations[0].finish();
+		shell.animations[0].finish();
+		expect(await pending).toBe(true);
 	});
 });
