@@ -18,3 +18,8 @@ updates:
       - dependency-name: typescript
       - dependency-name: vite
       - dependency-name: vitest
+
+  - package-ecosystem: gradle
+    directory: /apps/mobile/android
+    schedule:
+      interval: weekly

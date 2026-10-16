@@ -144,8 +144,18 @@ jobs:
         with:
           name: pwa-regression-builds
           path: dist/e2e
+      - name: Cache Playwright Chromium
+        id: playwright-cache
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package.json', 'pnpm-lock.yaml') }}
       - name: Install Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: vp exec playwright install --with-deps chromium
+      - name: Install Chromium system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: vp exec playwright install-deps chromium
       - name: Run production PWA regression
         run: vp exec playwright test --shard=${{ matrix.shard }}/4
       - name: Upload browser failure report
