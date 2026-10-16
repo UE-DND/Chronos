@@ -13,6 +13,7 @@ export { ListAltFillW700 as ListAltFill } from '@material-symbols-svg/svelte/ico
 export { DownloadFillW700 as DownloadFill } from '@material-symbols-svg/svelte/icons/download';
 export { IosShareFillW700 as IosShareFill } from '@material-symbols-svg/svelte/icons/ios-share';
 export { PaletteFillW700 as PaletteFill } from '@material-symbols-svg/svelte/icons/palette';
+export { TextFieldsFillW700 as TextFieldsFill } from '@material-symbols-svg/svelte/icons/text-fields';
 export { WallpaperFillW700 as WallpaperFill } from '@material-symbols-svg/svelte/icons/wallpaper';
 export { InfoFillW700 as InfoFill } from '@material-symbols-svg/svelte/icons/info';
 export { CheckW700 as Check } from '@material-symbols-svg/svelte/icons/check';

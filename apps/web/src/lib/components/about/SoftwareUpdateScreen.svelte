@@ -102,7 +102,7 @@
 
 	{#if updateState.state.checking}
 		<Card
-			variant="filled"
+			variant="elevated"
 			class="flex flex-col items-center justify-center gap-3 py-10 text-center"
 		>
 			<LoadingIndicator />
@@ -126,7 +126,11 @@
 						subtitle={formatPublishedDate(updateState.state.latestRelease.publishedAt)}
 					/>
 				{/if}
-				<HighlightRow icon={InfoFill} title={`v${updateState.state.currentVersion}`} />
+				<HighlightRow
+					icon={InfoFill}
+					title={hostT('about.version.current')}
+					subtitle={`v${updateState.state.currentVersion}`}
+				/>
 			</HighlightRowList>
 
 			{#if htmlBody && updateState.state.hasNewerVersion}
@@ -195,7 +199,7 @@
 			</div>
 		</div>
 	{:else if updateState.state.errorMessage}
-		<Card variant="filled" class="flex flex-col items-center gap-3 py-8 text-center">
+		<Card variant="elevated" class="flex flex-col items-center gap-3 py-8 text-center">
 			<InfoFill class="h-8 w-8 text-on-surface-variant" />
 			<p class="text-body-medium text-danger">
 				{formatErrorMessage(updateState.state.errorMessage)}
@@ -206,7 +210,7 @@
 			</Button>
 		</Card>
 	{:else}
-		<Card variant="filled" class="flex flex-col items-center gap-3 py-8 text-center">
+		<Card variant="elevated" class="flex flex-col items-center gap-3 py-8 text-center">
 			<CheckCircleFill class="h-10 w-10 text-primary" />
 			<div>
 				<h3 class="text-title-medium text-on-surface">

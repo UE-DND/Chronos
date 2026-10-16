@@ -7,6 +7,7 @@
 		disabled = false,
 		size = 'default',
 		hapticOnChange = true,
+		ariaLabel,
 		onCheckedChange,
 		class: className = ''
 	}: {
@@ -15,6 +16,7 @@
 		size?: 'default' | 'sm';
 		/** Fire light haptic when toggled. Disable for switches that manage haptic themselves. */
 		hapticOnChange?: boolean;
+		ariaLabel?: string;
 		onCheckedChange?: (checked: boolean) => void;
 		class?: string;
 	} = $props();
@@ -41,6 +43,7 @@
 <Switch.Root
 	bind:checked
 	{disabled}
+	aria-label={ariaLabel}
 	onCheckedChange={handleCheckedChange}
 	class="peer inline-flex shrink-0 cursor-pointer items-center rounded-switch-track border-2 border-transparent bg-outline transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-40 data-[state=checked]:bg-brand {rootSizeClass} {className}"
 >

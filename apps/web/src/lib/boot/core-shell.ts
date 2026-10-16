@@ -96,7 +96,7 @@ function registerCoreShellSlots(
 		sectionId: 'appearance-feedback',
 		title: () => t('item.display'),
 		href: '/display-settings',
-		icon: 'palette',
+		icon: 'text-fields',
 		iconTone: 'secondary',
 		keywords: keywordList(t, 'item.display.keywords'),
 		order: 20
