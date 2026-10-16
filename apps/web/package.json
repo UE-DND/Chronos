@@ -9,7 +9,6 @@
 		"test:web": "vp test -- --run"
 	},
 	"dependencies": {
-		"@capacitor-firebase/analytics": "^8.5.2",
 		"@chronos/core": "workspace:*",
 		"@chronos/plugin-codec-share": "workspace:*",
 		"@chronos/plugin-theme-m3": "workspace:*",

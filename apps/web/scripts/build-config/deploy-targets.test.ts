@@ -114,7 +114,7 @@ describe('deploy-targets configuration & isolation', () => {
 		};
 
 		const capacitorDeps = Object.keys(allDeps).filter(
-			(dep) => dep.startsWith('@capacitor/') || dep === '@chronos/platform-capacitor'
+			(dep) => dep.startsWith('@capacitor') || dep === '@chronos/platform-capacitor'
 		);
 
 		expect(capacitorDeps).toEqual([]);

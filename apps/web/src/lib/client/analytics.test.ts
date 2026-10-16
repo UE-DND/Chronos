@@ -15,7 +15,7 @@ const analyticsContext = vi.hoisted(() => ({
 	platform: 'web'
 }));
 
-const firebaseAnalytics = vi.hoisted(() => ({
+const mockAndroidAnalytics = vi.hoisted(() => ({
 	logEvent: vi.fn().mockResolvedValue(undefined),
 	setEnabled: vi.fn().mockResolvedValue(undefined)
 }));
@@ -27,8 +27,10 @@ const firebaseApp = vi.hoisted(() => ({
 }));
 
 const firebaseWebAnalytics = vi.hoisted(() => ({
-	initializeAnalytics: vi.fn(),
-	isSupported: vi.fn().mockResolvedValue(true)
+	initializeAnalytics: vi.fn(() => ({ app: { name: '[DEFAULT]' } })),
+	isSupported: vi.fn().mockResolvedValue(true),
+	logEvent: vi.fn(),
+	setAnalyticsCollectionEnabled: vi.fn()
 }));
 
 vi.mock('$app/env/public', () => ({
@@ -57,14 +59,16 @@ vi.mock('$app/env/public', () => ({
 
 vi.mock('firebase/app', () => firebaseApp);
 vi.mock('firebase/analytics', () => firebaseWebAnalytics);
-vi.mock('@capacitor-firebase/analytics', () => ({ FirebaseAnalytics: firebaseAnalytics }));
 
 vi.mock('#lib/boot/profile-registry.ts', () => ({
 	resolveActiveProfile: () => ({ profileId: analyticsContext.profile })
 }));
 
 vi.mock('#lib/platform/host-platform.ts', () => ({
-	getHostPlatform: () => ({ platformType: analyticsContext.platform })
+	getHostPlatform: () => ({
+		platformType: analyticsContext.platform,
+		analytics: analyticsContext.platform === 'android' ? mockAndroidAnalytics : undefined
+	})
 }));
 
 function configureWebFirebase() {
@@ -101,8 +105,8 @@ describe('analytics', () => {
 
 		expect(() => setAnalyticsCollectionEnabled(true)).not.toThrow();
 		expect(() => trackEvent('onboarding_skip')).not.toThrow();
-		expect(firebaseAnalytics.setEnabled).not.toHaveBeenCalled();
-		expect(firebaseAnalytics.logEvent).not.toHaveBeenCalled();
+		expect(firebaseWebAnalytics.setAnalyticsCollectionEnabled).not.toHaveBeenCalled();
+		expect(firebaseWebAnalytics.logEvent).not.toHaveBeenCalled();
 	});
 
 	it('initializes Firebase Web and enables collection when configured', async () => {
@@ -112,7 +116,10 @@ describe('analytics', () => {
 		setAnalyticsCollectionEnabled(true);
 
 		await vi.waitFor(() => {
-			expect(firebaseAnalytics.setEnabled).toHaveBeenCalledWith({ enabled: true });
+			expect(firebaseWebAnalytics.setAnalyticsCollectionEnabled).toHaveBeenCalledWith(
+				expect.anything(),
+				true
+			);
 		});
 		expect(firebaseApp.initializeApp).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -134,13 +141,14 @@ describe('analytics', () => {
 		trackEvent('share_link_decode_success');
 
 		await vi.waitFor(() => {
-			expect(firebaseAnalytics.logEvent).toHaveBeenCalledWith({
-				name: 'share_link_decode_success',
-				params: {
+			expect(firebaseWebAnalytics.logEvent).toHaveBeenCalledWith(
+				expect.anything(),
+				'share_link_decode_success',
+				{
 					chronos_profile: 'chronos-default',
 					chronos_platform: 'web'
 				}
-			});
+			);
 		});
 	});
 
@@ -157,14 +165,15 @@ describe('analytics', () => {
 		});
 
 		await vi.waitFor(() => {
-			expect(firebaseAnalytics.logEvent).toHaveBeenCalledWith({
-				name: 'plugin_tool_wallpaper_pick',
-				params: {
+			expect(firebaseWebAnalytics.logEvent).toHaveBeenCalledWith(
+				expect.anything(),
+				'plugin_tool_wallpaper_pick',
+				{
 					source: 'plugin',
 					chronos_profile: 'chronos-default',
 					chronos_platform: 'web'
 				}
-			});
+			);
 		});
 	});
 
@@ -194,6 +203,28 @@ describe('analytics', () => {
 		expect(firebaseApp.initializeApp).not.toHaveBeenCalled();
 	});
 
+	it('uses host platform analytics adapter on Android', async () => {
+		analyticsContext.profile = 'chronos-cqut-offline';
+		analyticsContext.platform = 'android';
+		const { setAnalyticsCollectionEnabled, trackEvent } = await import('./analytics');
+
+		setAnalyticsCollectionEnabled(true);
+		trackEvent('onboarding_skip');
+
+		await vi.waitFor(() => {
+			expect(mockAndroidAnalytics.setEnabled).toHaveBeenCalledWith(true);
+			expect(mockAndroidAnalytics.logEvent).toHaveBeenCalledWith(
+				'onboarding_skip',
+				expect.objectContaining({
+					chronos_profile: 'chronos-cqut-offline',
+					chronos_platform: 'android'
+				})
+			);
+		});
+		expect(firebaseApp.initializeApp).not.toHaveBeenCalled();
+		expect(firebaseWebAnalytics.initializeAnalytics).not.toHaveBeenCalled();
+	});
+
 	it('routes trackEvent through the bound analytics port', async () => {
 		const { trackEvent, bindAnalyticsPort } = await import('./analytics');
 		const track = vi.fn();
@@ -202,7 +233,7 @@ describe('analytics', () => {
 		trackEvent('course_save', { source: 'test' });
 
 		expect(track).toHaveBeenCalledWith('course_save', { source: 'test' });
-		expect(firebaseAnalytics.logEvent).not.toHaveBeenCalled();
+		expect(firebaseWebAnalytics.logEvent).not.toHaveBeenCalled();
 	});
 
 	it('does not initialize or queue events until collection is enabled', async () => {
@@ -210,15 +241,16 @@ describe('analytics', () => {
 		const { captureAnalyticsEvent, setAnalyticsCollectionEnabled } = await import('./analytics');
 
 		captureAnalyticsEvent('before_consent');
-		expect(firebaseAnalytics.setEnabled).not.toHaveBeenCalled();
+		expect(firebaseWebAnalytics.setAnalyticsCollectionEnabled).not.toHaveBeenCalled();
 
 		setAnalyticsCollectionEnabled(true);
 		await vi.waitFor(() => {
-			expect(firebaseAnalytics.setEnabled).toHaveBeenCalledWith({ enabled: true });
+			expect(firebaseWebAnalytics.setAnalyticsCollectionEnabled).toHaveBeenCalledWith(
+				expect.anything(),
+				true
+			);
 		});
-		expect(firebaseAnalytics.logEvent).not.toHaveBeenCalledWith(
-			expect.objectContaining({ name: 'before_consent' })
-		);
+		expect(firebaseWebAnalytics.logEvent).not.toHaveBeenCalled();
 	});
 
 	it('stops collection and drops queued and future events when consent is withdrawn', async () => {
@@ -230,10 +262,13 @@ describe('analytics', () => {
 		setAnalyticsCollectionEnabled(false);
 
 		await vi.waitFor(() => {
-			expect(firebaseAnalytics.setEnabled).toHaveBeenLastCalledWith({ enabled: false });
+			expect(firebaseWebAnalytics.setAnalyticsCollectionEnabled).toHaveBeenLastCalledWith(
+				expect.anything(),
+				false
+			);
 		});
 		captureAnalyticsEvent('after_opt_out');
-		expect(firebaseAnalytics.logEvent).not.toHaveBeenCalled();
+		expect(firebaseWebAnalytics.logEvent).not.toHaveBeenCalled();
 	});
 
 	it('keeps collection disabled in development builds', async () => {
@@ -243,8 +278,8 @@ describe('analytics', () => {
 
 		setAnalyticsCollectionEnabled(true);
 		await Promise.resolve();
-		expect(firebaseAnalytics.setEnabled).not.toHaveBeenCalled();
-		expect(firebaseAnalytics.logEvent).not.toHaveBeenCalled();
+		expect(firebaseWebAnalytics.setAnalyticsCollectionEnabled).not.toHaveBeenCalled();
+		expect(firebaseWebAnalytics.logEvent).not.toHaveBeenCalled();
 	});
 
 	it('keeps collection disabled in test mode even when a Firebase project is configured', async () => {
@@ -254,7 +289,7 @@ describe('analytics', () => {
 
 		setAnalyticsCollectionEnabled(true);
 		await Promise.resolve();
-		expect(firebaseAnalytics.setEnabled).not.toHaveBeenCalled();
-		expect(firebaseAnalytics.logEvent).not.toHaveBeenCalled();
+		expect(firebaseWebAnalytics.setAnalyticsCollectionEnabled).not.toHaveBeenCalled();
+		expect(firebaseWebAnalytics.logEvent).not.toHaveBeenCalled();
 	});
 });

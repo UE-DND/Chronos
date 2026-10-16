@@ -135,7 +135,7 @@ export function checkBoundaries(
 		if (
 			from === 'apps/web' &&
 			target === 'web' &&
-			(to === 'apps/mobile' || specifier.startsWith('@capacitor/'))
+			(to === 'apps/mobile' || specifier.startsWith('@capacitor'))
 		)
 			rule = '纯 Web 不依赖原生适配器';
 		if (rule) violations.push({ source: relative(root, source), target: specifier, rule });

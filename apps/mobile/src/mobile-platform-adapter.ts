@@ -372,6 +372,20 @@ export function createMobilePlatformAdapter(): HostPlatformAdapter {
 					}
 				}
 			: {}),
+		...(isNative && platformType === 'android'
+			? {
+					analytics: {
+						async logEvent(name, params) {
+							const { FirebaseAnalytics } = await import('@capacitor-firebase/analytics');
+							await FirebaseAnalytics.logEvent({ name, params });
+						},
+						async setEnabled(enabled) {
+							const { FirebaseAnalytics } = await import('@capacitor-firebase/analytics');
+							await FirebaseAnalytics.setEnabled({ enabled });
+						}
+					}
+				}
+			: {}),
 		getAndroidInstallationIdentity:
 			isNative && platformType === 'android' ? readAndroidInstallationIdentity : undefined,
 		getUpdateAction(): PlatformUpdateAction {

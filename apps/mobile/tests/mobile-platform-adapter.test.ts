@@ -423,6 +423,7 @@ describe('mobile-platform-adapter', () => {
 			expect(adapter.platformType).toBe('android');
 			expect(adapter.supportsPwaInstall).toBe(false);
 			expect(adapter.shouldShowInstallGuide).toBe(false);
+			expect(adapter.analytics).toBeDefined();
 		});
 
 		it('passes the complete APK descriptor to the native updater', async () => {

@@ -91,6 +91,11 @@ export interface ClassNotificationAdapter {
 	dispose(this: void): void;
 }
 
+export interface HostAnalyticsAdapter {
+	logEvent(name: string, params?: Record<string, string | number | boolean>): Promise<void>;
+	setEnabled(enabled: boolean): Promise<void>;
+}
+
 export interface HostPlatformAdapter {
 	getAndroidInstallationIdentity?: () => Promise<{
 		packageId: string;
@@ -114,6 +119,7 @@ export interface HostPlatformAdapter {
 	): Promise<NativeShareResult>;
 	updateTodayWidgetSnapshot?(snapshot: TodayWidgetSnapshot): Promise<void>;
 	classNotifications?: ClassNotificationAdapter;
+	analytics?: HostAnalyticsAdapter;
 	getUpdateAction?(): PlatformUpdateAction;
 	wrapHttpService?(
 		inner: import('@chronos/core').IHttpService

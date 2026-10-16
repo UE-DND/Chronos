@@ -68,6 +68,7 @@ export default defineConfig({
 		__BUILD_TIME__: JSON.stringify(new Date().toISOString()),
 		__CHRONOS_PROFILE__: JSON.stringify(process.env.CHRONOS_PROFILE ?? 'chronos-default'),
 		__ANALYTICS_ENABLED__: JSON.stringify(true),
+		__FIREBASE_ANDROID_CONFIGURED__: JSON.stringify(true),
 		__SVELTEKIT_APP_VERSION__: JSON.stringify(appVersion),
 		__SVELTEKIT_DEV__: JSON.stringify(false),
 		__SVELTEKIT_PAYLOAD_URL__: JSON.stringify(''),

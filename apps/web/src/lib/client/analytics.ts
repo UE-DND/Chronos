@@ -80,9 +80,13 @@ export type HostAnalyticsEvent =
 	| 'developer_easter_egg_open';
 
 type AnalyticsProperties = Record<string, string | number | boolean>;
-type FirebaseAnalyticsClient = typeof import('@capacitor-firebase/analytics').FirebaseAnalytics;
 
-let client: FirebaseAnalyticsClient | null = null;
+interface AnalyticsClient {
+	logEvent(name: string, params?: AnalyticsProperties): Promise<void> | void;
+	setEnabled(enabled: boolean): Promise<void> | void;
+}
+
+let client: AnalyticsClient | null = null;
 let pending: Array<[string, AnalyticsProperties | undefined]> | null = null;
 let analyticsPort: IAnalyticsService | null = null;
 let initializing: Promise<void> | null = null;
@@ -183,7 +187,7 @@ export function setAnalyticsCollectionEnabled(enabled: boolean): void {
 	if (!enabled) {
 		collectionEnabled = false;
 		pending = null;
-		if (client) void client.setEnabled({ enabled: false });
+		if (client) void client.setEnabled(false);
 		return;
 	}
 	if (!canInitializeAnalytics()) {
@@ -194,7 +198,7 @@ export function setAnalyticsCollectionEnabled(enabled: boolean): void {
 
 	collectionEnabled = true;
 	if (client) {
-		if (changed) void client.setEnabled({ enabled: true });
+		if (changed) void client.setEnabled(true);
 		return;
 	}
 	if (initializing) {
@@ -207,40 +211,64 @@ export function setAnalyticsCollectionEnabled(enabled: boolean): void {
 export function initAnalytics() {
 	if (!collectionEnabled || !canInitializeAnalytics() || client || initializing) return;
 	pending = [];
-	initializing = import('@capacitor-firebase/analytics')
-		.then(async ({ FirebaseAnalytics }) => {
-			if (!isAndroidHost()) {
-				const { initializeApp, getApps, getApp } = await import('firebase/app');
-				if (getApps().length === 0) {
-					initializeApp({
-						apiKey: PUBLIC_FIREBASE_API_KEY,
-						authDomain: PUBLIC_FIREBASE_AUTH_DOMAIN,
-						projectId: PUBLIC_FIREBASE_PROJECT_ID,
-						storageBucket: PUBLIC_FIREBASE_STORAGE_BUCKET || undefined,
-						messagingSenderId: PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-						appId: PUBLIC_FIREBASE_APP_ID,
-						measurementId: PUBLIC_FIREBASE_MEASUREMENT_ID
-					});
-				}
-				const { initializeAnalytics, isSupported } = await import('firebase/analytics');
-				if (!(await isSupported())) {
-					pending = null;
-					return;
-				}
-				initializeAnalytics(getApp(), { config: { send_page_view: false } });
+	initializing = (async () => {
+		if (isAndroidHost()) {
+			const adapter = getHostPlatform().analytics;
+			if (adapter) {
+				client = {
+					logEvent(name, params) {
+						return adapter.logEvent(name, params);
+					},
+					setEnabled(enabled) {
+						return adapter.setEnabled(enabled);
+					}
+				};
 			}
-			client = FirebaseAnalytics;
-			await FirebaseAnalytics.setEnabled({ enabled: collectionEnabled });
+		} else {
+			const { initializeApp, getApps, getApp } = await import('firebase/app');
+			if (getApps().length === 0) {
+				initializeApp({
+					apiKey: PUBLIC_FIREBASE_API_KEY,
+					authDomain: PUBLIC_FIREBASE_AUTH_DOMAIN,
+					projectId: PUBLIC_FIREBASE_PROJECT_ID,
+					storageBucket: PUBLIC_FIREBASE_STORAGE_BUCKET || undefined,
+					messagingSenderId: PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+					appId: PUBLIC_FIREBASE_APP_ID,
+					measurementId: PUBLIC_FIREBASE_MEASUREMENT_ID
+				});
+			}
+			const { initializeAnalytics, isSupported, logEvent, setAnalyticsCollectionEnabled } =
+				await import('firebase/analytics');
+			if (!(await isSupported())) {
+				pending = null;
+				return;
+			}
+			const analyticsInstance = initializeAnalytics(getApp(), {
+				config: { send_page_view: false }
+			});
+			client = {
+				logEvent(name, params) {
+					logEvent(analyticsInstance, name, params);
+				},
+				setEnabled(enabled) {
+					setAnalyticsCollectionEnabled(analyticsInstance, enabled);
+				}
+			};
+		}
+		if (client) {
+			await client.setEnabled(collectionEnabled);
 			if (!collectionEnabled) {
 				pending = null;
-				await FirebaseAnalytics.setEnabled({ enabled: false });
+				await client.setEnabled(false);
 				return;
 			}
 			const queued = pending;
 			pending = null;
-			for (const [name, properties] of queued ?? [])
-				logWithClient(FirebaseAnalytics, name, properties);
-		})
+			for (const [name, properties] of queued ?? []) {
+				logWithClient(client, name, properties);
+			}
+		}
+	})()
 		.catch(() => {
 			pending = null;
 		})
@@ -260,14 +288,14 @@ export function buildAnalyticsProperties(
 }
 
 function logWithClient(
-	client: FirebaseAnalyticsClient,
+	activeClient: AnalyticsClient,
 	name: string,
 	properties?: AnalyticsProperties
 ) {
-	void client.logEvent({
-		name: normalizeAnalyticsName(name, 'event'),
-		params: buildAnalyticsProperties(properties)
-	});
+	void activeClient.logEvent(
+		normalizeAnalyticsName(name, 'event'),
+		buildAnalyticsProperties(properties)
+	);
 }
 
 /** Firebase Analytics capture — accepts host and plugin event names. */
