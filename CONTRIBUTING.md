@@ -203,13 +203,13 @@ core 导出 `PREPARE_REMINDER_MINUTES_OPTIONS` 和 `isPrepareReminderMinutes`，
 
 需要判断某天是否有课时，使用 core 的 `queryTimetableCoursesForDate(timetable, dateIso)`；查询多天或整个学期时，使用 `queryTimetableCourseOccurrences(timetable, range?)`。范围端点包含，不传范围表示整个学期。两个纯函数统一处理学期边界、周次、星期、已同步的节假日和可见节次；不会把学期外日期夹到首周或末周，也不会推测缺失的开学日期。课程时刻和通知提前量由调用方处理。
 
-`IStorageService.queryCourses` 用于查找保存的课程记录，不判断某个日期实际有课。宿主暴露的服务、状态、操作、事件、插槽和 UI 接口清单见[宿主接口清单](docs/plugin-host-api.md)。
+`IStorageService.queryCourses` 用于查找保存的课程记录，不判断某个日期实际有课。宿主暴露的服务、状态、操作、事件、插槽和 UI 接口清单见下文[参考：端口契约](#参考端口契约)与[参考：槽位目录](#参考槽位目录)。
 
 ### 样式与资源
 
 UI 插件在 `bundle/entry.ts` 中导入 `bundle/styles.css`。样式文件需要导入 `@chronos/ui-kit/theme/plugin-tailwind.css`，并用 `@source` 指定插件自己的源码目录。插件只生成 Tailwind 工具类，不包含 Preflight 样式重置。宿主不会扫描业务插件的源码。
 
-`text-*`、`ui-*` 等公共样式由宿主提供。颜色和圆角使用公共设计变量（Token），详情见[设计 Token](docs/design-tokens.md)。
+`text-*`、`ui-*` 等公共样式由宿主提供。颜色和圆角使用公共设计变量（Token），详情见 [packages/ui-kit/src/theme](packages/ui-kit/src/theme) 与下文[参考：主题契约](#参考主题契约)。
 
 需要在构建时生成资源的插件，可以在发行配置中声明 `prepareResources` 模块。模块导出 `prepareResources(outDir)`，并返回 `{ colorsJson?, iconsJson? }`。各字段填写生成文件的相对路径。常规构建会将文件写入生成目录，不会修改源码。详情见 [ADR 0043](.agents/docs/adr/0043-theme-owned-color-runtime-and-plugin-host-contracts.md)。
 
@@ -242,7 +242,7 @@ UI 插件在 `bundle/entry.ts` 中导入 `bundle/styles.css`。样式文件需�
 3. 如果某个发行版本需要预安装该插件，将插件 ID 加入对应 Profile。服务端插件还需要加入部署配置和宿主构建依赖。具备 Android 原生代理实现的插件按上文声明 `./mobile`，无需登记移动端路由。当前 Profile 要求预安装的插件不能禁用或卸载。
 4. 运行插件构建或对应的应用构建，检查安装、激活和失败回滚。可选插件还要检查卸载。有界面的插件还要检查语言切换和关闭界面后的资源清理。
 
-Bundle、Manifest 和 Catalog 都由构建生成，不需要提交到版本库。开发环境通过中间件提供插件市场。全量生产市场输出到 `dist/plugin-market/`，宿主的 `apps/web/static/official-plugins/` 只包含当前 Profile 必需插件。官方在线目录按宿主版本发布到 GitHub Pages；发布步骤和离线行为见 [插件分发与发布](docs/plugin-distribution.md)。
+Bundle、Manifest 和 Catalog 都由构建生成，不需要提交到版本库。开发环境通过中间件提供插件市场。全量生产市场输出到 `dist/plugin-market/`，宿主的 `apps/web/static/official-plugins/` 只包含当前 Profile 必需插件。官方在线目录按宿主版本发布到 GitHub Pages；发布步骤和离线行为见 [ADR 0047](.agents/docs/adr/0047-host-update-transactions.md) 与 [ADR 0048](.agents/docs/adr/0048-android-native-self-update.md)。
 
 默认主题如何在首屏前加载、如何补装缺少的预安装插件，以及用户配置和离线资源的处理方式，见 [ADR 0042](.agents/docs/adr/0042-unified-plugin-preinstallation.md)。
 
@@ -295,7 +295,7 @@ Bundle、Manifest 和 Catalog 都由构建生成，不需要提交到版本库�
 
 ## 参考：主题契约
 
-[`ThemeContribution`](packages/core/src/types/contributions.ts) 要提供完整的浅色和深色 Workbench 界面颜色。它还可以提供课程调色板、推荐图标主题、壁纸 Blob 和取色函数。允许使用的颜色键见 [workbench-colors.ts](packages/core/src/theme/workbench-colors.ts)，样式用法见[设计 Token](docs/design-tokens.md)。
+[`ThemeContribution`](packages/core/src/types/contributions.ts) 要提供完整的浅色和深色 Workbench 界面颜色。它还可以提供课程调色板、推荐图标主题、壁纸 Blob 和取色函数。允许使用的颜色键见 [workbench-colors.ts](packages/core/src/theme/workbench-colors.ts)，样式用法见 [`packages/ui-kit/src/theme`](packages/ui-kit/src/theme)。
 
 宿主读取并注册纯 JSON 主题资源。需要配色算法的主题可以使用 ESM。如果主题同时提供 ESM 和颜色 JSON，只有 ESM 会注册配色主题。宿主会检查插件归属、主题 ID，以及运行时颜色是否与静态颜色一致。
 
