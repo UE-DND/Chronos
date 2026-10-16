@@ -24,7 +24,7 @@ Chronos 的核心功能仅为查看、管理与分享课表。另外，您可在
 > 从外部链接安装的插件，其代码在您的浏览器中与内置功能同等权限运行（非沙箱）。您需自行承担来源可信性及使用风险，我们不对第三方或外部来源插件的行为、数据处理或造成的损害承担责任。
 
 > [!NOTE]
-> 所有客户端目前仅适配了 Chromium 生态，在 Firefox、Safari(AppleWebKit) 上使用本项目可能受限
+> 所有客户端目前仅适配了 Chromium 生态，在 Firefox、Safari(AppleWebKit) 上使用本项目可能受限。
 
 ## 导入课表
 
@@ -45,9 +45,9 @@ Chronos 的核心功能仅为查看、管理与分享课表。另外，您可在
 
 ## 数据收集
 
-官方托管生产 Web 版与 GitHub Releases 中的官方 Android APK 会通过 Firebase Analytics 收集功能使用统计以改进产品，不包含课表内容与账号凭据等隐私信息。事件会标记发行 profile 与运行平台。未配置 Firebase 的构建不会启用埋点；此前由 PostHog 收集的历史数据仍保留在 PostHog，不会迁移。
+官方托管的 PWA 应用与 GitHub Releases 中的 Android APK 会通过 Firebase Analytics 收集去标识化的使用情况以协助 Chronos 修复错误或改进使用体验。此选项可随时在应用内关闭。
 
-详见应用内「关于 → 隐私政策」，或 [`privacy-policy.md`](apps/web/static/legal/privacy-policy.md)。
+详见应用内「关于 → 隐私政策」。
 
 ## 部署 Chronos ｜ 插件开发 ｜ 贡献代码
 
