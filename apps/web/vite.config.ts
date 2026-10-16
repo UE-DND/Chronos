@@ -71,9 +71,11 @@ export default defineConfig(({ mode }) => {
 		env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID?.trim() &&
 		env.PUBLIC_FIREBASE_PROJECT_ID?.trim()
 	);
-	const firebaseAndroidConfigured = existsSync(
-		fileURLToPath(new URL('../../apps/mobile/android/app/google-services.json', import.meta.url))
-	);
+	const firebaseAndroidConfigured =
+		mode === 'test' ||
+		existsSync(
+			fileURLToPath(new URL('../../apps/mobile/android/app/google-services.json', import.meta.url))
+		);
 	const analyticsEnabled = analyticsEnabledForBuild({
 		target: targetDef.target,
 		mode,
