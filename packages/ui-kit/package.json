@@ -38,7 +38,7 @@
 	"dependencies": {
 		"@chronos/core": "workspace:*",
 		"@internationalized/date": "^3.12.4",
-		"bits-ui": "^2.19.3"
+		"bits-ui": "^2.19.5"
 	},
 	"peerDependencies": {
 		"svelte": "^5.0.0"
