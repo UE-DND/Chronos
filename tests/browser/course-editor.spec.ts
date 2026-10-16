@@ -14,8 +14,10 @@ for (const width of [430, 1280]) {
 			request
 		}) => {
 			await request.post('/__e2e/deploy?build=old');
+			await page.addInitScript(() =>
+				localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+			);
 			await page.goto('/Chronos/');
-			await page.getByRole('button', { name: '跳过', exact: true }).click();
 			await page.goto(`/Chronos/s#${payload}`);
 			await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
 			const pager = page.locator('.timetable-week-pager');
@@ -57,8 +59,10 @@ for (const width of [430, 1280]) {
 			request
 		}) => {
 			await request.post('/__e2e/deploy?build=old');
+			await page.addInitScript(() =>
+				localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+			);
 			await page.goto('/Chronos/');
-			await page.getByRole('button', { name: '跳过', exact: true }).click();
 			await page.goto(`/Chronos/s#${payload}`);
 			await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
 			await page.goto('/Chronos/timetable/course-editor');
@@ -142,8 +146,10 @@ for (const width of [430, 1280]) {
 
 		test('shows a missing course after startup with no timetable', async ({ page, request }) => {
 			await request.post('/__e2e/deploy?build=old');
+			await page.addInitScript(() =>
+				localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+			);
 			await page.goto('/Chronos/');
-			await page.getByRole('button', { name: '跳过', exact: true }).click();
 			await page.goto('/Chronos/timetable/course-editor?courseId=missing-course');
 			await expect(page.getByText('未找到课程', { exact: true })).toBeVisible();
 			await expect(page.getByRole('button', { name: '保存', exact: true })).toHaveCount(0);

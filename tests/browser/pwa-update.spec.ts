@@ -63,8 +63,10 @@ async function stored(page: Page) {
 }
 
 async function importScenario(page: Page) {
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	await page.goto('/Chronos/');
-	await page.getByRole('button', { name: '跳过', exact: true }).click();
 	await page.goto(`/Chronos/s#${payload}`);
 	await expect(page.getByRole('heading', { name: timetable.name })).toBeVisible();
 	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();

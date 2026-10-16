@@ -17,6 +17,17 @@ async function openLayout(page: Page, request: APIRequestContext) {
 	await page.goto('/Chronos/');
 	await expect(page.getByRole('heading', { name: '欢迎使用 Chronos', exact: true })).toBeVisible();
 	for (const heading of ['阅读相关条款', '功能亮点', '安装到主屏幕', '选择课表页样式']) {
+		if (heading === '功能亮点') {
+			await expect(
+				page.getByRole('button', { name: '我已阅读并继续', exact: true })
+			).toBeDisabled();
+			await page
+				.getByRole('checkbox', {
+					name: '我已仔细阅读并同意《Chronos 服务协议》与《Chronos 隐私政策》',
+					exact: true
+				})
+				.check();
+		}
 		await page.getByRole('button', { name: /^(下一步|我已阅读并继续)$/ }).click();
 		// Wait for the keyed incoming page, rather than guessing its transition duration.
 		await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
@@ -211,7 +222,9 @@ test('cleanup, resize, reentry and visibility pause', async ({ page, request }) 
 		.poll(() => reentered.evaluate(({ timeline }) => timeline.parent === null))
 		.toBe(true);
 	await seek(demo, 0);
-	await page.getByRole('button', { name: '跳过', exact: true }).click();
+	await page.getByRole('button', { name: '下一步', exact: true }).click();
+	await page.getByRole('button', { name: '稍后再说', exact: true }).click();
+	await expect(page.getByRole('dialog')).toHaveCount(0);
 	await expect(demo).toHaveCount(0);
 });
 
@@ -272,6 +285,8 @@ test('plays the complete rehearsal automatically without writing real courses', 
 	await expect(primary(demo)).toHaveCount(1);
 	expect(await column(demo)).toBe(1);
 	expect(await persistedCourses(page)).toEqual(before);
-	await page.getByRole('button', { name: '跳过', exact: true }).click();
+	await page.getByRole('button', { name: '下一步', exact: true }).click();
+	await page.getByRole('button', { name: '稍后再说', exact: true }).click();
+	await expect(page.getByRole('dialog')).toHaveCount(0);
 	await expect(demo).toHaveCount(0);
 });

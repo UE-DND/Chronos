@@ -47,8 +47,10 @@ async function importTimetable(
 ) {
 	const sharePayload = source === timetable ? payload : await encodeSharePayload(source);
 	await request.post('/__e2e/deploy?build=old');
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
 	await page.goto('/Chronos/');
-	await page.getByRole('button', { name: '跳过', exact: true }).click();
 	await page.goto(`/Chronos/s#${sharePayload}`);
 	await expect(page.getByRole('heading', { name: source.name })).toBeVisible();
 	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
