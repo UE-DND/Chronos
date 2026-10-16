@@ -260,7 +260,14 @@ export function publishAndroidRelease(directory: string, repository: string): An
 					notesPath
 				]);
 		}
-		for (const file of readdirSync(directory).filter((file) => /\.(apk|json)$/.test(file))) {
+		const artifactFiles = readdirSync(directory).filter((file) => /\.(apk|json)$/.test(file));
+		const checksumEntries = artifactFiles
+			.slice()
+			.sort()
+			.map((file) => `${digest(resolve(directory, file))}  ${file}\n`);
+		writeFileSync(resolve(directory, 'SHA256SUMS'), checksumEntries.join(''));
+		const uploadFiles = [...artifactFiles, 'SHA256SUMS'];
+		for (const file of uploadFiles) {
 			if (existing?.assets.some((asset) => asset.name === file)) {
 				gh(['release', 'download', tag, '--pattern', file, '--dir', temporary]);
 				if (digest(resolve(temporary, file)) !== digest(resolve(directory, file)))
@@ -273,7 +280,7 @@ export function publishAndroidRelease(directory: string, repository: string): An
 		}
 		const complete = JSON.parse(gh(['release', 'view', tag, '--json', 'isDraft,assets']));
 		if (
-			readdirSync(directory).some(
+			uploadFiles.some(
 				(file) => !complete.assets.some((asset: { name: string }) => asset.name === file)
 			)
 		)

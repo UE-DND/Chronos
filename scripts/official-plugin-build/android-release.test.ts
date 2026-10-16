@@ -104,11 +104,14 @@ describe('ready Android publishing', () => {
 						throw Object.assign(new Error('not found'), { stderr: 'release not found' });
 					return JSON.stringify({
 						isDraft: state !== 'published',
-						assets: ANDROID_PROFILES.flatMap((id) =>
-							['apk', 'json'].map((ext) => ({
-								name: `${androidArtifactBaseName(id, '1.0.3')}.${ext}`
-							}))
-						)
+						assets: [
+							...ANDROID_PROFILES.flatMap((id) =>
+								['apk', 'json'].map((ext) => ({
+									name: `${androidArtifactBaseName(id, '1.0.3')}.${ext}`
+								}))
+							),
+							{ name: 'SHA256SUMS' }
+						]
 					});
 				}
 				if (args[1] === 'download') {
@@ -137,6 +140,11 @@ describe('ready Android publishing', () => {
 				expect(notes).toContain('## 下载与安装');
 			}
 			expect(result.release.body).toBe(release('1.0.3').release.body);
+			const checksums = readFileSync(resolve(directory, 'SHA256SUMS'), 'utf8');
+			for (const id of ANDROID_PROFILES) {
+				expect(checksums).toContain(`${androidArtifactBaseName(id, '1.0.3')}.apk`);
+				expect(checksums).toContain(`${androidArtifactBaseName(id, '1.0.3')}.json`);
+			}
 		}
 	);
 	it('requires Firebase Android configuration for official Android builds', () => {
