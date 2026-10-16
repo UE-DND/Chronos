@@ -1,56 +1,56 @@
 {
 	"formatVersion": 1,
 	"release": {
-		"tagName": "v1.2.9",
-		"name": "Chronos 1.2.9",
-		"body": "## 新增\n\n- 在“今日”插件中点击课程可查看详情；从其他课表打开时显示该课表中的课程，并可切换到所属课表进行编辑。\n\n## 优化\n\n- 课间时将下一节课程标记为当前课程，并在首节课开始前提前显示。\n- Android 启动屏等待应用显示启动结果，延长超时兜底时间，避免启动失败提示被启动屏遮挡。\n- 优化“今日”课程时间与节次的展示，字体放大后仍保持紧凑清晰。\n\n## 修复\n\n- 修复课表和课程时间状态在上课前、课间及当天课程结束后的当前课时判断。",
-		"publishedAt": "2026-10-13"
+		"tagName": "v1.2.10",
+		"name": "Chronos 1.2.10",
+		"body": "## 优化\n\n- 优化 Android 端应用图标的缩放\n- 优化 Android 端消除冷启动后首次进入与退出二级页时的掉帧与卡顿",
+		"publishedAt": "2026-10-15"
 	},
 	"packageId": "org.uednd.chronos",
-	"versionCode": 1002009,
-	"signingCertificateSha256": "5cda4a196759e80ce99f77bd18d8f662a82054ae8d9e56b8be9b491f7f4e649e",
+	"versionCode": 1002010,
+	"signingCertificateSha256": "22e59e404c8384fd31bb21c15e66960155350a7a82c8cdfe460e93c5423cb468",
 	"profiles": {
 		"chronos-default": {
 			"host": {
-				"version": "1.2.9",
-				"buildId": "d87eaf669e0412c3a878e5aa3e4fe1a3624165f7cd84c1bfe5dabeaad48814dc",
-				"sourceCommit": "461520a8ae3deb81ddceb6b0d6ce336eb65f21ab",
+				"version": "1.2.10",
+				"buildId": "2c71316fdeead5cd88c4e19537fa4d2fed15734eeb73afe3269ceb6d6101d8c6",
+				"sourceCommit": "5406a86b03d9e91d8a0cc77657d58deb759a80dc",
 				"profileId": "chronos-default",
 				"deploymentId": "mobile",
 				"target": "mobile"
 			},
-			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.9/Chronos-default-1.2.9.apk",
-			"sha256": "fb1408f82c0b2553ac89920080966ae7280702402b92e7baa4ba6e786b243cba",
-			"sizeBytes": 1847290,
-			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.9/catalog.json"
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.10/Chronos-default-1.2.10.apk",
+			"sha256": "5dbde7de4d87a677098a64062a1c1e4e5ebabdb5e8b52e2bb646bd25f710ecfb",
+			"sizeBytes": 2231762,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.10/catalog.json"
 		},
 		"chronos-cqut": {
 			"host": {
-				"version": "1.2.9",
-				"buildId": "4e8437128f413f3a66d4dc2efcc926dba69b3fec36cdccd8675a2b673189719d",
-				"sourceCommit": "461520a8ae3deb81ddceb6b0d6ce336eb65f21ab",
+				"version": "1.2.10",
+				"buildId": "144f6ec47eaf3c16b8ee26f95074fb388f3a3b4c3591109f80476320cc73e8ef",
+				"sourceCommit": "5406a86b03d9e91d8a0cc77657d58deb759a80dc",
 				"profileId": "chronos-cqut",
 				"deploymentId": "mobile",
 				"target": "mobile"
 			},
-			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.9/Chronos-cqut-1.2.9.apk",
-			"sha256": "af55495fd83774e54cce4e1f654eef01ba251e407eae3f466923b439ad0714d9",
-			"sizeBytes": 1878908,
-			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.9/catalog.json"
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.10/Chronos-cqut-1.2.10.apk",
+			"sha256": "cb2a4fc27a74464586fa690a07fd0e6f7ec67b9d6eadcc120cad20c2895a9bad",
+			"sizeBytes": 2263544,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.10/catalog.json"
 		},
 		"chronos-cqut-offline": {
 			"host": {
-				"version": "1.2.9",
-				"buildId": "d280fc76cb09b99b28e6e85d27ac5a5b8eb251288d88b6e5e68153b030b9727b",
-				"sourceCommit": "461520a8ae3deb81ddceb6b0d6ce336eb65f21ab",
+				"version": "1.2.10",
+				"buildId": "2243e69213cd55517886f06305dc510cace97716bb1b8986b75faf4590088f82",
+				"sourceCommit": "5406a86b03d9e91d8a0cc77657d58deb759a80dc",
 				"profileId": "chronos-cqut-offline",
 				"deploymentId": "mobile",
 				"target": "mobile"
 			},
-			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.9/Chronos-cqut-offline-1.2.9.apk",
-			"sha256": "58e6a3c653af20c89a0522b2229f27a36ceb416274769504abb0f6036141d1d5",
-			"sizeBytes": 1844512,
-			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.9/catalog.json"
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.10/Chronos-cqut-offline-1.2.10.apk",
+			"sha256": "4e02d8c2c43725267082bce1b8633eba502a3529aaf5451ad29f3836b4195196",
+			"sizeBytes": 2228956,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.10/catalog.json"
 		}
 	}
 }

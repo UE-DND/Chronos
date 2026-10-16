@@ -1,0 +1,56 @@
+{
+	"formatVersion": 1,
+	"release": {
+		"tagName": "v1.2.10",
+		"name": "Chronos 1.2.10",
+		"body": "## 优化\n\n- 优化 Android 端应用图标的缩放\n- 优化 Android 端消除冷启动后首次进入与退出二级页时的掉帧与卡顿",
+		"publishedAt": "2026-10-15"
+	},
+	"packageId": "org.uednd.chronos",
+	"versionCode": 1002010,
+	"signingCertificateSha256": "22e59e404c8384fd31bb21c15e66960155350a7a82c8cdfe460e93c5423cb468",
+	"profiles": {
+		"chronos-default": {
+			"host": {
+				"version": "1.2.10",
+				"buildId": "2c71316fdeead5cd88c4e19537fa4d2fed15734eeb73afe3269ceb6d6101d8c6",
+				"sourceCommit": "5406a86b03d9e91d8a0cc77657d58deb759a80dc",
+				"profileId": "chronos-default",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.10/Chronos-default-1.2.10.apk",
+			"sha256": "5dbde7de4d87a677098a64062a1c1e4e5ebabdb5e8b52e2bb646bd25f710ecfb",
+			"sizeBytes": 2231762,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.10/catalog.json"
+		},
+		"chronos-cqut": {
+			"host": {
+				"version": "1.2.10",
+				"buildId": "144f6ec47eaf3c16b8ee26f95074fb388f3a3b4c3591109f80476320cc73e8ef",
+				"sourceCommit": "5406a86b03d9e91d8a0cc77657d58deb759a80dc",
+				"profileId": "chronos-cqut",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.10/Chronos-cqut-1.2.10.apk",
+			"sha256": "cb2a4fc27a74464586fa690a07fd0e6f7ec67b9d6eadcc120cad20c2895a9bad",
+			"sizeBytes": 2263544,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.10/catalog.json"
+		},
+		"chronos-cqut-offline": {
+			"host": {
+				"version": "1.2.10",
+				"buildId": "2243e69213cd55517886f06305dc510cace97716bb1b8986b75faf4590088f82",
+				"sourceCommit": "5406a86b03d9e91d8a0cc77657d58deb759a80dc",
+				"profileId": "chronos-cqut-offline",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.10/Chronos-cqut-offline-1.2.10.apk",
+			"sha256": "4e02d8c2c43725267082bce1b8633eba502a3529aaf5451ad29f3836b4195196",
+			"sizeBytes": 2228956,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.10/catalog.json"
+		}
+	}
+}
