@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { PREFERENCE_STORAGE_KEYS, PREPARE_REMINDER_MINUTES_OPTIONS } from '@chronos/core';
+import {
+	PREFERENCE_STORAGE_KEYS,
+	PREPARE_REMINDER_MINUTES_OPTIONS,
+	DEFAULT_USER_PREFERENCES
+} from '@chronos/core';
 import { PreferencesStore } from './preferences-store';
 
 function harness() {
@@ -68,6 +72,29 @@ describe('class notification preferences', () => {
 				classNotificationsEnabled: 'true' as unknown as boolean,
 				themeMode: 'dark'
 			})
+		).rejects.toThrow(TypeError);
+		expect(values.size).toBe(0);
+	});
+});
+
+describe('analytics preferences', () => {
+	it('keeps existing users enabled when no choice has been saved and persists later changes', async () => {
+		const { store, storage } = harness();
+		expect((await store.getPreferences()).analyticsEnabled).toBe(true);
+		expect((await new PreferencesStore(null).getPreferences()).analyticsEnabled).toBe(
+			DEFAULT_USER_PREFERENCES.analyticsEnabled
+		);
+		await store.savePreferences({ analyticsEnabled: false });
+		expect((await new PreferencesStore(storage).getPreferences()).analyticsEnabled).toBe(false);
+		await new PreferencesStore(storage).savePreferences({ analyticsEnabled: true });
+		expect((await store.getPreferences()).analyticsEnabled).toBe(true);
+		expect((await store.getPreferences()).schemaVersion).toBe(1);
+	});
+
+	it('rejects malformed analytics values without writing the rest of the patch', async () => {
+		const { store, values } = harness();
+		await expect(
+			store.savePreferences({ analyticsEnabled: 'true' as unknown as boolean, themeMode: 'dark' })
 		).rejects.toThrow(TypeError);
 		expect(values.size).toBe(0);
 	});

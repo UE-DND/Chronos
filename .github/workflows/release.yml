@@ -70,6 +70,7 @@ jobs:
       CHRONOS_DEPLOYMENT: mobile
       CHRONOS_DISTRIBUTION: mobile
       CHRONOS_PROFILE: ${{ matrix.profile }}
+      CHRONOS_ENABLE_ANALYTICS: 'true'
       PUBLIC_ANDROID_RELEASE_FEED_URL: https://ue-dnd.github.io/Chronos/android/stable.json
       SOURCE_DATE_EPOCH: ${{ needs.version.outputs.epoch }}
     # Build artifacts while Quality runs; publication still requires Quality below.
@@ -132,21 +133,20 @@ jobs:
           echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
           CERTIFICATE="$(keytool -exportcert -keystore "$RUNNER_TEMP/chronos-release.jks" -alias "$ANDROID_KEY_ALIAS" -storepass:env ANDROID_KEYSTORE_PASSWORD | sha256sum | cut -d ' ' -f 1)"
           echo "PUBLIC_ANDROID_SIGNING_CERT_SHA256=$CERTIFICATE" >> "$GITHUB_ENV"
-      - name: Validate Android analytics configuration
-        env:
-          PUBLIC_POSTHOG_KEY: ${{ vars.PUBLIC_POSTHOG_KEY }}
-          PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}
+      - name: Validate Android Firebase configuration
         run: |
           set -euo pipefail
-          if [[ -z "$PUBLIC_POSTHOG_KEY" || -z "$PUBLIC_POSTHOG_HOST" ]]; then
-            echo 'Configure PUBLIC_POSTHOG_KEY and PUBLIC_POSTHOG_HOST repository variables to enable analytics in official Android releases.' >&2
-            exit 1
-          fi
+          test -s apps/mobile/android/app/google-services.json || { echo 'Missing Android Firebase config: apps/mobile/android/app/google-services.json' >&2; exit 1; }
+          python3 - <<'PY'
+          import json
+          with open('apps/mobile/android/app/google-services.json', encoding='utf-8') as config_file:
+              config = json.load(config_file)
+          clients = config.get('client', [])
+          assert any(client.get('client_info', {}).get('android_client_info', {}).get('package_name') == 'org.uednd.chronos' for client in clients), 'Firebase config does not register org.uednd.chronos'
+          PY
       - name: Reuse immutable Android artifacts on retry
         id: reuse
         env:
-          PUBLIC_POSTHOG_KEY: ${{ vars.PUBLIC_POSTHOG_KEY }}
-          PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.version.outputs.tag }}
           PROFILE: ${{ matrix.profile }}
@@ -160,8 +160,7 @@ jobs:
           CHRONOS_DEPLOYMENT: mobile
           CHRONOS_DISTRIBUTION: mobile
           CHRONOS_PROFILE: ${{ matrix.profile }}
-          PUBLIC_POSTHOG_KEY: ${{ vars.PUBLIC_POSTHOG_KEY }}
-          PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}
+          CHRONOS_ENABLE_ANALYTICS: 'true'
           PUBLIC_ANDROID_RELEASE_FEED_URL: https://ue-dnd.github.io/Chronos/android/stable.json
           SOURCE_DATE_EPOCH: ${{ needs.version.outputs.epoch }}
         run: |

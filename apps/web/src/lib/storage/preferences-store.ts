@@ -121,6 +121,10 @@ export class PreferencesStore {
 			prepareReminderMinutes,
 			classNotificationsEnabled:
 				this.localStore.getItem(SETTINGS_KEYS.classNotificationsEnabled) === '1',
+			analyticsEnabled:
+				this.localStore.getItem(SETTINGS_KEYS.analyticsEnabled) === null
+					? DEFAULT_USER_PREFERENCES.analyticsEnabled
+					: this.localStore.getItem(SETTINGS_KEYS.analyticsEnabled) === '1',
 			currentPeriodHighlightEnabled,
 			visualThemeId,
 			...(locale ? { locale } : {})
@@ -136,6 +140,9 @@ export class PreferencesStore {
 			typeof patch.classNotificationsEnabled !== 'boolean'
 		) {
 			throw new TypeError('classNotificationsEnabled must be a boolean');
+		}
+		if ('analyticsEnabled' in patch && typeof patch.analyticsEnabled !== 'boolean') {
+			throw new TypeError('analyticsEnabled must be a boolean');
 		}
 		if (
 			'prepareReminderMinutes' in patch &&
@@ -195,6 +202,9 @@ export class PreferencesStore {
 				SETTINGS_KEYS.classNotificationsEnabled,
 				patch.classNotificationsEnabled ? '1' : '0'
 			);
+		}
+		if (patch.analyticsEnabled !== undefined) {
+			this.localStore.setItem(SETTINGS_KEYS.analyticsEnabled, patch.analyticsEnabled ? '1' : '0');
 		}
 		if (patch.currentPeriodHighlightEnabled !== undefined) {
 			this.localStore.setItem(

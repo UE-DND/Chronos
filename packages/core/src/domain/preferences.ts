@@ -33,6 +33,7 @@ export const PREFERENCE_STORAGE_KEYS = {
 	reduceMotionEnabled: 'chronos_preferences:reduce_motion_enabled',
 	prepareReminderMinutes: 'chronos_preferences:prepare_reminder_minutes',
 	classNotificationsEnabled: 'chronos_preferences:class_notifications_enabled',
+	analyticsEnabled: 'chronos_preferences:analytics_enabled',
 	currentPeriodHighlightEnabled: 'chronos_preferences:current_period_highlight_enabled',
 	visualThemeId: 'chronos_preferences:visual_theme_id',
 	locale: 'chronos_preferences:locale'
@@ -53,6 +54,8 @@ export interface UserPreferences {
 	prepareReminderMinutes: number;
 	/** Whether the host should send system notifications before classes. */
 	classNotificationsEnabled: boolean;
+	/** Whether the user permits Firebase Analytics collection in configured builds. */
+	analyticsEnabled: boolean;
 	currentPeriodHighlightEnabled: boolean;
 	/** Selected theme id; retained as wallpaper source in wallpaper color mode (e.g. m3-default, yumemita). */
 	visualThemeId?: string;
@@ -74,5 +77,8 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 	reduceMotionEnabled: false,
 	prepareReminderMinutes: 30,
 	classNotificationsEnabled: false,
+	// Analytics was already enabled in existing configured builds. Keep missing values enabled;
+	// first-run onboarding still gates collection until the user finishes the consent step.
+	analyticsEnabled: true,
 	currentPeriodHighlightEnabled: false
 };

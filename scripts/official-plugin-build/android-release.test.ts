@@ -139,23 +139,14 @@ describe('ready Android publishing', () => {
 			expect(result.release.body).toBe(release('1.0.3').release.body);
 		}
 	);
-	it('requires PostHog configuration for every official Android profile', () => {
-		expect(androidReleaseWorkflow).toContain('PUBLIC_POSTHOG_KEY: ${{ vars.PUBLIC_POSTHOG_KEY }}');
+	it('requires Firebase Android configuration for official Android builds', () => {
 		expect(androidReleaseWorkflow).toContain(
-			'PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}'
+			'test -s apps/mobile/android/app/google-services.json'
 		);
-		expect(androidReleaseWorkflow).toContain(
-			'if [[ -z "$PUBLIC_POSTHOG_KEY" || -z "$PUBLIC_POSTHOG_HOST" ]]'
-		);
-		expect(androidReleaseWorkflow.indexOf('Validate Android analytics configuration')).toBeLessThan(
+		expect(androidReleaseWorkflow).toContain("== 'org.uednd.chronos'");
+		expect(androidReleaseWorkflow.indexOf('Validate Android Firebase configuration')).toBeLessThan(
 			androidReleaseWorkflow.indexOf('Reuse immutable Android artifacts on retry')
 		);
-		const reuseStep = androidReleaseWorkflow
-			.split('- name: Reuse immutable Android artifacts on retry')[1]
-			.split('- name:')[0];
-		for (const variable of ['PUBLIC_POSTHOG_KEY', 'PUBLIC_POSTHOG_HOST']) {
-			expect(reuseStep).toContain(`${variable}: \${{ vars.${variable} }}`);
-		}
 		for (const profileId of ANDROID_PROFILES) {
 			expect(androidReleaseWorkflow).toContain(`profile: ${profileId}`);
 		}

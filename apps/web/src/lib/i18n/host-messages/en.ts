@@ -418,6 +418,8 @@ export const en = {
 		'Before using Chronos, please review our terms of service and privacy policy.',
 	'onboarding.legal.terms.desc': 'Service scope, usage rules, and disclaimers',
 	'onboarding.legal.privacy.desc': 'Data collection, storage, and third-party services',
+	'onboarding.legal.agreement':
+		'I have carefully read and agree to the Chronos Terms of Service and Privacy Policy',
 	'onboarding.legal.continue': 'I have read, continue',
 	'onboarding.welcome.title': 'Welcome to Chronos',
 	'onboarding.welcome.subtitle': 'Ad-free · lightweight timetable experience',
@@ -513,6 +515,10 @@ export const en = {
 	'about.storage.calculating': 'Calculating usage…',
 	'about.storage.usage': 'Using {size}',
 	'about.section.info': 'About',
+	'analytics.toggle': 'Anonymous usage analytics',
+	'analytics.description':
+		'Allow Firebase Analytics to collect de-identified feature usage to improve the app. You can turn this off anytime.',
+	'about.analytics.saveFailed': 'Could not save the analytics setting. Please try again.',
 	'about.legal.terms': 'Terms of service',
 	'about.legal.privacy': 'Privacy policy',
 	'about.legal.licenses': 'Open-source licenses',

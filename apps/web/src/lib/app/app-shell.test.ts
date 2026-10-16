@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
 		wallpaperColorEnabled: true
 	},
 	updatePreferences: vi.fn().mockResolvedValue(undefined),
+	setAnalyticsCollectionEnabled: vi.fn(),
 	applyAppearance: vi.fn().mockResolvedValue(undefined),
 	setTheme: vi.fn()
 }));
@@ -32,6 +33,9 @@ vi.mock('#lib/wallpaper/wallpaper-controller.svelte.ts', () => ({
 }));
 
 vi.mock('#lib/appearance/apply-active-theme.ts', () => ({ applyActiveTheme: vi.fn() }));
+vi.mock('#lib/client/analytics.ts', () => ({
+	setAnalyticsCollectionEnabled: mocks.setAnalyticsCollectionEnabled
+}));
 
 vi.mock('#lib/services/app-engine.ts', () => ({
 	getAppController: () => ({
@@ -78,6 +82,7 @@ describe('app shell timetable layout in compact landscape', () => {
 	beforeEach(() => {
 		mocks.preferences.timetableLayoutMode = 'compact';
 		mocks.updatePreferences.mockClear();
+		mocks.setAnalyticsCollectionEnabled.mockClear();
 		let landscapeListener: ((event: { matches: boolean }) => void) | undefined;
 		removeLandscapeListener = vi.fn();
 		const landscapeQuery = {
@@ -145,6 +150,29 @@ describe('app shell timetable layout in compact landscape', () => {
 		expect(shell.state.compactLandscape).toBe(false);
 		expect(shell.state.effectiveTimetableLayoutMode).toBe('compact');
 		shell.destroy();
+	});
+});
+
+describe('analytics consent setting', () => {
+	it('stops collection immediately when disabled and enables only after saving consent', async () => {
+		mocks.updatePreferences.mockClear();
+		mocks.setAnalyticsCollectionEnabled.mockClear();
+		const shell = createAppShell();
+
+		await shell.setAnalyticsEnabled(false);
+		expect(mocks.setAnalyticsCollectionEnabled).toHaveBeenNthCalledWith(1, false);
+		expect(mocks.updatePreferences).toHaveBeenLastCalledWith({ analyticsEnabled: false });
+		expect(mocks.setAnalyticsCollectionEnabled.mock.invocationCallOrder[0]).toBeLessThan(
+			mocks.updatePreferences.mock.invocationCallOrder[0]
+		);
+
+		mocks.updatePreferences.mockClear();
+		await shell.setAnalyticsEnabled(true);
+		expect(mocks.updatePreferences).toHaveBeenLastCalledWith({ analyticsEnabled: true });
+		expect(mocks.setAnalyticsCollectionEnabled).toHaveBeenNthCalledWith(2, true);
+		expect(mocks.updatePreferences.mock.invocationCallOrder[0]).toBeLessThan(
+			mocks.setAnalyticsCollectionEnabled.mock.invocationCallOrder[1]
+		);
 	});
 });
 

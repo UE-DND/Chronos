@@ -1,5 +1,4 @@
 <!--VITE PLUS START-->
-<!--VITE PLUS MANAGE CONTENT, DON'T EDIT MANUALLY-->
 
 # Using Vite+, the Unified Toolchain for the Web
 
@@ -32,7 +31,7 @@ release. Add a tool name to select part of the graph. For example, run
 Chronos is a PWA timetable app.
 
 - Stack: TypeScript, Svelte 5, SvelteKit, Tailwind CSS 4
-- Data & i18n: Dexie (Client-side), Paraglide (en / zh-cn), PostHog
+- Data & i18n: Dexie (Client-side), Paraglide (en / zh-cn), Firebase Analytics
 - Package Manager: Use `vp` / `vpx` CLI only (do not invoke pnpm / npm / yarn / npx directly). `vpx` is the only allowed runner for one-off package binaries (e.g. `vpx @sveltejs/mcp ...`).
 - Developer docs: See `CONTRIBUTING.md` at the repository root
 

@@ -69,6 +69,7 @@ describe('applyActiveTheme', () => {
 						hapticFeedbackEnabled: true,
 						prepareReminderMinutes: 30,
 						classNotificationsEnabled: false,
+						analyticsEnabled: true,
 						reduceMotionEnabled: false,
 						currentPeriodHighlightEnabled: true,
 						visualThemeId: 'm3-default'
@@ -149,6 +150,7 @@ describe('applyActiveTheme', () => {
 						hapticFeedbackEnabled: true,
 						prepareReminderMinutes: 30,
 						classNotificationsEnabled: false,
+						analyticsEnabled: true,
 						reduceMotionEnabled: false,
 						currentPeriodHighlightEnabled: true,
 						visualThemeId: 'm3-default'

@@ -16,7 +16,13 @@ for (const build of ['old', 'new', 'isolated']) {
 			...process.env,
 			PUBLIC_REGRESSION_BUILD: build,
 			CHRONOS_BASE_PATH: build === 'isolated' ? '/Other' : '/Chronos',
-			PUBLIC_POSTHOG_KEY: ''
+			PUBLIC_FIREBASE_API_KEY: '',
+			PUBLIC_FIREBASE_APP_ID: '',
+			PUBLIC_FIREBASE_AUTH_DOMAIN: '',
+			PUBLIC_FIREBASE_MEASUREMENT_ID: '',
+			PUBLIC_FIREBASE_MESSAGING_SENDER_ID: '',
+			PUBLIC_FIREBASE_PROJECT_ID: '',
+			PUBLIC_FIREBASE_STORAGE_BUCKET: ''
 		}
 	});
 	rmSync(resolve(output, build), { recursive: true, force: true });

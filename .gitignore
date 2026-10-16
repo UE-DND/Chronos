@@ -34,6 +34,7 @@ Thumbs.db
 **/.env.*
 !.env.example
 !.env.test
+apps/mobile/android/app/google-services.json
 
 # Vite & Tooling
 vite.config.js.timestamp-*

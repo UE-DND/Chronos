@@ -26,6 +26,7 @@ function createMockEnv(): ChronosEnv {
 		hapticFeedbackEnabled: true,
 		prepareReminderMinutes: 30,
 		classNotificationsEnabled: false,
+		analyticsEnabled: true,
 		reduceMotionEnabled: false,
 		currentPeriodHighlightEnabled: true
 	};

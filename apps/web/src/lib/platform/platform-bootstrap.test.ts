@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
 	tryScheduleInstallDialog: vi.fn(),
 	isPwaStandalone: vi.fn(() => false),
 	installScrollBoundaryFeedback: vi.fn(() => vi.fn()),
-	initAnalytics: vi.fn(),
+	setAnalyticsCollectionEnabled: vi.fn(),
 	attachOfflineUx: vi.fn(() => vi.fn()),
 	checkAppUpdateOnResume: vi.fn(async () => {}),
 	refreshSystemTime: vi.fn(),
@@ -49,7 +49,7 @@ vi.mock('#lib/client/app-update-ux.svelte.ts', () => ({
 }));
 
 vi.mock('#lib/client/analytics.ts', () => ({
-	initAnalytics: mocks.initAnalytics
+	setAnalyticsCollectionEnabled: mocks.setAnalyticsCollectionEnabled
 }));
 
 vi.mock('#lib/services/app-engine.ts', () => ({
@@ -76,7 +76,9 @@ vi.mock('#lib/platform/offline-ux.svelte.ts', () => ({
 vi.mock('#lib/client/onboarding.svelte.ts', () => ({
 	onboardingController: {
 		state: mocks.onboardingState,
-		maybeShow: vi.fn()
+		maybeShow: vi.fn((hasTimetable: boolean) => {
+			mocks.onboardingState.open = !hasTimetable;
+		})
 	}
 }));
 
@@ -95,7 +97,11 @@ describe('createPlatformBootstrap', () => {
 		appearance,
 		controller: {
 			activeThemeId: 'm3-default',
-			userPreferences: { wallpaperSource: 'theme', wallpaperColorEnabled: false }
+			userPreferences: {
+				wallpaperSource: 'theme',
+				wallpaperColorEnabled: false,
+				analyticsEnabled: true
+			}
 		},
 		state: { isDark: false, initialized: false }
 	};
@@ -115,6 +121,9 @@ describe('createPlatformBootstrap', () => {
 		vi.clearAllMocks();
 		mocks.tabIds = ['today'];
 		mocks.onboardingState.open = false;
+		timetableScreen.state.hasLoadedAppState = false;
+		timetableScreen.state.currentTimetable = null;
+		shell.controller.userPreferences.analyticsEnabled = true;
 		vi.stubGlobal('document', {
 			addEventListener: mocks.listenDocument,
 			removeEventListener: vi.fn()
@@ -174,17 +183,19 @@ describe('createPlatformBootstrap', () => {
 		expect(shell.destroy).toHaveBeenCalledOnce();
 	});
 	it('runs startup sequence in order', async () => {
+		timetableScreen.state.hasLoadedAppState = true;
+		timetableScreen.state.currentTimetable = {} as never;
 		const platform = createPlatformBootstrap(deps);
 		const teardown = platform.init();
 
 		await vi.waitFor(() => {
 			expect(shell.init).toHaveBeenCalled();
+			expect(mocks.setAnalyticsCollectionEnabled).toHaveBeenCalledWith(true);
 		});
 
 		expect(mocks.connectivityInit).toHaveBeenCalled();
 		expect(timetableScreen.init).toHaveBeenCalledWith(shell);
 		expect(mocks.pwaInstallInit).toHaveBeenCalled();
-		expect(mocks.initAnalytics).toHaveBeenCalled();
 		expect(mocks.setInstallPromptGate).toHaveBeenCalled();
 		const installPromptGate = mocks.setInstallPromptGate.mock.calls[0][0];
 		expect(installPromptGate()).toBe(false);
@@ -196,6 +207,16 @@ describe('createPlatformBootstrap', () => {
 		teardown();
 		expect(mocks.connectivityDestroy).toHaveBeenCalled();
 		expect(shell.destroy).toHaveBeenCalled();
+	});
+
+	it('does not initialize analytics while first-run consent onboarding is open', async () => {
+		timetableScreen.state.hasLoadedAppState = true;
+		timetableScreen.state.currentTimetable = null;
+		const teardown = createPlatformBootstrap(deps).init();
+		await vi.waitFor(() => expect(shell.init).toHaveBeenCalled());
+		await vi.waitFor(() => expect(mocks.onboardingState.open).toBe(true));
+		expect(mocks.setAnalyticsCollectionEnabled).not.toHaveBeenCalled();
+		teardown();
 	});
 
 	it('is idempotent on repeated init', () => {

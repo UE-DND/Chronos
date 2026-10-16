@@ -165,7 +165,7 @@ Android Release 使用 `app/src/main/generated/baselineProfiles/` 中的 Baselin
 
 Vercel 构建会生成 Serverless 函数和静态资源。Pages 的输出目录是 `apps/web/build`。你可以推送 `v*` 标签部署，也可以手动运行工作流。具体步骤见 [release.yml](.github/workflows/release.yml)。
 
-统计服务使用 `PUBLIC_POSTHOG_KEY` 和 `PUBLIC_POSTHOG_HOST`。Key 留空时，生产构建不会包含统计功能。新增服务端插件见 [ADR 0044](.agents/docs/adr/0044-server-plugin-definition-and-deployment-assembly.md)。
+Firebase Analytics Web 构建使用 `.env.example` 中的 `PUBLIC_FIREBASE_*` 客户端配置；Android 使用 `apps/mobile/android/app/google-services.json`。缺少平台配置时，构建不会启用统计。Firebase 配置是公开客户端配置，不要放入服务账号密钥。新增服务端插件见 [ADR 0044](.agents/docs/adr/0044-server-plugin-definition-and-deployment-assembly.md)。
 
 ## 插件作者指南
 

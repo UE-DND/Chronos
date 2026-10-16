@@ -43,11 +43,11 @@ describe('third-party-license-generator', () => {
 
 	it('preserves compound SPDX license strings', () => {
 		const deps: BundledLicenseInfo[] = [
-			{ name: 'posthog-js', version: '1.0.0', license: '(Apache-2.0 AND MIT)' }
+			{ name: '@capacitor-firebase/analytics', version: '8.0.0', license: '(Apache-2.0 AND MIT)' }
 		];
 
 		expect(formatThirdPartyLicenses(deps)).toEqual([
-			{ name: 'posthog-js', license: '(Apache-2.0 AND MIT)' }
+			{ name: '@capacitor-firebase/analytics', license: '(Apache-2.0 AND MIT)' }
 		]);
 	});
 

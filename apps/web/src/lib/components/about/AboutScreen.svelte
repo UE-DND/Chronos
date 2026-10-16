@@ -23,6 +23,7 @@
 
 	import MineSection from '#lib/components/mine/MineSection.svelte';
 	import MineRow from '#lib/components/mine/MineRow.svelte';
+	import Switch from '#lib/components/ui/Switch.svelte';
 	import AppHero from '#lib/components/AppHero.svelte';
 	import { ChevronRight, InfoFill, DeleteSweepFill, ScheduleFill } from '#lib/icons/index.ts';
 
@@ -43,8 +44,27 @@
 				})
 	);
 
+	let savingAnalytics = $state(false);
+	let localAnalyticsOverride = $state<boolean | null>(null);
+	const analyticsEnabled = $derived(shell.controller.userPreferences?.analyticsEnabled ?? true);
+	const analyticsChecked = $derived(localAnalyticsOverride ?? analyticsEnabled);
+
 	async function refreshDataUsage() {
 		dataUsageBytes = await estimateAppDataBytes();
+	}
+
+	async function toggleAnalytics(enabled: boolean) {
+		if (savingAnalytics) return;
+		savingAnalytics = true;
+		localAnalyticsOverride = enabled;
+		try {
+			await shell.setAnalyticsEnabled(enabled);
+		} catch {
+			shell.controller.notify(hostT('about.analytics.saveFailed'), 'error');
+		} finally {
+			localAnalyticsOverride = null;
+			savingAnalytics = false;
+		}
 	}
 
 	onMount(() => {
@@ -142,6 +162,16 @@
 	</MineSection>
 
 	<MineSection title={hostT('about.section.info')}>
+		<MineRow label title={hostT('analytics.toggle')}>
+			{#snippet trailing()}
+				<Switch
+					checked={analyticsChecked}
+					disabled={savingAnalytics}
+					ariaLabel={hostT('analytics.toggle')}
+					onCheckedChange={toggleAnalytics}
+				/>
+			{/snippet}
+		</MineRow>
 		<MineRow title={hostT('about.legal.terms')} href={resolve('legal/terms')} />
 		<MineRow title={hostT('about.legal.privacy')} href={resolve('legal/privacy')} />
 		<MineRow title={hostT('about.legal.licenses')} href={resolve('open-source-licenses')} />

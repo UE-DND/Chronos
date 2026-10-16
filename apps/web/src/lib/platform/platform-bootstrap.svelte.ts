@@ -3,7 +3,7 @@ import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
 import { connectivity } from '#lib/platform/connectivity.svelte.ts';
 import { onboardingController } from '#lib/client/onboarding.svelte.ts';
 import { isPwaStandalone, pwaInstallController } from '#lib/client/pwa-install.svelte.ts';
-import { initAnalytics } from '#lib/client/analytics.ts';
+import { setAnalyticsCollectionEnabled } from '#lib/client/analytics.ts';
 
 import { attachOfflineUx } from '#lib/platform/offline-ux.svelte.ts';
 import {
@@ -20,6 +20,7 @@ import type { TimetableScreenController } from '#lib/timetable/timetable-screen.
 import type { ShellTabController } from '#lib/shell/shell-tab.svelte.ts';
 import { createTodayWidgetSyncService, type TodayWidgetSyncService } from './today-widget-sync';
 import { registerHyperellipse } from 'hyperellipse';
+import { DEFAULT_USER_PREFERENCES } from '@chronos/core';
 
 export type PlatformBootstrapDeps = {
 	shell: AppShellController;
@@ -40,6 +41,17 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 		current = session;
 		const cleanups: (() => void)[] = [];
 		let todayWidgetSync: TodayWidgetSyncService | null = null;
+		let analyticsStartupResolved = false;
+		function resolveAnalyticsStartup() {
+			if (!deps.timetableScreen.state.hasLoadedAppState) return;
+			onboardingController.maybeShow(Boolean(deps.timetableScreen.state.currentTimetable));
+			if (analyticsStartupResolved || onboardingController.state.open) return;
+			analyticsStartupResolved = true;
+			setAnalyticsCollectionEnabled(
+				deps.shell.controller.userPreferences?.analyticsEnabled ??
+					DEFAULT_USER_PREFERENCES.analyticsEnabled
+			);
+		}
 		function own(cleanup: (() => void) | void | null) {
 			if (cleanup) cleanups.push(cleanup);
 		}
@@ -162,6 +174,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 					deps.shell.init();
 					own(() => deps.timetableScreen.destroy());
 					deps.timetableScreen.init(deps.shell);
+					resolveAnalyticsStartup();
 
 					todayWidgetSync = createTodayWidgetSyncService(engine, platform, {
 						visibilityTarget: document
@@ -180,17 +193,13 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 						pwaInstallController.setInstallPromptGate(() => true);
 					});
 					void pwaInstallController.init(() => session.alive).catch(console.error);
-					initAnalytics();
-
 					own(attachOfflineUx(connectivity));
 
 					own(
 						$effect.root(() => {
 							$effect(() => {
 								if (deps.timetableScreen.state.hasLoadedAppState) {
-									onboardingController.maybeShow(
-										Boolean(deps.timetableScreen.state.currentTimetable)
-									);
+									resolveAnalyticsStartup();
 								}
 							});
 

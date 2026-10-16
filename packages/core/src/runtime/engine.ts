@@ -413,6 +413,9 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 		) {
 			throw new TypeError('classNotificationsEnabled must be a boolean');
 		}
+		if ('analyticsEnabled' in patch && typeof patch.analyticsEnabled !== 'boolean') {
+			throw new TypeError('analyticsEnabled must be a boolean');
+		}
 		if (
 			'prepareReminderMinutes' in patch &&
 			!isPrepareReminderMinutes(patch.prepareReminderMinutes)

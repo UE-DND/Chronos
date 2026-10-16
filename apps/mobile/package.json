@@ -10,6 +10,7 @@
 		"run:android": "vpx cap run android"
 	},
 	"dependencies": {
+		"@capacitor-firebase/analytics": "^8.5.2",
 		"@capacitor/app": "^8.0.0",
 		"@capacitor/app-launcher": "^8.0.1",
 		"@capacitor/clipboard": "^8.0.0",

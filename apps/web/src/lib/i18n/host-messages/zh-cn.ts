@@ -405,6 +405,7 @@ export const zhCn = {
 	'onboarding.legal.subtitle': '使用 Chronos 前，请了解我们的服务协议与隐私政策。',
 	'onboarding.legal.terms.desc': '了解服务范围、使用规范与免责声明',
 	'onboarding.legal.privacy.desc': '了解数据收集、存储与第三方服务说明',
+	'onboarding.legal.agreement': '我已仔细阅读并同意《Chronos 服务协议》与《Chronos 隐私政策》',
 	'onboarding.legal.continue': '我已阅读并继续',
 	'onboarding.welcome.title': '欢迎使用 Chronos',
 	'onboarding.welcome.subtitle': '无广告 · 轻量化的课表体验',
@@ -492,6 +493,10 @@ export const zhCn = {
 	'about.storage.calculating': '正在计算占用…',
 	'about.storage.usage': '当前占用 {size}',
 	'about.section.info': '软件信息',
+	'analytics.toggle': '匿名使用统计',
+	'analytics.description':
+		'允许 Firebase Analytics 收集去标识化的功能使用情况以改进应用，可随时关闭。',
+	'about.analytics.saveFailed': '统计设置未能保存，请重试。',
 	'about.legal.terms': '服务协议',
 	'about.legal.privacy': '隐私政策',
 	'about.legal.licenses': '开源许可',

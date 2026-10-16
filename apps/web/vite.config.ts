@@ -2,6 +2,7 @@ import { createStorageNamespace } from '../../packages/core/src/constants/storag
 import { nativeBuildGuard } from '../../scripts/architecture/native-build-guard.ts';
 import { preinstallPrecachePlugin } from './src/lib/profile-codegen/preinstall-precache';
 import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import tailwindcss from '@tailwindcss/vite';
 import { functionsMixins } from 'vite-plugin-functions-mixins';
@@ -28,6 +29,7 @@ import { writeGeneratedVersionJson } from './src/lib/content/releases/version-ge
 import { chronosLicensePlugin } from './src/lib/legal/chronos-license-plugin';
 import { chronosProfilePlugin } from './src/lib/profile-codegen/chronos-profile-plugin';
 import { resolveProfile, resolveProfileId } from './src/lib/profile-codegen/profile-definitions';
+import { analyticsEnabledForBuild } from './scripts/build-config/analytics-build.ts';
 import { chronosPluginHmrPlugin } from './src/lib/dev/chronos-plugin-hmr-vite.ts';
 import { createHostIdentity } from './scripts/build-config/host-identity';
 
@@ -56,12 +58,29 @@ function resolveManualChunk(id: string): string | undefined {
 	if (!id.includes('node_modules')) return undefined;
 	if (id.includes('dexie')) return 'vendor-dexie';
 	if (id.includes('marked')) return 'vendor-marked';
-	if (id.includes('posthog-js')) return 'vendor-posthog';
 	return undefined;
 }
 
 export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd(), 'PUBLIC_');
+	const firebaseWebConfigured = Boolean(
+		env.PUBLIC_FIREBASE_API_KEY?.trim() &&
+		env.PUBLIC_FIREBASE_APP_ID?.trim() &&
+		env.PUBLIC_FIREBASE_AUTH_DOMAIN?.trim() &&
+		env.PUBLIC_FIREBASE_MEASUREMENT_ID?.trim() &&
+		env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID?.trim() &&
+		env.PUBLIC_FIREBASE_PROJECT_ID?.trim()
+	);
+	const firebaseAndroidConfigured = existsSync(
+		fileURLToPath(new URL('../../apps/mobile/android/app/google-services.json', import.meta.url))
+	);
+	const analyticsEnabled = analyticsEnabledForBuild({
+		target: targetDef.target,
+		mode,
+		firebaseConfigured: targetDef.isMobile ? firebaseAndroidConfigured : firebaseWebConfigured,
+		vercelEnvironment: process.env.VERCEL_ENV,
+		mobileReleaseOptIn: process.env.CHRONOS_ENABLE_ANALYTICS
+	});
 	const bootColors = readHostBuildContext();
 	const host = createHostIdentity(monorepoRoot);
 
@@ -100,9 +119,8 @@ export default defineConfig(({ mode }) => {
 			__ANDROID_RELEASE_FEED_URL__: JSON.stringify(
 				env.PUBLIC_ANDROID_RELEASE_FEED_URL?.trim() ?? ''
 			),
-			__ANALYTICS_ENABLED__: JSON.stringify(
-				mode === 'test' || Boolean(env.PUBLIC_POSTHOG_KEY?.trim())
-			),
+			__ANALYTICS_ENABLED__: JSON.stringify(analyticsEnabled),
+			__FIREBASE_ANDROID_CONFIGURED__: JSON.stringify(firebaseAndroidConfigured),
 			__CHRONOS_PLATFORM_TARGET__: JSON.stringify(targetDef.target)
 		},
 		build: {

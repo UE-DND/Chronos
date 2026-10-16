@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Checkbox } from 'bits-ui';
 	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { fade } from 'svelte/transition';
 	import { getContext } from 'svelte';
@@ -7,10 +8,15 @@
 	import { resolve } from '$app/paths';
 	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
 	import { trackEvent } from '#lib/client/analytics.ts';
-	import { onboardingController, ONBOARDING_STEPS } from '#lib/client/onboarding.svelte.ts';
+	import {
+		hasSeenOnboarding,
+		onboardingController,
+		ONBOARDING_STEPS
+	} from '#lib/client/onboarding.svelte.ts';
 	import type { TimetableLayoutMode } from '@chronos/core';
 	import Button from '#lib/components/ui/Button.svelte';
-	import Card from '#lib/components/ui/Card.svelte';
+	import MineRow from '#lib/components/mine/MineRow.svelte';
+	import MineSection from '#lib/components/mine/MineSection.svelte';
 	import AppHero from '#lib/components/AppHero.svelte';
 	import HighlightRowList from '#lib/components/ui/HighlightRowList.svelte';
 	import HighlightRow from '#lib/components/ui/HighlightRow.svelte';
@@ -18,16 +24,17 @@
 	import LongPressDemo from './LongPressDemo.svelte';
 	import LayoutModePreview from './LayoutModePreview.svelte';
 	import {
+		Check,
 		CheckCircleFill,
 		DownloadFill,
 		GavelFill,
 		RocketLaunchFill,
 		ShieldFill,
-		WifiOffFill,
-		ChevronRight
+		WifiOffFill
 	} from '#lib/icons/index.ts';
 	import { isReducedMotionActive } from '@chronos/ui-kit';
 	import { haptic } from '#lib/haptic/haptic.ts';
+	import Switch from '#lib/components/ui/Switch.svelte';
 
 	const shell = getContext<AppShellController>('appShell');
 	const onboardingState = $derived(onboardingController.state);
@@ -40,6 +47,8 @@
 	const layoutMode = $derived(shell.state.effectiveTimetableLayoutMode);
 	const compactLandscape = $derived(shell.state.compactLandscape);
 	let dialogNode = $state<HTMLElement | null>(null);
+	let analyticsEnabled = $state(shell.controller.userPreferences?.analyticsEnabled ?? true);
+	let legalAccepted = $state(false);
 
 	const layoutOptions = $derived.by(() => {
 		return [
@@ -84,7 +93,6 @@
 		function onKeydown(event: KeyboardEvent) {
 			if (event.key === 'Escape') {
 				event.preventDefault();
-				completeOnboarding();
 				return;
 			}
 			if (event.key !== 'Tab') return;
@@ -110,6 +118,7 @@
 
 	function handleNext() {
 		if (step === 'legal') {
+			if (!legalAccepted) return;
 			trackEvent('onboarding_legal_continue');
 		} else {
 			trackEvent('onboarding_step_next', { step: stepIndex });
@@ -124,20 +133,28 @@
 		onboardingController.back();
 	}
 
-	function completeOnboarding() {
+	async function completeOnboarding(): Promise<boolean> {
+		if (!hasSeenOnboarding()) {
+			try {
+				await shell.setAnalyticsEnabled(analyticsEnabled);
+			} catch {
+				shell.controller.notify(hostT('about.analytics.saveFailed'), 'error');
+				return false;
+			}
+		}
 		onboardingController.finish();
+		return true;
 	}
 
-	function handleStartImport() {
+	async function handleStartImport() {
+		if (!(await completeOnboarding())) return;
 		trackEvent('onboarding_start_import');
-		completeOnboarding();
 		void goto(resolve('transfer/import'));
 	}
 
-	function handleLater() {
-		trackEvent('onboarding_skip', { step: stepIndex });
+	async function handleFinish() {
 		haptic.light();
-		completeOnboarding();
+		await completeOnboarding();
 	}
 
 	async function selectLayoutMode(mode: TimetableLayoutMode) {
@@ -152,28 +169,6 @@
 		void goto(href);
 	}
 </script>
-
-{#snippet legalLinkCard(Icon: typeof GavelFill, title: string, description: string, href: string)}
-	<button
-		type="button"
-		class="block w-full cursor-pointer border-none bg-transparent p-0 text-left"
-		onclick={() => openLegalDocument(href)}
-	>
-		<Card variant="outlined" class="flex items-start gap-3.5">
-			<span class="ui-leading-icon tone-primary" aria-hidden="true">
-				<Icon />
-			</span>
-			<div class="flex min-w-0 flex-1 flex-col justify-center">
-				<p class="text-body-large text-on-surface">{title}</p>
-				<p class="text-body-small text-supporting text-on-surface-variant">{description}</p>
-			</div>
-			<ChevronRight
-				class="size-4.5 shrink-0 self-center text-on-surface-variant"
-				aria-hidden="true"
-			/>
-		</Card>
-	</button>
-{/snippet}
 
 {#if shouldRenderOnboarding}
 	<div
@@ -190,23 +185,14 @@
 		{@attach dialogAttach}
 	>
 		<div class="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col">
-			<div
-				class="flex items-center justify-end gap-2 px-4 pb-2"
-				style:padding-top="calc(var(--topbar-safe) + 0.75rem)"
-			>
-				<button
-					type="button"
-					class="cursor-pointer text-sm font-medium text-on-surface-variant hover:text-on-surface"
-					onclick={handleLater}
-				>
-					{hostT('onboarding.skip')}
-				</button>
-			</div>
+			<div class="w-full shrink-0" style:padding-top="calc(var(--topbar-safe) + 0.75rem)"></div>
 
-			<div class="app-scroll-y native-overscroll-y min-h-0 flex-1 overflow-y-auto px-6 py-4">
+			<div
+				class="app-scroll-y native-overscroll-y grid min-h-0 flex-1 grid-cols-1 overflow-x-clip overflow-y-auto px-6 py-4"
+			>
 				{#key step}
 					<div
-						class="flex h-full flex-col"
+						class="col-start-1 row-start-1 flex h-full min-h-full flex-col"
 						in:fade={{ duration: stepTransitionDuration, delay: stepTransitionDuration }}
 						out:fade={{ duration: stepTransitionDuration }}
 					>
@@ -229,20 +215,58 @@
 								<p class="text-body-small text-supporting text-center text-on-surface-variant">
 									{hostT('onboarding.legal.subtitle')}
 								</p>
-								<div class="flex flex-col gap-3">
-									{@render legalLinkCard(
-										GavelFill,
-										hostT('about.legal.terms'),
-										hostT('onboarding.legal.terms.desc'),
-										resolve('legal/terms')
-									)}
-									{@render legalLinkCard(
-										ShieldFill,
-										hostT('about.legal.privacy'),
-										hostT('onboarding.legal.privacy.desc'),
-										resolve('legal/privacy')
-									)}
-								</div>
+								<MineSection>
+									<MineRow
+										title={hostT('about.legal.terms')}
+										supporting={hostT('onboarding.legal.terms.desc')}
+										icon={GavelFill}
+										iconTone="primary"
+										onclick={() => openLegalDocument(resolve('legal/terms'))}
+									/>
+									<MineRow
+										title={hostT('about.legal.privacy')}
+										supporting={hostT('onboarding.legal.privacy.desc')}
+										icon={ShieldFill}
+										iconTone="primary"
+										onclick={() => openLegalDocument(resolve('legal/privacy'))}
+									/>
+								</MineSection>
+								{#if !hasSeenOnboarding()}
+									<MineSection>
+										<MineRow
+											label
+											title={hostT('analytics.toggle')}
+											supporting={hostT('analytics.description')}
+										>
+											{#snippet trailing()}
+												<Switch
+													checked={analyticsEnabled}
+													ariaLabel={hostT('analytics.toggle')}
+													onCheckedChange={(checked) => (analyticsEnabled = checked)}
+												/>
+											{/snippet}
+										</MineRow>
+									</MineSection>
+								{/if}
+								<Checkbox.Root
+									checked={legalAccepted}
+									onCheckedChange={(checked) => (legalAccepted = checked)}
+									aria-label={hostT('onboarding.legal.agreement')}
+									class="text-body-medium flex w-full cursor-pointer items-center gap-4 border-none bg-transparent px-4 py-3 text-left text-on-surface transition-colors hover:bg-surface-variant/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
+								>
+									<span
+										class={[
+											'flex size-5 shrink-0 items-center justify-center rounded-sm border transition-colors',
+											legalAccepted
+												? 'border-brand bg-brand text-on-primary'
+												: 'border-outline text-transparent'
+										]}
+										aria-hidden="true"
+									>
+										{#if legalAccepted}<Check class="size-4" />{/if}
+									</span>
+									<span>{hostT('onboarding.legal.agreement')}</span>
+								</Checkbox.Root>
 								<p class="text-body-small text-supporting text-center text-on-surface-variant">
 									{hostT('legal.zhOnlyNotice')}
 								</p>
@@ -406,11 +430,16 @@
 								{hostT('onboarding.back')}
 							</Button>
 						{/if}
-						<Button variant="filled" class="flex-1" onclick={handleNext}>
+						<Button
+							variant="filled"
+							class="flex-1"
+							disabled={step === 'legal' && !legalAccepted}
+							onclick={handleNext}
+						>
 							{step === 'legal' ? hostT('onboarding.legal.continue') : hostT('onboarding.next')}
 						</Button>
 					{:else}
-						<Button variant="text" class="flex-1" onclick={handleLater}>
+						<Button variant="text" class="flex-1" onclick={handleFinish}>
 							{hostT('onboarding.later')}
 						</Button>
 						<Button variant="filled" class="flex-1" onclick={handleStartImport}>

@@ -26,6 +26,7 @@ import { applyReduceMotionClass } from '@chronos/ui-kit';
 import { applyFontSizeScale } from '@chronos/ui-kit/theme/font-size.svelte.ts';
 import type { FontSizeScale } from '@chronos/core';
 import { untrack } from 'svelte';
+import { setAnalyticsCollectionEnabled } from '#lib/client/analytics.ts';
 
 function resolveDark(themeMode: ThemeMode, systemPrefersDark: boolean): boolean {
 	if (themeMode === 'dark') return true;
@@ -222,6 +223,12 @@ export function createAppShell() {
 		await updatePreferences({ currentPeriodHighlightEnabled: enabled });
 	}
 
+	async function setAnalyticsEnabled(enabled: boolean) {
+		if (!enabled) setAnalyticsCollectionEnabled(false);
+		await updatePreferences({ analyticsEnabled: enabled });
+		if (enabled) setAnalyticsCollectionEnabled(true);
+	}
+
 	async function switchTimetable(id: string) {
 		await controller.switchTimetable(id);
 	}
@@ -282,6 +289,7 @@ export function createAppShell() {
 		setReduceMotionEnabled,
 		setPrepareReminderMinutes,
 		setCurrentPeriodHighlightEnabled,
+		setAnalyticsEnabled,
 		switchTimetable,
 		deleteTimetable,
 		clearAllData

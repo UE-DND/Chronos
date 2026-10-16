@@ -1,6 +1,12 @@
-import { storageNamespace } from '#lib/storage/storage-namespace.ts';
-import { PUBLIC_POSTHOG_KEY, PUBLIC_POSTHOG_HOST } from '$app/env/public';
-import type { PostHog } from 'posthog-js';
+import {
+	PUBLIC_FIREBASE_API_KEY,
+	PUBLIC_FIREBASE_APP_ID,
+	PUBLIC_FIREBASE_AUTH_DOMAIN,
+	PUBLIC_FIREBASE_MEASUREMENT_ID,
+	PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+	PUBLIC_FIREBASE_PROJECT_ID,
+	PUBLIC_FIREBASE_STORAGE_BUCKET
+} from '$app/env/public';
 import type { IAnalyticsService } from '@chronos/core';
 import { resolveActiveProfile } from '#lib/boot/profile-registry.ts';
 import { getHostPlatform } from '#lib/platform/host-platform.ts';
@@ -73,59 +79,205 @@ export type HostAnalyticsEvent =
 	| 'about_clear_all_data'
 	| 'developer_easter_egg_open';
 
-let client: PostHog | null = null;
-let pending: Array<[string, Record<string, string | number | boolean> | undefined]> | null = null;
+type AnalyticsProperties = Record<string, string | number | boolean>;
+type FirebaseAnalyticsClient = typeof import('@capacitor-firebase/analytics').FirebaseAnalytics;
+
+let client: FirebaseAnalyticsClient | null = null;
+let pending: Array<[string, AnalyticsProperties | undefined]> | null = null;
 let analyticsPort: IAnalyticsService | null = null;
+let initializing: Promise<void> | null = null;
+let collectionEnabled = false;
+
+const RESERVED_EVENT_PREFIXES = ['firebase_', 'google_', 'ga_'];
+const RESERVED_EVENT_NAMES = new Set([
+	'ad_activeview',
+	'app_clear_data',
+	'app_exception',
+	'app_remove',
+	'app_store_refund',
+	'app_update',
+	'app_upgrade',
+	'dynamic_link_app_open',
+	'dynamic_link_app_update',
+	'error',
+	'firebase_campaign',
+	'first_open',
+	'first_visit',
+	'in_app_purchase',
+	'notification_dismiss',
+	'notification_foreground',
+	'notification_open',
+	'notification_receive',
+	'notification_send',
+	'os_update',
+	'screen_view',
+	'session_start',
+	'user_engagement'
+]);
+const GA_NAME_PATTERN = /[^A-Za-z0-9_]+/g;
+
+export function normalizeAnalyticsName(value: string, fallback: string): string {
+	let normalized = value.replace(GA_NAME_PATTERN, '_').replace(/^_+|_+$/g, '');
+	if (!normalized) normalized = fallback;
+	if (!/^[A-Za-z]/.test(normalized)) normalized = `event_${normalized}`;
+	const lowercase = normalized.toLowerCase();
+	if (
+		RESERVED_EVENT_PREFIXES.some((prefix) => lowercase.startsWith(prefix)) ||
+		RESERVED_EVENT_NAMES.has(lowercase)
+	) {
+		normalized = `chronos_${normalized}`;
+	}
+	return normalized.slice(0, 40);
+}
+
+export function normalizeAnalyticsProperties(
+	properties?: Record<string, unknown>
+): AnalyticsProperties {
+	const normalized: AnalyticsProperties = {};
+	for (const [key, value] of Object.entries(properties ?? {})) {
+		if (
+			(typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') ||
+			(typeof value === 'number' && !Number.isFinite(value)) ||
+			Object.keys(normalized).length >= 23
+		)
+			continue;
+		const normalizedKey = normalizeAnalyticsName(key, 'param');
+		if (normalizedKey === 'chronos_profile' || normalizedKey === 'chronos_platform') continue;
+		normalized[normalizedKey] = typeof value === 'string' ? value.slice(0, 100) : value;
+	}
+	return normalized;
+}
+
+function hasFirebaseWebConfig(): boolean {
+	return Boolean(
+		PUBLIC_FIREBASE_API_KEY?.trim() &&
+		PUBLIC_FIREBASE_APP_ID?.trim() &&
+		PUBLIC_FIREBASE_AUTH_DOMAIN?.trim() &&
+		PUBLIC_FIREBASE_MEASUREMENT_ID?.trim() &&
+		PUBLIC_FIREBASE_MESSAGING_SENDER_ID?.trim() &&
+		PUBLIC_FIREBASE_PROJECT_ID?.trim()
+	);
+}
+
+function isAndroidHost(): boolean {
+	return getHostPlatform().platformType === 'android';
+}
 
 export function bindAnalyticsPort(service: IAnalyticsService): void {
 	analyticsPort = service;
 }
 
+function canInitializeAnalytics(): boolean {
+	return (
+		!import.meta.env.DEV &&
+		import.meta.env.MODE !== 'test' &&
+		__ANALYTICS_ENABLED__ &&
+		!(isAndroidHost() && !__FIREBASE_ANDROID_CONFIGURED__) &&
+		(isAndroidHost() || hasFirebaseWebConfig())
+	);
+}
+
+/** Applies the persisted user choice and starts or stops collection immediately. */
+export function setAnalyticsCollectionEnabled(enabled: boolean): void {
+	const changed = collectionEnabled !== enabled;
+	if (!enabled) {
+		collectionEnabled = false;
+		pending = null;
+		if (client) void client.setEnabled({ enabled: false });
+		return;
+	}
+	if (!canInitializeAnalytics()) {
+		collectionEnabled = false;
+		pending = null;
+		return;
+	}
+
+	collectionEnabled = true;
+	if (client) {
+		if (changed) void client.setEnabled({ enabled: true });
+		return;
+	}
+	if (initializing) {
+		pending ??= [];
+		return;
+	}
+	initAnalytics();
+}
+
 export function initAnalytics() {
-	if (import.meta.env.DEV || !__ANALYTICS_ENABLED__) return;
-
-	const key = PUBLIC_POSTHOG_KEY;
-	if (!key) return;
-
+	if (!collectionEnabled || !canInitializeAnalytics() || client || initializing) return;
 	pending = [];
-	void import('posthog-js')
-		.then(({ default: posthog }) => {
-			posthog.init(key, {
-				api_host: PUBLIC_POSTHOG_HOST,
-				defaults: '2026-05-30',
-				autocapture: false,
-				disable_session_recording: true,
-				capture_performance: { web_vitals: false },
-				persistence: 'localStorage',
-				persistence_name: storageNamespace.key('analytics')
-			});
-			client = posthog;
+	initializing = import('@capacitor-firebase/analytics')
+		.then(async ({ FirebaseAnalytics }) => {
+			if (!isAndroidHost()) {
+				const { initializeApp, getApps, getApp } = await import('firebase/app');
+				if (getApps().length === 0) {
+					initializeApp({
+						apiKey: PUBLIC_FIREBASE_API_KEY,
+						authDomain: PUBLIC_FIREBASE_AUTH_DOMAIN,
+						projectId: PUBLIC_FIREBASE_PROJECT_ID,
+						storageBucket: PUBLIC_FIREBASE_STORAGE_BUCKET || undefined,
+						messagingSenderId: PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+						appId: PUBLIC_FIREBASE_APP_ID,
+						measurementId: PUBLIC_FIREBASE_MEASUREMENT_ID
+					});
+				}
+				const { initializeAnalytics, isSupported } = await import('firebase/analytics');
+				if (!(await isSupported())) {
+					pending = null;
+					return;
+				}
+				initializeAnalytics(getApp(), { config: { send_page_view: false } });
+			}
+			client = FirebaseAnalytics;
+			await FirebaseAnalytics.setEnabled({ enabled: collectionEnabled });
+			if (!collectionEnabled) {
+				pending = null;
+				await FirebaseAnalytics.setEnabled({ enabled: false });
+				return;
+			}
 			const queued = pending;
 			pending = null;
-			for (const [name, properties] of queued ?? []) {
-				posthog.capture(name, properties);
-			}
+			for (const [name, properties] of queued ?? [])
+				logWithClient(FirebaseAnalytics, name, properties);
 		})
 		.catch(() => {
 			pending = null;
+		})
+		.finally(() => {
+			initializing = null;
 		});
 }
 
-/** PostHog capture — accepts host and plugin event names. */
-export function captureAnalyticsEvent(
-	name: string,
-	properties?: Record<string, string | number | boolean>
-) {
-	const classifiedProperties = {
-		...properties,
+export function buildAnalyticsProperties(
+	properties?: Record<string, unknown>
+): AnalyticsProperties {
+	return {
+		...normalizeAnalyticsProperties(properties),
 		chronos_profile: resolveActiveProfile().profileId,
-		chronos_platform: getHostPlatform().platformType === 'android' ? 'android' : 'web'
+		chronos_platform: isAndroidHost() ? 'android' : 'web'
 	};
+}
+
+function logWithClient(
+	client: FirebaseAnalyticsClient,
+	name: string,
+	properties?: AnalyticsProperties
+) {
+	void client.logEvent({
+		name: normalizeAnalyticsName(name, 'event'),
+		params: buildAnalyticsProperties(properties)
+	});
+}
+
+/** Firebase Analytics capture — accepts host and plugin event names. */
+export function captureAnalyticsEvent(name: string, properties?: Record<string, unknown>) {
+	if (!collectionEnabled) return;
 	if (client) {
-		client.capture(name, classifiedProperties);
+		logWithClient(client, name, properties as AnalyticsProperties | undefined);
 		return;
 	}
-	pending?.push([name, classifiedProperties]);
+	pending?.push([name, normalizeAnalyticsProperties(properties)]);
 }
 
 /** UI telemetry facade — routes through `IAnalyticsService` when the engine port is bound. */

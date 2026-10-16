@@ -1,8 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const envState = vi.hoisted(() => ({
-	PUBLIC_POSTHOG_KEY: '',
-	PUBLIC_POSTHOG_HOST: 'https://eu.i.posthog.com'
+	PUBLIC_FIREBASE_API_KEY: '',
+	PUBLIC_FIREBASE_APP_ID: '',
+	PUBLIC_FIREBASE_AUTH_DOMAIN: '',
+	PUBLIC_FIREBASE_MEASUREMENT_ID: '',
+	PUBLIC_FIREBASE_MESSAGING_SENDER_ID: '',
+	PUBLIC_FIREBASE_PROJECT_ID: '',
+	PUBLIC_FIREBASE_STORAGE_BUCKET: ''
 }));
 
 const analyticsContext = vi.hoisted(() => ({
@@ -10,19 +15,49 @@ const analyticsContext = vi.hoisted(() => ({
 	platform: 'web'
 }));
 
-const posthog = vi.hoisted(() => ({
-	init: vi.fn(),
-	capture: vi.fn()
+const firebaseAnalytics = vi.hoisted(() => ({
+	logEvent: vi.fn().mockResolvedValue(undefined),
+	setEnabled: vi.fn().mockResolvedValue(undefined)
+}));
+
+const firebaseApp = vi.hoisted(() => ({
+	initializeApp: vi.fn(),
+	getApp: vi.fn(() => ({ name: '[DEFAULT]' })),
+	getApps: vi.fn(() => [])
+}));
+
+const firebaseWebAnalytics = vi.hoisted(() => ({
+	initializeAnalytics: vi.fn(),
+	isSupported: vi.fn().mockResolvedValue(true)
 }));
 
 vi.mock('$app/env/public', () => ({
-	get PUBLIC_POSTHOG_KEY() {
-		return envState.PUBLIC_POSTHOG_KEY;
+	get PUBLIC_FIREBASE_API_KEY() {
+		return envState.PUBLIC_FIREBASE_API_KEY;
 	},
-	get PUBLIC_POSTHOG_HOST() {
-		return envState.PUBLIC_POSTHOG_HOST;
+	get PUBLIC_FIREBASE_APP_ID() {
+		return envState.PUBLIC_FIREBASE_APP_ID;
+	},
+	get PUBLIC_FIREBASE_AUTH_DOMAIN() {
+		return envState.PUBLIC_FIREBASE_AUTH_DOMAIN;
+	},
+	get PUBLIC_FIREBASE_MEASUREMENT_ID() {
+		return envState.PUBLIC_FIREBASE_MEASUREMENT_ID;
+	},
+	get PUBLIC_FIREBASE_MESSAGING_SENDER_ID() {
+		return envState.PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
+	},
+	get PUBLIC_FIREBASE_PROJECT_ID() {
+		return envState.PUBLIC_FIREBASE_PROJECT_ID;
+	},
+	get PUBLIC_FIREBASE_STORAGE_BUCKET() {
+		return envState.PUBLIC_FIREBASE_STORAGE_BUCKET;
 	}
 }));
+
+vi.mock('firebase/app', () => firebaseApp);
+vi.mock('firebase/analytics', () => firebaseWebAnalytics);
+vi.mock('@capacitor-firebase/analytics', () => ({ FirebaseAnalytics: firebaseAnalytics }));
 
 vi.mock('#lib/boot/profile-registry.ts', () => ({
 	resolveActiveProfile: () => ({ profileId: analyticsContext.profile })
@@ -32,106 +67,134 @@ vi.mock('#lib/platform/host-platform.ts', () => ({
 	getHostPlatform: () => ({ platformType: analyticsContext.platform })
 }));
 
-vi.mock('posthog-js', () => ({
-	default: posthog
-}));
+function configureWebFirebase() {
+	Object.assign(envState, {
+		PUBLIC_FIREBASE_API_KEY: 'public-api-key',
+		PUBLIC_FIREBASE_APP_ID: '1:123:web:abc',
+		PUBLIC_FIREBASE_AUTH_DOMAIN: 'chronos-production.firebaseapp.com',
+		PUBLIC_FIREBASE_MEASUREMENT_ID: 'G-ABC123',
+		PUBLIC_FIREBASE_MESSAGING_SENDER_ID: '123',
+		PUBLIC_FIREBASE_PROJECT_ID: 'chronos-production',
+		PUBLIC_FIREBASE_STORAGE_BUCKET: 'chronos-production.firebasestorage.app'
+	});
+}
 
 describe('analytics', () => {
 	beforeEach(() => {
 		vi.resetModules();
 		vi.clearAllMocks();
-		envState.PUBLIC_POSTHOG_KEY = '';
+		Object.keys(envState).forEach((key) => ((envState as Record<string, string>)[key] = ''));
 		analyticsContext.profile = 'chronos-default';
 		analyticsContext.platform = 'web';
 		vi.stubEnv('DEV', false);
+		vi.stubEnv('MODE', 'production');
+		firebaseApp.getApps.mockReturnValue([]);
+		firebaseWebAnalytics.isSupported.mockResolvedValue(true);
 	});
 
 	afterEach(() => {
 		vi.unstubAllEnvs();
 	});
 
-	it('does not throw and no-ops without a key', async () => {
-		const { initAnalytics, trackEvent } = await import('./analytics');
+	it('does not initialize or send events without Firebase configuration', async () => {
+		const { setAnalyticsCollectionEnabled, trackEvent } = await import('./analytics');
 
-		expect(() => initAnalytics()).not.toThrow();
+		expect(() => setAnalyticsCollectionEnabled(true)).not.toThrow();
 		expect(() => trackEvent('onboarding_skip')).not.toThrow();
-		expect(posthog.init).not.toHaveBeenCalled();
-		expect(posthog.capture).not.toHaveBeenCalled();
+		expect(firebaseAnalytics.setEnabled).not.toHaveBeenCalled();
+		expect(firebaseAnalytics.logEvent).not.toHaveBeenCalled();
 	});
 
-	it('inits posthog with privacy-first config', async () => {
-		envState.PUBLIC_POSTHOG_KEY = 'phc_test';
-		const { initAnalytics } = await import('./analytics');
+	it('initializes Firebase Web and enables collection when configured', async () => {
+		configureWebFirebase();
+		const { setAnalyticsCollectionEnabled } = await import('./analytics');
 
-		initAnalytics();
+		setAnalyticsCollectionEnabled(true);
 
 		await vi.waitFor(() => {
-			expect(posthog.init).toHaveBeenCalled();
+			expect(firebaseAnalytics.setEnabled).toHaveBeenCalledWith({ enabled: true });
 		});
-		expect(posthog.init).toHaveBeenCalledWith(
-			'phc_test',
+		expect(firebaseApp.initializeApp).toHaveBeenCalledWith(
 			expect.objectContaining({
-				autocapture: false,
-				disable_session_recording: true,
-				capture_performance: { web_vitals: false }
+				projectId: 'chronos-production',
+				measurementId: 'G-ABC123'
 			})
+		);
+		expect(firebaseWebAnalytics.initializeAnalytics).toHaveBeenCalledWith(
+			{ name: '[DEFAULT]' },
+			{ config: { send_page_view: false } }
 		);
 	});
 
-	it('flushes events captured before posthog finishes loading', async () => {
-		envState.PUBLIC_POSTHOG_KEY = 'phc_test';
-		const { initAnalytics, trackEvent } = await import('./analytics');
+	it('flushes queued events with Chronos profile and platform properties', async () => {
+		configureWebFirebase();
+		const { setAnalyticsCollectionEnabled, trackEvent } = await import('./analytics');
 
-		initAnalytics();
+		setAnalyticsCollectionEnabled(true);
 		trackEvent('share_link_decode_success');
 
 		await vi.waitFor(() => {
-			expect(posthog.capture).toHaveBeenCalledWith('share_link_decode_success', {
-				chronos_profile: 'chronos-default',
-				chronos_platform: 'web'
+			expect(firebaseAnalytics.logEvent).toHaveBeenCalledWith({
+				name: 'share_link_decode_success',
+				params: {
+					chronos_profile: 'chronos-default',
+					chronos_platform: 'web'
+				}
 			});
 		});
 	});
 
-	it('captureAnalyticsEvent accepts plugin-scoped event names', async () => {
-		envState.PUBLIC_POSTHOG_KEY = 'phc_test';
-		const { initAnalytics, captureAnalyticsEvent } = await import('./analytics');
+	it('normalizes plugin event names and forces profile/platform properties', async () => {
+		configureWebFirebase();
+		const { setAnalyticsCollectionEnabled, captureAnalyticsEvent } = await import('./analytics');
 
-		initAnalytics();
+		setAnalyticsCollectionEnabled(true);
 		captureAnalyticsEvent('plugin.tool-wallpaper.pick', {
 			source: 'plugin',
+			bad: { nested: 'value' },
 			chronos_profile: 'spoofed-profile',
 			chronos_platform: 'ios'
 		});
 
 		await vi.waitFor(() => {
-			expect(posthog.capture).toHaveBeenCalledWith('plugin.tool-wallpaper.pick', {
-				source: 'plugin',
-				chronos_profile: 'chronos-default',
-				chronos_platform: 'web'
+			expect(firebaseAnalytics.logEvent).toHaveBeenCalledWith({
+				name: 'plugin_tool_wallpaper_pick',
+				params: {
+					source: 'plugin',
+					chronos_profile: 'chronos-default',
+					chronos_platform: 'web'
+				}
 			});
+		});
+	});
+
+	it('normalizes invalid and reserved names and keys', async () => {
+		const { normalizeAnalyticsName, normalizeAnalyticsProperties } = await import('./analytics');
+
+		expect(normalizeAnalyticsName('7/plugin.event', 'event')).toBe('event_7_plugin_event');
+		expect(normalizeAnalyticsName('firebase_open', 'event')).toBe('chronos_firebase_open');
+		expect(normalizeAnalyticsName('session_start', 'event')).toBe('chronos_session_start');
+		expect(normalizeAnalyticsName('x'.repeat(45), 'event')).toHaveLength(40);
+		expect(normalizeAnalyticsProperties({ 'a.b': true, '': 1, ignored: null })).toEqual({
+			a_b: true,
+			param: 1
 		});
 	});
 
 	it('classifies Android profile events consistently', async () => {
-		envState.PUBLIC_POSTHOG_KEY = 'phc_test';
 		analyticsContext.profile = 'chronos-cqut-offline';
 		analyticsContext.platform = 'android';
-		const { initAnalytics, trackEvent } = await import('./analytics');
+		const { buildAnalyticsProperties } = await import('./analytics');
 
-		initAnalytics();
-		trackEvent('course_save', { action: 'create' });
-
-		await vi.waitFor(() => {
-			expect(posthog.capture).toHaveBeenCalledWith('course_save', {
-				action: 'create',
-				chronos_profile: 'chronos-cqut-offline',
-				chronos_platform: 'android'
-			});
+		expect(buildAnalyticsProperties({ action: 'create' })).toEqual({
+			action: 'create',
+			chronos_profile: 'chronos-cqut-offline',
+			chronos_platform: 'android'
 		});
+		expect(firebaseApp.initializeApp).not.toHaveBeenCalled();
 	});
 
-	it('routes trackEvent through bound analytics port', async () => {
+	it('routes trackEvent through the bound analytics port', async () => {
 		const { trackEvent, bindAnalyticsPort } = await import('./analytics');
 		const track = vi.fn();
 		bindAnalyticsPort({ track });
@@ -139,6 +202,59 @@ describe('analytics', () => {
 		trackEvent('course_save', { source: 'test' });
 
 		expect(track).toHaveBeenCalledWith('course_save', { source: 'test' });
-		expect(posthog.capture).not.toHaveBeenCalled();
+		expect(firebaseAnalytics.logEvent).not.toHaveBeenCalled();
+	});
+
+	it('does not initialize or queue events until collection is enabled', async () => {
+		configureWebFirebase();
+		const { captureAnalyticsEvent, setAnalyticsCollectionEnabled } = await import('./analytics');
+
+		captureAnalyticsEvent('before_consent');
+		expect(firebaseAnalytics.setEnabled).not.toHaveBeenCalled();
+
+		setAnalyticsCollectionEnabled(true);
+		await vi.waitFor(() => {
+			expect(firebaseAnalytics.setEnabled).toHaveBeenCalledWith({ enabled: true });
+		});
+		expect(firebaseAnalytics.logEvent).not.toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'before_consent' })
+		);
+	});
+
+	it('stops collection and drops queued and future events when consent is withdrawn', async () => {
+		configureWebFirebase();
+		const { captureAnalyticsEvent, setAnalyticsCollectionEnabled } = await import('./analytics');
+
+		setAnalyticsCollectionEnabled(true);
+		captureAnalyticsEvent('queued_event');
+		setAnalyticsCollectionEnabled(false);
+
+		await vi.waitFor(() => {
+			expect(firebaseAnalytics.setEnabled).toHaveBeenLastCalledWith({ enabled: false });
+		});
+		captureAnalyticsEvent('after_opt_out');
+		expect(firebaseAnalytics.logEvent).not.toHaveBeenCalled();
+	});
+
+	it('keeps collection disabled in development builds', async () => {
+		configureWebFirebase();
+		vi.stubEnv('DEV', true);
+		const { setAnalyticsCollectionEnabled } = await import('./analytics');
+
+		setAnalyticsCollectionEnabled(true);
+		await Promise.resolve();
+		expect(firebaseAnalytics.setEnabled).not.toHaveBeenCalled();
+		expect(firebaseAnalytics.logEvent).not.toHaveBeenCalled();
+	});
+
+	it('keeps collection disabled in test mode even when a Firebase project is configured', async () => {
+		configureWebFirebase();
+		vi.stubEnv('MODE', 'test');
+		const { setAnalyticsCollectionEnabled } = await import('./analytics');
+
+		setAnalyticsCollectionEnabled(true);
+		await Promise.resolve();
+		expect(firebaseAnalytics.setEnabled).not.toHaveBeenCalled();
+		expect(firebaseAnalytics.logEvent).not.toHaveBeenCalled();
 	});
 });

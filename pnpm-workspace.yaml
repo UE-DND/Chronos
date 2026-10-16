@@ -8,6 +8,8 @@ allowBuilds:
   core-js: false
   esbuild: true
   '@vite-pwa/sveltekit@https://codeload.github.com/UE-DND/sveltekit/tar.gz/359fc2e9b402a4cd56353b89fbdd1721e78040b7': true
+  '@firebase/util': true
+  protobufjs: true
 catalog:
   vite: npm:@voidzero-dev/vite-plus-core@1.1.0
   vite-plus: 1.1.0
