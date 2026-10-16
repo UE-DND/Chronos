@@ -18,9 +18,9 @@
 
 <!--
 填写版本号、发布日期和上一版本。
-由本机 Agent 按 docs/release-notes.md 直接生成并核对正式发行说明。
-核对 apps/web/package.json 与 apps/web/src/lib/content/releases/entries/vX.Y.Z.md，运行 vp run release:check。
-正文标明平台限制和迁移要求，并清理已收录的 docs/release-notes-next.md 条目。
-发布 vX.Y.Z tag 会触发 GitHub Pages 部署。
-发布 PR 的目标分支为 master，提交标题为 X.Y.Z，说明使用更新摘要。
+在 apps/web/src/lib/content/releases/entries/vX.Y.Z.md 中记录正式发行说明。
+核对 apps/web/package.json 与该说明文件，运行 vp run release:check 校验。
+正文标明平台限制和迁移要求。
+发布 vX.Y.Z tag 会触发发布工作流（含 Pages 部署与 Android APK 构建发布）。
+发布 PR 的目标分支为 master，提交标题格式为 🔖 升级应用版本并记录 X.Y.Z。
 -->
