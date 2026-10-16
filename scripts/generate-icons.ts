@@ -11,6 +11,8 @@ const androidRes = resolve(root, 'apps/mobile/android/app/src/main/res');
 
 const BG = '#FFFFFF';
 const ANDROID_NIGHT_BG = '#18212B';
+const SPLASH_BG = '#F0F4F8';
+const SPLASH_NIGHT_BG = '#121316';
 const BRAND = '#087FE0';
 const SOURCE_VIEWBOX = 108;
 /** Maskable safe zone: keep artwork inside the central ~80%. */
@@ -56,9 +58,9 @@ function writePng(output: string, svg: string, size: number): void {
 }
 
 function writeAndroidIcons(): void {
-	for (const [qualifier, background] of [
-		['values', BG],
-		['values-night', ANDROID_NIGHT_BG]
+	for (const [qualifier, launcherBg, splashBg] of [
+		['values', BG, SPLASH_BG],
+		['values-night', ANDROID_NIGHT_BG, SPLASH_NIGHT_BG]
 	] as const) {
 		const valuesDir = resolve(androidRes, qualifier);
 		mkdirSync(valuesDir, { recursive: true });
@@ -66,7 +68,15 @@ function writeAndroidIcons(): void {
 			resolve(valuesDir, 'ic_launcher_background.xml'),
 			`<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">${background}</color>
+    <color name="ic_launcher_background">${launcherBg}</color>
+</resources>
+`
+		);
+		writeFileSync(
+			resolve(valuesDir, 'splash_colors.xml'),
+			`<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="splash_background">${splashBg}</color>
 </resources>
 `
 		);
