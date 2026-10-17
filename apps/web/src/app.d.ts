@@ -69,4 +69,3 @@ declare module '$chronos-platform-adapter' {
 }
 
 /** Only browser regression builds expose element-scoped animation controls. */
-declare const __ONBOARDING_TEST__: boolean;

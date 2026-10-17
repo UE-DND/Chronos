@@ -20,11 +20,9 @@ export function attachDemoMotion(
 		measured.map((node) => `${node.offsetWidth}:${node.offsetHeight}`).join('|');
 	let size = '';
 	const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-	const testRoot = root as HTMLElement & { __demoTimeline?: gsap.core.Timeline };
 	function rebuild() {
 		context?.revert();
 		timeline = undefined;
-		if (__ONBOARDING_TEST__) delete testRoot.__demoTimeline;
 		const reduced =
 			isReducedMotionActive() || document.documentElement.classList.contains('reduce-motion');
 		root.classList.toggle('demo-reduced', reduced);
@@ -33,7 +31,6 @@ export function attachDemoMotion(
 		context = gsap.context(() => {
 			timeline = create(root);
 			if (document.hidden) timeline.pause();
-			if (__ONBOARDING_TEST__) testRoot.__demoTimeline = timeline;
 		}, root);
 	}
 	function visibility() {
@@ -65,7 +62,6 @@ export function attachDemoMotion(
 		document.removeEventListener('visibilitychange', visibility);
 		context?.revert();
 		root.classList.remove('demo-reduced');
-		if (__ONBOARDING_TEST__) delete testRoot.__demoTimeline;
 	};
 }
 
