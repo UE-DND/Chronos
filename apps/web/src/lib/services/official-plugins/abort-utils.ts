@@ -8,12 +8,3 @@ export function isAbortError(err: unknown): boolean {
 	}
 	return false;
 }
-
-/** Swallow expected abort rejections from in-flight hot-update promises. */
-export async function swallowAbortRejection(promise: Promise<unknown>): Promise<void> {
-	try {
-		await promise;
-	} catch (err) {
-		if (!isAbortError(err)) throw err;
-	}
-}

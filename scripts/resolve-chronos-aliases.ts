@@ -4,17 +4,12 @@ import { fileURLToPath } from 'node:url';
 
 export type ChronosAliasEntry = { find: string | RegExp; replacement: string };
 
-export interface PackageExportAlias {
-	find: string | RegExp;
-	replacement: string;
-}
-
 function parsePackageExports(
 	pkgDir: string,
 	pkg: { name: string; exports?: Record<string, unknown>; main?: string },
 	seen: Set<string>
-): PackageExportAlias[] {
-	const alias: PackageExportAlias[] = [];
+): ChronosAliasEntry[] {
+	const alias: ChronosAliasEntry[] = [];
 	const exportsMap = pkg.exports as
 		| Record<string, { import?: string; default?: string } | string>
 		| undefined;

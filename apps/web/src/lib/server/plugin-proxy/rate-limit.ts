@@ -45,11 +45,3 @@ export class PluginRateLimiter {
 }
 
 export const defaultPluginRateLimiter = new PluginRateLimiter();
-
-export function checkPluginRateLimit(
-	pluginId: string,
-	ip: string,
-	now = Date.now()
-): RateLimitResult {
-	return defaultPluginRateLimiter.check(pluginId, ip, now);
-}

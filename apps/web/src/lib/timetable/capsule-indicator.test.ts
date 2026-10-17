@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
-	calculateCompactTooltipOffsetX,
 	calculateExpandedDotPitchPx,
 	calculateExpandedDots,
 	calculateExpandedTooltipOffsetX,
@@ -268,29 +267,6 @@ describe('calculateExpandedDots', () => {
 				currentAcademicWeek: 6
 			})
 		).toEqual([]);
-	});
-});
-
-describe('calculateCompactTooltipOffsetX', () => {
-	it('offsets from the viewport center to the active dot position', () => {
-		const track = calculateScrollingDotTrack({ ...base, scrollWeek: 10 });
-		const expected = (10 - track.windowStart - 1.5) * 11.5;
-		expect(calculateCompactTooltipOffsetX(10, track)).toBeCloseTo(expected);
-	});
-
-	it('tracks fractional scroll weeks via windowStart', () => {
-		const previous = traceWeeks([8, 9, 10]).at(-1)!;
-		const track = calculateScrollingDotTrack({
-			...base,
-			scrollWeek: 10.3,
-			previousWindowStart: previous.windowStart
-		});
-		const expected = (10.3 - track.windowStart - 1.5) * 11.5;
-		expect(calculateCompactTooltipOffsetX(10.3, track)).toBeCloseTo(expected);
-	});
-
-	it('returns zero for an empty track', () => {
-		expect(calculateCompactTooltipOffsetX(5, { dots: [], windowStart: 5, trackOffset: 0 })).toBe(0);
 	});
 });
 

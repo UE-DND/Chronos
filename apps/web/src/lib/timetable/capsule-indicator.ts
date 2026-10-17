@@ -97,20 +97,6 @@ export function applyScrollingDotTrackVisual(
 	}
 }
 
-const DEFAULT_DOT_PITCH = 11.5;
-
-export function calculateCompactTooltipOffsetX(
-	scrollWeek: number,
-	track: ScrollingDotTrack,
-	dotPitch = DEFAULT_DOT_PITCH,
-	visibleCount = 4
-): number {
-	if (track.dots.length === 0) return 0;
-	const slotCenter = (visibleCount - 1) / 2;
-	const activePosition = scrollWeek - track.windowStart;
-	return (activePosition - slotCenter) * dotPitch;
-}
-
 export function calculateExpandedTooltipOffsetX(
 	currentWeek: number,
 	startWeek: number,
