@@ -1,11 +1,13 @@
 package org.uednd.chronos;
 
+import android.Manifest;
 import android.app.AlarmManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.util.AtomicFile;
@@ -152,6 +154,9 @@ final class ChronosClassReminderScheduler {
   display(context, TEST_ID, title, body);
  }
  private static void display(Context context, int id, String title, String body) {
+  if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+   throw new SecurityException("Notification permission is required");
+  }
   ensureChannel(context);
   Intent launch = new Intent(context, MainActivity.class).setAction(Intent.ACTION_VIEW)
    .setData(Uri.parse("chronos://today?class-reminder=1"))
