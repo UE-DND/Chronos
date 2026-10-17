@@ -272,7 +272,7 @@ final class ChronosUpdateManager {
                 // An interrupted staging session contains no committed installation.
                 int session = record.optInt("sessionId", -1);
                 PackageInstaller.SessionInfo info = installer.getSessionInfo(session);
-                if (info != null && info.isSealed()) {
+                if (info != null && isSessionSealed(info)) {
                     put("committed", true); transition("installing", null);
                 } else {
                     abandon(); schedule();
@@ -280,7 +280,7 @@ final class ChronosUpdateManager {
             } else if (phase().equals("installing") && !processing.get()) {
                 PackageInstaller.SessionInfo info = installer.getSessionInfo(record.optInt("sessionId", -1));
                 if (info == null) transition("failed", "install_failed");
-                else if (!info.isSealed()) { abandon(); transition("verifying", null); schedule(); }
+                else if (!isSessionSealed(info)) { abandon(); transition("verifying", null); schedule(); }
             } else if (phase().equals("awaiting-permission") && hasInstallPermission()) {
                 prepare(record.optBoolean("privateReady") && privateApk().isFile());
             } else if (phase().equals("awaiting-confirmation") && installer.getSessionInfo(record.optInt("sessionId", -1)) == null) {
@@ -301,6 +301,14 @@ final class ChronosUpdateManager {
     }
     synchronized Intent pendingConfirmation() { return confirmation; }
     synchronized void confirmationLaunched() { confirmation = null; }
+    private boolean isSessionSealed(PackageInstaller.SessionInfo info) throws IOException {
+        if (Build.VERSION.SDK_INT >= 26) return info.isSealed();
+        try (PackageInstaller.Session session = installer.openSession(info.getSessionId())) {
+            // Android 7 rejects even this read-only query after commit seals a session.
+            try { session.getNames(); return false; }
+            catch (SecurityException sealed) { return true; }
+        }
+    }
     synchronized JSONObject cancel() {
         if (active() && !record.optBoolean("committed")) {
             transition("canceled", null); cleanup(false);
@@ -413,7 +421,7 @@ final class ChronosUpdateManager {
                     try { session.commit(pending.getIntentSender()); }
                     catch (Exception error) {
                         PackageInstaller.SessionInfo info = installer.getSessionInfo(sessionId);
-                        if (info == null || !info.isSealed()) put("committed", false);
+                        if (info == null || !isSessionSealed(info)) put("committed", false);
                         throw error;
                     }
                 }
