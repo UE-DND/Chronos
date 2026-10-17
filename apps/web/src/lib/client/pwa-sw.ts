@@ -13,9 +13,9 @@ const SW_DOWNLOAD_TIMEOUT_MS = 120_000;
 const SW_WAIT_POLL_MS = 250;
 const SW_UPDATEFOUND_GRACE_MS = 2_000;
 
-export type SwUpdatePhase = 'downloading' | 'installing' | 'restarting';
+type SwUpdatePhase = 'downloading' | 'installing' | 'restarting';
 
-export interface SwUpdateProgress {
+interface SwUpdateProgress {
 	phase: SwUpdatePhase;
 	/** Service Worker APIs expose lifecycle states, not byte-level download progress. */
 	percent: number | null;

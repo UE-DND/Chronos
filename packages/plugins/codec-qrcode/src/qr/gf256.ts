@@ -14,12 +14,12 @@ const GF_LOG = new Uint8Array(256);
 	}
 })();
 
-export function gfMul(x: number, y: number): number {
+function gfMul(x: number, y: number): number {
 	if (x === 0 || y === 0) return 0;
 	return GF_EXP[GF_LOG[x]! + GF_LOG[y]!]!;
 }
 
-export function rsGeneratorPoly(degree: number): Uint8Array {
+function rsGeneratorPoly(degree: number): Uint8Array {
 	let poly = new Uint8Array([1]);
 	for (let i = 0; i < degree; i++) {
 		const next = new Uint8Array(poly.length + 1);

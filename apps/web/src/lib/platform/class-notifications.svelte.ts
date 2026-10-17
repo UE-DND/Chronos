@@ -227,4 +227,3 @@ export function createClassNotificationsController(
 		dispose
 	};
 }
-export type ClassNotificationsController = ReturnType<typeof createClassNotificationsController>;

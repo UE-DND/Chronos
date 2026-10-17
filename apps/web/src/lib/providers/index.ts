@@ -20,8 +20,7 @@ export {
 	WebHttpProxyProvider,
 	PluginProxyHttpAdapter,
 	WebRuntimeProvider,
-	WebAnalyticsProvider,
-	WebErrorCaptureProvider
+	WebAnalyticsProvider
 };
 
 export interface WebProviderOptions {

@@ -1,6 +1,6 @@
 export type DeployTarget = 'vercel' | 'pages' | 'mobile';
-export type DeployTargetBasePath = '' | `/${string}`;
-export type AdapterKind = 'vercel' | 'static-pages' | 'static-spa';
+type DeployTargetBasePath = '' | `/${string}`;
+type AdapterKind = 'vercel' | 'static-pages' | 'static-spa';
 
 export interface DeployTargetDefinition {
 	readonly target: DeployTarget;

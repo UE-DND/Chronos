@@ -1,6 +1,6 @@
 import { deflateRaw, inflateRaw } from '@chronos/codec-kit';
 
-export const MAX_SHARE_DECOMPRESSED_BYTES = 262_144;
+const MAX_SHARE_DECOMPRESSED_BYTES = 262_144;
 
 export class ShareDecompressionTooLargeError extends Error {
 	constructor() {

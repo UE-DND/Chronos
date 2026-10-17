@@ -20,13 +20,7 @@ import { replacePluginAssets } from './plugin-asset-replacer';
 import { OfficialPluginRuntimeActivator } from './runtime-activator';
 import { assertValidManifestInstallUrl } from './manifest-url';
 import { validatePluginManifest } from './plugin-bundle';
-import {
-	OfficialPluginInstallQueue,
-	type InstallQueueChangeKind,
-	type PluginInstallStage,
-	type PluginInstallTask,
-	type PluginInstallProgress
-} from './install-queue';
+import { OfficialPluginInstallQueue, type PluginInstallStage } from './install-queue';
 import { syncInstalledPluginsWithHost } from './sync-installed-plugins';
 import {
 	RESERVED_OFFICIAL_PLUGIN_IDS,
@@ -43,12 +37,7 @@ import {
 export type { HostPluginPreparation } from './host-update-transaction-service';
 
 export type { InstalledOfficialPluginRecord } from './official-plugin-types';
-export type {
-	InstallQueueChangeKind,
-	PluginInstallStage,
-	PluginInstallTask,
-	PluginInstallProgress
-};
+export type { PluginInstallStage };
 export { OfficialPluginInstallQueue };
 
 export interface OfficialPluginServiceDeps {

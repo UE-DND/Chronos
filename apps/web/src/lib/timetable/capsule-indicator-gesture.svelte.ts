@@ -176,5 +176,3 @@ export function createCapsuleIndicatorGesture({
 		destroy
 	};
 }
-
-export type CapsuleIndicatorGesture = ReturnType<typeof createCapsuleIndicatorGesture>;

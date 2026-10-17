@@ -144,7 +144,7 @@ export interface AppDataResetPolicy {
 	hostBuildId: string;
 }
 
-export function assertInstallationResetAllowed(
+function assertInstallationResetAllowed(
 	state: PluginInstallationState,
 	policy: AppDataResetPolicy
 ): void {

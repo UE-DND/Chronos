@@ -31,12 +31,12 @@ function pngTextChunk(keyword: string, text: string): Uint8Array {
 	return pngChunk('tEXt', data);
 }
 
-export interface RasterizeQrOptions {
+interface RasterizeQrOptions {
 	margin?: number;
 	size?: number;
 }
 
-export function rasterizeQrMatrix(
+function rasterizeQrMatrix(
 	matrix: QrMatrix,
 	options: RasterizeQrOptions = {}
 ): { rgba: Uint8Array; width: number; height: number } {
@@ -69,7 +69,7 @@ export function rasterizeQrMatrix(
 	return { rgba, width, height };
 }
 
-export async function encodeRgbaAsPng(
+async function encodeRgbaAsPng(
 	rgba: Uint8Array,
 	width: number,
 	height: number,

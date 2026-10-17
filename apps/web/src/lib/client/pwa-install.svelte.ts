@@ -88,7 +88,7 @@ export function isInstallPromptSnoozed(snoozedUntil: number | null, now = Date.n
 
 const APPINSTALLED_DEDUP_MS = 2000;
 
-export interface InstallPromptLifecycleCallbacks {
+interface InstallPromptLifecycleCallbacks {
 	onBeforeInstall: (prompt: BeforeInstallPromptEvent) => void;
 	onAppInstalled: () => void;
 }

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { parse, type TomlTable, type TomlValue } from 'smol-toml';
 import type { DeployTarget } from './deploy-targets.ts';
 
-export interface DistributionDefinition {
+interface DistributionDefinition {
 	profile: string;
 	deployment: string;
 }

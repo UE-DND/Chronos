@@ -22,7 +22,7 @@ export const SHARE_LINK_VERSION = 1;
 export const SHARE_LINK_PREFIX = `${SHARE_LINK_VERSION}.`;
 export const SHARE_LINK_WARNING_LENGTH = 800;
 /** Upper bound for encoded share payloads (worst legit timetable encodes to ~10K chars). */
-export const MAX_SHARE_PAYLOAD_CHARS = 65_536;
+const MAX_SHARE_PAYLOAD_CHARS = 65_536;
 
 type ShareCodecLabels = (typeof SHARE_CODEC_MESSAGES)['zh-cn'];
 const DEFAULT_SHARE_LABELS: ShareCodecLabels = SHARE_CODEC_MESSAGES['zh-cn'];

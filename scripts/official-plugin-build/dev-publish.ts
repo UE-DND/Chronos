@@ -7,7 +7,7 @@ import { buildDevManifestForPlugin, writeDevPluginManifest } from './build-manif
 import { digest } from './cache.ts';
 import { createOfficialPluginBuildPaths, type OfficialPluginBuildPaths } from './paths.ts';
 
-export interface DevPluginBuildFiles {
+interface DevPluginBuildFiles {
 	wallpaperBytes?: Uint8Array;
 	code: string | null;
 	cssCode: string | null;

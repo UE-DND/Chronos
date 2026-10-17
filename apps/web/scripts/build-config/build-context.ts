@@ -18,7 +18,7 @@ import { resolveDeploymentServerPlugins } from '../../../../scripts/official-plu
 import { resolve } from 'node:path';
 import { loadDistributionConfig } from './distributions.ts';
 
-export interface BuildContextCliOptions {
+interface BuildContextCliOptions {
 	distribution?: string;
 	target?: string;
 	profile?: string;

@@ -208,7 +208,7 @@ export function setAnalyticsCollectionEnabled(enabled: boolean): void {
 	initAnalytics();
 }
 
-export function initAnalytics() {
+function initAnalytics() {
 	if (!collectionEnabled || !canInitializeAnalytics() || client || initializing) return;
 	pending = [];
 	initializing = (async () => {

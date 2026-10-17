@@ -11,8 +11,6 @@ export const PLUGIN_CATEGORY_TAG_IDS = [
 	'codec'
 ] as const;
 
-export type PluginCategoryTagId = (typeof PLUGIN_CATEGORY_TAG_IDS)[number];
-
 export function resolvePluginCatalogCategory(input: {
 	type?: string;
 	category?: string;

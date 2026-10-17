@@ -5,7 +5,7 @@ declare const __CHRONOS_PLUGIN_MARKET_BASE_URL__: string;
 declare const __OFFICIAL_PLUGIN_IDS__: string[];
 export const RESERVED_OFFICIAL_PLUGIN_IDS =
 	typeof __OFFICIAL_PLUGIN_IDS__ !== 'undefined' ? __OFFICIAL_PLUGIN_IDS__ : [];
-export const DEFAULT_PLUGIN_MARKET_BASE_URL = 'https://ue-dnd.github.io/Chronos/plugins/releases/';
+const DEFAULT_PLUGIN_MARKET_BASE_URL = 'https://ue-dnd.github.io/Chronos/plugins/releases/';
 
 export function resolvePluginMarketBase(value = DEFAULT_PLUGIN_MARKET_BASE_URL): string {
 	const url = new URL(value);

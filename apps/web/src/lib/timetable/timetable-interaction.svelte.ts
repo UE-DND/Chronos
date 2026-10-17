@@ -16,16 +16,11 @@ import type {
 } from './timetable-interaction-types';
 
 export {
-	TIMETABLE_CLICK_GUARD_MS,
-	TIMETABLE_LONG_PRESS_CLICK_SUPPRESS_MS,
 	TIMETABLE_LONG_PRESS_DELAY_MS,
 	TIMETABLE_POINTER_THRESHOLD_PX
 } from './timetable-interaction-types';
 export type {
-	BeginDragInput,
 	CourseCardHandlerOptions,
-	DragGridGeometry,
-	DragTargetPatch,
 	GridHandlerOptions,
 	TimetableDragSession,
 	TimetableInteractionMode,

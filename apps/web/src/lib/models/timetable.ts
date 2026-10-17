@@ -9,7 +9,7 @@ import {
 } from '@chronos/core';
 
 export { DEFAULT_TIMETABLE_NAME, normalizeTimetableName, createTimetable };
-export type { AcademicConfig, Timetable, TimetableViewPrefs };
+export type { Timetable };
 export type TimetableImportMetadata = ImportMetadata;
 
 export type TimetableConfig = {

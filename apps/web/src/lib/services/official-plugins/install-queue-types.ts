@@ -11,7 +11,7 @@ export type PluginInstallStage =
 
 export type InstallQueueChangeKind = 'progress' | 'state';
 
-export interface PluginInstallProgress {
+interface PluginInstallProgress {
 	readonly stage: PluginInstallStage;
 	readonly percent: number;
 	readonly message?: string;

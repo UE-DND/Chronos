@@ -1,10 +1,5 @@
 import { applyPreparedWebUpdate } from '#lib/client/web-host-update.ts';
-import {
-	probeSwUpdate,
-	isSwUpdatePending,
-	type ApplyUpdateOptions,
-	type SwUpdateProgress
-} from '#lib/client/pwa-sw.ts';
+import { probeSwUpdate, isSwUpdatePending, type ApplyUpdateOptions } from '#lib/client/pwa-sw.ts';
 
 /**
  * Seam for ServiceWorker update lifecycle operations.
@@ -15,8 +10,6 @@ export interface ServiceWorkerAdapter {
 	checkForUpdate(): Promise<boolean>;
 	applyUpdateAndReload(options?: ApplyUpdateOptions): Promise<void>;
 }
-
-export type { SwUpdateProgress };
 
 export function createDefaultServiceWorkerAdapter(): ServiceWorkerAdapter {
 	return {

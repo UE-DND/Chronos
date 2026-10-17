@@ -1,4 +1,4 @@
-export interface AndroidReleaseInfo {
+interface AndroidReleaseInfo {
 	updateUrl: string;
 }
 
@@ -14,7 +14,7 @@ export interface Release {
 	};
 }
 
-export function parseAndroidUpdateUrl(value?: string): string | undefined {
+function parseAndroidUpdateUrl(value?: string): string | undefined {
 	if (!value?.trim()) return undefined;
 	try {
 		const url = new URL(value.trim());

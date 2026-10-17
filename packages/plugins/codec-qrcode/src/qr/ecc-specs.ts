@@ -1,4 +1,4 @@
-export interface EccBlock {
+interface EccBlock {
 	count: number;
 	totalCodewords: number;
 	dataCodewords: number;

@@ -2,7 +2,7 @@
  * QR Code image decoder leveraging Canvas rasterization and standard Web BarcodeDetector API.
  */
 
-export const CHRONOS_QR_PNG_KEYWORD = 'chronos-qr';
+const CHRONOS_QR_PNG_KEYWORD = 'chronos-qr';
 
 function readU32BE(bytes: Uint8Array, offset: number): number {
 	return (

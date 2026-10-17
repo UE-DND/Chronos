@@ -2,7 +2,7 @@
 import { ECC_SPECS_L, type VersionEccSpec } from './ecc-specs';
 import { rsComputeEcc } from './gf256';
 
-export function getVersionSpec(version: number): VersionEccSpec {
+function getVersionSpec(version: number): VersionEccSpec {
 	const spec = ECC_SPECS_L[version - 1];
 	if (!spec) throw new Error(`Unsupported QR version: ${version}`);
 	return spec;

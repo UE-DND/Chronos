@@ -16,8 +16,8 @@ export type ViewTransitionNavigation = {
 	event?: PopStateEvent;
 };
 
-export const NAV_DIRECTION_CLASSES = ['nav-forward', 'nav-back'] as const;
-export const NAV_CROSS_SHELL_CLASS = 'vt-cross-shell';
+const NAV_DIRECTION_CLASSES = ['nav-forward', 'nav-back'] as const;
+const NAV_CROSS_SHELL_CLASS = 'vt-cross-shell';
 
 let currentTransitionDirection: NavigationDirection = 'none';
 let suppressedTransitionToken: number | null = null;
@@ -39,7 +39,7 @@ export function clearSuppressedTransition(): void {
 	suppressedTransitionToken = null;
 }
 
-export function getTransitionDirection(): NavigationDirection {
+function getTransitionDirection(): NavigationDirection {
 	return currentTransitionDirection;
 }
 
@@ -105,7 +105,7 @@ export function updateTransitionDirection(
 	return currentTransitionDirection;
 }
 
-export function hasViewTransitionSupport(): boolean {
+function hasViewTransitionSupport(): boolean {
 	return typeof document !== 'undefined' && 'startViewTransition' in document;
 }
 
@@ -132,13 +132,13 @@ export function shouldUseViewTransition(
 	return shouldUseViewTransitionWhenSupported(direction, navigation);
 }
 
-export function setNavDirectionClass(direction: 'forward' | 'back', crossShell = false): void {
+function setNavDirectionClass(direction: 'forward' | 'back', crossShell = false): void {
 	document.documentElement.classList.remove(...NAV_DIRECTION_CLASSES, NAV_CROSS_SHELL_CLASS);
 	document.documentElement.classList.add(`nav-${direction}`);
 	document.documentElement.classList.toggle(NAV_CROSS_SHELL_CLASS, crossShell);
 }
 
-export function clearNavDirectionClass(): void {
+function clearNavDirectionClass(): void {
 	document.documentElement.classList.remove(...NAV_DIRECTION_CLASSES, NAV_CROSS_SHELL_CLASS);
 }
 
@@ -152,16 +152,13 @@ export function isActiveNavDirectionTransition(generation: number): boolean {
 	return generation === activeTransitionGeneration;
 }
 
-export function beginNavDirectionTransition(
-	direction: 'forward' | 'back',
-	crossShell = false
-): number {
+function beginNavDirectionTransition(direction: 'forward' | 'back', crossShell = false): number {
 	const generation = nextNavDirectionTransitionGeneration();
 	setNavDirectionClass(direction, crossShell);
 	return generation;
 }
 
-export function endNavDirectionTransition(generation: number): void {
+function endNavDirectionTransition(generation: number): void {
 	if (isActiveNavDirectionTransition(generation)) {
 		clearNavDirectionClass();
 	}

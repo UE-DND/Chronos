@@ -10,7 +10,7 @@ export interface QrMatrix {
  * Lay out function patterns, zigzag data bits, mask 0, and format info.
  * Caller supplies version and pre-sized module grid state.
  */
-export function layoutQrModules(
+function layoutQrModules(
 	version: number,
 	size: number,
 	modules: (boolean | null)[][],

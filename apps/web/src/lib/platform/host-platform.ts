@@ -11,7 +11,7 @@ import {
 import { getBootPlatformAdapter } from '$chronos-platform-adapter';
 import type { Release } from '../content/releases/release';
 
-export type PlatformUpdateMode = 'service-worker' | 'external-link' | 'native-apk';
+type PlatformUpdateMode = 'service-worker' | 'external-link' | 'native-apk';
 
 export type HostUpdatePhase =
 	| 'downloading'
@@ -21,7 +21,7 @@ export type HostUpdatePhase =
 	| 'awaiting-permission'
 	| 'awaiting-confirmation'
 	| 'waiting-network';
-export interface HostUpdateProgress {
+interface HostUpdateProgress {
 	phase: HostUpdatePhase;
 	percent: number | null;
 }
@@ -37,7 +37,7 @@ export interface NativeUpdateState {
 	preparationToken?: string;
 }
 
-export interface NativeUpdateAction {
+interface NativeUpdateAction {
 	getState(this: void): Promise<NativeUpdateState>;
 	subscribe(this: void, listener: (state: NativeUpdateState) => void): Promise<() => void>;
 	continueUpdate(this: void): Promise<NativeUpdateState>;
@@ -91,7 +91,7 @@ export interface ClassNotificationAdapter {
 	dispose(this: void): void;
 }
 
-export interface HostAnalyticsAdapter {
+interface HostAnalyticsAdapter {
 	logEvent(name: string, params?: Record<string, string | number | boolean>): Promise<void>;
 	setEnabled(enabled: boolean): Promise<void>;
 }

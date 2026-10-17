@@ -4,7 +4,6 @@ import { isInFlightInstallStatus } from './install-queue-task-state';
 import type {
 	InstallQueueChangeKind,
 	OfficialPluginInstallQueueDeps,
-	PluginInstallProgress,
 	PluginInstallRunner,
 	PluginInstallStage,
 	PluginInstallTask
@@ -24,7 +23,6 @@ import {
 export type {
 	InstallQueueChangeKind,
 	OfficialPluginInstallQueueDeps,
-	PluginInstallProgress,
 	PluginInstallRunner,
 	PluginInstallStage,
 	PluginInstallTask
