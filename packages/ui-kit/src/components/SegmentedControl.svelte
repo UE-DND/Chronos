@@ -19,6 +19,7 @@
 	const selectedIndex = $derived(segments.findIndex((segment) => segment.value === value));
 	const segmentCount = $derived(segments.length);
 	const safeIndex = $derived(selectedIndex < 0 ? 0 : selectedIndex);
+	const trackPadding = 'var(--ui-segmented-track-padding, 0.25rem)';
 
 	function attachThumb(node: HTMLDivElement) {
 		let previousIndex: number | undefined;
@@ -53,8 +54,9 @@
 	{#if segmentCount > 0 && selectedIndex >= 0}
 		<div
 			class="ui-segmented-thumb"
-			style:left="calc(0.375rem + {safeIndex} * ((100% - 0.75rem) / {segmentCount}))"
-			style:right="calc(0.375rem + {segmentCount - safeIndex - 1} * ((100% - 0.75rem) / {segmentCount}))"
+			style:left="calc({trackPadding} + {safeIndex} * ((100% - {trackPadding} * 2) / {segmentCount}))"
+			style:right="calc({trackPadding} + {segmentCount - safeIndex - 1} * ((100% - {trackPadding} * 2)
+			/ {segmentCount}))"
 			style:transition={animateThumb ? undefined : 'none'}
 			{@attach attachThumb}
 			aria-hidden="true"

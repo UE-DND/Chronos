@@ -56,7 +56,7 @@
 		href={appRouteHref(href)}
 		{onclick}
 		{...props}
-		class="relative flex min-h-16 w-full cursor-pointer items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-variant/40 active:bg-surface-variant/60"
+		class="relative flex min-h-16 w-full cursor-pointer items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-variant/40 active:bg-on-surface/15"
 	>
 		{@render rowContent()}
 	</a>
@@ -64,7 +64,7 @@
 	<label
 		{onclick}
 		{...props}
-		class="relative flex min-h-16 w-full cursor-pointer items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-variant/40 active:bg-surface-variant/60"
+		class="relative flex min-h-16 w-full cursor-pointer items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-variant/40 active:bg-on-surface/15"
 	>
 		{@render rowContent()}
 	</label>
@@ -73,7 +73,7 @@
 		type="button"
 		{onclick}
 		{...props}
-		class="relative flex min-h-16 w-full cursor-pointer items-center gap-4 border-none bg-transparent px-4 py-3 text-left transition-colors hover:bg-surface-variant/40 active:bg-surface-variant/60"
+		class="relative flex min-h-16 w-full cursor-pointer items-center gap-4 border-none bg-transparent px-4 py-3 text-left transition-colors hover:bg-surface-variant/40 active:bg-on-surface/15"
 	>
 		{@render rowContent()}
 	</button>
