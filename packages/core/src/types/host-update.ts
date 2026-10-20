@@ -1,5 +1,5 @@
-import { isBareHttpsUrl } from '../hosts/url-policy';
-import { isGitCommitHash, isSha256Hex } from '../validation/hash';
+import { isBareHttpsUrl } from '../hosts/url-policy.ts';
+import { isGitCommitHash, isSha256Hex } from '../validation/hash.ts';
 
 export interface HostBuildIdentity {
 	version: string;
