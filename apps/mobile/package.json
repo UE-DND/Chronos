@@ -1,7 +1,7 @@
 {
 	"name": "@chronos/mobile",
 	"private": true,
-	"version": "1.2.10",
+	"version": "1.2.11",
 	"type": "module",
 	"scripts": {
 		"sync": "node --experimental-strip-types ../../scripts/generate-icons.ts && vpx cap sync",
