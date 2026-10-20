@@ -11,6 +11,7 @@ import {
 	buildConfigurationKey,
 	captureBuildInputs,
 	readBuildCache,
+	rememberLoadedFile,
 	writeBuildCache,
 	type BuildInputs
 } from './cache.ts';
@@ -81,6 +82,7 @@ export async function compileOfficialPluginEntry(
 	if (cached) return { ...cached.value, inputs: cached.inputs, cacheHit: true };
 	const licenses: BundledLicenseInfo[] = [];
 	const watched = new Set<string>();
+	const loadedFiles = new Map<string, string>();
 	let inputs = { files: [] as string[], directories: [] as string[], scans: [] as string[] };
 	mkdirSync(outDir, { recursive: true });
 
@@ -105,6 +107,10 @@ export async function compileOfficialPluginEntry(
 				...collectBundledLicenses((deps) => licenses.push(...deps)),
 				{
 					name: 'chronos-plugin-inputs',
+					enforce: 'pre',
+					load(id) {
+						rememberLoadedFile(loadedFiles, id);
+					},
 					generateBundle() {
 						inputs = captureBuildInputs([...this.getModuleIds(), ...watched]);
 					}
@@ -159,7 +165,8 @@ export async function compileOfficialPluginEntry(
 		inputs.files,
 		inputs.directories,
 		inputs.scans,
-		value
+		value,
+		loadedFiles
 	);
 	return { ...value, inputs: record.inputs, cacheHit: false };
 }

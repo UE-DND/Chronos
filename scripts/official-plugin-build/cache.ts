@@ -62,14 +62,29 @@ export function canonicalPath(path: string): string {
 		}
 	}
 }
+export function rememberLoadedFile(digests: Map<string, string>, id: string): void {
+	const file = id.split('?')[0];
+	if (!file || file.startsWith('\0')) return;
+	try {
+		if (!existsSync(file) || !statSync(file).isFile()) return;
+		const path = canonicalPath(file);
+		if (!digests.has(path)) digests.set(path, fileDigest(file));
+	} catch {
+		/* The loader records only files that exist when the module is read. */
+	}
+}
+
 export function snapshotInputs(
 	files: string[],
 	directories: string[],
-	scans: string[]
+	scans: string[],
+	observedFiles?: ReadonlyMap<string, string>
 ): BuildInputs {
 	return {
 		files: Object.fromEntries(
-			[...new Set(files.map(canonicalPath))].sort().map((path) => [path, fileDigest(path)])
+			[...new Set(files.map(canonicalPath))]
+				.sort()
+				.map((path) => [path, observedFiles?.get(path) ?? fileDigest(path)])
 		),
 		directories: Object.fromEntries(
 			[...new Set(directories.map(canonicalPath))]
@@ -126,11 +141,12 @@ export function writeBuildCache<T>(
 	files: string[],
 	directories: string[],
 	scans: string[],
-	value: T
+	value: T,
+	observedFiles?: ReadonlyMap<string, string>
 ): BuildCache<T> {
 	const record = {
 		key,
-		inputs: snapshotInputs(files, directories, scans),
+		inputs: snapshotInputs(files, directories, scans, observedFiles),
 		value,
 		digest: digest(JSON.stringify(value))
 	};

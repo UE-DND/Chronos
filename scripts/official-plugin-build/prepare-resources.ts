@@ -10,6 +10,7 @@ import {
 	buildConfigurationKey,
 	captureBuildInputs,
 	readBuildCache,
+	rememberLoadedFile,
 	writeBuildCache,
 	writeChanged,
 	type BuildInputs
@@ -46,6 +47,7 @@ export async function preparePluginResources(
 		const temporary = mkdtempSync(resolve(dir, '.prepare-'));
 		try {
 			const watched = new Set<string>();
+			const loadedFiles = new Map<string, string>();
 			let inputs = { files: [] as string[], directories: [] as string[], scans: [] as string[] };
 			await build({
 				configFile: false,
@@ -56,6 +58,10 @@ export async function preparePluginResources(
 					watchInputs(watched),
 					{
 						name: 'chronos-resource-inputs',
+						enforce: 'pre',
+						load(id) {
+							rememberLoadedFile(loadedFiles, id);
+						},
 						generateBundle() {
 							inputs = captureBuildInputs([...this.getModuleIds(), ...watched]);
 						}
@@ -106,7 +112,8 @@ export async function preparePluginResources(
 				inputs.files,
 				inputs.directories,
 				inputs.scans,
-				value
+				value,
+				loadedFiles
 			);
 		} finally {
 			rmSync(temporary, { recursive: true, force: true });

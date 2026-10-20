@@ -2,7 +2,13 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readBuildCache, writeBuildCache, inputAffected } from './cache.ts';
+import {
+	digest,
+	inputAffected,
+	readBuildCache,
+	rememberLoadedFile,
+	writeBuildCache
+} from './cache.ts';
 
 const roots: string[] = [];
 afterEach(() => roots.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true })));
@@ -40,5 +46,14 @@ describe('plugin build cache', () => {
 		writeFileSync(component, '<p class="new"/>');
 		expect(readBuildCache(cache, 'key')).toBeNull();
 		expect(inputAffected(record.inputs, component)).toBe(true);
+	});
+	it('pins the digest from when a file was loaded, so a later edit misses the cache', () => {
+		const { entry, cache } = fixture();
+		const loaded = new Map<string, string>();
+		rememberLoadedFile(loaded, entry);
+		writeFileSync(entry, 'export const value = 2');
+		writeBuildCache(cache, 'key', [entry], [], [], { code: 'stale' }, loaded);
+		expect(readBuildCache(cache, 'key')).toBeNull();
+		expect(digest(readFileSync(entry))).not.toBe([...loaded.values()][0]);
 	});
 });
