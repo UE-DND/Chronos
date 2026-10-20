@@ -58,20 +58,27 @@ export function readHostBuildContext(): HostBuildContext | undefined {
 		? (JSON.parse(readFileSync(path, 'utf8')) as HostBuildContext)
 		: undefined;
 }
+function isExpectedBuildContext(
+	context: HostBuildContext | undefined,
+	mode: string | undefined,
+	command: string | undefined
+): boolean {
+	return Boolean(
+		context &&
+		context.profileId === resolveProfileId() &&
+		(!mode || context.mode === mode) &&
+		(!command || context.command === (command === 'serve' ? 'dev' : 'build')) &&
+		existsSync(context.cssPath) &&
+		existsSync(context.licensesPath)
+	);
+}
 export function hostBuildContextPlugin(root: string): Plugin {
 	let mode: string | undefined;
 	let command: string | undefined;
 	const validate = () => {
 		if (process.env.VITEST) return;
 		const context = readHostBuildContext();
-		if (
-			!context ||
-			context.profileId !== resolveProfileId() ||
-			(mode && context.mode !== mode) ||
-			(command && context.command !== (command === 'serve' ? 'dev' : 'build')) ||
-			!existsSync(context.cssPath) ||
-			!existsSync(context.licensesPath)
-		)
+		if (!isExpectedBuildContext(context, mode, command))
 			throw new Error('Prepare host assets with vp run dev or vp run build');
 	};
 	return {

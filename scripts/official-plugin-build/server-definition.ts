@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { PluginServerDefinition } from '../../packages/core/src/types/plugin-server.ts';
 import type { OfficialPluginDef } from '../official-plugins.config.ts';
 import { OFFICIAL_PLUGINS } from '../official-plugins.config.ts';
+import { resolvePackageExport } from './package-exports.ts';
 
 export type PluginLocation = Pick<OfficialPluginDef, 'id' | 'sourceDir'>;
 
@@ -14,24 +15,14 @@ export interface ResolvedServerPlugin {
 	definition: PluginServerDefinition;
 }
 
-function exportedFile(packageDir: string, exports: Record<string, unknown>, key: string): string {
-	const entry = exports[key];
-	const target =
-		typeof entry === 'string'
-			? entry
-			: entry && typeof entry === 'object'
-				? (entry as { import?: unknown }).import
-				: undefined;
-	if (typeof target !== 'string' || !target.startsWith('./')) {
-		throw new Error(`Invalid ${key} package export`);
-	}
-	const file = resolve(packageDir, target);
-	const inside = relative(packageDir, file);
-	if (!inside || inside === '..' || inside.startsWith('../') || inside.startsWith('..\\')) {
-		throw new Error(`Invalid ${key} package export target`);
-	}
-	if (!existsSync(file)) throw new Error(`Missing ${key} package export target: ${file}`);
-	return file;
+function isValidDomainLabel(label: string): boolean {
+	return label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label);
+}
+
+function isValidProxyDomain(value: unknown): value is string {
+	if (typeof value !== 'string' || value.length > 253) return false;
+	const labels = value.split('.');
+	return labels.length >= 2 && labels.every(isValidDomainLabel);
 }
 
 function validateDefinition(value: unknown, pluginId: string): PluginServerDefinition {
@@ -49,14 +40,7 @@ function validateDefinition(value: unknown, pluginId: string): PluginServerDefin
 	}
 	const domains = new Set<string>();
 	for (const domain of proxy.domains) {
-		if (
-			typeof domain !== 'string' ||
-			domain.length > 253 ||
-			domain.split('.').length < 2 ||
-			domain
-				.split('.')
-				.some((label) => label.length > 63 || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label))
-		) {
+		if (!isValidProxyDomain(domain)) {
 			throw new Error(`Invalid server proxy domain: ${String(domain)}`);
 		}
 		if (domains.has(domain)) throw new Error(`Duplicate server proxy domain: ${domain}`);
@@ -91,8 +75,8 @@ export async function resolveOfficialServerPlugin(
 	if (typeof pkg.name !== 'string' || !/^@[^/]+\/[^/]+$/.test(pkg.name)) {
 		throw new Error(`${plugin.id}: invalid package name`);
 	}
-	exportedFile(packageDir, exports, './server');
-	const definitionFile = exportedFile(packageDir, exports, './server/definition');
+	resolvePackageExport(packageDir, exports, './server');
+	const definitionFile = resolvePackageExport(packageDir, exports, './server/definition');
 	const digest = createHash('sha256').update(readFileSync(definitionFile)).digest('hex');
 	const module = await import(`${pathToFileURL(definitionFile).href}?rev=${digest}`);
 	return {

@@ -1,11 +1,12 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { belongsToDomain, isHttpsOrigin } from '../../packages/core/src/hosts/url-policy.ts';
 import type { MobilePluginServerDefinition } from '../../packages/core/src/types/plugin-server.ts';
 import type { OfficialPluginDef } from '../official-plugins.config.ts';
 import { OFFICIAL_PLUGINS } from '../official-plugins.config.ts';
+import { resolvePackageExport } from './package-exports.ts';
 import { resolveOfficialServerPlugin, type PluginLocation } from './server-definition.ts';
 
 export interface ResolvedMobilePlugin {
@@ -18,26 +19,6 @@ type PackageExports = Record<string, unknown>;
 
 function isDeclaredCookieOrigin(url: URL, allowedDomains: readonly string[]): boolean {
 	return isHttpsOrigin(url) && belongsToDomain(url.hostname, allowedDomains);
-}
-
-function exportedFile(packageDir: string, exports: PackageExports, key: string): string {
-	const entry = exports[key];
-	const target =
-		typeof entry === 'string'
-			? entry
-			: entry && typeof entry === 'object'
-				? (entry as { import?: unknown }).import
-				: undefined;
-	if (typeof target !== 'string' || !target.startsWith('./')) {
-		throw new Error(`Invalid ${key} package export`);
-	}
-	const file = resolve(packageDir, target);
-	const inside = relative(packageDir, file);
-	if (!inside || inside === '..' || inside.startsWith('../') || inside.startsWith('..\\')) {
-		throw new Error(`Invalid ${key} package export target`);
-	}
-	if (!existsSync(file)) throw new Error(`Missing ${key} package export target: ${file}`);
-	return file;
 }
 
 function validateDefinition(
@@ -126,8 +107,8 @@ export async function resolveOfficialMobilePlugin(
 	if (typeof pkg.name !== 'string' || !/^@[^/]+\/[^/]+$/.test(pkg.name)) {
 		throw new Error(`${plugin.id}: invalid package name`);
 	}
-	exportedFile(packageDir, exports, './mobile');
-	const definitionFile = exportedFile(packageDir, exports, './mobile/definition');
+	resolvePackageExport(packageDir, exports, './mobile');
+	const definitionFile = resolvePackageExport(packageDir, exports, './mobile/definition');
 	const serverPlugin = await resolveOfficialServerPlugin(plugin, root, true);
 	if (!serverPlugin) throw new Error(`${plugin.id}: mobile handlers require a server definition`);
 	const digest = createHash('sha256').update(readFileSync(definitionFile)).digest('hex');
