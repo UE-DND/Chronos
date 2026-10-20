@@ -43,21 +43,19 @@ export function resolveWeeksToFetch(
 		return [explicitWeek];
 	}
 
-	const uniqueWeeks: string[] = [];
-	const seen = new Set<string>();
-	for (const week of initialPayload.weekList) {
-		const trimmed = week.trim();
-		if (trimmed && !seen.has(trimmed)) {
-			seen.add(trimmed);
-			uniqueWeeks.push(trimmed);
-		}
-	}
-	if (uniqueWeeks.length > 0) {
-		return uniqueWeeks;
-	}
+	const uniqueWeeks = uniqueTrimmed(initialPayload.weekList);
+	if (uniqueWeeks.length > 0) return uniqueWeeks;
 
 	const fallbackWeek = initialPayload.weekNum.trim();
 	return fallbackWeek ? [fallbackWeek] : [];
+}
+
+function nonEmptyTrimmed(values: readonly string[]): string[] {
+	return values.map((value) => value.trim()).filter(Boolean);
+}
+
+function uniqueTrimmed(values: readonly string[]): string[] {
+	return [...new Set(nonEmptyTrimmed(values))];
 }
 
 function normalizeEvent(event: OnlineScheduleEvent): OnlineScheduleEvent {
@@ -65,11 +63,9 @@ function normalizeEvent(event: OnlineScheduleEvent): OnlineScheduleEvent {
 		...event,
 		weekNum: event.weekNum.trim(),
 		weekDay: event.weekDay.trim(),
-		weekList: event.weekList.map((week) => week.trim()).filter((week) => week.length > 0),
+		weekList: nonEmptyTrimmed(event.weekList),
 		weekCover: event.weekCover.trim(),
-		sessionList: event.sessionList
-			.map((session) => session.trim())
-			.filter((session) => session.length > 0),
+		sessionList: nonEmptyTrimmed(event.sessionList),
 		sessionStart: event.sessionStart.trim(),
 		sessionLast: event.sessionLast.trim(),
 		eventName: event.eventName.trim(),
@@ -120,10 +116,8 @@ export function mergeWeekPayloads(
 		yearTerm: initialPayload.yearTerm.trim(),
 		weekNum: initialPayload.weekNum.trim(),
 		nowMonth: initialPayload.nowMonth.trim(),
-		yearTermList: [
-			...new Set(initialPayload.yearTermList.map((term) => term.trim()).filter(Boolean))
-		],
-		weekList: [...new Set(initialPayload.weekList.map((week) => week.trim()).filter(Boolean))],
+		yearTermList: uniqueTrimmed(initialPayload.yearTermList),
+		weekList: uniqueTrimmed(initialPayload.weekList),
 		weekDayList: initialPayload.weekDayList,
 		eventList: [...mergedEvents.values()]
 	};
