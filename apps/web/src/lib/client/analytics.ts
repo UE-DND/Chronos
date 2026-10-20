@@ -77,7 +77,7 @@ export type HostAnalyticsEvent =
 	| 'update_check_fail'
 	| 'release_detail_open'
 	| 'about_clear_all_data'
-	| 'developer_easter_egg_open';
+	| 'developer_page_open';
 
 type AnalyticsProperties = Record<string, string | number | boolean>;
 

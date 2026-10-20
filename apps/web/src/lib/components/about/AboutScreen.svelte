@@ -31,7 +31,7 @@
 
 	const DEVELOPER_PAGE_TAP_COUNT = 5;
 
-	let clickCount = $state(0);
+	let developerPageTapCount = $state(0);
 	let clearDialogOpen = $state(false);
 	let clearing = $state(false);
 	let dataUsageBytes = $state<number | null>(null);
@@ -81,16 +81,16 @@
 		return value.replace('T', ' ').replace(/\.\d+Z$/, '');
 	}
 
-	function handleBuildTimeClick() {
-		clickCount += 1;
-		if (clickCount >= DEVELOPER_PAGE_TAP_COUNT) {
-			clickCount = 0;
-			trackEvent('developer_easter_egg_open');
+	function onBuildTimeClickForDeveloperPage() {
+		developerPageTapCount += 1;
+		if (developerPageTapCount >= DEVELOPER_PAGE_TAP_COUNT) {
+			developerPageTapCount = 0;
+			trackEvent('developer_page_open');
 			dismissSnackbar();
-			void goto(resolve('about/easter-egg'));
-		} else if (clickCount >= Math.ceil(DEVELOPER_PAGE_TAP_COUNT / 2)) {
-			const remaining = DEVELOPER_PAGE_TAP_COUNT - clickCount;
-			snackbarKey('about.easterEgg.hint', { remaining }, undefined, 1500);
+			void goto(resolve('about/developer'));
+		} else if (developerPageTapCount >= Math.ceil(DEVELOPER_PAGE_TAP_COUNT / 2)) {
+			const remaining = DEVELOPER_PAGE_TAP_COUNT - developerPageTapCount;
+			snackbarKey('about.developerPage.hint', { remaining }, undefined, 1500);
 		}
 	}
 
@@ -147,7 +147,7 @@
 			supporting={formatBuildTime(BUILD_TIME)}
 			icon={ScheduleFill}
 			iconTone="secondary"
-			onclick={handleBuildTimeClick}
+			onclick={onBuildTimeClickForDeveloperPage}
 		/>
 	</MineSection>
 

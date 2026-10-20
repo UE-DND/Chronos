@@ -500,7 +500,7 @@ export const zhCn = {
 	'about.legal.terms': '服务协议',
 	'about.legal.privacy': '隐私政策',
 	'about.legal.licenses': '开源许可',
-	'about.easterEgg.hint': '再按 {remaining} 次进入开发者页面',
+	'about.developerPage.hint': '再按 {remaining} 次进入开发者页面',
 	'about.clear.success': '已清除所有数据',
 	'about.clear.failed': '清除失败，请重试',
 	'about.clear.recoveryFailed': '数据已清除，但应用未能完全恢复初始状态。重启应用后会再次尝试。',

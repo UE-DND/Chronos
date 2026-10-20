@@ -522,7 +522,7 @@ export const en = {
 	'about.legal.terms': 'Terms of service',
 	'about.legal.privacy': 'Privacy policy',
 	'about.legal.licenses': 'Open-source licenses',
-	'about.easterEgg.hint': '{remaining} more taps to open the developer page',
+	'about.developerPage.hint': '{remaining} more taps to open the developer page',
 	'about.clear.success': 'All data cleared',
 	'about.clear.failed': 'Clear failed. Please try again.',
 	'about.clear.recoveryFailed':
