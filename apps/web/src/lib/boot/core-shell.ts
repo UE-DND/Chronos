@@ -1,15 +1,12 @@
 import type { ChronosEngine } from '@chronos/core';
-import { DEFAULT_MINE_SECTION_ID, type PluginTranslate } from '@chronos/core';
+import { DEFAULT_MINE_SECTION_ID, parseKeywordList, type PluginTranslate } from '@chronos/core';
 import { pwaInstallController } from '#lib/client/pwa-install.svelte.ts';
 import { CORE_SHELL_MESSAGES } from '#lib/boot/core-shell-messages.ts';
 
 const CORE_SHELL_PLUGIN_ID = 'core-shell';
 
 function keywordList(t: PluginTranslate, key: string): string[] {
-	return t(key)
-		.split(',')
-		.map((entry) => entry.trim())
-		.filter(Boolean);
+	return parseKeywordList(t(key));
 }
 
 function registerCoreShellSlots(

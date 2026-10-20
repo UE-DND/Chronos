@@ -83,6 +83,7 @@ export * from './error-capture';
 export * from './plugin/define-chronos-plugin';
 export * from './plugin/call-plugin-server';
 export * from './plugin/register-import-tab';
+export * from './plugin/parse-keyword-list';
 
 // Validation
 export * from './validation/hash';

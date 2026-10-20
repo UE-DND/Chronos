@@ -1,4 +1,4 @@
-import { defineChronosPlugin, IErrorCaptureService } from '@chronos/core';
+import { defineChronosPlugin, IErrorCaptureService, parseKeywordList } from '@chronos/core';
 import type { ChronosMountable } from '@chronos/core';
 import { ERROR_LOG_PLUGIN_ID } from './constants';
 import { ERROR_LOG_MESSAGES } from './messages';
@@ -34,10 +34,7 @@ export function createErrorLogPlugin(options: CreateErrorLogPluginOptions = {}) 
 			}
 			ctx.addDisposable({ dispose: () => runtime.dispose() });
 
-			const keywords = t('mine.keywords')
-				.split(',')
-				.map((entry) => entry.trim())
-				.filter(Boolean);
+			const keywords = parseKeywordList(t('mine.keywords'));
 
 			ctx.registerSlot('mine.item', {
 				id: 'error-log',
