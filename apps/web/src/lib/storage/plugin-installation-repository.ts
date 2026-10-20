@@ -1,5 +1,6 @@
 import type { ChronosDB, PluginResourceRow } from './db';
 import {
+	isPreparationActive,
 	parseInstallationState,
 	type PluginInstallationState,
 	type PluginInstallationRepository
@@ -150,7 +151,7 @@ function assertInstallationResetAllowed(
 ): void {
 	if (
 		state.generation !== policy.hostBuildId ||
-		(state.prepared && (state.prepared.until === null || state.prepared.until > Date.now()))
+		(state.prepared && isPreparationActive(state.prepared))
 	) {
 		throw new Error('Application update in progress; reload before clearing data');
 	}

@@ -29,9 +29,20 @@ export interface PluginInstallationRepository {
 export function emptyInstallationState(): PluginInstallationState {
 	return { records: [], removed: [], seeded: false, revision: 0, generation: '' };
 }
+
+/** A preparation locks installation changes until it is adopted, cancelled, or expires. */
+export function isPreparationActive(prepared: PreparedPluginUpdate, now = Date.now()): boolean {
+	return prepared.until === null || prepared.until > now;
+}
+
 function hasValidRecordBody(record: InstalledOfficialPluginRecord | undefined): boolean {
 	if (!record?.manifest?.id) return false;
 	return !Object.hasOwn(record, 'enabled');
+}
+
+function hasUniqueManifestIds(records: InstalledOfficialPluginRecord[]): boolean {
+	const ids = records.map((record) => record.manifest.id);
+	return new Set(ids).size === ids.length;
 }
 
 function hasValidInstalledRecords(records: InstalledOfficialPluginRecord[]): boolean {
@@ -41,35 +52,33 @@ function hasValidInstalledRecords(records: InstalledOfficialPluginRecord[]): boo
 			(record.origin?.kind === 'user' ||
 				(record.origin?.kind === 'profile' && typeof record.origin.profileId === 'string'))
 	);
-	return valid && new Set(records.map((record) => record.manifest.id)).size === records.length;
+	return valid && hasUniqueManifestIds(records);
+}
+
+function acceptsPreparationExpiry(prepared: PreparedPluginUpdate): boolean {
+	if (Number.isFinite(prepared.until)) return true;
+	return prepared.until === null && prepared.target.target === 'mobile';
 }
 
 function hasValidPreparation(prepared: PreparedPluginUpdate): boolean {
-	return (
-		Array.isArray(prepared.records) &&
-		prepared.records.every(hasValidRecordBody) &&
-		Boolean(prepared.target?.buildId) &&
-		Number.isSafeInteger(prepared.revision) &&
-		typeof prepared.token === 'string' &&
-		(Number.isFinite(prepared.until) ||
-			(prepared.until === null && prepared.target.target === 'mobile'))
-	);
+	if (!Array.isArray(prepared.records) || !prepared.records.every(hasValidRecordBody)) return false;
+	if (!prepared.target?.buildId || !Number.isSafeInteger(prepared.revision)) return false;
+	if (typeof prepared.token !== 'string') return false;
+	return acceptsPreparationExpiry(prepared);
+}
+
+function hasInstallationHeader(state: PluginInstallationState): boolean {
+	if (!Array.isArray(state.records) || !Array.isArray(state.removed)) return false;
+	if (typeof state.seeded !== 'boolean' || typeof state.generation !== 'string') return false;
+	if (!Number.isSafeInteger(state.revision) || state.revision < 0) return false;
+	return state.removed.every((id) => typeof id === 'string');
 }
 
 export function parseInstallationState(value: unknown): PluginInstallationState {
 	if (value == null) return emptyInstallationState();
 	const state = value as PluginInstallationState;
-	const validHeader =
-		Array.isArray(state.records) &&
-		Array.isArray(state.removed) &&
-		typeof state.seeded === 'boolean' &&
-		Number.isSafeInteger(state.revision) &&
-		state.revision >= 0 &&
-		typeof state.generation === 'string' &&
-		state.removed.every((id) => typeof id === 'string');
-
 	if (
-		!validHeader ||
+		!hasInstallationHeader(state) ||
 		!hasValidInstalledRecords(state.records) ||
 		(state.prepared && !hasValidPreparation(state.prepared))
 	) {
@@ -172,10 +181,7 @@ export class OfficialPluginInstalledStore {
 		return this.state.generation;
 	}
 	get isFrozen() {
-		return Boolean(
-			this.state.prepared &&
-			(this.state.prepared.until === null || this.state.prepared.until > Date.now())
-		);
+		return Boolean(this.state.prepared && isPreparationActive(this.state.prepared));
 	}
 	get hostChanged() {
 		return Boolean(this.generation && this.state.generation !== this.generation);
@@ -215,7 +221,7 @@ export class OfficialPluginInstalledStore {
 		this.state = await this.repository.transaction((state) => {
 			if (
 				state.generation !== this.generation ||
-				(state.prepared && (state.prepared.until === null || state.prepared.until > Date.now()))
+				(state.prepared && isPreparationActive(state.prepared))
 			)
 				throw new Error('Application update in progress; reload before changing plugins');
 			change(state);
@@ -265,7 +271,7 @@ export class OfficialPluginInstalledStore {
 				throw new Error('Installed plugins changed; retry update');
 			if (
 				state.prepared &&
-				(state.prepared.until === null || state.prepared.until > Date.now()) &&
+				isPreparationActive(state.prepared) &&
 				state.prepared.token !== update.token
 			)
 				throw new Error('Update is already running in another window');
