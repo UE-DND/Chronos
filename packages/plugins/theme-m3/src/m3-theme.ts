@@ -32,7 +32,7 @@ export type ChronosHostColorKey = (typeof M3_BASE_COLOR_KEYS)[number];
 
 export const M3_BASE_COLORS: Record<'light' | 'dark', Record<ChronosHostColorKey, string>> = {
 	light: {
-		canvas: '#f0f4f8',
+		canvas: '#f2f2f2',
 		ink: '#0b1f33',
 		'border-subtle': '#d4e0eb',
 		surface: '#ffffff',
@@ -45,7 +45,7 @@ export const M3_BASE_COLORS: Record<'light' | 'dark', Record<ChronosHostColorKey
 		danger: '#e60012'
 	},
 	dark: {
-		canvas: '#121316',
+		canvas: '#171717',
 		ink: '#f8fafc',
 		'border-subtle': '#2e3038',
 		surface: '#1e2026',
