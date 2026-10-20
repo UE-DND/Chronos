@@ -1,4 +1,5 @@
-import type { Timetable } from '../domain/timetable';
+import type { Course } from '../domain/course';
+import type { AcademicConfig, Timetable } from '../domain/timetable';
 import type { CourseQueryHit } from '../types/course-query';
 import { AcademicCalendarService } from './calendar';
 import { formatIsoDate, parseIsoDate, weeksBetween } from './date';
@@ -15,12 +16,40 @@ export interface CourseOccurrence extends CourseQueryHit {
 	academicWeek: number;
 }
 
+function isSchedulableCourse(course: Course, periodCount: number): boolean {
+	const day = course.dayOfWeek;
+	const start = course.startPeriod;
+	const end = course.endPeriod;
+	const hasWeekday = Number.isInteger(day) && day >= 1 && day <= 7;
+	const hasPeriodRange =
+		Number.isInteger(start) && Number.isInteger(end) && start >= 1 && end >= start;
+	return hasWeekday && hasPeriodRange && isCoursePeriodVisible(course, periodCount);
+}
+
 function validDate(value: string): boolean {
 	try {
 		return formatIsoDate(parseIsoDate(value)) === value;
 	} catch {
 		return false;
 	}
+}
+
+function isValidQueryRange(range: CourseDateRange): boolean {
+	return (
+		validDate(range.startDateIso) &&
+		validDate(range.endDateIso) &&
+		range.startDateIso <= range.endDateIso
+	);
+}
+
+function hasUsableAcademicConfig(config: AcademicConfig): boolean {
+	return (
+		validDate(config.termStartDate) &&
+		Number.isInteger(config.startWeek) &&
+		Number.isInteger(config.endWeek) &&
+		config.startWeek >= 1 &&
+		config.endWeek >= config.startWeek
+	);
 }
 
 /**
@@ -33,23 +62,11 @@ export function queryTimetableCourseOccurrences(
 	timetable: Timetable,
 	range?: CourseDateRange
 ): CourseOccurrence[] {
-	if (
-		range &&
-		(!validDate(range.startDateIso) ||
-			!validDate(range.endDateIso) ||
-			range.startDateIso > range.endDateIso)
-	) {
+	if (range && !isValidQueryRange(range)) {
 		throw new RangeError('Expected an inclusive ISO date range');
 	}
 	const config = timetable.academicConfig;
-	if (
-		!validDate(config.termStartDate) ||
-		!Number.isInteger(config.startWeek) ||
-		!Number.isInteger(config.endWeek) ||
-		config.startWeek < 1 ||
-		config.endWeek < config.startWeek
-	)
-		return [];
+	if (!hasUsableAcademicConfig(config)) return [];
 	const calendar = new AcademicCalendarService();
 	const termStart = parseIsoDate(
 		calendar.resolveWeekStart(config, config.startWeek, config.termStartDate)
@@ -67,16 +84,8 @@ export function queryTimetableCourseOccurrences(
 			)
 		: config.endWeek;
 	const holidays = buildHolidayLookup(config.holidayCalendar);
-	const courses = timetable.courses.filter(
-		(course) =>
-			Number.isInteger(course.dayOfWeek) &&
-			course.dayOfWeek >= 1 &&
-			course.dayOfWeek <= 7 &&
-			Number.isInteger(course.startPeriod) &&
-			Number.isInteger(course.endPeriod) &&
-			course.startPeriod >= 1 &&
-			course.endPeriod >= course.startPeriod &&
-			isCoursePeriodVisible(course, config.periodTimes.length)
+	const courses = timetable.courses.filter((course) =>
+		isSchedulableCourse(course, config.periodTimes.length)
 	);
 	const occurrences: CourseOccurrence[] = [];
 	for (let week = startWeek; week <= endWeek; week++) {

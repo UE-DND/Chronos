@@ -91,6 +91,22 @@ export function selectAdaptiveTextTone(
 	);
 }
 
+function hasSufficientPixelData(
+	pixels: Uint8ClampedArray | Uint8Array,
+	imageWidth: number,
+	imageHeight: number,
+	viewportWidth: number,
+	viewportHeight: number
+): boolean {
+	return (
+		imageWidth > 0 &&
+		imageHeight > 0 &&
+		viewportWidth > 0 &&
+		viewportHeight > 0 &&
+		pixels.length >= imageWidth * imageHeight * 4
+	);
+}
+
 function selectAdaptiveTextToneFromPixels(
 	pixels: Uint8ClampedArray | Uint8Array,
 	imageWidth: number,
@@ -101,13 +117,7 @@ function selectAdaptiveTextToneFromPixels(
 	isDark: boolean,
 	luminances?: Float64Array
 ): AdaptiveTextTone {
-	if (
-		imageWidth <= 0 ||
-		imageHeight <= 0 ||
-		viewportWidth <= 0 ||
-		viewportHeight <= 0 ||
-		pixels.length < imageWidth * imageHeight * 4
-	) {
+	if (!hasSufficientPixelData(pixels, imageWidth, imageHeight, viewportWidth, viewportHeight)) {
 		return isDark ? 'light-outline' : 'dark-outline';
 	}
 
