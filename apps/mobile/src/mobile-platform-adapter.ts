@@ -328,7 +328,9 @@ export async function shareFileWithMobile(
 
 export async function openMobileUpdateUrl(targetUrl: string): Promise<void> {
 	const url = new URL(targetUrl);
-	if (url.protocol !== 'https:') throw new Error('更新地址必须使用 HTTPS');
+	if (url.protocol !== 'https:' || url.username || url.password) {
+		throw new Error('更新地址必须是不含凭据的 HTTPS 地址');
+	}
 	await AppLauncher.openUrl({ url: url.toString() });
 }
 
