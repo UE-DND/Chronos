@@ -5,7 +5,6 @@ export const HOLIDAY_MESSAGES = {
 		'plugin.name': '法定节假日',
 		'plugin.description': '在课表中展示法定节假日',
 		'mine.title': '法定节假日',
-		'mine.keywords': '节假日,假期,放假,国庆,春节,holiday',
 		'screen.title': '法定节假日',
 		'screen.intro.body':
 			'点击同步按钮，获取国务院公布的放假安排并在课表标注。仅标记放假，不包含调休补班。',
@@ -30,7 +29,6 @@ export const HOLIDAY_MESSAGES = {
 		'plugin.name': 'Public Holidays',
 		'plugin.description': 'Show public holidays on the timetable',
 		'mine.title': 'Public Holidays',
-		'mine.keywords': 'holiday,vacation,national day,spring festival',
 		'screen.title': 'Public Holidays',
 		'screen.intro.body':
 			'Click Sync to fetch official public holiday schedules and mark them on your timetable. Only rest days are marked; makeup workdays are excluded.',

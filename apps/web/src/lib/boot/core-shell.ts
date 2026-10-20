@@ -1,13 +1,9 @@
 import type { ChronosEngine } from '@chronos/core';
-import { DEFAULT_MINE_SECTION_ID, parseKeywordList, type PluginTranslate } from '@chronos/core';
+import { DEFAULT_MINE_SECTION_ID, type PluginTranslate } from '@chronos/core';
 import { pwaInstallController } from '#lib/client/pwa-install.svelte.ts';
 import { CORE_SHELL_MESSAGES } from '#lib/boot/core-shell-messages.ts';
 
 const CORE_SHELL_PLUGIN_ID = 'core-shell';
-
-function keywordList(t: PluginTranslate, key: string): string[] {
-	return parseKeywordList(t(key));
-}
 
 function registerCoreShellSlots(
 	ctx: { registerSlot: ChronosEngine['slots']['register'] },
@@ -32,15 +28,9 @@ function registerCoreShellSlots(
 	});
 
 	ctx.registerSlot('mine.section', {
-		id: 'timetable-management',
-		title: () => t('section.timetable-management'),
-		order: 10
-	});
-
-	ctx.registerSlot('mine.section', {
 		id: 'data-sync',
 		title: () => t('section.data-sync'),
-		order: 20
+		order: 10
 	});
 
 	ctx.registerSlot('mine.section', {
@@ -57,12 +47,11 @@ function registerCoreShellSlots(
 
 	ctx.registerSlot('mine.item', {
 		id: 'manage-timetables',
-		sectionId: 'timetable-management',
+		sectionId: 'data-sync',
 		title: () => t('item.manage-timetables'),
 		href: '/manage-timetables',
 		icon: 'list-alt',
 		iconTone: 'primary',
-		keywords: keywordList(t, 'item.manage-timetables.keywords'),
 		order: 10
 	});
 
@@ -73,7 +62,6 @@ function registerCoreShellSlots(
 		href: '/transfer/import',
 		icon: 'download',
 		iconTone: 'secondary',
-		keywords: keywordList(t, 'item.import.keywords'),
 		order: 10
 	});
 
@@ -84,7 +72,6 @@ function registerCoreShellSlots(
 		href: '/transfer/export',
 		icon: 'share',
 		iconTone: 'tertiary',
-		keywords: keywordList(t, 'item.export.keywords'),
 		order: 20
 	});
 
@@ -95,7 +82,6 @@ function registerCoreShellSlots(
 		href: '/display-settings',
 		icon: 'text-fields',
 		iconTone: 'secondary',
-		keywords: keywordList(t, 'item.display.keywords'),
 		order: 20
 	});
 
@@ -115,7 +101,6 @@ function registerCoreShellSlots(
 		href: '/feedback-settings',
 		icon: 'vibrate',
 		iconTone: 'tertiary',
-		keywords: keywordList(t, 'item.feedback.keywords'),
 		order: 10
 	});
 
@@ -126,7 +111,6 @@ function registerCoreShellSlots(
 		href: '/plugins',
 		icon: 'code',
 		iconTone: 'secondary',
-		keywords: keywordList(t, 'item.plugins.keywords'),
 		order: 5
 	});
 
@@ -143,7 +127,6 @@ function registerCoreShellSlots(
 		href: '/about/install',
 		icon: 'add-home',
 		iconTone: 'primary',
-		keywords: keywordList(t, 'item.install.keywords'),
 		order: 20
 	});
 
@@ -154,7 +137,6 @@ function registerCoreShellSlots(
 		href: '/about',
 		icon: 'info',
 		iconTone: 'tertiary',
-		keywords: keywordList(t, 'item.about.keywords'),
 		order: 10
 	});
 }

@@ -11,7 +11,6 @@ export const CORE_SHELL_MESSAGE_KEYS = [
 	'wallpaper.item',
 	'tab.timetable',
 	'tab.mine',
-	'section.timetable-management',
 	'section.data-sync',
 	'section.appearance-feedback',
 	'section.app-support',
@@ -26,14 +25,6 @@ export const CORE_SHELL_MESSAGE_KEYS = [
 	'item.install.supporting.local',
 	'item.install.supporting.prompt',
 	'item.about',
-	'item.manage-timetables.keywords',
-	'item.import.keywords',
-	'item.export.keywords',
-	'item.display.keywords',
-	'item.feedback.keywords',
-	'item.plugins.keywords',
-	'item.install.keywords',
-	'item.about.keywords',
 	'plugin.name',
 	'plugin.description'
 ] as const satisfies ReadonlyArray<HostMessageKey>;

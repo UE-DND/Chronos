@@ -4,7 +4,6 @@ export const CLOCK_MESSAGES = {
 	'zh-cn': {
 		'plugin.name': '自定义时间',
 		'mine.title': '自定义时间',
-		'mine.keywords': '时间,日期,冻结,时钟,调试,预览,clock,time,date',
 		'screen.title': '自定义时间',
 		'screen.status.subtitle.system': '课表按引擎时间运行',
 		'screen.status.subtitle.frozen': '课表按自定义时间运行',
@@ -30,7 +29,6 @@ export const CLOCK_MESSAGES = {
 	en: {
 		'plugin.name': 'Custom Date & Time',
 		'mine.title': 'Custom date & time',
-		'mine.keywords': 'time,date,freeze,clock,debug,preview',
 		'screen.title': 'Custom Date & Time',
 		'screen.status.subtitle.system': 'Timetable follows engine time',
 		'screen.status.subtitle.frozen': 'Timetable follows custom time',

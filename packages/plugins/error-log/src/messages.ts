@@ -4,7 +4,6 @@ export const ERROR_LOG_MESSAGES = {
 	'zh-cn': {
 		'plugin.name': '错误日志',
 		'mine.title': '错误日志',
-		'mine.keywords': '错误,日志,异常,console,error,log,debug',
 		'screen.title': '错误日志',
 		'screen.empty': '暂无错误记录',
 		'screen.action.copyAll': '复制全部',
@@ -17,7 +16,6 @@ export const ERROR_LOG_MESSAGES = {
 	en: {
 		'plugin.name': 'Error Log',
 		'mine.title': 'Error Log',
-		'mine.keywords': 'error,log,exception,console,debug',
 		'screen.title': 'Error Log',
 		'screen.empty': 'No errors recorded yet',
 		'screen.action.copyAll': 'Copy all',

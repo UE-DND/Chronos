@@ -110,7 +110,6 @@ export interface MineItemSlotContribution {
 	supporting?: LocalizedText;
 	icon?: ShellIconRef;
 	iconTone?: 'primary' | 'secondary' | 'tertiary' | 'neutral';
-	keywords?: string[];
 	order?: number;
 	href?: string; // Route path pointing to built-in routes or dynamic plugin routes (/plugins/[pluginId])
 	onClick?(ctx: ChronosContext): void | Promise<void>;

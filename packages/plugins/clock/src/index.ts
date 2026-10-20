@@ -1,4 +1,4 @@
-import { defineChronosPlugin, parseKeywordList } from '@chronos/core';
+import { defineChronosPlugin } from '@chronos/core';
 import type { ChronosContext, ChronosMountable } from '@chronos/core';
 import { parseStoredFrozenEpoch } from './clock';
 import { CLOCK_PLUGIN_ID, CLOCK_STORAGE_KEY } from './constants';
@@ -28,8 +28,6 @@ export function createClockPlugin(options: CreateClockPluginOptions = {}) {
 				ctx.actions.setVirtualNow(new Date(stored));
 			}
 
-			const keywords = parseKeywordList(t('mine.keywords'));
-
 			ctx.registerSlot('mine.item', {
 				id: 'clock',
 				sectionId: CLOCK_PLUGIN_ID,
@@ -37,7 +35,6 @@ export function createClockPlugin(options: CreateClockPluginOptions = {}) {
 				href: `/plugins/${CLOCK_PLUGIN_ID}`,
 				icon: 'schedule',
 				iconTone: 'secondary',
-				keywords,
 				order: 40
 			});
 

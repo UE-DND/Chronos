@@ -1,4 +1,4 @@
-import { defineChronosPlugin, parseKeywordList } from '@chronos/core';
+import { defineChronosPlugin } from '@chronos/core';
 import type { ChronosContext, ChronosMountable } from '@chronos/core';
 import { HOLIDAY_MESSAGES } from './messages';
 import { HOLIDAY_PLUGIN_ID } from './constants';
@@ -25,8 +25,6 @@ export function createHolidayPlugin(options: CreateHolidayPluginOptions = {}) {
 		allowedDomains: ['fastly.jsdelivr.net', 'raw.githubusercontent.com'],
 		apply(ctx, t) {
 			activeCtx = ctx;
-			const keywords = parseKeywordList(t('mine.keywords'));
-
 			ctx.registerSlot('mine.item', {
 				id: 'holiday-calendar',
 				sectionId: 'data-sync',
@@ -34,7 +32,6 @@ export function createHolidayPlugin(options: CreateHolidayPluginOptions = {}) {
 				href: `/plugins/${HOLIDAY_PLUGIN_ID}`,
 				icon: 'event',
 				iconTone: 'secondary',
-				keywords,
 				order: 25
 			});
 

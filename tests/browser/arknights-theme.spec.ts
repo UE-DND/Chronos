@@ -90,12 +90,7 @@ for (const viewport of [
 				'background-image',
 				/data:image\/jpeg/
 			);
-			const search = page.getByRole('searchbox', { name: '搜索设置', exact: true });
-			await expect(search.locator('..')).toHaveCSS('border-radius', '0px');
-			await search.fill('显示设置');
 			await expect(page.getByText('显示设置', { exact: true })).toBeVisible();
-			await page.getByRole('button', { name: '清空搜索', exact: true }).click();
-			await expect(search).toHaveValue('');
 			await page.screenshot({
 				animations: 'disabled',
 				path: `dist/e2e/arknights-mine-${viewport.width}-${mode}.png`
@@ -220,14 +215,6 @@ for (const viewport of [
 				restoredSwitch
 					.locator('[data-switch-thumb]')
 					.evaluate((el) => parseFloat(getComputedStyle(el).borderRadius))
-			)
-			.toBeGreaterThan(0);
-		await page.goto('/Chronos/');
-		await page.getByRole('tab', { name: '我的', exact: true }).click();
-		const restoredSearch = page.getByRole('searchbox', { name: '搜索设置', exact: true });
-		await expect
-			.poll(() =>
-				restoredSearch.locator('..').evaluate((el) => parseFloat(getComputedStyle(el).borderRadius))
 			)
 			.toBeGreaterThan(0);
 		await page.goto('/Chronos/transfer/import');

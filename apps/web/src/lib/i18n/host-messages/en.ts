@@ -48,7 +48,6 @@ export const en = {
 	// shell (core navigation)
 	'tab.timetable': 'Timetable',
 	'tab.mine': 'Mine',
-	'section.timetable-management': 'Timetables',
 	'section.data-sync': 'Data & sharing',
 	'section.appearance-feedback': 'Personalization',
 	'section.app-support': 'App & support',
@@ -64,15 +63,6 @@ export const en = {
 	'item.install.supporting.prompt': 'Add to home screen for quick access',
 	'mine.about.updateAvailable': 'New version available!',
 	'item.about': 'About Chronos',
-	'item.manage-timetables.keywords': 'timetable,manage,switch,edit,courses',
-	'item.import.keywords': 'import,data,share,file,scan,qr,timetable',
-	'item.export.keywords': 'export,share,backup,data,link,qr',
-	'item.display.keywords':
-		'theme,display,appearance,dark,night,light,day,mode,color,system,scroll,layout,timetable,palette,scheme,random',
-	'item.feedback.keywords': 'feedback,vibration,haptic,motor,sound,audio',
-	'item.plugins.keywords': 'plugins,official,extension,plugin,theme,tools,install',
-	'item.install.keywords': 'install,PWA,desktop,app,homescreen,shortcut,download',
-	'item.about.keywords': 'about,version,open source,license,developer,update,info',
 	'plugin.name': 'Chronos UI Core',
 	'plugin.description': 'Core navigation and shell framework',
 
@@ -386,12 +376,7 @@ export const en = {
 
 	// mine
 	'mine.title': 'Mine',
-	'mine.search.placeholder': 'Search settings...',
-	'mine.search.ariaLabel': 'Search settings',
 	'mine.empty.noItems': 'No settings yet',
-	'mine.search.noResults': 'No settings matching "{query}"',
-	'mine.search.clear': 'Clear search',
-	'mine.section.fallback': 'Extensions',
 	'mine.feedback.section.haptic': 'Haptic feedback',
 	'mine.feedback.haptic.label': 'Vibration',
 	'mine.feedback.section.motion': 'Animation',
@@ -664,8 +649,6 @@ Aside from GitHub Issues, this project has no other public feedback channels
 	'route.courseEditAria': 'Edit course',
 
 	// ui
-	'ui.search.placeholder': 'Search...',
-	'ui.search.clearAria': 'Clear search',
 	'ui.loading.aria': 'Loading',
 	'ui.fetch.failed.title': 'Failed to load',
 	'ui.fetch.failed.desc': 'Failed to load. Please try again later.',

@@ -43,7 +43,6 @@ export { AddHomeFillW700 as AddHomeFill } from '@material-symbols-svg/svelte/ico
 export { RocketLaunchFillW700 as RocketLaunchFill } from '@material-symbols-svg/svelte/icons/rocket-launch';
 export { WifiOffFillW700 as WifiOffFill } from '@material-symbols-svg/svelte/icons/wifi-off';
 export { FullscreenFillW700 as FullscreenFill } from '@material-symbols-svg/svelte/icons/fullscreen';
-export { SearchW700 as Search } from '@material-symbols-svg/svelte/icons/search';
 export { CloseW700 as Close } from '@material-symbols-svg/svelte/icons/close';
 export { DeleteFillW700 as DeleteFill } from '@material-symbols-svg/svelte/icons/delete';
 export { HistoryW700 as History } from '@material-symbols-svg/svelte/icons/history';
