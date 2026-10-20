@@ -89,6 +89,7 @@ export * from './profile/profile';
 
 // Hosts
 export * from './hosts/native-protocol';
+export * from './hosts/url-policy';
 
 // i18n
 export { I18nCatalog, interpolateMessage, resolveLocaleMapText } from './i18n/i18n-catalog';

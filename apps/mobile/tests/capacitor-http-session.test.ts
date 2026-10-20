@@ -87,6 +87,31 @@ describe('CapacitorHttpSessionService', () => {
 		).toThrow('must belong to an allowed domain');
 	});
 
+	it('rejects cookie origins with credentials, paths, queries, or fragments', () => {
+		for (const origin of [
+			'https://user:pass@login.example.org',
+			'https://login.example.org/path',
+			'https://login.example.org/?token=1',
+			'https://login.example.org/#fragment'
+		]) {
+			expect(() =>
+				new CapacitorHttpSessionService().createSession({
+					allowedDomains: ['example.org'],
+					cookieOrigins: [origin]
+				})
+			).toThrow('HTTPS cookie origin');
+		}
+	});
+
+	it('accepts nested subdomain cookie origins', () => {
+		expect(() =>
+			new CapacitorHttpSessionService().createSession({
+				allowedDomains: ['example.org'],
+				cookieOrigins: ['https://deep.login.example.org']
+			})
+		).not.toThrow();
+	});
+
 	it('rejects already aborted requests and prevents requests after disposal', async () => {
 		const session = new CapacitorHttpSessionService().createSession(sessionOptions);
 		const controller = new AbortController();

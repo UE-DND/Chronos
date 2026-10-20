@@ -1,5 +1,6 @@
 import { APP_VERSION } from '#lib/config/app-meta.ts';
 import { staticPath } from '#lib/config/static-path.ts';
+import { isBareHttpsUrl, isBareUrl } from '@chronos/core';
 
 declare const __CHRONOS_PLUGIN_MARKET_BASE_URL__: string;
 declare const __OFFICIAL_PLUGIN_IDS__: string[];
@@ -8,9 +9,13 @@ export const RESERVED_OFFICIAL_PLUGIN_IDS =
 const DEFAULT_PLUGIN_MARKET_BASE_URL = 'https://ue-dnd.github.io/Chronos/plugins/releases/';
 
 export function resolvePluginMarketBase(value = DEFAULT_PLUGIN_MARKET_BASE_URL): string {
-	const url = new URL(value);
-	if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash)
-		throw new Error('Plugin market base must be an HTTPS directory URL');
+	let url: URL;
+	try {
+		url = new URL(value);
+	} catch {
+		throw new Error('Plugin market base must be a valid HTTPS directory URL');
+	}
+	if (!isBareHttpsUrl(url)) throw new Error('Plugin market base must be an HTTPS directory URL');
 	url.pathname = `${url.pathname.replace(/\/$/, '')}/`;
 	return url.href;
 }
@@ -44,15 +49,11 @@ export function isOfficialCatalogManifestUrl(value?: string, pluginId?: string):
 			if (!/^\d+\.\d+\.\d+\/manifests\/[a-zA-Z0-9-]+\/[a-z0-9-]+\.manifest\.json$/.test(path))
 				return false;
 		} else return false;
-		return (
-			!url.search &&
-			!url.hash &&
-			!url.username &&
-			!url.password &&
-			(!pluginId ||
-				path.endsWith(`/${pluginId}.manifest.json`) ||
-				path === `${pluginId}.manifest.json`)
-		);
+		const matchesPlugin =
+			!pluginId ||
+			path.endsWith(`/${pluginId}.manifest.json`) ||
+			path === `${pluginId}.manifest.json`;
+		return isBareUrl(url) && matchesPlugin;
 	} catch {
 		return false;
 	}

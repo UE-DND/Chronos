@@ -1,4 +1,5 @@
 import { CapacitorCookies, CapacitorHttp } from '@capacitor/core';
+import { belongsToDomain, isHttpsOrigin } from '@chronos/core';
 import type {
 	HttpSessionRequestOptions,
 	HttpSessionResponse,
@@ -14,26 +15,27 @@ export interface CapacitorHttpSessionOptions {
 function normalizeOptions(options: CapacitorHttpSessionOptions): CapacitorHttpSessionOptions {
 	const allowedDomains = [...new Set(options.allowedDomains.map((domain) => domain.toLowerCase()))];
 	if (allowedDomains.length === 0) throw new Error('HTTP session requires allowed domains');
-	const cookieOrigins = [...new Set(options.cookieOrigins.map((origin) => new URL(origin).origin))];
-	for (const origin of cookieOrigins) {
-		const parsed = new URL(origin);
-		if (
-			parsed.protocol !== 'https:' ||
-			!allowedDomains.some(
-				(domain) => parsed.hostname === domain || parsed.hostname.endsWith(`.${domain}`)
-			)
-		) {
-			throw new Error(`HTTPS cookie origin must belong to an allowed domain: ${origin}`);
-		}
-	}
+	const cookieOrigins = [
+		...new Set(
+			options.cookieOrigins.map((origin) => {
+				let parsed: URL;
+				try {
+					parsed = new URL(origin);
+				} catch {
+					throw new Error(`Invalid HTTPS cookie origin: ${origin}`);
+				}
+				if (!isHttpsOrigin(parsed) || !belongsToDomain(parsed.hostname, allowedDomains)) {
+					throw new Error(`HTTPS cookie origin must belong to an allowed domain: ${origin}`);
+				}
+				return parsed.origin;
+			})
+		)
+	];
 	return { allowedDomains, cookieOrigins };
 }
 
-function isDomainAllowed(hostname: string, allowedDomains: readonly string[]): boolean {
-	const normalized = hostname.toLowerCase();
-	return allowedDomains.some(
-		(domain) => normalized === domain || normalized.endsWith(`.${domain}`)
-	);
+function isPersistentCookie(value: string, segment: string): boolean {
+	return value.length > 0 && !/(?:^|;)\s*max-age=0(?:;|$)/i.test(segment);
 }
 
 class CapacitorHttpSession implements IHostHttpSession {
@@ -54,7 +56,7 @@ class CapacitorHttpSession implements IHostHttpSession {
 		if (parsedUrl.protocol !== 'https:') {
 			throw new Error('HTTP session requests must use HTTPS');
 		}
-		if (!isDomainAllowed(parsedUrl.hostname, this.options.allowedDomains)) {
+		if (!belongsToDomain(parsedUrl.hostname, this.options.allowedDomains)) {
 			throw new Error(`HTTP session request host is not allowed: ${parsedUrl.hostname}`);
 		}
 		if (options.signal?.aborted) {
@@ -122,14 +124,13 @@ class CapacitorHttpSession implements IHostHttpSession {
 		const parsed = new URL(url.startsWith('http') ? url : `https://${url}/`);
 		if (
 			parsed.protocol !== 'https:' ||
-			!isDomainAllowed(parsed.hostname, this.options.allowedDomains)
+			!belongsToDomain(parsed.hostname, this.options.allowedDomains)
 		) {
 			throw new Error('HTTP session cookie queries must use an allowed HTTPS host');
 		}
 		const hostname = parsed.hostname.toLowerCase();
 		return [...this.responseCookies].some(
-			([domain, names]) =>
-				(hostname === domain || hostname.endsWith(`.${domain}`)) && names.has(name)
+			([domain, names]) => belongsToDomain(hostname, [domain]) && names.has(name)
 		);
 	}
 
@@ -162,7 +163,7 @@ class CapacitorHttpSession implements IHostHttpSession {
 				const domainAttribute = /(?:^|;)\s*domain=([^;]+)/i.exec(segment)?.[1];
 				const domain = (domainAttribute?.trim().replace(/^\./, '') ?? responseHost).toLowerCase();
 				const names = this.responseCookies.get(domain) ?? new Set<string>();
-				if (value.length > 0 && !/(?:^|;)\s*max-age=0(?:;|$)/i.test(segment)) {
+				if (isPersistentCookie(value, segment)) {
 					names.add(name);
 				} else {
 					names.delete(name);

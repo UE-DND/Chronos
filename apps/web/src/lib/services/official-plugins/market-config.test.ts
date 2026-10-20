@@ -14,7 +14,10 @@ it('pins production to a host release and retains the local development catalog'
 		'https://example.com/plugins/'
 	);
 	expect(() => resolvePluginMarketBase('http://example.com/plugins')).toThrow('HTTPS');
+	expect(() => resolvePluginMarketBase('not a url')).toThrow('valid HTTPS');
 	expect(() => resolvePluginMarketBase('https://example.com/plugins?token=x')).toThrow('HTTPS');
+	expect(() => resolvePluginMarketBase('https://user:pass@example.com/plugins')).toThrow('HTTPS');
+	expect(() => resolvePluginMarketBase('https://example.com/plugins#fragment')).toThrow('HTTPS');
 });
 it('checks origin, namespace boundaries, identity and the requested host version', () => {
 	const url =

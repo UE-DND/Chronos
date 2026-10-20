@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { belongsToDomain, isHttpsOrigin } from '../../packages/core/src/hosts/url-policy.ts';
 import type { MobilePluginServerDefinition } from '../../packages/core/src/types/plugin-server.ts';
 import type { OfficialPluginDef } from '../official-plugins.config.ts';
 import { OFFICIAL_PLUGINS } from '../official-plugins.config.ts';
@@ -14,6 +15,10 @@ export interface ResolvedMobilePlugin {
 }
 
 type PackageExports = Record<string, unknown>;
+
+function isDeclaredCookieOrigin(url: URL, allowedDomains: readonly string[]): boolean {
+	return isHttpsOrigin(url) && belongsToDomain(url.hostname, allowedDomains);
+}
 
 function exportedFile(packageDir: string, exports: PackageExports, key: string): string {
 	const entry = exports[key];
@@ -81,16 +86,7 @@ function validateDefinition(
 		} catch {
 			throw new Error(`Invalid mobile cookie origin: ${origin}`);
 		}
-		const domain = parsed.hostname.toLowerCase();
-		if (
-			parsed.protocol !== 'https:' ||
-			parsed.username ||
-			parsed.password ||
-			parsed.pathname !== '/' ||
-			parsed.search ||
-			parsed.hash ||
-			!allowedDomains.some((allowed) => domain === allowed || domain.endsWith(`.${allowed}`))
-		) {
+		if (!isDeclaredCookieOrigin(parsed, allowedDomains)) {
 			throw new Error(`HTTPS cookie origin must belong to a declared proxy domain: ${origin}`);
 		}
 		if (cookieOrigins.has(parsed.origin)) {
