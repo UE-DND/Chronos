@@ -1,5 +1,6 @@
 import type { CoursePaletteEntry } from '../algorithms/palette';
 import type { ThemeContribution, ThemeWorkbenchColors } from '../types/contributions';
+import { isSha256Hex } from '../validation/hash';
 import { validateWorkbenchColors } from './workbench-colors';
 
 export type ColorThemeJsonCoursePalette = Record<'light' | 'dark', readonly CoursePaletteEntry[]>;
@@ -19,6 +20,19 @@ export interface ColorThemeJson {
 	};
 }
 
+function isThemeWallpaper(value: unknown): value is { url: string; sha256: string } {
+	if (!value || typeof value !== 'object') return false;
+	const image = value as { url?: unknown; sha256?: unknown };
+	const url = image.url;
+	const sha256 = image.sha256;
+	return (
+		typeof url === 'string' &&
+		Boolean(url.trim()) &&
+		typeof sha256 === 'string' &&
+		isSha256Hex(sha256)
+	);
+}
+
 export function parseColorThemeJson(raw: unknown): ColorThemeJson {
 	if (!raw || typeof raw !== 'object') {
 		throw new Error('Invalid color theme JSON: root must be an object');
@@ -34,18 +48,8 @@ export function parseColorThemeJson(raw: unknown): ColorThemeJson {
 	if (!variants.light || !variants.dark) {
 		throw new Error('Invalid color theme JSON: variants must include light and dark');
 	}
-	if (data.wallpaper !== undefined) {
-		const image = data.wallpaper as Record<string, unknown> | null;
-		if (
-			!image ||
-			typeof image !== 'object' ||
-			typeof image.url !== 'string' ||
-			!image.url.trim() ||
-			typeof image.sha256 !== 'string' ||
-			!/^[a-f0-9]{64}$/i.test(image.sha256)
-		) {
-			throw new Error('Invalid theme wallpaper: require url and SHA-256');
-		}
+	if (data.wallpaper !== undefined && !isThemeWallpaper(data.wallpaper)) {
+		throw new Error('Invalid theme wallpaper: require url and SHA-256');
 	}
 	return data as unknown as ColorThemeJson;
 }

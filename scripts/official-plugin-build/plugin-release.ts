@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { marketFiles, resolveMarketFile, listMarketFiles } from './market-files.ts';
 import { OFFICIAL_PLUGINS } from '../official-plugins.config.ts';
 import { verifyOfficialPlugins } from './verify-official-plugins.ts';
+import { isGitCommitHash } from '../../packages/core/src/validation/hash.ts';
 
 const versionPattern = /^\d+\.\d+\.\d+$/;
 const sha = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
@@ -37,7 +38,7 @@ export function verifyPluginRelease(directory: string, version: string): void {
 	) as PluginRelease;
 	if (
 		release.version !== version ||
-		!/^[a-f0-9]{40}$/.test(release.commit) ||
+		!isGitCommitHash(release.commit) ||
 		JSON.stringify(release.files) !== JSON.stringify(releaseFiles(directory))
 	)
 		throw new Error(`Invalid plugin release: ${version}`);
@@ -62,7 +63,7 @@ export function stagePluginRelease(
 	version: string,
 	commit: string
 ): string {
-	if (!versionPattern.test(version) || !/^[a-f0-9]{40}$/.test(commit))
+	if (!versionPattern.test(version) || !isGitCommitHash(commit))
 		throw new Error('Invalid release version or commit');
 	verifyOfficialPlugins(market);
 	const release: PluginRelease = { version, commit, files: releaseFiles(market) };

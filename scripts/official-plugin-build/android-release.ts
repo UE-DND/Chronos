@@ -23,6 +23,7 @@ import {
 	type AndroidProfileUpdate,
 	type WebHostUpdate
 } from '../../packages/core/src/types/host-update.ts';
+import { isSha256Hex } from '../../packages/core/src/validation/hash.ts';
 
 export const ANDROID_PROFILES = [
 	'chronos-default',
@@ -59,7 +60,7 @@ export function inspectAndroidArtifact(
 	};
 }
 function validateCertificate(value: string): void {
-	if (!/^[a-f0-9]{64}$/.test(value)) throw new Error('Invalid signing certificate');
+	if (!isSha256Hex(value)) throw new Error('Invalid signing certificate');
 }
 export function validateAndroidRelease(release: AndroidStableUpdate): void {
 	if (
@@ -173,6 +174,27 @@ export async function smokeAndroidFeed(
 	}
 }
 
+function matchesDownloadedArtifact(
+	metadata: {
+		certificate: string;
+		entry: { host: { sourceCommit: string; buildId: string; profileId: string }; sha256: string };
+	},
+	apkPath: string,
+	commit: string,
+	expectedBuildId: string,
+	profileId: string,
+	certificate: string
+): boolean {
+	const host = metadata.entry.host;
+	const sameHost =
+		host.sourceCommit === commit &&
+		host.buildId === expectedBuildId &&
+		host.profileId === profileId;
+	return (
+		sameHost && metadata.certificate === certificate && metadata.entry.sha256 === digest(apkPath)
+	);
+}
+
 export function reuseAndroidArtifact(
 	directory: string,
 	repository: string,
@@ -209,11 +231,14 @@ export function reuseAndroidArtifact(
 		gh(['release', 'download', tag, '--pattern', file, '--dir', directory]);
 	const metadata = JSON.parse(readFileSync(resolve(directory, metadataName), 'utf8'));
 	if (
-		metadata.entry.host.sourceCommit !== commit ||
-		metadata.entry.host.buildId !== expectedBuildId ||
-		metadata.entry.host.profileId !== profileId ||
-		metadata.certificate !== certificate ||
-		metadata.entry.sha256 !== digest(resolve(directory, apkName))
+		!matchesDownloadedArtifact(
+			metadata,
+			resolve(directory, apkName),
+			commit,
+			expectedBuildId,
+			profileId,
+			certificate
+		)
 	)
 		throw new Error('Existing Android artifact identity mismatch');
 	return true;

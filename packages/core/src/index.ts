@@ -84,6 +84,9 @@ export * from './plugin/define-chronos-plugin';
 export * from './plugin/call-plugin-server';
 export * from './plugin/register-import-tab';
 
+// Validation
+export * from './validation/hash';
+
 // Profile
 export * from './profile/profile';
 

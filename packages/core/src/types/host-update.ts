@@ -1,3 +1,6 @@
+import { isBareHttpsUrl } from '../hosts/url-policy';
+import { isGitCommitHash, isSha256Hex } from '../validation/hash';
+
 export interface HostBuildIdentity {
 	version: string;
 	buildId: string;
@@ -46,6 +49,9 @@ export interface SelectedAndroidUpdate extends AndroidProfileUpdate {
 	signingCertificateSha256: string;
 }
 
+const HOST_TARGETS = new Set<HostBuildIdentity['target']>(['pages', 'vercel', 'mobile']);
+const HOST_VERSION = /^\d+\.\d+\.\d+$/;
+
 export function androidVersionCode(version: string): number {
 	const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(version);
 	if (!match) throw new Error('Android updates require a stable version');
@@ -56,41 +62,57 @@ export function androidVersionCode(version: string): number {
 	return code;
 }
 
+function isHostIdentity(host: HostBuildIdentity | null | undefined): host is HostBuildIdentity {
+	if (!host) return false;
+	return (
+		HOST_VERSION.test(host.version) &&
+		isSha256Hex(host.buildId) &&
+		isGitCommitHash(host.sourceCommit) &&
+		Boolean(host.profileId) &&
+		Boolean(host.deploymentId) &&
+		HOST_TARGETS.has(host.target)
+	);
+}
+
 function assertHost(host: HostBuildIdentity): void {
-	if (
-		!host ||
-		!/^\d+\.\d+\.\d+$/.test(host.version) ||
-		!/^[a-f0-9]{64}$/.test(host.buildId) ||
-		!/^[a-f0-9]{40}$/.test(host.sourceCommit) ||
-		!host.profileId ||
-		!host.deploymentId ||
-		!['pages', 'vercel', 'mobile'].includes(host.target)
-	)
-		throw new Error('Invalid host build identity');
+	if (!isHostIdentity(host)) throw new Error('Invalid host build identity');
+}
+
+function isReleaseIdentity(release: HostRelease | null | undefined, version: string): boolean {
+	if (!release) return false;
+	return (
+		release.tagName === `v${version}` &&
+		typeof release.name === 'string' &&
+		typeof release.body === 'string' &&
+		typeof release.publishedAt === 'string'
+	);
 }
 
 function assertRelease(release: HostRelease, version: string): void {
-	if (
-		!release ||
-		release.tagName !== `v${version}` ||
-		typeof release.name !== 'string' ||
-		typeof release.body !== 'string' ||
-		typeof release.publishedAt !== 'string'
-	)
-		throw new Error('Conflicting release identity');
+	if (!isReleaseIdentity(release, version)) throw new Error('Conflicting release identity');
 }
 
 function assertCatalog(url: string, version: string): void {
 	const parsed = new URL(url);
-	if (
-		parsed.protocol !== 'https:' ||
-		parsed.username ||
-		parsed.password ||
-		parsed.search ||
-		parsed.hash ||
-		!parsed.pathname.endsWith(`/plugins/releases/${version}/catalog.json`)
-	)
+	const pinned = parsed.pathname.endsWith(`/plugins/releases/${version}/catalog.json`);
+	if (!isBareHttpsUrl(parsed) || !pinned)
 		throw new Error('Plugin catalog must be pinned to the release');
+}
+
+function hasUniqueStrings(ids: unknown): ids is string[] {
+	if (!Array.isArray(ids) || ids.some((id) => typeof id !== 'string')) return false;
+	return new Set(ids).size === ids.length;
+}
+
+function matchesWebInstallation(update: WebHostUpdate, current: HostBuildIdentity): boolean {
+	const host = update.host;
+	return (
+		host.target !== 'mobile' &&
+		host.target === current.target &&
+		host.profileId === current.profileId &&
+		host.deploymentId === current.deploymentId &&
+		hasUniqueStrings(update.requiredPluginIds)
+	);
 }
 
 export function validateWebUpdate(value: unknown, current: HostBuildIdentity): WebHostUpdate {
@@ -99,15 +121,7 @@ export function validateWebUpdate(value: unknown, current: HostBuildIdentity): W
 	assertHost(update.host);
 	assertRelease(update.release, update.host.version);
 	assertCatalog(update.pluginCatalogUrl, update.host.version);
-	if (
-		update.host.target === 'mobile' ||
-		update.host.target !== current.target ||
-		update.host.profileId !== current.profileId ||
-		update.host.deploymentId !== current.deploymentId ||
-		!Array.isArray(update.requiredPluginIds) ||
-		update.requiredPluginIds.some((id) => typeof id !== 'string') ||
-		new Set(update.requiredPluginIds).size !== update.requiredPluginIds.length
-	)
+	if (!matchesWebInstallation(update, current))
 		throw new Error('Web update does not match this installation');
 	return update;
 }
@@ -121,14 +135,40 @@ function isPinnedAndroidApk(
 	const profileFlavor = profileId.replace(/^chronos-/, '');
 	const expectedPath = `/UE-DND/Chronos/releases/download/${tagName}/Chronos-${profileFlavor}-${version}.apk`;
 	return (
-		apk.protocol === 'https:' &&
+		isBareHttpsUrl(apk) &&
 		apk.hostname === 'github.com' &&
 		!apk.port &&
-		!apk.username &&
-		!apk.password &&
-		!apk.search &&
-		!apk.hash &&
 		apk.pathname === expectedPath
+	);
+}
+
+function matchesAndroidPackage(
+	update: AndroidStableUpdate | null | undefined,
+	packageId: string,
+	certificate: string
+): update is AndroidStableUpdate {
+	return Boolean(
+		update?.formatVersion === 1 &&
+		update.packageId === packageId &&
+		isSha256Hex(certificate) &&
+		update.signingCertificateSha256 === certificate
+	);
+}
+
+function isPinnedAndroidArtifact(
+	entry: AndroidProfileUpdate,
+	update: AndroidStableUpdate,
+	profileId: string,
+	apk: URL
+): boolean {
+	if (entry.host.target !== 'mobile' || entry.host.profileId !== profileId) return false;
+	if (update.versionCode !== androidVersionCode(entry.host.version)) return false;
+	const size = entry.sizeBytes;
+	return (
+		isSha256Hex(entry.sha256) &&
+		Number.isSafeInteger(size) &&
+		size >= 1 &&
+		isPinnedAndroidApk(apk, profileId, entry.host.version, update.release.tagName)
 	);
 }
 
@@ -139,12 +179,7 @@ export function selectAndroidUpdate(
 	certificate: string
 ): SelectedAndroidUpdate {
 	const update = value as AndroidStableUpdate;
-	if (
-		update?.formatVersion !== 1 ||
-		update.packageId !== packageId ||
-		!/^[a-f0-9]{64}$/.test(certificate) ||
-		update.signingCertificateSha256 !== certificate
-	)
+	if (!matchesAndroidPackage(update, packageId, certificate))
 		throw new Error('Android package or signing identity mismatch');
 	const entry = update.profiles?.[profileId];
 	if (!entry) throw new Error('Android profile update unavailable');
@@ -152,15 +187,7 @@ export function selectAndroidUpdate(
 	assertRelease(update.release, entry.host.version);
 	assertCatalog(entry.pluginCatalogUrl, entry.host.version);
 	const apk = new URL(entry.apkUrl);
-	if (
-		entry.host.target !== 'mobile' ||
-		entry.host.profileId !== profileId ||
-		update.versionCode !== androidVersionCode(entry.host.version) ||
-		!/^[a-f0-9]{64}$/.test(entry.sha256) ||
-		!Number.isSafeInteger(entry.sizeBytes) ||
-		entry.sizeBytes < 1 ||
-		!isPinnedAndroidApk(apk, profileId, entry.host.version, update.release.tagName)
-	)
+	if (!isPinnedAndroidArtifact(entry, update, profileId, apk))
 		throw new Error('Invalid pinned Android artifact');
 	return {
 		...entry,
