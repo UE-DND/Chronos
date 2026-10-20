@@ -1,5 +1,6 @@
 import { resolve } from '$app/paths';
 
+import { belongsToDomain } from '@chronos/core';
 import type {
 	HttpDownloadProgress,
 	HttpRequestOptions,
@@ -11,53 +12,102 @@ import { deploymentHasServerPlugins } from '#lib/boot/plugin-proxy-meta.generate
 
 const base = resolve('').replace(/\/$/, '');
 
+function parseIpv4(value: string): number[] | undefined {
+	const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(value);
+	if (!match) return undefined;
+	const octets = match.slice(1).map(Number);
+	return octets.every((octet) => octet <= 255) ? octets : undefined;
+}
+
+function isPrivateIpv4([first = 0, second = 0]: readonly number[]): boolean {
+	if (first === 0 || first === 10 || first === 127) return true;
+	if (first === 100 && second >= 64 && second <= 127) return true;
+	if (first === 169 && second === 254) return true;
+	if (first === 172 && second >= 16 && second <= 31) return true;
+	if (first === 192 && second === 168) return true;
+	return first === 198 && (second === 18 || second === 19);
+}
+
+/** Parse an IPv6 literal (optionally with an IPv4 tail) into eight hextets. */
+function parseIpv6(value: string): number[] | undefined {
+	const input = value.split('%')[0]?.toLowerCase() ?? '';
+	const halves = input.split('::');
+	if (halves.length > 2) return undefined;
+	const parsePart = (part: string | undefined): number[] | undefined => {
+		if (!part) return [];
+		const words: number[] = [];
+		const segments = part.split(':');
+		for (const [index, segment] of segments.entries()) {
+			if (segment.includes('.')) {
+				if (index !== segments.length - 1) return undefined;
+				const ipv4 = parseIpv4(segment);
+				if (!ipv4) return undefined;
+				words.push((ipv4[0]! << 8) | ipv4[1]!, (ipv4[2]! << 8) | ipv4[3]!);
+				continue;
+			}
+			if (!/^[0-9a-f]{1,4}$/.test(segment)) return undefined;
+			words.push(Number.parseInt(segment, 16));
+		}
+		return words;
+	};
+	const head = parsePart(halves[0]);
+	const tail = halves.length === 2 ? parsePart(halves[1]) : [];
+	if (!head || !tail) return undefined;
+	if (halves.length === 1) return head.length === 8 ? head : undefined;
+	const missing = 8 - head.length - tail.length;
+	if (missing < 1) return undefined;
+	return [...head, ...Array<number>(missing).fill(0), ...tail];
+}
+
+function ipv4FromWords(high = 0, low = 0): number[] {
+	return [high >> 8, high & 0xff, low >> 8, low & 0xff];
+}
+
+function isPrivateIpv6(value: string): boolean {
+	const words = parseIpv6(value);
+	if (!words) return false;
+	const first = words[0] ?? 0;
+	const low = words[7] ?? 0;
+	if (words.slice(0, 7).every((word) => word === 0) && (low === 0 || low === 1)) {
+		return true;
+	}
+	if (words.slice(0, 5).every((word) => word === 0) && words[5] === 0xffff) {
+		return isPrivateIpv4(ipv4FromWords(words[6] ?? 0, low));
+	}
+	if (words.slice(0, 6).every((word) => word === 0)) {
+		return isPrivateIpv4(ipv4FromWords(words[6] ?? 0, low));
+	}
+	return (
+		(first >= 0xfc00 && first <= 0xfdff) ||
+		(first >= 0xfe80 && first <= 0xfebf) ||
+		(first >= 0xfec0 && first <= 0xfeff) ||
+		(first >= 0xff00 && first <= 0xffff)
+	);
+}
+
 /**
- * Checks whether a given hostname is a private or loopback IP address (anti-SSRF).
+ * Checks whether a given hostname is a private or loopback address (anti-SSRF).
  */
 function isPrivateOrLoopbackHost(hostname: string): boolean {
 	const normalized = hostname.toLowerCase();
-	if (
-		normalized === 'localhost' ||
-		normalized === '127.0.0.1' ||
-		normalized === '0.0.0.0' ||
-		normalized === '::1' ||
-		normalized.endsWith('.local')
-	) {
+	const host =
+		normalized.startsWith('[') && normalized.endsWith(']') ? normalized.slice(1, -1) : normalized;
+	if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) {
 		return true;
 	}
-
-	// IPv4 private ranges: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16
-	const ipv4Match = normalized.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
-	if (ipv4Match) {
-		const firstOctet = Number(ipv4Match[1]);
-		const secondOctet = Number(ipv4Match[2]);
-		if (firstOctet === 10 || firstOctet === 127) return true;
-		if (firstOctet === 172 && secondOctet >= 16 && secondOctet <= 31) return true;
-		if (firstOctet === 192 && secondOctet === 168) return true;
-		if (firstOctet === 169 && secondOctet === 254) return true;
-	}
-
-	return false;
+	const ipv4 = parseIpv4(host);
+	return ipv4 ? isPrivateIpv4(ipv4) : isPrivateIpv6(host);
 }
 
 /**
- * Checks if a hostname matches any pattern in the allowed domains whitelist.
+ * Checks if a hostname matches the deployment allowlist.
+ * An empty list means no deployment-level restriction.
  */
-function isDomainAllowed(hostname: string, allowedDomains: string[]): boolean {
-	if (allowedDomains.length === 0) return true;
-	const lowerHost = hostname.toLowerCase();
-
-	return allowedDomains.some((pattern) => {
-		const lowerPattern = pattern.toLowerCase();
-		if (lowerPattern.startsWith('*.')) {
-			const suffix = lowerPattern.slice(1); // e.g. .cqut.edu.cn
-			return lowerHost.endsWith(suffix) || lowerHost === lowerPattern.slice(2);
-		}
-		return lowerHost === lowerPattern;
-	});
+function isDomainAllowed(hostname: string, allowedDomains: readonly string[]): boolean {
+	return allowedDomains.length === 0 || belongsToDomain(hostname, allowedDomains);
 }
 
-function assertProxyDestinationAllowed(url: string, allowedDomains: string[]): void {
+function assertProxyDestinationAllowed(url: string, allowedDomains: readonly string[]): void {
 	let parsed: URL;
 	try {
 		parsed = new URL(url);

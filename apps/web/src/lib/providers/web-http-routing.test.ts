@@ -50,6 +50,11 @@ describe('Web HTTP routing and proxy policy', () => {
 		['http://127.0.0.1/admin', 'SSRF Protection'],
 		['http://172.16.1.2/admin', 'SSRF Protection'],
 		['http://intranet.local/admin', 'SSRF Protection'],
+		['http://[::1]/admin', 'SSRF Protection'],
+		['http://[0:0:0:0:0:0:0:1]/admin', 'SSRF Protection'],
+		['http://[fd12:3456::1]/admin', 'SSRF Protection'],
+		['http://[fe80::1]/admin', 'SSRF Protection'],
+		['http://[::ffff:127.0.0.1]/admin', 'SSRF Protection'],
 		['https://cqut.edu.cn.attacker.test/api', 'allowed proxy whitelist']
 	])('rejects %s before fetch and releases request resources', async (url, message) => {
 		vi.useFakeTimers();
