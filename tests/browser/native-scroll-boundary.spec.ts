@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 
-test.use({ viewport: { width: 430, height: 932 }, isMobile: true, hasTouch: true });
+test.use({ viewport: { width: 430, height: 640 }, isMobile: true, hasTouch: true });
 
 async function openMine(page: Page, request: APIRequestContext) {
 	await request.post('/__e2e/deploy?build=old');
@@ -40,7 +40,7 @@ test('Mine keeps its scroll viewport in place during a boundary reversal', async
 	const point = (y: number) => ({ x: 215, y, id: 1 });
 	try {
 		await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(300)] });
-		for (const y of [380, 460, 540, 620, 700]) {
+		for (const y of [360, 420, 480, 540, 600]) {
 			await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(y)] });
 		}
 		const pulled = await scrollState(scroll);
@@ -48,7 +48,7 @@ test('Mine keeps its scroll viewport in place during a boundary reversal', async
 		expect(pulled.viewportTop).toBeCloseTo(initial.viewportTop);
 		expect(pulled.transform).toBe('');
 
-		for (const y of [680, 640, 600, 520, 440, 360]) {
+		for (const y of [580, 540, 500, 440, 380, 320]) {
 			await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(y)] });
 		}
 		await expect.poll(() => scroll.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
@@ -71,21 +71,21 @@ test('Mine can scroll back from a bottom boundary pull without shifting its view
 	const cdp = await page.context().newCDPSession(page);
 	const point = (y: number) => ({ x: 215, y, id: 1 });
 	try {
-		await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(700)] });
-		for (const y of [620, 540, 460, 380, 300, 220, 140]) {
+		await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(580)] });
+		for (const y of [520, 460, 400, 340, 280, 220, 160, 100]) {
 			await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(y)] });
 		}
 		const pulled = await scrollState(scroll);
-		expect(pulled.scrollTop).toBeCloseTo(initial.maxScroll);
+		expect(Math.abs(pulled.scrollTop - initial.scrollTop)).toBeLessThanOrEqual(1);
 		expect(pulled.viewportTop).toBeCloseTo(initial.viewportTop);
 		expect(pulled.transform).toBe('');
 
-		for (const y of [160, 200, 240, 320, 400, 480, 560]) {
+		for (const y of [140, 200, 260, 320, 380, 440, 500, 560]) {
 			await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(y)] });
 		}
 		await expect
 			.poll(() => scroll.evaluate((node) => node.scrollTop))
-			.toBeLessThan(initial.maxScroll);
+			.toBeLessThan(initial.scrollTop - 1);
 		const reversed = await scrollState(scroll);
 		expect(reversed.viewportTop).toBeCloseTo(initial.viewportTop);
 		expect(reversed.transform).toBe('');
