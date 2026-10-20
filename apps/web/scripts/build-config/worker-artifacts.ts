@@ -48,9 +48,14 @@ function changeState(change) {
   };
  });
 }
+function samePreparedTarget(target) {
+ return target.buildId === HOST.buildId && target.profileId === HOST.profileId && target.target === HOST.target;
+}
 function assertPrepared(state) {
  const prepared = state.prepared;
- if (!prepared || prepared.target.buildId !== HOST.buildId || prepared.target.profileId !== HOST.profileId || prepared.target.target !== HOST.target || prepared.revision !== state.revision || prepared.until <= Date.now()) throw new Error('Prepare plugins before updating the application');
+ if (!prepared) throw new Error('Prepare plugins before updating the application');
+ const current = prepared.revision === state.revision && (prepared.until === null || prepared.until > Date.now());
+ if (!samePreparedTarget(prepared.target) || !current) throw new Error('Prepare plugins before updating the application');
 }
 async function loadAsset(asset, fresh = false) {
  const cache = await caches.open(CACHE);
