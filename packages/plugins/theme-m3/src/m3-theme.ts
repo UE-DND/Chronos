@@ -11,6 +11,7 @@ import {
 import type { CoursePaletteEntry } from '@chronos/core';
 
 const BRAND_SOURCE_ARGB = 0xff0068b7;
+const MAX_COURSE_COLORS = 6;
 
 /** M3 theme defaults, owned by this plugin. */
 const M3_BASE_COLOR_KEYS = [
@@ -233,11 +234,17 @@ export function coursePaletteFromSources(argbs: number[]): CoursePaletteEntry[] 
 	const entries: CoursePaletteEntry[] = [];
 	const seen = new Set<string>();
 
+	function rememberPaletteEntry(entry: CoursePaletteEntry): void {
+		if (seen.has(entry.background) || entries.length >= MAX_COURSE_COLORS) return;
+		seen.add(entry.background);
+		entries.push(entry);
+	}
+
 	function pushTone(palette: TonalPalette, tone: number) {
 		const background = argbToHex(palette.tone(tone));
-		if (seen.has(background) || entries.length >= 6) return;
-		seen.add(background);
-		entries.push({ background, foreground: argbToHex(palette.tone(10)) });
+		// Skip the foreground calculation for tones that would be discarded.
+		if (seen.has(background) || entries.length >= MAX_COURSE_COLORS) return;
+		rememberPaletteEntry({ background, foreground: argbToHex(palette.tone(10)) });
 	}
 
 	for (const palette of palettes) pushTone(palette, 90);
@@ -245,10 +252,8 @@ export function coursePaletteFromSources(argbs: number[]): CoursePaletteEntry[] 
 
 	const seed = argbs[0] ?? BRAND_SOURCE_ARGB;
 	for (const extra of coursePaletteFromSource(seed)) {
-		if (entries.length >= 6) break;
-		if (seen.has(extra.background)) continue;
-		seen.add(extra.background);
-		entries.push(extra);
+		if (entries.length >= MAX_COURSE_COLORS) break;
+		rememberPaletteEntry(extra);
 	}
 
 	return entries;

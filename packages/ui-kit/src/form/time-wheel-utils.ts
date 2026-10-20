@@ -38,20 +38,24 @@ export function formatTimeValue(value: TimeValue): string {
 	return `${String(value.hour).padStart(2, '0')}:${String(value.minute).padStart(2, '0')}`;
 }
 
+function isValidTimeParts(time: TimeValue | undefined): time is TimeValue {
+	return Boolean(
+		time &&
+		Number.isInteger(time.hour) &&
+		time.hour >= 0 &&
+		time.hour <= 23 &&
+		Number.isInteger(time.minute) &&
+		time.minute >= 0 &&
+		time.minute <= 59
+	);
+}
+
 export function buildTimeFieldTriggerLabel(
 	label: string,
 	time: TimeValue | undefined,
 	labels: TimePickerLabels = DEFAULT_TIME_PICKER_LABELS
 ): string {
-	if (
-		!time ||
-		!Number.isInteger(time.hour) ||
-		time.hour < 0 ||
-		time.hour > 23 ||
-		!Number.isInteger(time.minute) ||
-		time.minute < 0 ||
-		time.minute > 59
-	) {
+	if (!isValidTimeParts(time)) {
 		return labels.triggerEmpty(label);
 	}
 	return labels.triggerLabeled(label, formatTimeValue(time));

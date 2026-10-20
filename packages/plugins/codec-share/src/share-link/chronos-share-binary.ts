@@ -118,20 +118,14 @@ function readPeriodTimes(
 	let nextOffset = offset + 1;
 	const periodTimes: PeriodTime[] = [];
 	for (let index = 0; index < periodCount; index += 1) {
-		const periodIndex = bytes[nextOffset];
-		const startLow = bytes[nextOffset + 1];
-		const startHigh = bytes[nextOffset + 2];
-		const endLow = bytes[nextOffset + 3];
-		const endHigh = bytes[nextOffset + 4];
-		if (
-			periodIndex === undefined ||
-			startLow === undefined ||
-			startHigh === undefined ||
-			endLow === undefined ||
-			endHigh === undefined
-		) {
+		if (nextOffset + 5 > bytes.length) {
 			throw new ShareBinaryDecodeError('truncated period entry');
 		}
+		const periodIndex = bytes[nextOffset]!;
+		const startLow = bytes[nextOffset + 1]!;
+		const startHigh = bytes[nextOffset + 2]!;
+		const endLow = bytes[nextOffset + 3]!;
+		const endHigh = bytes[nextOffset + 4]!;
 		const startMinutes = startLow | (startHigh << 8);
 		const endMinutes = endLow | (endHigh << 8);
 		periodTimes.push({

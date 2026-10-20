@@ -6,6 +6,16 @@ export interface QrMatrix {
 	modules: boolean[][];
 }
 
+function isFinderPatternDarkCell(row: number, col: number): boolean {
+	return (
+		row === 0 ||
+		row === 6 ||
+		col === 0 ||
+		col === 6 ||
+		(row >= 2 && row <= 4 && col >= 2 && col <= 4)
+	);
+}
+
 /**
  * Lay out function patterns, zigzag data bits, mask 0, and format info.
  * Caller supplies version and pre-sized module grid state.
@@ -32,13 +42,7 @@ function layoutQrModules(
 				if (pr < 0 || pr >= size || pc < 0 || pc >= size) continue;
 				if (r === -1 || r === 7 || c === -1 || c === 7) {
 					setModule(pr, pc, false);
-				} else if (
-					r === 0 ||
-					r === 6 ||
-					c === 0 ||
-					c === 6 ||
-					(r >= 2 && r <= 4 && c >= 2 && c <= 4)
-				) {
+				} else if (isFinderPatternDarkCell(r, c)) {
 					setModule(pr, pc, true);
 				} else {
 					setModule(pr, pc, false);
