@@ -33,6 +33,9 @@ export async function applyAppearance(
 	const target =
 		options.target ?? (typeof document === 'undefined' ? undefined : document.documentElement);
 	const signal = options.signal ?? new AbortController().signal;
+	const readPixels = options.readPixels;
+	const wallpaperUri = input.wallpaperUri;
+	const resolveWallpaperColors = input.theme?.resolveWallpaperColors;
 	const basePalette = input.themePaletteEntries?.length
 		? input.themePaletteEntries
 		: COURSE_PALETTE_ENTRIES;
@@ -51,25 +54,26 @@ export async function applyAppearance(
 			syncThemeChrome(target, input.isDark);
 		}
 	};
-	if (
-		!target ||
-		!input.wallpaperColorEnabled ||
-		!input.wallpaperUri ||
-		!input.theme?.resolveWallpaperColors ||
-		!options.readPixels
-	) {
+	const shouldSampleWallpaper =
+		target !== undefined &&
+		input.wallpaperColorEnabled &&
+		wallpaperUri !== null &&
+		wallpaperUri.length > 0 &&
+		resolveWallpaperColors !== undefined &&
+		readPixels !== undefined;
+	if (!shouldSampleWallpaper) {
 		commitBase();
 		return { coursePalette: basePalette };
 	}
 	try {
-		const pixels = await options.readPixels(input.wallpaperUri, signal);
+		const pixels = await readPixels(wallpaperUri, signal);
 		check();
 		// Image decoding often resolves in a microtask immediately after the
 		// preference update. Let the browser paint that update before running the
 		// theme's synchronous quantizer on the main thread.
 		await new Promise<void>((resolve) => setTimeout(resolve, 0));
 		check();
-		const result = await input.theme.resolveWallpaperColors({
+		const result = await resolveWallpaperColors({
 			pixels,
 			mode: input.isDark ? 'dark' : 'light',
 			signal

@@ -53,6 +53,22 @@ export async function loadEsmPluginFromCode(
 	throw new Error('Invalid plugin bundle: missing id or apply()');
 }
 
+function isOptionalServerCapability(value: unknown): boolean {
+	if (!value || typeof value !== 'object') return false;
+	const capability = value as Record<string, unknown>;
+	return (
+		typeof capability.pluginId === 'string' &&
+		Boolean(capability.pluginId.trim()) &&
+		typeof capability.action === 'string' &&
+		Boolean(capability.action.trim())
+	);
+}
+
+function hasValidOptionalServerCapabilities(value: unknown): boolean {
+	if (value === undefined) return true;
+	return Array.isArray(value) && value.every(isOptionalServerCapability);
+}
+
 export function validatePluginManifest(
 	manifest: unknown
 ): asserts manifest is import('@chronos/core').PluginManifest {
@@ -81,20 +97,7 @@ export function validatePluginManifest(
 		);
 	}
 
-	if (
-		m.optionalServerCapabilities !== undefined &&
-		(!Array.isArray(m.optionalServerCapabilities) ||
-			m.optionalServerCapabilities.some((entry: unknown) => {
-				if (!entry || typeof entry !== 'object') return true;
-				const capability = entry as Record<string, unknown>;
-				return (
-					typeof capability.pluginId !== 'string' ||
-					!capability.pluginId.trim() ||
-					typeof capability.action !== 'string' ||
-					!capability.action.trim()
-				);
-			}))
-	)
+	if (!hasValidOptionalServerCapabilities(m.optionalServerCapabilities))
 		throw new Error(
 			'Invalid plugin manifest: optionalServerCapabilities must declare pluginId and action'
 		);

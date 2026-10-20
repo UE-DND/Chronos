@@ -196,7 +196,7 @@ export class OfficialPluginRuntimeActivator {
 		const preferred = options?.revertThemes
 			? this.engine.state.userPreferences.visualThemeId
 			: undefined;
-		const ownsPreferred = preferred && this.providesTheme(pluginId, preferred);
+		const ownsPreferred = preferred !== undefined && this.providesTheme(pluginId, preferred);
 		if (this.engine.isPluginLoaded(pluginId)) {
 			await this.engine.unloadPlugin(pluginId);
 		}
@@ -206,14 +206,12 @@ export class OfficialPluginRuntimeActivator {
 			this.activeHandles.delete(pluginId);
 		}
 		this.cssInjector.remove(pluginId);
-		if (
-			options?.revertThemes &&
-			ownsPreferred &&
-			this.getInstalledRecord(pluginId) &&
+		if (preferred === undefined || !ownsPreferred) return;
+		const shouldRevertPreferredTheme =
+			Boolean(this.getInstalledRecord(pluginId)) &&
 			this.engine.state.userPreferences.visualThemeId === preferred &&
-			!this.engine.themes.isSelectable(preferred)
-		)
-			await this.engine.revertToDefaultThemes();
+			!this.engine.themes.isSelectable(preferred);
+		if (shouldRevertPreferredTheme) await this.engine.revertToDefaultThemes();
 	}
 
 	async deactivateAll(): Promise<void> {

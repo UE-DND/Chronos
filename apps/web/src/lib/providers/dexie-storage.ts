@@ -26,6 +26,17 @@ import { TimetableRepository } from '#lib/storage/timetable-repository.ts';
 import { PluginKvRepository } from '#lib/storage/plugin-kv-repository.ts';
 import { clearKeysWithPrefix } from '#lib/storage/storage-key-utils.ts';
 
+interface TimetableChangeMessage {
+	type: 'timetable';
+	key: string;
+}
+
+function isTimetableChangeMessage(value: unknown): value is TimetableChangeMessage {
+	if (!value || typeof value !== 'object') return false;
+	const message = value as { type?: unknown; key?: unknown };
+	return message.type === 'timetable' && typeof message.key === 'string';
+}
+
 /**
  * DexieStorageProvider implements the core IStorageService contract
  * using Dexie (IndexedDB) for structured records and localStorage for user preferences.
@@ -63,14 +74,7 @@ export class DexieStorageProvider implements IStorageService {
 				this.changeChannel = new BroadcastChannel(storageNamespace.key('timetable-changes'));
 				this.changeChannel.onmessage = (event: MessageEvent<unknown>) => {
 					const data = event.data;
-					if (
-						data &&
-						typeof data === 'object' &&
-						'type' in data &&
-						data.type === 'timetable' &&
-						'key' in data &&
-						typeof data.key === 'string'
-					) {
+					if (isTimetableChangeMessage(data)) {
 						if (data.key === 'clearAllData') {
 							window.location.reload();
 							return;

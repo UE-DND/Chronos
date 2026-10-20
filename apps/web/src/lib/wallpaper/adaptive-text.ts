@@ -8,6 +8,17 @@ interface WallpaperTextGeometry {
 	image?: HTMLImageElement;
 }
 
+function isOutsideViewport(rect: DOMRect, viewport: DOMRect): boolean {
+	return (
+		rect.width <= 0 ||
+		rect.height <= 0 ||
+		rect.right <= viewport.left ||
+		rect.left >= viewport.right ||
+		rect.bottom <= viewport.top ||
+		rect.top >= viewport.bottom
+	);
+}
+
 /** Keep text colors aligned with the wallpaper as the grid scrolls and changes size. */
 export function observeAdaptiveWallpaperText(
 	container: HTMLElement,
@@ -49,14 +60,7 @@ export function observeAdaptiveWallpaperText(
 		const nextStyled = new Set<HTMLElement>();
 		for (const element of targets) {
 			const rect = element.getBoundingClientRect();
-			if (
-				rect.width <= 0 ||
-				rect.height <= 0 ||
-				rect.right <= viewport.left ||
-				rect.left >= viewport.right ||
-				rect.bottom <= viewport.top ||
-				rect.top >= viewport.bottom
-			) {
+			if (isOutsideViewport(rect, viewport)) {
 				continue;
 			}
 			const tone = selectTone(

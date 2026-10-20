@@ -4,6 +4,21 @@ import { weekPagerPageWidth } from './week-pager-metrics';
 const MAX_FINISH_MS = 120;
 const WHEEL_QUIET_MS = 48;
 
+function shouldLeaveSnapToNative(
+	distance: number,
+	velocity: number,
+	previousVelocity: number,
+	width: number
+): boolean {
+	const gap = Math.abs(distance);
+	const speed = Math.abs(velocity);
+	const tooFarOrAlreadyThere = gap < 1 || gap > width * 0.12;
+	const movingAway = velocity * distance <= 0;
+	const accelerating = velocity * previousVelocity <= 0 || speed > Math.abs(previousVelocity);
+	const tooFast = speed >= width / 500;
+	return tooFarOrAlreadyThere || movingAway || accelerating || tooFast;
+}
+
 /** Shorten only the slow end of native snapping, retaining native drag and fling travel. */
 export function createWeekPagerSnap(node: HTMLElement, onSettled: () => void) {
 	const listeners = new AbortController();
@@ -74,6 +89,12 @@ export function createWeekPagerSnap(node: HTMLElement, onSettled: () => void) {
 		running.frame = requestAnimationFrame(step);
 	}
 
+	function inputOwnsScroll(now: number) {
+		return (
+			suspended || pointerDown || touching || now < wheelActiveUntil || isReducedMotionActive()
+		);
+	}
+
 	function onScroll() {
 		if (animation) return;
 		const now = performance.now();
@@ -84,24 +105,14 @@ export function createWeekPagerSnap(node: HTMLElement, onSettled: () => void) {
 		lastOffset = offset;
 		lastTime = now;
 		lastVelocity = velocity;
-		if (suspended || pointerDown || touching || now < wheelActiveUntil || isReducedMotionActive())
-			return;
+		if (inputOwnsScroll(now)) return;
 
 		const width = weekPagerPageWidth(node);
 		const maxOffset = Math.max(0, node.childElementCount - 1) * width;
 		if (width <= 0 || offset < 0 || offset > maxOffset) return;
 		const target = Math.max(0, Math.min(maxOffset, Math.round(offset / width) * width));
 		const distance = target - offset;
-		if (
-			Math.abs(distance) < 1 ||
-			Math.abs(distance) > width * 0.12 ||
-			velocity * distance <= 0 ||
-			velocity * previousVelocity <= 0 ||
-			Math.abs(velocity) > Math.abs(previousVelocity) ||
-			Math.abs(velocity) >= width / 500
-		) {
-			return;
-		}
+		if (shouldLeaveSnapToNative(distance, velocity, previousVelocity, width)) return;
 		finishSnap(target, velocity, now);
 	}
 

@@ -86,10 +86,16 @@ self.addEventListener('activate', event => event.waitUntil((async () => {
 self.addEventListener('message', event => {
  if (event.data?.type === 'CHRONOS_HOST_IDENTITY') event.ports[0]?.postMessage(HOST);
 });
+function shouldServeShell(url, request) {
+ if (request.mode !== 'navigate') return false;
+ const path = url.pathname;
+ if (path.startsWith('${base}/api/') || path.startsWith('${base}/plugins/') || path.startsWith('${base}/official-plugins/')) return false;
+ return !/\\.(?:json|js|css|png|svg|woff2?|md|apk)$/.test(path);
+}
 self.addEventListener('fetch', event => {
  const url = new URL(event.request.url);
  if (url.origin !== self.location.origin) return;
- if (event.request.mode === 'navigate' && !url.pathname.startsWith('${base}/api/') && !url.pathname.startsWith('${base}/plugins/') && !url.pathname.startsWith('${base}/official-plugins/') && !/\\.(?:json|js|css|png|svg|woff2?|md|apk)$/.test(url.pathname)) {
+ if (shouldServeShell(url, event.request)) {
   event.respondWith(loadAsset(ASSETS[0]));
  } else if (url.pathname === '${base}/_app/env.js') {
   event.respondWith(loadAsset(ASSETS[1]));

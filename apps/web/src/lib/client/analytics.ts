@@ -119,6 +119,12 @@ const RESERVED_EVENT_NAMES = new Set([
 	'user_engagement'
 ]);
 const GA_NAME_PATTERN = /[^A-Za-z0-9_]+/g;
+const MAX_ANALYTICS_PROPERTIES = 23;
+
+function isAnalyticsPropertyValue(value: unknown): value is string | number | boolean {
+	if (typeof value === 'string' || typeof value === 'boolean') return true;
+	return typeof value === 'number' && Number.isFinite(value);
+}
 
 export function normalizeAnalyticsName(value: string, fallback: string): string {
 	let normalized = value.replace(GA_NAME_PATTERN, '_').replace(/^_+|_+$/g, '');
@@ -140,9 +146,8 @@ export function normalizeAnalyticsProperties(
 	const normalized: AnalyticsProperties = {};
 	for (const [key, value] of Object.entries(properties ?? {})) {
 		if (
-			(typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') ||
-			(typeof value === 'number' && !Number.isFinite(value)) ||
-			Object.keys(normalized).length >= 23
+			!isAnalyticsPropertyValue(value) ||
+			Object.keys(normalized).length >= MAX_ANALYTICS_PROPERTIES
 		)
 			continue;
 		const normalizedKey = normalizeAnalyticsName(key, 'param');
