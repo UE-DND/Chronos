@@ -331,9 +331,7 @@
 						{@const manifest = task.manifest}
 						{@const name = resolveManifestText(manifest.name)}
 						{@const desc = resolveManifestText(manifest.description)}
-						<div
-							class="flex items-center justify-between gap-3 p-3 transition-colors hover:bg-surface-variant/30"
-						>
+						<div class="ui-row-state flex items-center justify-between gap-3 p-3 transition-colors">
 							<div class="flex min-w-0 flex-1 flex-col justify-center">
 								<span class="text-body-medium line-clamp-1 font-semibold text-on-surface">
 									{name}
@@ -395,9 +393,7 @@
 						{@const meta = getPluginCategoryMeta(resolvePluginCatalogCategory(record.manifest))}
 						{@const isBusy = operatingPluginId === record.manifest.id}
 						{@const update = updateStatuses[record.manifest.id]}
-						<div
-							class="flex items-center justify-between gap-3 p-3 transition-colors hover:bg-surface-variant/30"
-						>
+						<div class="ui-row-state flex items-center justify-between gap-3 p-3 transition-colors">
 							<div class="flex min-w-0 flex-1 flex-col gap-2">
 								<div>
 									<div class="flex flex-wrap items-center gap-1.5">
@@ -531,7 +527,7 @@
 									{@const desc = resolveManifestText(manifest.description)}
 									{@const installed = isInstalled(manifest.id)}
 									<div
-										class="flex items-center justify-between gap-3 p-3 transition-colors hover:bg-surface-variant/30"
+										class="ui-row-state flex items-center justify-between gap-3 p-3 transition-colors"
 									>
 										<div class="flex min-w-0 flex-1 flex-col justify-center">
 											<div class="flex flex-wrap items-center gap-1.5">

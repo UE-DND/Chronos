@@ -25,8 +25,8 @@
 		HTMLAnchorAttributes = $props();
 
 	const variantClasses = {
-		standard: 'text-on-surface hover:bg-surface-variant/50 active:bg-surface-variant/80',
-		tonal: 'text-on-surface-variant hover:bg-surface-variant active:bg-surface-variant/80',
+		standard: 'text-on-surface ui-row-state',
+		tonal: 'text-on-surface-variant ui-row-state',
 		danger: 'text-error hover:bg-error/10 active:bg-error/20'
 	};
 

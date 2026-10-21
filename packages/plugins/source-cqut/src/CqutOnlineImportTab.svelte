@@ -104,7 +104,7 @@
 					/>
 					<button
 						type="button"
-						class="flex size-11 shrink-0 items-center justify-center rounded-control text-on-surface-variant transition-colors outline-none hover:bg-surface-variant/50 focus-visible:ring-2 focus-visible:ring-brand active:bg-surface-variant/80"
+						class="ui-row-state flex size-11 shrink-0 items-center justify-center rounded-control text-on-surface-variant transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand"
 						onclick={() => (passwordVisible = !passwordVisible)}
 						aria-label={passwordToggleLabel}
 					>

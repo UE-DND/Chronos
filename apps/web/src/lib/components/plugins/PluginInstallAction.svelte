@@ -108,7 +108,7 @@
 			</span>
 			<button
 				type="button"
-				class="flex size-7.5 cursor-pointer items-center justify-center rounded-full border border-border/80 text-on-surface-variant transition-all hover:bg-surface-variant/60 active:scale-95"
+				class="ui-row-state flex size-7.5 cursor-pointer items-center justify-center rounded-full border border-border/80 text-on-surface-variant transition-all active:scale-95"
 				title={hostT('plugins.action.cancel')}
 				aria-label={hostT('plugins.action.cancel')}
 				onclick={onCancel}

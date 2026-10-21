@@ -193,7 +193,7 @@ button.ui-date-field-input {
 .ui-section-title {
 	font-family: var(--font-command);
 	margin: 0.25rem 0 -0.25rem;
-	padding: 0.25rem 0.5rem 0.25rem var(--radius-section-surface);
+	padding: 0.25rem 0.5rem 0.25rem 1rem;
 	font-size: var(--text-title-small-size);
 	line-height: var(--text-title-small-line-height);
 	font-weight: var(--font-weight-title-large);
@@ -312,7 +312,7 @@ button.ui-date-field-input {
 	display: flex;
 	width: 100%;
 	border-radius: var(--radius-control);
-	border: 1px solid var(--color-border);
+	border: 1px solid var(--color-outline-variant);
 	background-color: var(--color-surface);
 	padding: var(--ui-segmented-track-padding);
 }
@@ -323,6 +323,18 @@ button.ui-date-field-input {
 	bottom: var(--ui-segmented-track-padding);
 	border-radius: var(--radius-control);
 	background-color: var(--color-secondary-container);
+}
+
+/* Shared interactive-row state: on-surface tint so hover and press stay in the same direction. */
+
+@media (hover: hover) and (pointer: fine) {
+	.ui-row-state:hover {
+		background-color: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+	}
+}
+
+.ui-row-state:active {
+	background-color: color-mix(in srgb, var(--color-on-surface) 15%, transparent);
 }
 
 /* List row press/hover overlays — links, toggles, and divide-y row divs */
@@ -357,16 +369,9 @@ button.ui-date-field-input {
 	left: 1rem;
 	right: 1rem;
 	height: 1px;
-	background-color: color-mix(in srgb, var(--color-border-subtle) 80%, transparent);
+	background-color: var(--color-outline-variant);
 	border-radius: 0 !important;
 	pointer-events: none;
-}
-
-.dark .ui-section-surface > * + a::before,
-.dark .ui-section-surface > * + label::before,
-.dark .ui-section-surface > * + button:not([role='switch'])::before,
-.dark .ui-section-surface.divide-y > * + div::before {
-	background-color: color-mix(in srgb, var(--color-on-surface-variant) 18%, transparent);
 }
 
 /* 36px icon container chip */

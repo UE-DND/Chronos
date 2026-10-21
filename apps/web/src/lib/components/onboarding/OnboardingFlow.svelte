@@ -252,7 +252,7 @@
 									checked={legalAccepted}
 									onCheckedChange={(checked) => (legalAccepted = checked)}
 									aria-label={hostT('onboarding.legal.agreement')}
-									class="text-body-medium flex w-full cursor-pointer items-center gap-4 border-none bg-transparent px-4 py-3 text-left text-on-surface transition-colors hover:bg-surface-variant/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
+									class="text-body-medium ui-row-state flex w-full cursor-pointer items-center gap-4 border-none bg-transparent px-4 py-3 text-left text-on-surface transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
 								>
 									<span
 										class={[

@@ -25,7 +25,7 @@
 		? 'cursor-not-allowed border-outline-variant/40 bg-surface/50 opacity-40'
 		: selected
 			? 'cursor-pointer border-brand bg-primary-container/30'
-			: 'cursor-pointer border-outline-variant/60 bg-surface hover:bg-surface-variant/30'}"
+			: 'ui-row-state cursor-pointer border-outline-variant/60 bg-surface'}"
 	{onclick}
 >
 	<Radio {name} checked={selected} {disabled} />
