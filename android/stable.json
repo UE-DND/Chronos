@@ -1,0 +1,56 @@
+{
+	"formatVersion": 1,
+	"release": {
+		"tagName": "v1.2.11",
+		"name": "Chronos 1.2.11",
+		"body": "## 优化\n\n- 加强 Web 代理的地址校验与移动端更新链接校验，拒绝内网地址和带凭据的更新链接。\n\n## 修复\n\n- 修复未授予通知或精确定时权限时仍尝试发送课前提醒的问题。\n- 修复 Android 7 上恢复安装会话失败，导致应用内更新无法继续的问题。\n- 修复 Web 端更新准备状态缺少有效期时被误判为过期，导致更新无法安装的问题。\n- 修复官方插件构建缓存未记录构建期间的文件改动，可能复用旧产物的问题。",
+		"publishedAt": "2026-10-21"
+	},
+	"packageId": "org.uednd.chronos",
+	"versionCode": 1002011,
+	"signingCertificateSha256": "22e59e404c8384fd31bb21c15e66960155350a7a82c8cdfe460e93c5423cb468",
+	"profiles": {
+		"chronos-default": {
+			"host": {
+				"version": "1.2.11",
+				"buildId": "1e97d65cbdfd207d9f96b6af3ddf8ef7177cbb00ba120fd4d6735d3dbf5975ba",
+				"sourceCommit": "3787ef7dee93a80c9ca4f2ae14107c68497fb6a5",
+				"profileId": "chronos-default",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.11/Chronos-default-1.2.11.apk",
+			"sha256": "788b635626234970498281ea769cfa5e70dc7afee03c9adbd183904838ea6f50",
+			"sizeBytes": 2229029,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.11/catalog.json"
+		},
+		"chronos-cqut": {
+			"host": {
+				"version": "1.2.11",
+				"buildId": "8f39a9ce78734296415fe644ce3d5b2e159f8878ddc97e24a2ee7195e72b807f",
+				"sourceCommit": "3787ef7dee93a80c9ca4f2ae14107c68497fb6a5",
+				"profileId": "chronos-cqut",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.11/Chronos-cqut-1.2.11.apk",
+			"sha256": "e9e2893cca5a38b6d02fee451aee05f95824f38ea0bc2c88929fff8b57e22f9e",
+			"sizeBytes": 2260668,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.11/catalog.json"
+		},
+		"chronos-cqut-offline": {
+			"host": {
+				"version": "1.2.11",
+				"buildId": "25746cea1b8dfb51252f4901efd495783c930a16e0b2d31af565491586ee14a3",
+				"sourceCommit": "3787ef7dee93a80c9ca4f2ae14107c68497fb6a5",
+				"profileId": "chronos-cqut-offline",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.2.11/Chronos-cqut-offline-1.2.11.apk",
+			"sha256": "9a926e5bd9718943db73f9e1ed7e647cf34273cbd2cd228d98174a897cbb36b3",
+			"sizeBytes": 2226012,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.2.11/catalog.json"
+		}
+	}
+}
