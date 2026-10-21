@@ -1,0 +1,18 @@
+{
+	"id": "tool-clock",
+	"name": {
+		"zh-CN": "自定义时间",
+		"en": "Custom Date & Time"
+	},
+	"version": "1.2.11",
+	"description": {},
+	"author": "Chronos",
+	"type": "tool",
+	"bundleFormat": "esm",
+	"toolGroup": "dev",
+	"downloadSizeBytes": 393833,
+	"bundleUrl": "../../bundles/tool-clock/0214ff140f9302d9ab586d3b/bundle.js",
+	"sha256": "ffde12c25a957d03d3e04c3c3582373cb596d8e2ce530ee7fe23562d0afed5e9",
+	"cssUrl": "../../bundles/tool-clock/0214ff140f9302d9ab586d3b/bundle.css",
+	"cssSha256": "0e07241c2cca0b08a3205faf753fbb08c3363795fa8f91fc01e5bbfd85b61c6c"
+}
