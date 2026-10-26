@@ -137,7 +137,9 @@ deployment = "chronos-default"
 
 Web 的软件更新使用 Service Worker；移动端构建关闭 PWA。Web 在准备完已安装可选官方插件后才授权新 Worker 接管，所有窗口随接管刷新。Android 检查独立的就绪 feed，匹配实际包名、签名与 Profile 后，由原生更新器下载并安装固定 GitHub APK；下载 APK 前准备已安装可选官方插件，全部校验成功后才启动原生更新任务；新版启动直接采用准备快照，不自动后台补装。具体约束见 [ADR 0047](.agents/docs/adr/0047-host-update-transactions.md) 和 [ADR 0048](.agents/docs/adr/0048-android-native-self-update.md)。
 
-Web 与 Android 共用自动检查调度：启动时检查，在线前台每 5 分钟检查，回前台检查过期结果，联网恢复立即检查，离线与后台暂停。检查失败按 10 秒、30 秒、60 秒、5 分钟退避重试，发现更新后停止轮询。自动检查和软件更新页共享更新状态与进行中的请求；检测结果显示在“我的→关于→软件更新”入口，不自动下载或弹窗。Android 不注册或监听 Service Worker 更新。
+Web 与移动端共用自动检查调度：启动时检查，在线前台每 5 分钟检查，回前台检查过期结果，联网恢复立即检查，离线与后台暂停。检查失败按 10 秒、30 秒、60 秒、5 分钟退避重试，发现更新后停止轮询。自动检查和软件更新页共享更新状态与进行中的请求；检测结果显示在“我的→关于→软件更新”入口，不自动下载或弹窗。Android 与 iOS 都不注册或监听 Service Worker 更新。
+
+iOS 检查独立的 `/ios/stable.json`。只有 Bundle ID 仍为 `org.uednd.chronos`、且 Profile 匹配的较新正式版本才会出现更新。更新页下载并校验钉死在 GitHub Release 上的 IPA，然后交给用户用当前自签工具覆盖安装；应用不能代替系统安装。修改 Bundle ID 的安装包进入阻断态，不提供下载。教务在线导入在 iOS 真机确认 Cookie 会话之前不启用。最低系统版本为 iOS 17.4。
 
 「课前提醒」中的系统通知默认关闭，复用公共用户偏好 `prepareReminderMinutes` 和 `classNotificationsEnabled`；只提醒当前课表的实际学期课程，与「今日」插件是否安装无关。Android 必须同时授予通知和精确定时权限，原生端持久保存学期剩余日程，每次只登记下一批闹钟，支持离线、后台及重启后恢复。Web/PWA 使用页面定时器与 Service Worker 展示通知，依赖 HTTPS、Notifications API 和 Web Locks；页面挂起或关闭后不保证提醒，不包含 Web Push 或日程上传。权限只在用户操作时申请，恢复前台会检查权限并重排日程；已过期提醒不补发（页面运行时最多容许一分钟延迟，且课程必须尚未开始）。
 
