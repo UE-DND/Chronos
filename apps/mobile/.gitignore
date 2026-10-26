@@ -11,3 +11,11 @@ android/*.iml
 android/app/*.iml
 android/local.properties
 android/.cxx
+
+# iOS build outputs
+ios/App/Pods
+ios/App/build
+ios/DerivedData
+ios/App/App/public
+ios/App/App/capacitor.config.json
+ios/App/App/GoogleService-Info.plist

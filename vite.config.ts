@@ -224,7 +224,8 @@ export default defineConfig({
 			'**/node_modules/',
 			'/drizzle/',
 			'**/*.generated.ts',
-			'apps/mobile/android/**'
+			'apps/mobile/android/**',
+			'apps/mobile/ios/**'
 		]
 	},
 	plugins: [

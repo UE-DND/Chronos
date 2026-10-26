@@ -177,3 +177,8 @@ writeFileSync(
 console.log(`Wrote ${resolve(pwaDir, 'screenshot-wide.png')} (${wideW}x${wideH})`);
 
 writeAndroidIcons();
+writePng(
+	resolve(root, 'apps/mobile/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png'),
+	paddedIconSvg(1024, 0.86),
+	1024
+);

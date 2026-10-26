@@ -21,7 +21,8 @@ const ignored = new Set([
 	'paraglide',
 	'tests',
 	'test-utils',
-	'android'
+	'android',
+	'ios'
 ]);
 function files(directory: string): string[] {
 	if (!existsSync(directory)) return [];

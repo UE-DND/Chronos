@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { iosBuildNumber } from './versioning.ts';
 
 const semverRegex = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
@@ -36,6 +37,18 @@ export function updatePackageJsonVersion(filePath: string, newVersion: string): 
 	const parsed = JSON.parse(content) as { version?: string };
 	parsed.version = newVersion;
 	writeFileSync(filePath, JSON.stringify(parsed, null, '\t') + '\n');
+}
+
+export function updateIosProjectVersion(filePath: string, newVersion: string): void {
+	const content = readFileSync(filePath, 'utf8');
+	const buildNumber = iosBuildNumber(newVersion);
+	if (!content.includes('MARKETING_VERSION =') || !content.includes('CURRENT_PROJECT_VERSION =')) {
+		throw new Error(`Missing iOS version settings in ${filePath}`);
+	}
+	const next = content
+		.replace(/MARKETING_VERSION = [^;]+;/g, `MARKETING_VERSION = ${newVersion};`)
+		.replace(/CURRENT_PROJECT_VERSION = [^;]+;/g, `CURRENT_PROJECT_VERSION = ${buildNumber};`);
+	writeFileSync(filePath, next);
 }
 
 export function scaffoldReleaseEntry(root: string, newVersion: string): string {
@@ -80,6 +93,11 @@ export function bumpProjectVersion(
 		updatePackageJsonVersion(pkg, nextVersion);
 	}
 
+	updateIosProjectVersion(
+		resolve(root, 'apps/mobile/ios/App/App.xcodeproj/project.pbxproj'),
+		nextVersion
+	);
+
 	scaffoldReleaseEntry(root, nextVersion);
 
 	return { previous: currentVersion, next: nextVersion };
@@ -96,7 +114,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
 	}
 	const { previous, next } = bumpProjectVersion(process.cwd(), target);
 	console.log(`✨ 已将项目版本从 v${previous} 升级至 v${next}`);
-	console.log(`- 已同步更新 package.json、apps/web/package.json、apps/mobile/package.json`);
+	console.log(
+		`- 已同步更新 package.json、apps/web/package.json、apps/mobile/package.json、iOS project.pbxproj`
+	);
 	console.log(`- 已准备发行说明文件: apps/web/src/lib/content/releases/entries/v${next}.md`);
 	console.log(`请编辑发行说明内容后，运行 vp run release:check 校验。`);
 }
