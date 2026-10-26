@@ -6,7 +6,11 @@ import { trackEvent } from '#lib/client/analytics.ts';
 import type { AppResult } from '@chronos/core';
 import type { ReleaseCatalog } from './catalog';
 import { compareReleaseVersions, type Release } from './release';
-import { createReleaseFeedAdapter, type ReleaseFeedAdapter } from './release-feed-adapter';
+import {
+	createReleaseFeedAdapter,
+	type ReleaseFeedAdapter,
+	type ReleaseFeedKind
+} from './release-feed-adapter';
 import { SwUpdateError, type ApplyUpdateOptions } from '#lib/client/pwa-sw.ts';
 import {
 	getHostPlatform,
@@ -36,6 +40,7 @@ interface SoftwareUpdateState {
 	latestRelease: Release | null;
 	errorMessage: string | null;
 	lastChecked: SvelteDate | null;
+	packageShared: boolean;
 }
 
 export interface UpdateStateOptions {
@@ -61,19 +66,28 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 	const currentVersion = options.currentVersion ?? APP_VERSION;
 	const hostUpdateAction = options.platformUpdateAction ?? getHostPlatform().getUpdateAction?.();
 	const isNativeUpdatePlatform = hostUpdateAction?.mode === 'native-apk';
-	const isExternalUpdatePlatform =
-		hostUpdateAction?.mode === 'external-link' || isNativeUpdatePlatform;
+	const isIosPackageUpdate = hostUpdateAction?.mode === 'external-ipa';
+	const feedKind: ReleaseFeedKind = isNativeUpdatePlatform
+		? 'android'
+		: isIosPackageUpdate
+			? 'ios'
+			: 'web';
+	const requiresPublishedFeed = feedKind !== 'web';
+	const feedUrl =
+		feedKind === 'android' && typeof __ANDROID_RELEASE_FEED_URL__ === 'string'
+			? __ANDROID_RELEASE_FEED_URL__
+			: feedKind === 'ios' && typeof __IOS_RELEASE_FEED_URL__ === 'string'
+				? __IOS_RELEASE_FEED_URL__
+				: undefined;
 	const feedAdapter: ReleaseFeedAdapter =
 		options.releaseFeedAdapter ??
 		createReleaseFeedAdapter({
 			fetchLatestRelease: options.fetchLatestRelease,
 			localCatalog: options.localCatalog,
-			versionUrl:
-				isExternalUpdatePlatform && typeof __ANDROID_RELEASE_FEED_URL__ === 'string'
-					? __ANDROID_RELEASE_FEED_URL__
-					: undefined,
-			allowLocalFallback: options.allowLocalFallback ?? !isExternalUpdatePlatform,
-			requireVersionUrl: isExternalUpdatePlatform
+			versionUrl: feedUrl,
+			allowLocalFallback: options.allowLocalFallback ?? !requiresPublishedFeed,
+			requireVersionUrl: requiresPublishedFeed,
+			feedKind
 		});
 
 	const defaultSw = createDefaultServiceWorkerAdapter();
@@ -95,7 +109,18 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 	let latestRelease = $state<Release | null>(null);
 	let errorMessage = $state<string | null>(null);
 	let lastChecked = $state<SvelteDate | null>(null);
+	let packageShared = $state(false);
 	let nativeState = $state.raw<NativeUpdateState | null>(null);
+
+	function updateErrorKey(code: string): string {
+		return isIosPackageUpdate
+			? `about.update.ios.error.${code}`
+			: `about.update.android.error.${code}`;
+	}
+
+	function releaseHasNewBuild(release: Release | null): boolean {
+		return Boolean(release?.hostUpdate && release.hostUpdate.host.buildId !== HOST_BUILD.buildId);
+	}
 
 	function applyNativeState(snapshot: NativeUpdateState) {
 		nativeState = snapshot;
@@ -105,9 +130,7 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 		installPhase = active ? (snapshot.phase as HostUpdatePhase) : null;
 		installPercent = snapshot.percent;
 		errorMessage =
-			snapshot.phase === 'failed'
-				? `about.update.android.error.${snapshot.errorCode ?? 'install_failed'}`
-				: null;
+			snapshot.phase === 'failed' ? updateErrorKey(snapshot.errorCode ?? 'install_failed') : null;
 		if (
 			active ||
 			(snapshot.phase === 'failed' &&
@@ -135,7 +158,7 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 			if (!receivedEvent) applyNativeState(snapshot);
 		} catch {
 			dispose();
-			errorMessage = 'about.update.android.error.install_failed';
+			errorMessage = updateErrorKey('install_failed');
 			return () => {};
 		}
 		return dispose;
@@ -146,14 +169,14 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 			if (hostUpdateAction?.native)
 				applyNativeState(await hostUpdateAction.native.continueUpdate());
 		} catch {
-			errorMessage = 'about.update.android.error.install_failed';
+			errorMessage = updateErrorKey('install_failed');
 		}
 	}
 	async function cancelNativeUpdate() {
 		try {
 			if (hostUpdateAction?.native) applyNativeState(await hostUpdateAction.native.cancelUpdate());
 		} catch {
-			errorMessage = 'about.update.android.error.install_failed';
+			errorMessage = updateErrorKey('install_failed');
 		}
 	}
 
@@ -194,23 +217,20 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 	async function performCheck(): Promise<boolean> {
 		checking = true;
 		errorMessage = null;
+		packageShared = false;
 		trackEvent('update_check_attempt');
 
 		let swHasUpdate = false;
 		try {
 			swHasUpdate =
-				!isExternalUpdatePlatform &&
+				!requiresPublishedFeed &&
 				(swAdapter.isUpdatePending() || (await swAdapter.checkForUpdate()));
 			const result = await feedAdapter.fetchLatestRelease();
 			if (result.ok) {
 				const release = result.value;
 				latestRelease = release;
 				const newerVersion = compareReleaseVersions(release.tagName, currentVersion) > 0;
-				applyUpdateSignals(
-					newerVersion,
-					swHasUpdate ||
-						Boolean(release.hostUpdate && release.hostUpdate.host.buildId !== HOST_BUILD.buildId)
-				);
+				applyUpdateSignals(newerVersion, swHasUpdate || releaseHasNewBuild(release));
 				commitCheckSnapshot();
 				trackEvent('update_check_success', {
 					has_update: hasUpdate,
@@ -225,7 +245,7 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 					has_update: true,
 					update_source: updateSource
 				});
-			} else if (!isExternalUpdatePlatform && restoreCachedCheckSnapshot(swHasUpdate)) {
+			} else if (!requiresPublishedFeed && restoreCachedCheckSnapshot(swHasUpdate)) {
 				trackEvent('update_check_success', {
 					has_update: hasUpdate,
 					latest_version: latestRelease?.tagName ?? '',
@@ -247,7 +267,7 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 					has_update: true,
 					update_source: updateSource
 				});
-			} else if (!isExternalUpdatePlatform && restoreCachedCheckSnapshot(swHasUpdate)) {
+			} else if (!requiresPublishedFeed && restoreCachedCheckSnapshot(swHasUpdate)) {
 				trackEvent('update_check_success', {
 					has_update: hasUpdate,
 					latest_version: latestRelease?.tagName ?? '',
@@ -288,13 +308,28 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 		return 'about.update.error.installFailed';
 	}
 
+	function resolveIosPackageError(error: unknown): string {
+		const code =
+			typeof error === 'object' && error != null && 'code' in error ? String(error.code) : '';
+		if (
+			code === 'plugin_prepare_failed' ||
+			code === 'integrity_mismatch' ||
+			code === 'download_failed' ||
+			code === 'download_canceled' ||
+			code === 'share_canceled' ||
+			code === 'share_failed' ||
+			code === 'invalid_descriptor'
+		) {
+			return `about.update.ios.error.${code}`;
+		}
+		return 'about.update.ios.error.download_failed';
+	}
+
 	const platformUpdateAction: PlatformUpdateAction | undefined = isNativeUpdatePlatform
 		? hostUpdateAction
 		: hostUpdateAction
 			? {
-					mode: hostUpdateAction.mode,
-					canApplyInApp: hostUpdateAction.canApplyInApp,
-					actionLabelKey: hostUpdateAction.actionLabelKey,
+					...hostUpdateAction,
 					applyUpdate(release, opts) {
 						if (!hostUpdateAction.canApplyInApp) {
 							return hostUpdateAction.applyUpdate(release, opts);
@@ -338,6 +373,28 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 						? String(error.code)
 						: 'install_failed';
 				errorMessage = `about.update.android.error.${code}`;
+			}
+			return;
+		}
+
+		if (isIosPackageUpdate && platformUpdateAction) {
+			installPhase = 'downloading';
+			installPercent = null;
+			try {
+				await platformUpdateAction.applyUpdate(latestRelease, {
+					onProgress: (progress) => {
+						installPhase = progress.phase;
+						installPercent = progress.percent;
+					}
+				});
+				packageShared = true;
+			} catch (error) {
+				packageShared = false;
+				errorMessage = resolveIosPackageError(error);
+			} finally {
+				updating = false;
+				installPhase = null;
+				installPercent = null;
 			}
 			return;
 		}
@@ -400,7 +457,8 @@ export function createUpdateState(options: UpdateStateOptions = {}) {
 		currentVersion,
 		latestRelease,
 		errorMessage,
-		lastChecked
+		lastChecked,
+		packageShared
 	} satisfies SoftwareUpdateState);
 
 	return {

@@ -11,6 +11,7 @@
 	import { parseMarkdown } from '#lib/content/markdown.ts';
 	import { formatPublishedDate } from '#lib/content/releases/release-display.ts';
 	import { SOURCE_CODE_URL } from '#lib/config/app-meta.ts';
+	import { copyTextWithFallback } from '#lib/platform/transfer.ts';
 	import { getAppController } from '#lib/services/app-engine.ts';
 
 	import AppHero from '#lib/components/AppHero.svelte';
@@ -26,6 +27,7 @@
 		CalendarMonthFill,
 		CheckCircleFill,
 		CodeFill,
+		ContentCopy,
 		DownloadFill,
 		History,
 		InfoFill,
@@ -43,6 +45,15 @@
 	const controller = getAppController();
 	const activeLocale = $derived(appLocaleToBcp47(controller.locale as AppLocale));
 	const androidUpdateUrl = $derived(updateState.state.latestRelease?.platforms?.android?.updateUrl);
+	const iosPackageUrl = $derived(
+		updateState.state.latestRelease?.iosUpdate?.ipaUrl ??
+			updateState.state.latestRelease?.platforms?.ios?.updateUrl
+	);
+	const updateMode = $derived(updateState.updateAction?.mode);
+	const iosShareAgain = $derived(
+		updateState.state.packageShared ||
+			updateState.state.errorMessage === 'about.update.ios.error.share_canceled'
+	);
 
 	onMount(() => {
 		void updateState.checkUpdate();
@@ -76,11 +87,20 @@
 
 	const heroSubtitle = $derived(
 		updateState.state.hasUpdate
-			? updateState.state.hasNewerVersion
-				? hostT('about.update.subtitle.new')
-				: hostT('about.update.subtitle.swOnly')
+			? updateMode === 'external-ipa'
+				? hostT('about.update.ios.subtitle')
+				: updateState.state.hasNewerVersion
+					? hostT('about.update.subtitle.new')
+					: hostT('about.update.subtitle.swOnly')
 			: ''
 	);
+
+	let copyFailed = $state(false);
+
+	async function copyIosPackageUrl(): Promise<void> {
+		if (!iosPackageUrl) return;
+		copyFailed = !(await copyTextWithFallback(iosPackageUrl));
+	}
 
 	function formatCheckTime(date: Date | null): string {
 		if (!date) return '-';
@@ -149,7 +169,7 @@
 						phase={updateState.state.installPhase ?? 'downloading'}
 						percent={updateState.state.installPercent}
 					/>
-					{#if updateState.state.installPhase === 'awaiting-permission' || updateState.state.installPhase === 'awaiting-confirmation'}
+					{#if updateMode === 'native-apk' && (updateState.state.installPhase === 'awaiting-permission' || updateState.state.installPhase === 'awaiting-confirmation')}
 						<Button
 							variant="filled"
 							class="mt-3 w-full"
@@ -158,7 +178,7 @@
 							{hostT('about.update.android.continue')}
 						</Button>
 					{/if}
-					{#if updateState.state.nativeState?.canCancel}
+					{#if updateMode === 'native-apk' && updateState.state.nativeState?.canCancel}
 						<Button
 							variant="outlined"
 							class="mt-3 w-full"
@@ -167,37 +187,79 @@
 							{hostT('about.update.android.cancel')}
 						</Button>
 					{/if}
+					{#if updateMode === 'external-ipa' && (updateState.state.installPhase === 'downloading' || updateState.state.installPhase === 'verifying')}
+						<Button
+							variant="outlined"
+							class="mt-3 w-full"
+							onclick={() => void updateState.cancelNativeUpdate()}
+						>
+							{hostT('about.update.ios.cancel')}
+						</Button>
+					{/if}
 				{:else}
 					{#if updateState.state.errorMessage}
 						<p class="text-body-medium mb-2 text-danger">
 							{formatErrorMessage(updateState.state.errorMessage)}
 						</p>
 					{/if}
-					{#if updateState.updateAction?.mode === 'external-link' && !androidUpdateUrl}
+					{#if updateMode === 'external-ipa' && !iosPackageUrl}
+						<p class="text-body-small text-supporting text-on-surface-variant">
+							{hostT('about.update.ios.unavailable')}
+						</p>
+					{:else if updateMode === 'external-link' && !androidUpdateUrl}
 						<p class="text-body-small text-supporting text-on-surface-variant">
 							{hostT('about.update.unavailable')}
 						</p>
 					{:else}
+						{#if updateMode === 'external-ipa' && updateState.state.packageShared}
+							<p class="text-body-small text-supporting mb-3 text-on-surface-variant">
+								{hostT('about.update.ios.saved')}
+							</p>
+						{/if}
 						<Button
 							variant="filled"
 							class="w-full"
 							disabled={updateState.state.updating || appStartup.state.failure !== null}
 							onclick={() => void updateState.installUpdate()}
 						>
-							{#if updateState.updateAction && !updateState.updateAction.canApplyInApp}
+							{#if updateMode === 'external-link'}
 								<OpenInNewFill class="size-5" />
 							{:else}
 								<DownloadFill class="size-5" />
 							{/if}
 							{hostT(
-								(updateState.updateAction?.actionLabelKey ??
-									'about.update.install') as HostMessageKey
+								(updateMode === 'external-ipa' && iosShareAgain
+									? 'about.update.ios.shareAgain'
+									: (updateState.updateAction?.actionLabelKey ??
+										'about.update.install')) as HostMessageKey
 							)}
 						</Button>
+						{#if updateMode === 'external-ipa' && iosPackageUrl}
+							{#if copyFailed}
+								<p class="text-body-small mt-3 text-danger">
+									{hostT('about.update.ios.copyFailed')}
+								</p>
+							{/if}
+							<Button
+								variant="outlined"
+								class="mt-3 w-full"
+								onclick={() => void copyIosPackageUrl()}
+							>
+								<ContentCopy class="size-5" />
+								{hostT('about.update.ios.copy')}
+							</Button>
+						{/if}
 					{/if}
 				{/if}
 			</div>
 		</div>
+	{:else if updateState.state.errorMessage === 'about.update.ios.bundleMismatch'}
+		<Card variant="elevated" class="flex flex-col items-center gap-3 py-8 text-center">
+			<InfoFill class="h-8 w-8 text-on-surface-variant" />
+			<p class="text-body-medium text-on-surface">
+				{hostT('about.update.ios.bundleMismatch')}
+			</p>
+		</Card>
 	{:else if updateState.state.errorMessage}
 		<Card variant="elevated" class="flex flex-col items-center gap-3 py-8 text-center">
 			<InfoFill class="h-8 w-8 text-on-surface-variant" />

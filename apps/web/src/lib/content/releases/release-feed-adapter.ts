@@ -2,10 +2,13 @@ import { getHostPlatform } from '#lib/platform/host-platform.ts';
 import { staticPath } from '#lib/config/static-path.ts';
 import {
 	AppError,
+	IosUpdateRejected,
+	OFFICIAL_IOS_BUNDLE_ID,
 	failure,
 	success,
 	validateWebUpdate,
 	selectAndroidUpdate,
+	selectIosUpdate,
 	type AppResult
 } from '@chronos/core';
 import { createLocalReleaseCatalog } from './local-catalog';
@@ -20,10 +23,35 @@ export interface ReleaseFeedAdapter {
 	fetchLatestRelease(): Promise<AppResult<Release>>;
 }
 
+export type ReleaseFeedKind = 'web' | 'android' | 'ios';
+
+function missingFeedMessage(kind: ReleaseFeedKind): string {
+	if (kind === 'ios') return 'about.update.ios.feedMissing';
+	if (kind === 'android') return '未配置 Android 版本检查地址';
+	return '未配置版本检查地址';
+}
+
+function invalidFeedUrlMessage(kind: ReleaseFeedKind): string {
+	if (kind === 'ios') return 'about.update.ios.feedInvalid';
+	if (kind === 'android') return 'Android 版本检查地址无效';
+	return '版本检查地址无效';
+}
+
+function insecureFeedUrlMessage(kind: ReleaseFeedKind): string {
+	if (kind === 'ios') return 'about.update.ios.feedInsecure';
+	if (kind === 'android') return 'Android 版本检查地址必须使用 HTTPS';
+	return '版本检查地址必须使用 HTTPS';
+}
+
+function missingFeedRecordMessage(kind: ReleaseFeedKind): string {
+	if (kind === 'ios') return 'about.update.ios.feedNotFound';
+	return '未在服务器找到版本发布记录';
+}
+
 export async function fetchLatestProjectRelease(
 	fetchFn: typeof fetch = fetch,
 	versionUrl = staticPath('version.json'),
-	android = false
+	kind: ReleaseFeedKind = 'web'
 ): Promise<AppResult<Release>> {
 	const abortController = new AbortController();
 	const timeout = setTimeout(() => abortController.abort(), 8000);
@@ -35,14 +63,14 @@ export async function fetchLatestProjectRelease(
 		});
 
 		if (response.status === 404) {
-			return failure(AppError.notFound('未在服务器找到版本发布记录'));
+			return failure(AppError.notFound(missingFeedRecordMessage(kind)));
 		}
 		if (!response.ok) {
 			return failure(AppError.network(`检查更新失败 (HTTP ${response.status})`));
 		}
 
 		const data: unknown = await response.json();
-		if (android) {
+		if (kind === 'android') {
 			const readIdentity = getHostPlatform().getAndroidInstallationIdentity;
 			if (!readIdentity) throw new Error('Android installation identity unavailable');
 			const installed = await readIdentity();
@@ -62,6 +90,45 @@ export async function fetchLatestProjectRelease(
 				androidUpdate: entry,
 				platforms: { android: { updateUrl: entry.apkUrl } }
 			});
+		}
+		if (kind === 'ios') {
+			const readIdentity = getHostPlatform().getIosInstallationIdentity;
+			if (!readIdentity) throw new Error('iOS installation identity unavailable');
+			const installed = await readIdentity();
+			if (installed.bundleId !== OFFICIAL_IOS_BUNDLE_ID) {
+				return failure(AppError.security('about.update.ios.bundleMismatch'));
+			}
+			if (installed.version !== HOST_BUILD.version) {
+				return failure(AppError.security('about.update.ios.versionMismatch'));
+			}
+			try {
+				const entry = selectIosUpdate(
+					data,
+					HOST_BUILD.profileId,
+					installed.bundleId,
+					installed.osVersion
+				);
+				return success({
+					...entry.release,
+					iosUpdate: entry,
+					platforms: { ios: { updateUrl: entry.ipaUrl } }
+				});
+			} catch (error) {
+				if (error instanceof IosUpdateRejected) {
+					return failure(
+						AppError.dataFormat(
+							error.code === 'bundle_mismatch'
+								? 'about.update.ios.bundleMismatch'
+								: error.code === 'profile_unavailable'
+									? 'about.update.ios.unavailable'
+									: error.code === 'os_too_old'
+										? 'about.update.ios.osTooOld'
+										: 'about.update.ios.invalidDescriptor'
+						)
+					);
+				}
+				throw error;
+			}
 		}
 		const update = validateWebUpdate(data, HOST_BUILD);
 		return success({ ...update.release, hostUpdate: update });
@@ -86,6 +153,7 @@ export function createReleaseFeedAdapter(
 		localCatalog?: ReleaseCatalog;
 		allowLocalFallback?: boolean;
 		requireVersionUrl?: boolean;
+		feedKind?: ReleaseFeedKind;
 	} = {}
 ): ReleaseFeedAdapter {
 	const {
@@ -94,26 +162,27 @@ export function createReleaseFeedAdapter(
 		fetchLatestRelease: customFetchRelease,
 		localCatalog = createLocalReleaseCatalog(),
 		allowLocalFallback = true,
-		requireVersionUrl = false
+		requireVersionUrl = false,
+		feedKind = requireVersionUrl ? 'android' : 'web'
 	} = options;
 
 	return {
 		async fetchLatestRelease(): Promise<AppResult<Release>> {
 			if (!customFetchRelease && requireVersionUrl && !versionUrl?.trim()) {
-				return failure(AppError.network('未配置 Android 版本检查地址'));
+				return failure(AppError.network(missingFeedMessage(feedKind)));
 			}
 			if (!customFetchRelease && requireVersionUrl) {
 				try {
 					if (new URL(versionUrl!).protocol !== 'https:') {
-						return failure(AppError.dataFormat('Android 版本检查地址必须使用 HTTPS'));
+						return failure(AppError.dataFormat(insecureFeedUrlMessage(feedKind)));
 					}
 				} catch {
-					return failure(AppError.dataFormat('Android 版本检查地址无效'));
+					return failure(AppError.dataFormat(invalidFeedUrlMessage(feedKind)));
 				}
 			}
 			const remoteResult = customFetchRelease
 				? await customFetchRelease()
-				: await fetchLatestProjectRelease(fetchFn, versionUrl, requireVersionUrl);
+				: await fetchLatestProjectRelease(fetchFn, versionUrl, feedKind);
 			if (remoteResult.ok) {
 				return remoteResult;
 			}

@@ -690,10 +690,16 @@ describe('createUpdateState', () => {
 			localCatalog: { listReleases, getRelease: async () => failure(AppError.notFound('none')) },
 			checkSwUpdate,
 			platformUpdateAction: {
-				mode: 'external-link',
-				canApplyInApp: false,
-				actionLabelKey: 'about.update.external',
-				applyUpdate: vi.fn()
+				mode: 'native-apk',
+				canApplyInApp: true,
+				actionLabelKey: 'about.update.android.install',
+				applyUpdate: vi.fn(),
+				native: {
+					getState: async () => ({ phase: 'idle', percent: null, canCancel: false }),
+					subscribe: async () => () => {},
+					continueUpdate: async () => ({ phase: 'idle', percent: null, canCancel: false }),
+					cancelUpdate: async () => ({ phase: 'idle', percent: null, canCancel: false })
+				}
 			}
 		});
 
@@ -704,5 +710,76 @@ describe('createUpdateState', () => {
 		expect(updateState.state.errorMessage).toBe('offline');
 		expect(listReleases).not.toHaveBeenCalled();
 		expect(checkSwUpdate).not.toHaveBeenCalled();
+	});
+
+	it('downloads an iOS package with progress and does not treat it as an in-app install', async () => {
+		const applyUpdate = vi.fn(async (_release, options) => {
+			options?.onProgress?.({ phase: 'verifying', percent: 100 });
+		});
+		const updateState = createUpdateState({
+			currentVersion: '0.2.0',
+			fetchLatestRelease: async () =>
+				success({
+					tagName: 'v0.3.0',
+					name: 'Chronos 0.3.0',
+					publishedAt: '2026-08-19',
+					body: 'IPA',
+					platforms: {
+						ios: {
+							updateUrl:
+								'https://github.com/UE-DND/Chronos/releases/download/v0.3.0/Chronos-default-0.3.0.ipa'
+						}
+					}
+				}),
+			platformUpdateAction: {
+				mode: 'external-ipa',
+				canApplyInApp: false,
+				actionLabelKey: 'about.update.ios.download',
+				applyUpdate
+			}
+		});
+
+		await updateState.checkUpdate();
+		expect(updateState.state.hasNewerVersion).toBe(true);
+		await updateState.installUpdate();
+
+		expect(applyUpdate).toHaveBeenCalledOnce();
+		expect(updateState.state.packageShared).toBe(true);
+		expect(updateState.state.updating).toBe(false);
+		expect(updateState.state.installPhase).toBeNull();
+	});
+
+	it('shows the iOS share failure message when the share sheet cannot open', async () => {
+		const updateState = createUpdateState({
+			currentVersion: '0.2.0',
+			fetchLatestRelease: async () =>
+				success({
+					tagName: 'v0.3.0',
+					name: 'Chronos 0.3.0',
+					publishedAt: '2026-08-19',
+					body: 'IPA',
+					platforms: {
+						ios: {
+							updateUrl:
+								'https://github.com/UE-DND/Chronos/releases/download/v0.3.0/Chronos-default-0.3.0.ipa'
+						}
+					}
+				}),
+			platformUpdateAction: {
+				mode: 'external-ipa',
+				canApplyInApp: false,
+				actionLabelKey: 'about.update.ios.download',
+				applyUpdate: async () => {
+					throw Object.assign(new Error('Could not share'), { code: 'share_failed' });
+				}
+			}
+		});
+
+		await updateState.checkUpdate();
+		await updateState.installUpdate();
+
+		expect(updateState.state.errorMessage).toBe('about.update.ios.error.share_failed');
+		expect(updateState.state.packageShared).toBe(false);
+		expect(updateState.state.updating).toBe(false);
 	});
 });

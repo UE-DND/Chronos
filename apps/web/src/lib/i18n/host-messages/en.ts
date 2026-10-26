@@ -555,6 +555,38 @@ export const en = {
 	'about.update.install': 'Install update',
 	'about.update.external': 'Go to update',
 	'about.update.unavailable': 'No Android update link is available for this release.',
+	'about.update.ios.subtitle':
+		'A new version is available. iOS cannot install over this app. Download the IPA and install it with your signing tool.',
+	'about.update.ios.download': 'Download IPA',
+	'about.update.ios.shareAgain': 'Share again',
+	'about.update.ios.cancel': 'Cancel download',
+	'about.update.ios.copy': 'Copy package link',
+	'about.update.ios.copyFailed': 'Copy failed. Copy the link manually and try again.',
+	'about.update.ios.saved':
+		'Install it over this app with your current signing tool. Keep the bundle ID org.uednd.chronos and the same Apple ID, or your timetable data will not be kept.',
+	'about.update.ios.unavailable': 'No iOS package is available for this release.',
+	'about.update.ios.bundleMismatch':
+		'This install uses a modified bundle ID, so official updates cannot be matched. Re-sign it as org.uednd.chronos.',
+	'about.update.ios.versionMismatch':
+		'The installed app version does not match its web assets. Reinstall the official IPA.',
+	'about.update.ios.osTooOld':
+		'This update requires a newer iOS version. Update iOS, then check again.',
+	'about.update.ios.feedMissing': 'No iOS update feed is configured.',
+	'about.update.ios.feedInvalid': 'The iOS update feed URL is invalid.',
+	'about.update.ios.feedInsecure': 'The iOS update feed must use HTTPS.',
+	'about.update.ios.feedNotFound': 'No iOS release record was found on the server.',
+	'about.update.ios.invalidDescriptor': 'The update descriptor does not match this iOS package.',
+	'about.update.ios.error.plugin_prepare_failed':
+		'Could not prepare plugins. The package was not downloaded. Check your network and retry.',
+	'about.update.ios.error.integrity_mismatch':
+		'The package failed its integrity check. Download again.',
+	'about.update.ios.error.download_failed': 'Download failed. Check your network and retry.',
+	'about.update.ios.error.download_canceled': 'Download canceled. You can retry at any time.',
+	'about.update.ios.error.share_failed':
+		'Could not open the share sheet. The package will be downloaded again.',
+	'about.update.ios.error.share_canceled':
+		'The package is verified. Tap again to share it with your signing tool.',
+	'about.update.ios.error.invalid_descriptor': 'The update descriptor does not match this app.',
 	'about.update.installing': 'Updating…',
 	'about.update.phase.downloading': 'Downloading update…',
 	'about.update.phase.installing': 'Installing update…',

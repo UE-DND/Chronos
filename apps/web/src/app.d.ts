@@ -63,6 +63,8 @@ declare const __ANALYTICS_ENABLED__: boolean;
 declare const __FIREBASE_ANDROID_CONFIGURED__: boolean;
 declare const __CHRONOS_PLATFORM_TARGET__: string;
 declare const __ANDROID_RELEASE_FEED_URL__: string;
+declare const __IOS_RELEASE_FEED_URL__: string;
+declare const __FIREBASE_IOS_CONFIGURED__: boolean;
 
 declare module '$chronos-platform-adapter' {
 	export function getBootPlatformAdapter(): import('#lib/platform/host-platform.ts').HostPlatformAdapter;

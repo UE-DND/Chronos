@@ -76,10 +76,18 @@ export default defineConfig(({ mode }) => {
 		existsSync(
 			fileURLToPath(new URL('../../apps/mobile/android/app/google-services.json', import.meta.url))
 		);
+	const firebaseIosConfigured =
+		mode === 'test' ||
+		existsSync(
+			fileURLToPath(
+				new URL('../../apps/mobile/ios/App/App/GoogleService-Info.plist', import.meta.url)
+			)
+		);
+	const firebaseMobileConfigured = firebaseAndroidConfigured || firebaseIosConfigured;
 	const analyticsEnabled = analyticsEnabledForBuild({
 		target: targetDef.target,
 		mode,
-		firebaseConfigured: targetDef.isMobile ? firebaseAndroidConfigured : firebaseWebConfigured,
+		firebaseConfigured: targetDef.isMobile ? firebaseMobileConfigured : firebaseWebConfigured,
 		vercelEnvironment: process.env.VERCEL_ENV,
 		mobileReleaseOptIn: process.env.CHRONOS_ENABLE_ANALYTICS
 	});
@@ -120,6 +128,8 @@ export default defineConfig(({ mode }) => {
 			__ANDROID_RELEASE_FEED_URL__: JSON.stringify(
 				env.PUBLIC_ANDROID_RELEASE_FEED_URL?.trim() ?? ''
 			),
+			__IOS_RELEASE_FEED_URL__: JSON.stringify(env.PUBLIC_IOS_RELEASE_FEED_URL?.trim() ?? ''),
+			__FIREBASE_IOS_CONFIGURED__: JSON.stringify(firebaseIosConfigured),
 			__ANALYTICS_ENABLED__: JSON.stringify(analyticsEnabled),
 			__FIREBASE_ANDROID_CONFIGURED__: JSON.stringify(firebaseAndroidConfigured),
 			__CHRONOS_PLATFORM_TARGET__: JSON.stringify(targetDef.target)

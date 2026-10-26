@@ -168,8 +168,9 @@ function hasFirebaseWebConfig(): boolean {
 	);
 }
 
-function isAndroidHost(): boolean {
-	return getHostPlatform().platformType === 'android';
+function nativeAnalyticsPlatform(): 'android' | 'ios' | null {
+	const platform = getHostPlatform().platformType;
+	return platform === 'android' || platform === 'ios' ? platform : null;
 }
 
 export function bindAnalyticsPort(service: IAnalyticsService): void {
@@ -181,8 +182,11 @@ function canInitializeAnalytics(): boolean {
 		!import.meta.env.DEV &&
 		import.meta.env.MODE !== 'test' &&
 		__ANALYTICS_ENABLED__ &&
-		!(isAndroidHost() && !__FIREBASE_ANDROID_CONFIGURED__) &&
-		(isAndroidHost() || hasFirebaseWebConfig())
+		(nativeAnalyticsPlatform() === 'android'
+			? __FIREBASE_ANDROID_CONFIGURED__
+			: nativeAnalyticsPlatform() === 'ios'
+				? __FIREBASE_IOS_CONFIGURED__
+				: hasFirebaseWebConfig())
 	);
 }
 
@@ -217,7 +221,7 @@ function initAnalytics() {
 	if (!collectionEnabled || !canInitializeAnalytics() || client || initializing) return;
 	pending = [];
 	initializing = (async () => {
-		if (isAndroidHost()) {
+		if (nativeAnalyticsPlatform()) {
 			const adapter = getHostPlatform().analytics;
 			if (adapter) {
 				client = {
@@ -288,7 +292,7 @@ export function buildAnalyticsProperties(
 	return {
 		...normalizeAnalyticsProperties(properties),
 		chronos_profile: resolveActiveProfile().profileId,
-		chronos_platform: isAndroidHost() ? 'android' : 'web'
+		chronos_platform: nativeAnalyticsPlatform() ?? 'web'
 	};
 }
 

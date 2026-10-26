@@ -54,7 +54,7 @@ describe('Android release descriptor', () => {
 					json: async () => feed
 				})) as unknown as typeof fetch,
 				'https://ue-dnd.github.io/Chronos/android/stable.json',
-				true
+				'android'
 			);
 			expect(result.ok).toBe(true);
 			if (result.ok)
@@ -87,7 +87,7 @@ describe('Android release descriptor', () => {
 					json: async () => feed
 				})) as unknown as typeof fetch,
 				'https://ue-dnd.github.io/Chronos/android/stable.json',
-				true
+				'android'
 			);
 			expect(result.ok).toBe(false);
 		} finally {

@@ -2,8 +2,13 @@ interface AndroidReleaseInfo {
 	updateUrl: string;
 }
 
+interface IosReleaseInfo {
+	updateUrl: string;
+}
+
 export interface Release {
 	androidUpdate?: import('@chronos/core').SelectedAndroidUpdate;
+	iosUpdate?: import('@chronos/core').SelectedIosUpdate;
 	hostUpdate?: import('@chronos/core').WebHostUpdate;
 	tagName: string;
 	name: string;
@@ -11,6 +16,7 @@ export interface Release {
 	body: string;
 	platforms?: {
 		android?: AndroidReleaseInfo;
+		ios?: IosReleaseInfo;
 	};
 }
 

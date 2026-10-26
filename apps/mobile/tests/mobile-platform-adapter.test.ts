@@ -149,8 +149,7 @@ describe('mobile-platform-adapter', () => {
 			expect(resolvePlatformType()).toBe('android');
 
 			capacitorState.platform = 'ios';
-			// No iOS Capacitor target is shipped, so unknown native targets are not exposed as iOS.
-			expect(resolvePlatformType()).toBe('web');
+			expect(resolvePlatformType()).toBe('ios');
 		});
 	});
 
@@ -221,11 +220,19 @@ describe('mobile-platform-adapter', () => {
 			expect('wrapHttpService' in adapter).toBe(false);
 		});
 
-		it('does not expose the Android proxy on unsupported native platforms', () => {
+		it('wraps the campus proxy on iOS and keeps external package updates', () => {
 			capacitorState.isNative = true;
 			capacitorState.platform = 'ios';
 			const adapter = createMobilePlatformAdapter();
-			expect('wrapHttpService' in adapter).toBe(false);
+			expect(adapter.platformType).toBe('ios');
+			expect(typeof adapter.wrapHttpService).toBe('function');
+			const innerHttp = {
+				request: vi.fn(),
+				supportsPluginServer: vi.fn().mockReturnValue(false)
+			};
+			const wrapped = adapter.wrapHttpService!(innerHttp);
+			expect(wrapped.supportsPluginServer?.('source-cqut', 'preview')).toBe(true);
+			expect(adapter.getUpdateAction?.().mode).toBe('external-ipa');
 		});
 
 		it('wraps inner http service with generated native capabilities on Android', () => {

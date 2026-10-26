@@ -11,7 +11,7 @@ import {
 import { getBootPlatformAdapter } from '$chronos-platform-adapter';
 import type { Release } from '../content/releases/release';
 
-type PlatformUpdateMode = 'service-worker' | 'external-link' | 'native-apk';
+type PlatformUpdateMode = 'service-worker' | 'external-link' | 'native-apk' | 'external-ipa';
 
 export type HostUpdatePhase =
 	| 'downloading'
@@ -102,6 +102,12 @@ export interface HostPlatformAdapter {
 		version: string;
 		versionCode: number;
 		signingCertificateSha256: string;
+	}>;
+	getIosInstallationIdentity?: () => Promise<{
+		bundleId: string;
+		version: string;
+		build: string;
+		osVersion: string;
 	}>;
 	readonly id: 'web' | 'mobile';
 	readonly isNative: boolean;

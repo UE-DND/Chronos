@@ -1,4 +1,5 @@
 import { createAndroidUpdateAction, flushAndroidUpdateEvents } from './android-updater';
+import { createIosUpdateAction } from './ios-updater';
 import { createAndroidClassNotifications } from './class-notifications';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
@@ -6,7 +7,6 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { App } from '@capacitor/app';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { Share } from '@capacitor/share';
-import { AppLauncher } from '@capacitor/app-launcher';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Clipboard } from '@capacitor/clipboard';
 import type { PluginListenerHandle } from '@capacitor/core';
@@ -59,9 +59,19 @@ export function isCapacitorNative(): boolean {
 	}
 }
 
+export async function readIosInstallationIdentity() {
+	const installation = registerPlugin<{
+		getIdentity(): Promise<{ bundleId: string; version: string; build: string; osVersion: string }>;
+	}>('ChronosInstallation');
+	return installation.getIdentity();
+}
+
 export function resolvePlatformType(): PlatformType {
 	if (!isCapacitorNative()) return 'web';
-	return Capacitor.getPlatform() === 'android' ? 'android' : 'web';
+	const platform = Capacitor.getPlatform();
+	if (platform === 'android') return 'android';
+	if (platform === 'ios') return 'ios';
+	return 'web';
 }
 
 const IMPACT_STYLE_MAP: Record<NativeHapticImpactStyle, ImpactStyle> = {
@@ -326,14 +336,6 @@ export async function shareFileWithMobile(
 	}
 }
 
-export async function openMobileUpdateUrl(targetUrl: string): Promise<void> {
-	const url = new URL(targetUrl);
-	if (url.protocol !== 'https:' || url.username || url.password) {
-		throw new Error('更新地址必须是不含凭据的 HTTPS 地址');
-	}
-	await AppLauncher.openUrl({ url: url.toString() });
-}
-
 export function createMobilePlatformAdapter(): HostPlatformAdapter {
 	const isNative = isCapacitorNative();
 	const platformType = resolvePlatformType();
@@ -364,7 +366,7 @@ export function createMobilePlatformAdapter(): HostPlatformAdapter {
 		...(isNative && platformType === 'android'
 			? { updateTodayWidgetSnapshot: updateAndroidTodayWidgetSnapshot }
 			: {}),
-		...(isNative && platformType === 'android'
+		...(isNative && (platformType === 'android' || platformType === 'ios')
 			? {
 					wrapHttpService(inner: IHttpService): IHttpService {
 						const registry = createGeneratedMobilePluginServerRegistry(
@@ -374,7 +376,7 @@ export function createMobilePlatformAdapter(): HostPlatformAdapter {
 					}
 				}
 			: {}),
-		...(isNative && platformType === 'android'
+		...(isNative && (platformType === 'android' || platformType === 'ios')
 			? {
 					analytics: {
 						async logEvent(name, params) {
@@ -390,16 +392,17 @@ export function createMobilePlatformAdapter(): HostPlatformAdapter {
 			: {}),
 		getAndroidInstallationIdentity:
 			isNative && platformType === 'android' ? readAndroidInstallationIdentity : undefined,
+		getIosInstallationIdentity:
+			isNative && platformType === 'ios' ? readIosInstallationIdentity : undefined,
 		getUpdateAction(): PlatformUpdateAction {
 			if (isNative && platformType === 'android') return createAndroidUpdateAction();
+			if (isNative && platformType === 'ios') return createIosUpdateAction();
 			return {
 				mode: 'external-link',
 				canApplyInApp: false,
 				actionLabelKey: 'about.update.external',
-				async applyUpdate(release) {
-					const targetUrl = release?.platforms?.android?.updateUrl;
-					if (!targetUrl) throw new Error('当前版本没有可用的 Android 更新地址');
-					await openMobileUpdateUrl(targetUrl);
+				async applyUpdate() {
+					throw new Error('当前安装没有可用的更新包');
 				}
 			};
 		}
