@@ -1,4 +1,4 @@
-import { CapacitorCookies, CapacitorHttp } from '@capacitor/core';
+import { CapacitorCookies, CapacitorHttp, registerPlugin } from '@capacitor/core';
 import { belongsToDomain, isHttpsOrigin } from '@chronos/core';
 import type {
 	HttpSessionRequestOptions,
@@ -129,9 +129,15 @@ class CapacitorHttpSession implements IHostHttpSession {
 			throw new Error('HTTP session cookie queries must use an allowed HTTPS host');
 		}
 		const hostname = parsed.hostname.toLowerCase();
-		return [...this.responseCookies].some(
-			([domain, names]) => belongsToDomain(hostname, [domain]) && names.has(name)
-		);
+		if (
+			[...this.responseCookies].some(
+				([domain, names]) => belongsToDomain(hostname, [domain]) && names.has(name)
+			)
+		) {
+			return true;
+		}
+		// iOS may store an HttpOnly session cookie without echoing Set-Cookie to JavaScript.
+		return nativeCookiePresent(parsed.href, name);
 	}
 
 	async dispose(): Promise<void> {
@@ -184,6 +190,17 @@ class CapacitorHttpSession implements IHostHttpSession {
 				}
 			})
 		);
+	}
+}
+
+async function nativeCookiePresent(url: string, name: string): Promise<boolean> {
+	try {
+		const plugin = registerPlugin<{
+			hasCookie(options: { url: string; name: string }): Promise<{ present?: boolean }>;
+		}>('ChronosHttpCookie');
+		return (await plugin.hasCookie({ url, name })).present === true;
+	} catch {
+		return false;
 	}
 }
 

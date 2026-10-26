@@ -3,10 +3,12 @@ import { CapacitorHttpSessionService } from '../src/http/capacitor-http-session'
 
 const mockClearCookies = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const mockRequest = vi.hoisted(() => vi.fn());
+const mockHasNativeCookie = vi.hoisted(() => vi.fn().mockResolvedValue({ present: false }));
 
 vi.mock('@capacitor/core', () => ({
 	CapacitorCookies: { clearCookies: mockClearCookies },
-	CapacitorHttp: { request: mockRequest }
+	CapacitorHttp: { request: mockRequest },
+	registerPlugin: () => ({ hasCookie: mockHasNativeCookie })
 }));
 
 const sessionOptions = {
@@ -76,6 +78,30 @@ describe('CapacitorHttpSessionService', () => {
 		expect(mockClearCookies).toHaveBeenCalledTimes(2);
 		await session.dispose();
 		expect(mockClearCookies).toHaveBeenCalledTimes(4);
+		expect(mockHasNativeCookie).not.toHaveBeenCalled();
+	});
+
+	it('reads an HttpOnly session cookie from the native store when Set-Cookie is omitted', async () => {
+		mockRequest.mockResolvedValue({
+			status: 302,
+			headers: {},
+			url: 'https://schedule.example.org/api/auth/casLogin',
+			data: ''
+		});
+		mockHasNativeCookie.mockResolvedValue({ present: true });
+		const session = new CapacitorHttpSessionService().createSession(sessionOptions);
+		await session.request('https://schedule.example.org/api/auth/casLogin');
+		expect(await session.hasCookie('https://schedule.example.org', 'JSESSIONID')).toBe(true);
+		expect(mockHasNativeCookie).toHaveBeenCalledWith({
+			url: 'https://schedule.example.org/',
+			name: 'JSESSIONID'
+		});
+	});
+
+	it('treats a missing native cookie store as absent', async () => {
+		mockHasNativeCookie.mockRejectedValue(new Error('unimplemented'));
+		const session = new CapacitorHttpSessionService().createSession(sessionOptions);
+		expect(await session.hasCookie('https://schedule.example.org', 'JSESSIONID')).toBe(false);
 	});
 
 	it('rejects cookie origins outside the declared allowed domains', () => {
