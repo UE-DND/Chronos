@@ -282,6 +282,7 @@ for (const viewport of [
 			await expect(page.getByRole('textbox', { name: '课程名称', exact: true })).toHaveValue(
 				'保存反馈测试'
 			);
+			await expect(page.locator('#chronos-boot-fallback')).toBeHidden();
 			await page.evaluate(() => {
 				IDBObjectStore.prototype.put = function () {
 					throw new DOMException('Test write failure', 'QuotaExceededError');
