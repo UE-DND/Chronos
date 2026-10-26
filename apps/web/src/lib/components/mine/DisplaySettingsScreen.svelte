@@ -52,6 +52,54 @@
 		void fontSettings.commit();
 	}
 
+	let fontSlider: HTMLInputElement | undefined;
+	const fontSteps = FONT_SIZE_SCALE_OPTIONS.length - 1;
+	// Native thumbs are inset about 8px; the grab pad stays centered on that point.
+	const thumbInset = 8;
+	const thumbLeft = $derived(
+		`calc(${thumbInset}px + (100% - ${thumbInset * 2}px) * ${Math.max(fontIndex, 0)} / ${fontSteps})`
+	);
+
+	function beginFontDrag(event: PointerEvent) {
+		if (!event.isPrimary || event.button !== 0) return;
+		const input = fontSlider;
+		if (!input) return;
+		event.preventDefault();
+		const handle = event.currentTarget as HTMLElement;
+		handle.setPointerCapture(event.pointerId);
+		const originX = event.clientX;
+		const originIndex = Math.max(fontIndex, 0);
+		const usable = Math.max(input.getBoundingClientRect().width - thumbInset * 2, 1);
+		input.focus({ preventScroll: true });
+
+		const apply = (clientX: number) => {
+			const next = Math.min(
+				fontSteps,
+				Math.max(0, originIndex + Math.round(((clientX - originX) / usable) * fontSteps))
+			);
+			if (Number(input.value) === next) return;
+			input.value = String(next);
+			input.dispatchEvent(new Event('input', { bubbles: true }));
+		};
+		let finished = false;
+		const finish = (end: PointerEvent) => {
+			if (finished) return;
+			finished = true;
+			if (end.type !== 'lostpointercapture' && (end.clientX !== 0 || end.clientY !== 0))
+				apply(end.clientX);
+			handle.removeEventListener('pointermove', move);
+			handle.removeEventListener('pointerup', finish);
+			handle.removeEventListener('pointercancel', finish);
+			handle.removeEventListener('lostpointercapture', finish);
+			commitFont();
+		};
+		const move = (next: PointerEvent) => apply(next.clientX);
+		handle.addEventListener('pointermove', move);
+		handle.addEventListener('pointerup', finish);
+		handle.addEventListener('pointercancel', finish);
+		handle.addEventListener('lostpointercapture', finish);
+	}
+
 	const layoutOptions = $derived.by(() => {
 		void shell.controller.locale;
 		return [
@@ -133,6 +181,7 @@
 				<div class="relative min-w-0 pb-5">
 					<input
 						id="font-size-slider"
+						bind:this={fontSlider}
 						class="pointer-events-none block h-11 min-h-[44px] w-full accent-brand"
 						type="range"
 						min="0"
@@ -163,6 +212,12 @@
 							</div>
 						{/each}
 					</div>
+					<div
+						class="absolute -top-4 bottom-0 z-10 w-16 -translate-x-1/2 cursor-ew-resize touch-none select-none"
+						style:left={thumbLeft}
+						aria-hidden="true"
+						onpointerdown={beginFontDrag}
+					></div>
 				</div>
 				<span
 					class="flex h-11 min-h-[44px] items-center text-[2.5rem] leading-none text-on-surface-variant"
@@ -223,7 +278,7 @@
 </div>
 
 <style>
-	/* Keep native thumb dragging while ignoring accidental track taps. */
+	/* Track taps stay inactive. The grab pad covers the thumb and receives the drag. */
 	#font-size-slider::-webkit-slider-thumb {
 		pointer-events: auto;
 		cursor: ew-resize;
