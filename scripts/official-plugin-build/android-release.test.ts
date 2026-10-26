@@ -137,7 +137,7 @@ describe('ready Android publishing', () => {
 				).toBe(false);
 			} else {
 				expect(notes).toContain('/compare/v1.0.2...v1.0.3');
-				expect(notes).toContain('## 下载与安装');
+				expect(notes).toContain('## Android 下载与安装');
 			}
 			expect(result.release.body).toBe(release('1.0.3').release.body);
 			const checksums = readFileSync(resolve(directory, 'SHA256SUMS'), 'utf8');

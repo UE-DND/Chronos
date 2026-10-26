@@ -222,6 +222,29 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  ios-ipa:
+    name: Build iOS IPA (${{ matrix.name }})
+    needs: [version, quality]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: chronos-default
+            name: Default
+          - profile: chronos-cqut
+            name: CQUT
+          - profile: chronos-cqut-offline
+            name: CQUT offline
+    uses: ./.github/workflows/ios-release.yml
+    with:
+      ref: ${{ needs.version.outputs.commit }}
+      tag: ${{ needs.version.outputs.tag }}
+      version: ${{ needs.version.outputs.version }}
+      profile: ${{ matrix.profile }}
+      name: ${{ matrix.name }}
+      epoch: ${{ needs.version.outputs.epoch }}
+    secrets: inherit
+
   build:
     name: Build Pages site & plugin market
     needs: [version, quality]
@@ -335,8 +358,8 @@ jobs:
     secrets: inherit
 
   publish-release:
-    name: Publish GitHub release & APKs
-    needs: [version, quality, verify, android-apk]
+    name: Publish GitHub release, APKs & IPAs
+    needs: [version, quality, verify, android-apk, ios-ipa]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -357,19 +380,37 @@ jobs:
           pattern: android-apk-*
           path: release-apks
           merge-multiple: true
-      - name: Publish a complete immutable Android release
+      - name: Download built IPA artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: ios-ipa-*
+          path: release-ipas
+          merge-multiple: true
+      - name: Collect the iOS release record
+        run: node --experimental-strip-types scripts/official-plugin-build/ios-release.ts collect release-ipas ios-release.json
+      - name: Publish a complete immutable Android release with combined notes
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
-        run: node --experimental-strip-types scripts/official-plugin-build/android-release.ts publish release-apks "$REPOSITORY" android-release.json
+        run: node --experimental-strip-types scripts/official-plugin-build/android-release.ts publish release-apks "$REPOSITORY" android-release.json ios-release.json
+      - name: Publish immutable IPA assets to the same release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: node --experimental-strip-types scripts/official-plugin-build/ios-release.ts publish release-ipas "$REPOSITORY" ios-release-published.json
       - name: Upload Android release record
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: android-release-record
           path: android-release.json
+      - name: Upload iOS release record
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ios-release-record
+          path: ios-release-published.json
 
-  android-feed:
-    name: Stage Android update feed
+  release-feeds:
+    name: Stage Android & iOS update feeds
     needs: [version, publish-release]
     runs-on: ubuntu-latest
     permissions:
@@ -396,26 +437,32 @@ jobs:
         with:
           name: android-release-record
           path: records
-      - name: Advance the ready Android feed without rebuilding the website
+      - name: Download iOS release record
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ios-release-record
+          path: records
+      - name: Advance the ready mobile feeds without rebuilding the website
         run: |
           git fetch origin chronos/plugin-dist
           git worktree add --detach history FETCH_HEAD
           node --experimental-strip-types scripts/official-plugin-build/android-release.ts stage history site records/android-release.json
-          git -C history add android
+          node --experimental-strip-types scripts/official-plugin-build/ios-release.ts stage history site records/ios-release-published.json
+          git -C history add android ios
           if ! git -C history diff --cached --quiet; then
-            git -C history -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '📦 保存 Android 就绪发布记录'
+            git -C history -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m '📦 保存移动端就绪发布记录'
             git -C history push origin HEAD:refs/heads/chronos/plugin-dist
           fi
       - name: Upload updated Pages deployment artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
-          name: github-pages-android
+          name: github-pages-feeds
           path: site
           include-hidden-files: true
 
-  deploy-android-feed:
-    name: Deploy Pages with Android feed
-    needs: [version, android-feed]
+  deploy-release-feeds:
+    name: Deploy Pages with Android & iOS feeds
+    needs: [version, release-feeds]
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -424,10 +471,10 @@ jobs:
     environment:
       name: github-pages
     steps:
-      - name: Deploy updated Pages artifact with Android feed
+      - name: Deploy updated Pages artifact with mobile feeds
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
         with:
-          artifact_name: github-pages-android
+          artifact_name: github-pages-feeds
       - name: Checkout source code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -448,8 +495,15 @@ jobs:
         with:
           name: android-release-record
           path: records
-      - name: Verify published Android feed and unchanged website identity
-        run: node --experimental-strip-types scripts/official-plugin-build/android-release.ts smoke https://ue-dnd.github.io/Chronos/ records/android-release.json original-site/version.json
+      - name: Download iOS release record
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ios-release-record
+          path: records
+      - name: Verify published mobile feeds and unchanged website identity
+        run: |
+          node --experimental-strip-types scripts/official-plugin-build/android-release.ts smoke https://ue-dnd.github.io/Chronos/ records/android-release.json original-site/version.json
+          node --experimental-strip-types scripts/official-plugin-build/ios-release.ts smoke https://ue-dnd.github.io/Chronos/ records/ios-release-published.json
       - name: Mark GitHub release as latest after all verifications pass
         env:
           GH_TOKEN: ${{ github.token }}

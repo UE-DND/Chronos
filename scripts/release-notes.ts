@@ -8,7 +8,10 @@ import {
 	parseFrontmatter
 } from '../apps/web/src/lib/content/releases/release.ts';
 import { resolveProfile } from '../apps/web/src/lib/profile-codegen/profile-definitions.ts';
-import type { AndroidStableUpdate } from '../packages/core/src/types/host-update.ts';
+import type {
+	AndroidStableUpdate,
+	IosStableUpdate
+} from '../packages/core/src/types/host-update.ts';
 
 const stableTag = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
@@ -20,26 +23,54 @@ export function previousReleaseTag(tags: string[], target: string): string | und
 
 /** GitHub-only distribution details never enter version.json or the in-app feed. */
 export function renderGitHubReleaseNotes(
-	release: AndroidStableUpdate,
+	release: AndroidStableUpdate | IosStableUpdate,
 	repository: string,
-	previous?: string
+	previous?: string,
+	iosRelease?: IosStableUpdate
 ): string {
 	const base = `https://github.com/${repository}`;
-	const downloads = Object.entries(release.profiles).map(([id, entry]) => {
-		const profile = resolveProfile(id);
-		return `| [${profile.name}](${entry.apkUrl}) | ${profile.description ?? ''} |`;
-	});
-	return [
-		release.release.body.trim(),
-		'## 下载与安装',
-		'选择适合自己的 Android 发行版。已安装用户请继续使用原发行版，可在应用内检查更新。',
-		'| 发行版 | 适用场景 |\n| --- | --- |\n' + downloads.join('\n'),
+	const android = 'packageId' in release ? release : undefined;
+	const ios = iosRelease ?? (!android ? (release as IosStableUpdate) : undefined);
+	const table = (entries: Record<string, { url: string }>) =>
+		Object.entries(entries)
+			.map(([id, entry]) => {
+				const profile = resolveProfile(id);
+				return `| [${profile.name}](${entry.url}) | ${profile.description ?? ''} |`;
+			})
+			.join('\n');
+	const sections = [release.release.body.trim()];
+	if (android) {
+		sections.push(
+			'## Android 下载与安装',
+			'选择适合自己的 Android 发行版。已安装用户请继续使用原发行版，可在应用内检查更新。',
+			'| 发行版 | 适用场景 |\n| --- | --- |\n' +
+				table(
+					Object.fromEntries(
+						Object.entries(android.profiles).map(([id, entry]) => [id, { url: entry.apkUrl }])
+					)
+				)
+		);
+	}
+	if (ios) {
+		sections.push(
+			'## iOS 下载与安装',
+			'选择适合自己的 iOS 发行版。iOS 不能在应用内覆盖安装，请下载 IPA 后用当前自签工具安装，并保持 Bundle ID 为 org.uednd.chronos。',
+			'| 发行版 | 适用场景 |\n| --- | --- |\n' +
+				table(
+					Object.fromEntries(
+						Object.entries(ios.profiles).map(([id, entry]) => [id, { url: entry.ipaUrl }])
+					)
+				)
+		);
+	}
+	sections.push(
 		'Assets 中的 JSON 文件用于更新校验，无需手动安装。',
 		previous
 			? `[完整变更：${previous} → ${release.release.tagName}](${base}/compare/${previous}...${release.release.tagName})`
 			: `[源码与提交记录](${base}/commits/${release.release.tagName})`,
 		''
-	].join('\n\n');
+	);
+	return sections.join('\n\n');
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

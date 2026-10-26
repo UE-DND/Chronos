@@ -21,19 +21,16 @@ import {
 	selectAndroidUpdate,
 	type AndroidStableUpdate,
 	type AndroidProfileUpdate,
+	type IosStableUpdate,
 	type WebHostUpdate
 } from '../../packages/core/src/types/host-update.ts';
 import { isSha256Hex } from '../../packages/core/src/validation/hash.ts';
+import { MOBILE_PROFILES, mobileArtifactBaseName } from './mobile-profiles.ts';
 
-export const ANDROID_PROFILES = [
-	'chronos-default',
-	'chronos-cqut',
-	'chronos-cqut-offline'
-] as const;
+export const ANDROID_PROFILES = MOBILE_PROFILES;
 
 export function androidArtifactBaseName(profileId: string, version: string): string {
-	const flavor = profileId.replace(/^chronos-/, '');
-	return `Chronos-${flavor}-${version}`;
+	return mobileArtifactBaseName(profileId, version);
 }
 
 const digest = (file: string) => createHash('sha256').update(readFileSync(file)).digest('hex');
@@ -245,7 +242,11 @@ export function reuseAndroidArtifact(
 }
 
 /** Reuse an existing draft or published artifact only when its bytes exactly match. */
-export function publishAndroidRelease(directory: string, repository: string): AndroidStableUpdate {
+export function publishAndroidRelease(
+	directory: string,
+	repository: string,
+	iosRelease?: IosStableUpdate
+): AndroidStableUpdate {
 	const release = collectAndroidRelease(directory);
 	assertReleaseContent(release.release);
 	const tag = release.release.tagName;
@@ -271,7 +272,7 @@ export function publishAndroidRelease(directory: string, repository: string): An
 				releases.filter((r) => !r.isDraft && !r.isPrerelease).map((r) => r.tagName),
 				tag
 			);
-			writeFileSync(notesPath, renderGitHubReleaseNotes(release, repository, previous));
+			writeFileSync(notesPath, renderGitHubReleaseNotes(release, repository, previous, iosRelease));
 			if (!existing)
 				gh([
 					'release',
@@ -339,8 +340,11 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
 		);
 		if (process.env.GITHUB_OUTPUT)
 			writeFileSync(process.env.GITHUB_OUTPUT, `reused=${reused}\n`, { flag: 'a' });
-	} else if (command === 'publish' && args.length === 3) {
-		const release = publishAndroidRelease(args[0], args[1]);
+	} else if (command === 'publish' && (args.length === 3 || args.length === 4)) {
+		const iosRelease = args[3]
+			? (JSON.parse(readFileSync(args[3], 'utf8')) as IosStableUpdate)
+			: undefined;
+		const release = publishAndroidRelease(args[0], args[1], iosRelease);
 		writeFileSync(args[2], JSON.stringify(release, null, '\t') + '\n');
 	} else if (command === 'stage' && args.length === 3)
 		stageAndroidRelease(args[0], args[1], JSON.parse(readFileSync(args[2], 'utf8')));
