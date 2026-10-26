@@ -33,6 +33,11 @@ import { previousReleaseTag, renderGitHubReleaseNotes } from '../release-notes.t
 
 const digest = (file: string) => createHash('sha256').update(readFileSync(file)).digest('hex');
 
+/** Android already publishes `Chronos-<flavor>-<version>.json` on the same release. */
+export function iosMetadataFileName(ipaOrBaseName: string): string {
+	return `${ipaOrBaseName.replace(/\.ipa$/i, '')}.ipa.json`;
+}
+
 export interface IpaInfo {
 	bundleId: string;
 	version: string;
@@ -127,7 +132,7 @@ export function collectIosRelease(directory: string): IosStableUpdate {
 	const artifacts = MOBILE_PROFILES.map((id) => {
 		const flavor = id.replace(/^chronos-/, '');
 		const files = readdirSync(directory).filter((file) =>
-			new RegExp(`^Chronos-${flavor}-\\d+\\.\\d+\\.\\d+\\.json$`).test(file)
+			new RegExp(`^Chronos-${flavor}-\\d+\\.\\d+\\.\\d+\\.ipa\\.json$`).test(file)
 		);
 		if (files.length !== 1) throw new Error(`Expected one iOS artifact record for ${id}`);
 		const metadata = JSON.parse(readFileSync(resolve(directory, files[0]), 'utf8')) as {
@@ -135,7 +140,7 @@ export function collectIosRelease(directory: string): IosStableUpdate {
 			release: IosStableUpdate['release'];
 		};
 		assertReleaseContent(metadata.release);
-		const ipa = resolve(directory, files[0].replace(/\.json$/, '.ipa'));
+		const ipa = resolve(directory, files[0].replace(/\.ipa\.json$/, '.ipa'));
 		if (digest(ipa) !== metadata.entry.sha256 || statSync(ipa).size !== metadata.entry.sizeBytes)
 			throw new Error('IPA integrity mismatch');
 		return metadata;
@@ -204,7 +209,7 @@ export function reuseIosArtifact(
 	}
 	const baseName = mobileArtifactBaseName(profileId, tag.slice(1));
 	const ipaName = `${baseName}.ipa`;
-	const metadataName = `${baseName}.json`;
+	const metadataName = iosMetadataFileName(baseName);
 	const hasIpa = release.assets.some((asset) => asset.name === ipaName);
 	const hasMetadata = release.assets.some((asset) => asset.name === metadataName);
 	if (!hasIpa && !hasMetadata) return false;
@@ -277,7 +282,7 @@ export function publishIosRelease(directory: string, repository: string): IosSta
 			.sort();
 		if (ipaFiles.length !== MOBILE_PROFILES.length)
 			throw new Error('Expected one IPA for every profile');
-		const metadataFiles = ipaFiles.map((file) => file.replace(/\.ipa$/, '.json'));
+		const metadataFiles = ipaFiles.map((file) => iosMetadataFileName(file));
 		const recordPath = resolve(directory, 'ios-release.json');
 		writeFileSync(recordPath, JSON.stringify(release, null, '\t') + '\n');
 		const checksumEntries = [...ipaFiles, ...metadataFiles]
@@ -339,7 +344,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
 	if (command === 'inspect' && args.length === 2) {
 		const descriptor = JSON.parse(readFileSync(args[1], 'utf8')) as WebHostUpdate;
 		const entry = inspectIosArtifact(args[0], descriptor);
-		const metadataPath = args[0].replace(/\.ipa$/i, '.json');
+		const metadataPath = iosMetadataFileName(args[0]);
 		if (metadataPath === args[0]) throw new Error('Expected an .ipa input');
 		writeFileSync(
 			metadataPath,

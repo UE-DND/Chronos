@@ -60,7 +60,7 @@ describe('iOS release feed', () => {
 			const name = androidArtifactBaseName(id, '1.2.11');
 			writeFileSync(resolve(directory, `${name}.ipa`), bytes);
 			writeFileSync(
-				resolve(directory, `${name}.json`),
+				resolve(directory, `${name}.ipa.json`),
 				JSON.stringify({ entry, release: value.release })
 			);
 		}
