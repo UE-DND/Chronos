@@ -45,17 +45,27 @@ export function describeInstallSource(url: string): string | null {
 	}
 }
 
+/** App document URL, including custom schemes used by native WebViews. */
+export function appDocumentUrl(): string {
+	if (typeof window !== 'undefined' && window.location?.href) return window.location.href;
+	return 'http://localhost/';
+}
+
+/** URL.origin is "null" for custom app schemes, so compare protocol and host instead. */
+export function isSameOrigin(a: URL, b: URL): boolean {
+	return a.protocol === b.protocol && a.host === b.host;
+}
+
+/** True for app-relative references that resolve against the current document. */
+export function isAppRelativeUrl(value: string): boolean {
+	return !/^[a-z][a-z0-9+.-]*:/i.test(value) && !value.startsWith('//');
+}
+
 function resolveManifestBase(manifestUrl: string): URL {
 	try {
 		return new URL(manifestUrl);
 	} catch {
-		if (manifestUrl.startsWith('/')) {
-			const origin =
-				typeof window !== 'undefined' && window.location?.origin
-					? window.location.origin
-					: 'http://localhost';
-			return new URL(manifestUrl, origin);
-		}
+		if (isAppRelativeUrl(manifestUrl)) return new URL(manifestUrl, appDocumentUrl());
 		throw new Error(`Invalid manifest URL: ${manifestUrl}`);
 	}
 }
@@ -63,8 +73,9 @@ function resolveManifestBase(manifestUrl: string): URL {
 /**
  * Resolves a manifest asset URL against the manifest URL base.
  * - Absolute http(s) URLs are returned as-is.
- * - Root-relative paths resolve against the manifest origin.
- * - Other relative paths resolve against the manifest directory.
+ * - References from app-relative manifests stay app-relative, because native
+ *   WebViews only fetch bundled assets through relative URLs.
+ * - Remote manifests resolve to absolute URLs.
  */
 export function resolveManifestAssetUrl(manifestUrl: string, assetUrl: string): string {
 	if (/^https?:\/\//i.test(assetUrl)) {
@@ -72,10 +83,11 @@ export function resolveManifestAssetUrl(manifestUrl: string, assetUrl: string): 
 	}
 
 	const manifestBase = resolveManifestBase(manifestUrl);
-	if (assetUrl.startsWith('/')) {
-		return new URL(assetUrl, manifestBase.origin).href;
+	const resolved = new URL(assetUrl, manifestBase.href);
+	if (!isAppRelativeUrl(manifestUrl) || !isSameOrigin(resolved, manifestBase)) {
+		return resolved.href;
 	}
-	return new URL(assetUrl, manifestBase.href).href;
+	return resolved.pathname + resolved.search + resolved.hash;
 }
 
 /** Resolves downloadable asset URLs in a manifest copy when manifestUrl is provided. */

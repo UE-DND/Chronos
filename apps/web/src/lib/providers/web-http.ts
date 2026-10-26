@@ -129,11 +129,10 @@ function resolveRequestUrl(url: string): string {
 	if (!base) return url;
 	if (url.startsWith('/official-plugins/')) return `${base}${url}`;
 	if (typeof window === 'undefined') return url;
-	const parsed = new URL(url, window.location.origin);
-	if (
-		parsed.origin === window.location.origin &&
-		parsed.pathname.startsWith('/official-plugins/')
-	) {
+	const documentUrl = window.location.href || window.location.origin;
+	const documentOrigin = new URL(documentUrl).origin;
+	const parsed = new URL(url, documentUrl);
+	if (parsed.origin === documentOrigin && parsed.pathname.startsWith('/official-plugins/')) {
 		parsed.pathname = `${base}${parsed.pathname}`;
 		return parsed.href;
 	}

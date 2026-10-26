@@ -1,7 +1,12 @@
 import type { OfficialPluginCatalog, PluginManifest } from '@chronos/core';
 import type { ChronosEngine } from '@chronos/core';
 import { officialCatalogUrl } from './market-config';
-import { resolveManifestAssetUrl } from './manifest-url';
+import {
+	appDocumentUrl,
+	isAppRelativeUrl,
+	isSameOrigin,
+	resolveManifestAssetUrl
+} from './manifest-url';
 import { validatePluginManifest } from './plugin-bundle';
 
 export class OfficialPluginCatalogClient {
@@ -24,18 +29,18 @@ export class OfficialPluginCatalogClient {
 			throw new Error('Invalid official plugin catalog schema format');
 		}
 
-		const catalogOrigin = new URL(resolveManifestAssetUrl(catalogUrl, './')).origin;
+		const localCatalog = isAppRelativeUrl(catalogUrl);
+		const documentUrl = new URL(appDocumentUrl());
 		return {
 			...catalog,
 			manifests: catalog.manifests.map((url) => {
 				if (typeof url !== 'string' || !url)
 					throw new Error('Invalid official plugin catalog manifest URL');
-				const resolved = new URL(resolveManifestAssetUrl(catalogUrl, url));
-				if (resolved.protocol !== 'https:' && resolved.protocol !== 'http:')
+				const resolved = new URL(resolveManifestAssetUrl(catalogUrl, url), documentUrl);
+				const appLocal = localCatalog && isSameOrigin(resolved, documentUrl);
+				if (resolved.protocol !== 'https:' && resolved.protocol !== 'http:' && !appLocal)
 					throw new Error('Invalid catalog manifest protocol');
-				return catalogUrl.startsWith('/') && resolved.origin === catalogOrigin
-					? resolved.pathname + resolved.search + resolved.hash
-					: resolved.href;
+				return appLocal ? resolved.pathname + resolved.search + resolved.hash : resolved.href;
 			})
 		};
 	}

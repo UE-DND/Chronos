@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vite-plus/test';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import type { PluginManifest } from '@chronos/core';
 import {
 	assertValidManifestInstallUrl,
@@ -45,6 +45,45 @@ describe('resolveManifestAssetUrl', () => {
 	it('resolves directory-relative paths against manifest directory', () => {
 		expect(resolveManifestAssetUrl(manifestUrl, 'bundle.js')).toBe(
 			'https://cdn.example.com/plugins/foo/bundle.js'
+		);
+	});
+
+	it('keeps bundled assets app-relative on custom native origins', () => {
+		vi.stubGlobal('window', {
+			location: { href: 'capacitor://localhost/', origin: 'capacitor://localhost' }
+		});
+		try {
+			const localManifest = '/official-plugins/manifests/rev/theme-m3.manifest.json';
+			expect(resolveManifestAssetUrl(localManifest, '../../bundles/theme-m3/bundle.js')).toBe(
+				'/official-plugins/bundles/theme-m3/bundle.js'
+			);
+			expect(resolveManifestAssetUrl(localManifest, 'colors.json')).toBe(
+				'/official-plugins/manifests/rev/colors.json'
+			);
+			expect(
+				resolveManifestForDownload(
+					{
+						id: 'theme-m3',
+						name: { 'zh-CN': 'Material 3' },
+						version: '1.0.0',
+						description: { 'zh-CN': 'Material 3' },
+						author: 'Chronos',
+						type: 'theme',
+						bundleFormat: 'esm',
+						bundleUrl: '../../bundles/theme-m3/bundle.js',
+						sha256: 'abc'
+					},
+					localManifest
+				).bundleUrl
+			).toBe('/official-plugins/bundles/theme-m3/bundle.js');
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
+	it('rejects app-relative manifests outside the document origin', () => {
+		expect(() => resolveManifestAssetUrl('//cdn.example.com/manifest.json', 'bundle.js')).toThrow(
+			/Invalid manifest URL/
 		);
 	});
 });

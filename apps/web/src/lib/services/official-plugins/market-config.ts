@@ -1,6 +1,7 @@
 import { APP_VERSION } from '#lib/config/app-meta.ts';
 import { staticPath } from '#lib/config/static-path.ts';
 import { isBareHttpsUrl, isBareUrl } from '@chronos/core';
+import { appDocumentUrl, isSameOrigin } from './manifest-url';
 
 declare const __CHRONOS_PLUGIN_MARKET_BASE_URL__: string;
 declare const __OFFICIAL_PLUGIN_IDS__: string[];
@@ -36,15 +37,15 @@ export function officialCatalogUrl(
 export function isOfficialCatalogManifestUrl(value?: string, pluginId?: string): boolean {
 	if (!value) return false;
 	try {
-		const origin = typeof window === 'undefined' ? 'http://localhost' : window.location.origin;
-		const url = new URL(value, origin);
-		const local = new URL(staticPath('/official-plugins/manifests/'), origin);
+		const documentUrl = appDocumentUrl();
+		const url = new URL(value, documentUrl);
+		const local = new URL(staticPath('/official-plugins/manifests/'), documentUrl);
 		const remote = new URL(marketBase);
 		let path: string;
-		if (url.origin === local.origin && url.pathname.startsWith(local.pathname)) {
+		if (isSameOrigin(url, local) && url.pathname.startsWith(local.pathname)) {
 			path = url.pathname.slice(local.pathname.length);
 			if (!/^(?:[a-zA-Z0-9-]+\/)?[a-z0-9-]+\.manifest\.json$/.test(path)) return false;
-		} else if (url.origin === remote.origin && url.pathname.startsWith(remote.pathname)) {
+		} else if (isSameOrigin(url, remote) && url.pathname.startsWith(remote.pathname)) {
 			path = url.pathname.slice(remote.pathname.length);
 			if (!/^\d+\.\d+\.\d+\/manifests\/[a-zA-Z0-9-]+\/[a-z0-9-]+\.manifest\.json$/.test(path))
 				return false;
@@ -67,10 +68,7 @@ export function assertOfficialManifestVersion(
 	if (!isOfficialCatalogManifestUrl(url, manifest.id))
 		throw new Error('Official manifest ID does not match its URL');
 
-	const normalizedUrl = new URL(
-		url,
-		typeof window === 'undefined' ? 'http://localhost' : window.location.origin
-	).href;
+	const normalizedUrl = new URL(url, appDocumentUrl()).href;
 	if (
 		manifest.version !== version ||
 		(normalizedUrl.startsWith(marketBase) &&

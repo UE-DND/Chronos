@@ -127,4 +127,44 @@ describe('OfficialPluginCatalogClient', () => {
 			'https://external.example/plugin.json'
 		]);
 	});
+
+	it('accepts bundled manifests on custom native origins', async () => {
+		vi.stubGlobal('window', {
+			location: { href: 'capacitor://localhost/', origin: 'capacitor://localhost' }
+		});
+		try {
+			httpRequest.mockResolvedValueOnce(
+				httpResponse({
+					json: async <T>() =>
+						({
+							version: 1,
+							manifests: ['./manifests/rev/theme-m3.manifest.json']
+						}) as T
+				})
+			);
+			const result = await client.fetchCatalog('/official-plugins/catalog.json');
+			expect(result.manifests).toEqual(['/official-plugins/manifests/rev/theme-m3.manifest.json']);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
+	it('rejects non-http manifests from bundled catalogs', async () => {
+		vi.stubGlobal('window', {
+			location: { href: 'capacitor://localhost/', origin: 'capacitor://localhost' }
+		});
+		try {
+			httpRequest.mockResolvedValueOnce(
+				httpResponse({
+					json: async <T>() =>
+						({ version: 1, manifests: ['file:///tmp/plugin.manifest.json'] }) as T
+				})
+			);
+			await expect(client.fetchCatalog('/official-plugins/catalog.json')).rejects.toThrow(
+				/Invalid catalog manifest protocol/
+			);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
 });
