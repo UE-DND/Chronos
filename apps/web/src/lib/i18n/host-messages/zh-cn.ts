@@ -367,6 +367,7 @@ export const zhCn = {
 	'mine.empty.noItems': '暂无设置项',
 	'mine.feedback.section.haptic': '触感反馈',
 	'mine.feedback.haptic.label': '振动反馈',
+	'mine.feedback.haptic.unsupported': '当前浏览器不支持振动反馈。',
 	'mine.feedback.section.motion': '动画',
 	'mine.feedback.motion.label': '减少动画效果',
 	'mine.feedback.section.prepare': '课前提醒',

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { DEFAULT_USER_PREFERENCES, PREPARE_REMINDER_MINUTES_OPTIONS } from '@chronos/core';
 	import { PickerWheel } from '@chronos/ui-kit';
 	import BottomSheet from '#lib/components/ui/BottomSheet.svelte';
@@ -10,9 +10,13 @@
 	import MineSection from '#lib/components/mine/MineSection.svelte';
 	import MineRow from '#lib/components/mine/MineRow.svelte';
 	import { AnimationFill, MobileVibrateFill } from '#lib/icons/index.ts';
-	import { haptic } from '#lib/haptic/haptic.ts';
+	import { haptic, isVibrationSupported } from '#lib/haptic/haptic.ts';
 
 	let { shell }: { shell: AppShellController } = $props();
+	let hapticSupported = $state(false);
+	onMount(() => {
+		hapticSupported = isVibrationSupported();
+	});
 	const hapticFeedbackEnabled = $derived(
 		shell.controller.userPreferences?.hapticFeedbackEnabled ?? true
 	);
@@ -84,12 +88,14 @@
 		<MineRow
 			label
 			title={hostT('mine.feedback.haptic.label')}
+			supporting={hapticSupported ? '' : hostT('mine.feedback.haptic.unsupported')}
 			icon={MobileVibrateFill}
 			iconTone="primary"
 		>
 			{#snippet trailing()}
 				<Switch
-					checked={hapticFeedbackEnabled}
+					checked={hapticSupported && hapticFeedbackEnabled}
+					disabled={!hapticSupported}
 					hapticOnChange={false}
 					onCheckedChange={toggleHapticFeedback}
 				/>

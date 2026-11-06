@@ -379,6 +379,7 @@ export const en = {
 	'mine.empty.noItems': 'No settings yet',
 	'mine.feedback.section.haptic': 'Haptic feedback',
 	'mine.feedback.haptic.label': 'Vibration',
+	'mine.feedback.haptic.unsupported': 'This browser does not support vibration feedback.',
 	'mine.feedback.section.motion': 'Animation',
 	'mine.feedback.motion.label': 'Reduce motion',
 	'mine.feedback.section.prepare': 'Class reminders',
