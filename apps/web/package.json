@@ -14,14 +14,14 @@
 		"@chronos/plugin-theme-m3": "workspace:*",
 		"@chronos/ui-kit": "workspace:*",
 		"@material-symbols-svg/svelte": "^0.15.0",
+		"@vite-pwa/workbox-window": "^8.0.13",
 		"bits-ui": "^2.19.5",
 		"dexie": "^4.4.6",
 		"firebase": "^12.19.0",
 		"gsap": "^3.15.0",
 		"hyperellipse": "^1.0.5",
 		"marked": "^18.1.1",
-		"vite-plugin-functions-mixins": "^0.4.1",
-		"workbox-window": "^7.4.1"
+		"vite-plugin-functions-mixins": "^0.4.1"
 	},
 	"devDependencies": {
 		"@chronos/plugin-theme-yumemita": "workspace:*",
@@ -34,7 +34,9 @@
 		"@tailwindcss/typography": "^0.5.20",
 		"@tailwindcss/vite": "^4.3.3",
 		"@types/node": "^24.19.2",
-		"@vite-pwa/sveltekit": "github:UE-DND/sveltekit#359fc2e9b402a4cd56353b89fbdd1721e78040b7",
+		"@vite-pwa/sveltekit": "^2.0.0",
+		"@vite-pwa/workbox-swkit": "^8.0.13",
+		"magicast": "^0.5.5",
 		"rolldown-license-plugin": "^3.0.14",
 		"smol-toml": "^1.9.1",
 		"svelte": "^5.57.2",

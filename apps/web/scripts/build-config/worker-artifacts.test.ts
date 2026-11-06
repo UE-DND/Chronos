@@ -26,10 +26,15 @@ it('keeps a null preparation lock active in the generated worker', () => {
 	mkdirSync(resolve(output, `_chronos/${host.buildId}`), { recursive: true });
 	writeFileSync(resolve(output, `_chronos/${host.buildId}/shell.html`), '');
 	writeFileSync(resolve(output, '_app/env.js'), '');
-	writeFileSync(resolve(output, 'sw.js'), '');
+	const workboxSource = 'self.addEventListener("fetch", () => {});';
+	writeFileSync(resolve(output, 'sw.js'), workboxSource);
 
 	finalizeWorkerArtifacts(output, host, '');
 
 	const source = readFileSync(resolve(output, `sw-host-gate-${host.buildId}.js`), 'utf8');
 	expect(source).toContain('prepared.until === null || prepared.until > Date.now()');
+	const worker = readFileSync(resolve(output, 'sw.js'), 'utf8');
+	expect(worker).toBe(
+		`importScripts("sw-host-gate-${host.buildId}.js", "sw-class-notifications.js");\n${workboxSource}`
+	);
 });

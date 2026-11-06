@@ -103,7 +103,12 @@ self.addEventListener('fetch', event => {
 });
 `;
 	writeFileSync(resolve(output, `sw-host-gate-${host.buildId}.js`), source);
-	// Force a distinct worker script for configuration-only releases as well.
+	// Load the host gate before Workbox registers its fetch handler.
+	// The build-specific import also distinguishes configuration-only releases.
 	const workerPath = resolve(output, 'sw.js');
-	writeFileSync(workerPath, readFileSync(workerPath, 'utf8') + `\n/* ${host.buildId} */\n`);
+	writeFileSync(
+		workerPath,
+		`importScripts("sw-host-gate-${host.buildId}.js", "sw-class-notifications.js");\n` +
+			readFileSync(workerPath, 'utf8')
+	);
 }

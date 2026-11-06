@@ -17,13 +17,18 @@ describe('mobile assets', () => {
 				'pwa-512.png',
 				'pwa-512-maskable.png',
 				'pwa/screenshot-narrow.png',
+				'sw.js',
+				'sw.js.map',
+				'workbox-1234.js',
+				'workbox-1234.js.map',
+				'manifest.webmanifest',
 				'chronos-icon.svg',
 				'official-plugins/catalog.json'
 			])
 				await writeFile(resolve(output, asset), 'asset');
 			await writeFile(
 				resolve(output, 'index.html'),
-				'<link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="icon" href="/chronos-icon.svg"><main>Chronos</main>'
+				'<link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/chronos-icon.svg"><main>Chronos</main>'
 			);
 			await prepareMobileAssets(output);
 			expect(await readFile(resolve(output, 'index.html'), 'utf8')).toBe(
@@ -39,7 +44,12 @@ describe('mobile assets', () => {
 				'pwa-192-maskable.png',
 				'pwa-512.png',
 				'pwa-512-maskable.png',
-				'pwa/screenshot-narrow.png'
+				'pwa/screenshot-narrow.png',
+				'sw.js',
+				'sw.js.map',
+				'workbox-1234.js',
+				'workbox-1234.js.map',
+				'manifest.webmanifest'
 			]) {
 				await expect(readFile(resolve(output, asset))).rejects.toMatchObject({ code: 'ENOENT' });
 			}

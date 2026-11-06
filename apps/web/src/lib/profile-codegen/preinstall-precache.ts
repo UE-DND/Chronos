@@ -1,4 +1,3 @@
-import type { Plugin } from 'vite';
 import { createHash } from 'node:crypto';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, posix } from 'node:path';
@@ -38,45 +37,15 @@ export function preinstallPrecache(webRoot: string, profile: ChronosProfile, bas
 	return entries;
 }
 
-/** Extend additional entries without replacing SvelteKit's URL normalization transform. */
-export function preinstallPrecachePlugin(
+/** Read generated assets when PWA generation runs, after the client build. */
+export async function* preinstallPrecacheEntries(
 	webRoot: string,
 	profile: ChronosProfile,
 	base = ''
-): Plugin {
-	let api:
-		| {
-				extendManifestEntries: (
-					extend: (
-						entries: Array<string | { url: string; revision?: string | null }>
-					) => Array<string | { url: string; revision?: string | null }>
-				) => void;
-		  }
-		| undefined;
-	return {
-		name: 'chronos-preinstall-precache',
-		configResolved(config) {
-			api = config.plugins.find((plugin) => plugin.name === 'vite-plugin-pwa')?.api;
-		},
-		writeBundle: {
-			order: 'post',
-			sequential: true,
-			handler() {
-				if (this.environment.config.consumer !== 'client') return;
-				if (!api) throw new Error('PWA manifest extension API is unavailable');
-				api.extendManifestEntries((entries) => {
-					const licensePath = join(webRoot, '.svelte-kit/output/client/licenses/third-party.json');
-					if (!existsSync(licensePath)) throw new Error('Missing generated production licenses');
-					const licenseRevision = createHash('sha256')
-						.update(readFileSync(licensePath))
-						.digest('hex');
-					return [
-						{ url: `${base}/licenses/third-party.json`, revision: licenseRevision },
-						...entries,
-						...preinstallPrecache(webRoot, profile, base)
-					];
-				});
-			}
-		}
-	};
+): AsyncGenerator<{ url: string; revision: string }, undefined, void> {
+	const licensePath = join(webRoot, '.svelte-kit/output/client/licenses/third-party.json');
+	if (!existsSync(licensePath)) throw new Error('Missing generated production licenses');
+	const licenseRevision = createHash('sha256').update(readFileSync(licensePath)).digest('hex');
+	yield { url: `${base}/licenses/third-party.json`, revision: licenseRevision };
+	yield* preinstallPrecache(webRoot, profile, base);
 }

@@ -1,6 +1,6 @@
 import { createStorageNamespace } from '../../packages/core/src/constants/storage-namespace.ts';
 import { nativeBuildGuard } from '../../scripts/architecture/native-build-guard.ts';
-import { preinstallPrecachePlugin } from './src/lib/profile-codegen/preinstall-precache';
+import { preinstallPrecacheEntries } from './src/lib/profile-codegen/preinstall-precache';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
@@ -12,8 +12,7 @@ import {
 	getDeployTargetDefinition,
 	createDeployTargetAdapter
 } from './scripts/build-config/deploy-targets.ts';
-import { sveltekit } from '@sveltejs/kit/vite';
-import { SvelteKitPWA } from '@vite-pwa/sveltekit';
+import { withPwa } from '@vite-pwa/sveltekit';
 import { chronosBundleAnalyzer } from './src/lib/profile-codegen/chronos-bundle-analyzer.ts';
 import { materialSymbolsWeightPlugin } from './src/lib/icons/material-symbols-weight-plugin.ts';
 import {
@@ -179,7 +178,6 @@ export default defineConfig(({ mode }) => {
 			chronosLicensePlugin(webRoot),
 			materialSymbolsWeightPlugin(),
 			chronosProfilePlugin(webRoot),
-			preinstallPrecachePlugin(webRoot, resolveProfile(resolveProfileId()), basePath),
 			chronosVersionPlugin(host),
 
 			chronosPluginHmrPlugin({
@@ -189,115 +187,125 @@ export default defineConfig(({ mode }) => {
 			}),
 			functionsMixins(),
 			tailwindcss(),
-			sveltekit({
-				// alias 统一由顶层 resolve.alias 提供，此处不再重复声明
-				compilerOptions: {
-					runes: ({ filename }) =>
-						filename.split(/[/\\]/).includes('node_modules') ? undefined : true
-				},
-				paths: {
-					base: basePath
-				},
-				adapter: createDeployTargetAdapter(targetDef, host.buildId),
-				serviceWorker: { register: false },
-				version: { name: host.buildId, pollInterval: targetDef.isMobile ? 0 : 300_000 },
-				output: { linkHeaderPreload: targetDef.target === 'vercel' }
-			}),
-			SvelteKitPWA({
-				disable: targetDef.disablePwa,
-				registerType: 'prompt',
-				manifest: {
-					name: 'Chronos',
-					short_name: 'Chronos',
-					description: '课程表应用',
-					...(bootColors
-						? { theme_color: bootColors.themeColor, background_color: bootColors.backgroundColor }
-						: {}),
-					display: 'standalone',
-					display_override: ['standalone', 'minimal-ui'],
-					start_url: `${basePath}/`,
-					id: `${basePath}/`,
-					scope: basePath ? `${basePath}/` : '/',
-					launch_handler: {
-						client_mode: 'auto'
+			withPwa(
+				{
+					// alias 统一由顶层 resolve.alias 提供，此处不再重复声明
+					compilerOptions: {
+						runes: ({ filename }) =>
+							filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 					},
-					icons: [
-						{
-							src: `${basePath}/pwa-192.png`,
-							sizes: '192x192',
-							type: 'image/png',
-							purpose: 'any'
-						},
-						{
-							src: `${basePath}/pwa-512.png`,
-							sizes: '512x512',
-							type: 'image/png',
-							purpose: 'any'
-						},
-						{
-							src: `${basePath}/pwa-192-maskable.png`,
-							sizes: '192x192',
-							type: 'image/png',
-							purpose: 'maskable'
-						},
-						{
-							src: `${basePath}/pwa-512-maskable.png`,
-							sizes: '512x512',
-							type: 'image/png',
-							purpose: 'maskable'
-						}
-					],
-					screenshots: [
-						{
-							src: `${basePath}/pwa/screenshot-narrow.png`,
-							sizes: '1080x1920',
-							type: 'image/png',
-							form_factor: 'narrow',
-							label: 'Chronos'
-						},
-						{
-							src: `${basePath}/pwa/screenshot-wide.png`,
-							sizes: '1920x1080',
-							type: 'image/png',
-							form_factor: 'wide',
-							label: 'Chronos'
-						}
-					]
+					paths: {
+						base: basePath
+					},
+					adapter: createDeployTargetAdapter(targetDef, host.buildId),
+					serviceWorker: { register: false },
+					version: { name: host.buildId, pollInterval: targetDef.isMobile ? 0 : 300_000 },
+					output: { linkHeaderPreload: targetDef.target === 'vercel' }
 				},
-				workbox: {
-					clientsClaim: true,
-					// The imported gate pins navigation and environment assets to this host build.
-					importScripts: [`sw-host-gate-${host.buildId}.js`, 'sw-class-notifications.js'],
-					cacheId: storageNamespace.key('precache'),
-					globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}'],
-					globIgnores: ['**/official-plugins/**', '**/plugins/releases/**'],
-					navigateFallback: null,
-					runtimeCaching: [
-						{
-							urlPattern: /\/version\.json$/i,
-							handler: 'NetworkOnly'
-						},
-						{
-							urlPattern: /\/legal\/.*\.md$|\/licenses\/.*$/i,
-							handler: 'CacheFirst',
-							options: {
-								cacheName: storageNamespace.key('legal'),
-								expiration: { maxEntries: 16, maxAgeSeconds: 2_592_000 }
+				{
+					disable: targetDef.disablePwa,
+					registerType: 'prompt',
+					injectRegister: false,
+					additionalManifestEntriesGenerator: () =>
+						preinstallPrecacheEntries(webRoot, resolveProfile(resolveProfileId()), basePath),
+					manifest: targetDef.disablePwa
+						? false
+						: {
+								name: 'Chronos',
+								short_name: 'Chronos',
+								description: '课程表应用',
+								...(bootColors
+									? {
+											theme_color: bootColors.themeColor,
+											background_color: bootColors.backgroundColor
+										}
+									: {}),
+								display: 'standalone',
+								display_override: ['standalone', 'minimal-ui'],
+								start_url: `${basePath}/`,
+								id: `${basePath}/`,
+								scope: basePath ? `${basePath}/` : '/',
+								launch_handler: {
+									client_mode: 'auto'
+								},
+								icons: [
+									{
+										src: `${basePath}/pwa-192.png`,
+										sizes: '192x192',
+										type: 'image/png',
+										purpose: 'any'
+									},
+									{
+										src: `${basePath}/pwa-512.png`,
+										sizes: '512x512',
+										type: 'image/png',
+										purpose: 'any'
+									},
+									{
+										src: `${basePath}/pwa-192-maskable.png`,
+										sizes: '192x192',
+										type: 'image/png',
+										purpose: 'maskable'
+									},
+									{
+										src: `${basePath}/pwa-512-maskable.png`,
+										sizes: '512x512',
+										type: 'image/png',
+										purpose: 'maskable'
+									}
+								],
+								screenshots: [
+									{
+										src: `${basePath}/pwa/screenshot-narrow.png`,
+										sizes: '1080x1920',
+										type: 'image/png',
+										form_factor: 'narrow',
+										label: 'Chronos'
+									},
+									{
+										src: `${basePath}/pwa/screenshot-wide.png`,
+										sizes: '1920x1080',
+										type: 'image/png',
+										form_factor: 'wide',
+										label: 'Chronos'
+									}
+								]
+							},
+					generateSW: {
+						clientsClaim: true,
+						cacheId: storageNamespace.key('precache'),
+						// SPA builds have no prerendered routes; the adapter generates the shell later.
+						globStrict: false,
+						globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}'],
+						globIgnores: ['**/official-plugins/**', '**/plugins/releases/**'],
+						navigateFallback: null,
+						runtimeCaching: [
+							{
+								urlPattern: /\/version\.json$/i,
+								handler: 'NetworkOnly'
+							},
+							{
+								urlPattern: /\/legal\/.*\.md$|\/licenses\/.*$/i,
+								handler: 'CacheFirst',
+								options: {
+									cacheName: storageNamespace.key('legal'),
+									expiration: { maxEntries: 16, maxAgeSeconds: 2_592_000 }
+								}
+							},
+							{
+								urlPattern: /\/manifest\.webmanifest$/i,
+								handler: 'NetworkFirst',
+								options: {
+									cacheName: storageNamespace.key('manifest'),
+									networkTimeoutSeconds: 5,
+									expiration: { maxEntries: 1, maxAgeSeconds: 86_400 }
+								}
 							}
-						},
-						{
-							urlPattern: /\/manifest\.webmanifest$/i,
-							handler: 'NetworkFirst',
-							options: {
-								cacheName: storageNamespace.key('manifest'),
-								networkTimeoutSeconds: 5,
-								expiration: { maxEntries: 1, maxAgeSeconds: 86_400 }
-							}
-						}
-					]
-				},
-				devOptions: { enabled: false }
-			}),
+						]
+					},
+					devOptions: { enabled: false }
+				}
+			),
 			paraglideVitePlugin({
 				project: './project.inlang',
 				cookieName: storageNamespace.localeCookie,
