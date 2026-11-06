@@ -151,7 +151,7 @@ export function createTimetableInteraction(options: TimetableInteractionOptions 
 		notePointerLost: (event: PointerEvent) => longPress.notePointerLost(event),
 		notePointerCancel: (event: PointerEvent) => longPress.notePointerCancel(event),
 		createGridHandlers: (handlerOptions?: GridHandlerOptions) =>
-			createGridHandlers(interactionCore, handlerOptions),
+			createGridHandlers(interactionCore, handlerOptions, thresholdPx),
 		createCourseCardHandlers: (
 			course: import('@chronos/core').Course,
 			handlerOptions?: CourseCardHandlerOptions

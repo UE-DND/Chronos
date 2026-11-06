@@ -6,8 +6,3 @@ export function hasClosest(target: unknown): target is { closest: (selector: str
 		typeof (target as { closest?: unknown }).closest === 'function'
 	);
 }
-
-export function isCourseCapsuleTarget(target: EventTarget | null): boolean {
-	if (!hasClosest(target)) return false;
-	return Boolean(target.closest('.course-capsule'));
-}

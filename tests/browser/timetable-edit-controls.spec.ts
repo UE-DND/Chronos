@@ -25,6 +25,66 @@ const source: Timetable = {
 };
 const payload = await encodeSharePayload(source);
 
+test.describe('touch edit dismissal', () => {
+	test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+
+	for (const target of ['course', 'empty'] as const) {
+		test(`empty tap exits after ${target} long press without a synthesized click`, async ({
+			page,
+			request
+		}) => {
+			await request.post('/__e2e/deploy?build=old');
+			await page.clock.install({ time: new Date('2026-03-02T08:00:00+08:00') });
+			await page.addInitScript(() => {
+				localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1');
+				// Exercise the iOS failure path even when the test browser synthesizes click.
+				document.addEventListener(
+					'click',
+					(event) => {
+						if (
+							event.target instanceof Element &&
+							event.target.closest('.timetable-week-page') &&
+							!event.target.closest('button')
+						) {
+							event.stopImmediatePropagation();
+						}
+					},
+					true
+				);
+			});
+			await page.goto(`/Chronos/s#${payload}`);
+			await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
+			await expect.poll(() => storedCourses(page)).toHaveLength(1);
+			await page.goto('/Chronos/');
+			const week = page.locator('.timetable-week-page').first();
+			const card = week.locator('.course-capsule[aria-label^="验证课程"]');
+			await expect(card).toBeVisible();
+			const empty = week.getByRole('region', { name: '本周课程表', exact: true });
+			const pressTarget = target === 'course' ? card : empty;
+			const box = (await pressTarget.boundingBox())!;
+			const pointer = {
+				pointerType: 'touch',
+				pointerId: 1,
+				isPrimary: true,
+				button: 0,
+				clientX: box.x + box.width * 0.75,
+				clientY: box.y + 30
+			};
+			await pressTarget.dispatchEvent('pointerdown', pointer);
+			await page.clock.runFor(500);
+			await pressTarget.dispatchEvent('pointerup', pointer);
+			const edit = page.getByRole('button', { name: '编辑课表', exact: true });
+			await expect(edit).toBeVisible();
+			const emptyBox = (await empty.boundingBox())!;
+			await empty.tap({ position: { x: emptyBox.width * 0.75, y: 100 } });
+			await expect(edit).toHaveCount(0);
+			await expect(page.locator('.timetable-week-pager-locked')).toHaveCount(0);
+			await card.tap();
+			await expect(page.getByRole('dialog')).toBeVisible();
+		});
+	}
+});
+
 async function storedCourses(page: Page) {
 	return page.evaluate(
 		() =>

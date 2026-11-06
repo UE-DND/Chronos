@@ -52,6 +52,74 @@ function createHarness() {
 }
 
 describe('createGridHandlers', () => {
+	it('exits on the first empty touch tap after a long press even when WebKit emits no click', () => {
+		vi.useFakeTimers();
+		try {
+			const { interaction, handlers, onClickEmpty } = createHarness();
+			const touch = mockPointerEvent({ pointerType: 'touch', clientX: 50, clientY: 50 });
+			handlers.onpointerdown(touch);
+			vi.advanceTimersByTime(400);
+			handlers.onpointerup(touch);
+			expect(interaction.isEditing).toBe(true);
+			expect(onClickEmpty).not.toHaveBeenCalled();
+
+			handlers.onpointerdown(touch);
+			handlers.onpointerup(touch);
+			expect(interaction.isEditing).toBe(false);
+			expect(onClickEmpty).toHaveBeenCalledTimes(1);
+			// Browsers that also synthesize a click must not activate the action twice.
+			handlers.onclick(mockMouseEvent());
+			expect(onClickEmpty).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it.each(['move', 'release-away', 'cancel', 'leave'] as const)(
+		'keeps editing after a touch %s instead of treating it as an empty tap',
+		(action) => {
+			const { interaction, handlers, onClickEmpty } = createHarness();
+			interaction.enterEdit();
+			const touch = mockPointerEvent({ pointerType: 'touch' });
+			const moved = mockPointerEvent({ pointerType: 'touch', clientY: 40 });
+			handlers.onpointerdown(touch);
+			if (action === 'move') handlers.onpointermove(moved);
+			if (action === 'cancel') handlers.onpointercancel(touch);
+			if (action === 'leave') handlers.onpointerleave(touch);
+			handlers.onpointerup(action === 'release-away' ? moved : touch);
+			handlers.onclick(mockMouseEvent({ detail: 1 }));
+			expect(interaction.isEditing).toBe(true);
+			expect(onClickEmpty).not.toHaveBeenCalled();
+		}
+	);
+
+	it('only lets the primary touch that started an empty tap finish it', () => {
+		const { interaction, handlers, onClickEmpty } = createHarness();
+		interaction.enterEdit();
+		const primary = mockPointerEvent({ pointerType: 'touch' });
+		const secondary = mockPointerEvent({ pointerType: 'touch', pointerId: 2, isPrimary: false });
+		handlers.onpointerdown(primary);
+		handlers.onpointerdown(secondary);
+		handlers.onpointerup(secondary);
+		expect(interaction.isEditing).toBe(true);
+		handlers.onpointerup(primary);
+		expect(interaction.isEditing).toBe(false);
+		expect(onClickEmpty).toHaveBeenCalledTimes(1);
+	});
+
+	it.each(['button', '.course-capsule'])('does not exit on a touch tap inside %s', (selector) => {
+		const { interaction, handlers, onClickEmpty } = createHarness();
+		interaction.enterEdit();
+		const touch = mockPointerEvent({
+			pointerType: 'touch',
+			target: createMockElement(selector) as unknown as EventTarget
+		});
+		handlers.onpointerdown(touch);
+		handlers.onpointerup(touch);
+		expect(interaction.isEditing).toBe(true);
+		expect(onClickEmpty).not.toHaveBeenCalled();
+	});
+
 	it('triggers enterEditFromLongPress after delay and suppresses subsequent click', () => {
 		vi.useFakeTimers();
 		try {
