@@ -35,17 +35,17 @@
 		);
 	}
 
-	function scrollToIndex(index: number, smooth: boolean) {
+	function scrollToIndex(index: number) {
 		wheelNode?.scrollTo({
 			top: index * ROW_HEIGHT,
-			behavior: (smooth ? 'smooth' : 'instant') as ScrollBehavior
+			behavior: 'instant'
 		});
 	}
 
 	export function scrollToValue() {
 		suppressTickUntil = Date.now() + 150;
 		liveIndex = selectedIndex();
-		scrollToIndex(liveIndex, false);
+		scrollToIndex(liveIndex);
 	}
 
 	$effect(() => {
@@ -103,7 +103,7 @@
 		const clamped = Math.min(Math.max(index, 0), Math.max(0, options.length - 1));
 		liveIndex = clamped;
 		updateValue(clamped);
-		scrollToIndex(clamped, true);
+		scrollToIndex(clamped);
 	}
 
 	function handleKeydown(event: KeyboardEvent) {

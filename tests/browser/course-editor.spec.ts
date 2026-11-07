@@ -77,5 +77,43 @@ for (const width of [430, 1280]) {
 			await expect(page.getByText('未找到课程', { exact: true })).toBeVisible();
 			await expect(page.getByRole('button', { name: '保存', exact: true })).toHaveCount(0);
 		});
+
+		test('commits clicked and keyboard wheel choices before scrolling settles', async ({
+			page,
+			request
+		}) => {
+			await request.post('/__e2e/deploy?build=old');
+			await page.addInitScript(() =>
+				localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+			);
+			await page.goto(`/Chronos/s#${payload}`);
+			await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
+			await expect(page.locator('.timetable-week-pager')).toBeVisible();
+			await page.goto('/Chronos/timetable/course-editor');
+			const weekdayButtons = page.getByRole('button', { name: /^星期/ });
+
+			for (const activation of ['click', 'keyboard'] as const) {
+				await weekdayButtons.first().click();
+				const wheel = page.getByRole('listbox', { name: '星期', exact: true });
+				await expect(wheel).toBeVisible();
+				// Confirm in the same task so a pending smooth scroll cannot hide the regression.
+				await wheel.evaluate((node, activation) => {
+					if (activation === 'click') {
+						node.querySelectorAll<HTMLElement>('[role="option"]')[2]!.click();
+					} else {
+						node.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+					}
+					const dialog = node.closest('[role="dialog"]')!;
+					const confirm = Array.from(dialog.querySelectorAll('button')).find(
+						(button) => button.textContent?.trim() === '确定'
+					)!;
+					confirm.click();
+				}, activation);
+				await expect(page.getByRole('dialog')).toHaveCount(0);
+				await expect(weekdayButtons.nth(1)).toHaveText(
+					activation === 'click' ? '星期三' : '星期日'
+				);
+			}
+		});
 	});
 }
