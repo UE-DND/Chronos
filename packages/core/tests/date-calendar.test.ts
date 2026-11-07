@@ -64,8 +64,42 @@ describe('Date & AcademicCalendar in @chronos/core', () => {
 		expect(currentWeekMonday('2026-03-04')).toBe('2026-03-02');
 	});
 
+	it.each([
+		'2026-02-29',
+		'2026-02-30',
+		'2026-04-31',
+		'2026-00-10',
+		'2026-13-01',
+		'2026-03-00',
+		'0100-02-29'
+	])('rejects nonexistent calendar date %s instead of rolling it into another date', (value) => {
+		const fallback = parseIsoDate('2026-09-07');
+		expect(() => parseIsoDate(value)).toThrow('Invalid ISO date');
+		expect(safeParseIsoDate(value, fallback)).toBe(fallback);
+	});
+
+	it('accepts leap days and surrounding whitespace', () => {
+		expect(formatIsoDate(parseIsoDate(' 2024-02-29 '))).toBe('2024-02-29');
+	});
+
+	it.each(['0000-02-29', '0099-12-31', '0100-01-01', '9999-12-31'])(
+		'preserves all four digits of the year in %s',
+		(value) => {
+			expect(formatIsoDate(parseIsoDate(value))).toBe(value);
+		}
+	);
+
+	it('keeps UTC date arithmetic valid across year boundaries', () => {
+		expect(formatIsoDate(addDays(parseIsoDate('2026-12-31'), 1))).toBe('2027-01-01');
+		expect(formatIsoDate(addDays(parseIsoDate('0099-12-31'), 1))).toBe('0100-01-01');
+	});
+
 	describe('AcademicCalendarService', () => {
 		const calendarService = new AcademicCalendarService();
+
+		it('uses the reference week for an impossible imported term start date', () => {
+			expect(calendarService.normalizeTermStartDate('2026-02-30', '2026-09-09')).toBe('2026-09-07');
+		});
 
 		it('infers term start date from term name', () => {
 			const term1 = calendarService.inferTermStartDateFromTermName('2025-2026-1');

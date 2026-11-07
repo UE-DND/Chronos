@@ -1,16 +1,18 @@
 export function parseIsoDate(value: string): Date {
 	const trimmed = value.trim();
-	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
-	if (!match) {
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
 		throw new Error(`Invalid ISO date: ${value}`);
 	}
-	const [, year, month, day] = match;
-	return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 12));
+	const parsed = new Date(`${trimmed}T12:00:00.000Z`);
+	if (formatIsoDate(parsed) !== trimmed) {
+		throw new Error(`Invalid ISO date: ${value}`);
+	}
+	return parsed;
 }
 
 /** Formats a UTC calendar date produced by {@link parseIsoDate} and UTC date arithmetic. */
 export function formatIsoDate(date: Date): string {
-	const year = date.getUTCFullYear();
+	const year = String(date.getUTCFullYear()).padStart(4, '0');
 	const month = String(date.getUTCMonth() + 1).padStart(2, '0');
 	const day = String(date.getUTCDate()).padStart(2, '0');
 	return `${year}-${month}-${day}`;
