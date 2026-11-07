@@ -208,4 +208,35 @@ describe('route motion lifecycle', () => {
 		shell.animations[0].finish();
 		expect(await pending).toBe(true);
 	});
+
+	it('does not let canceled preparation clear the replacement entrance', async () => {
+		vi.stubGlobal('requestAnimationFrame', (callback: () => void) => setTimeout(callback, 16));
+		vi.stubGlobal('cancelAnimationFrame', clearTimeout);
+		const secondary = createElement();
+		const motion = createRouteMotionController(() => ({ secondaryRoot: secondary.element }));
+		const first = motion.animateForwardEnter();
+		const replacement = motion.animateForwardEnter();
+		expect(await first).toBe(false);
+		expect(secondary.element.style.transform).toBe('translateX(100%)');
+		expect(secondary.element.inert).toBe(true);
+		motion.cancelMotion();
+		expect(await replacement).toBe(false);
+		expect(secondary.element.style.transform).toBe('');
+	});
+
+	it('cleans up partially created animations when an element cannot animate', async () => {
+		const secondary = createElement();
+		const shell = createElement();
+		shell.animate.mockImplementationOnce(() => {
+			throw new Error('animation unavailable');
+		});
+		const motion = createRouteMotionController(() => ({
+			secondaryRoot: secondary.element,
+			shellRoot: shell.element
+		}));
+		expect(await motion.animateBackExit()).toBe(false);
+		expect(secondary.animations[0].cancel).toHaveBeenCalledOnce();
+		expect(secondary.element.style.willChange).toBe('');
+		expect(shell.element.style.willChange).toBe('');
+	});
 });

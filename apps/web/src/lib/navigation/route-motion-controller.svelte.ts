@@ -100,14 +100,12 @@ export function createRouteMotionController(
 				pendingCleanup = cancelPreparation;
 			});
 
+			if (!prepared || generation !== activeGeneration) return false;
+
 			if (forward) {
 				secondaryRoot.inert = false;
 				secondaryRoot.style.opacity = '';
 				secondaryRoot.style.transform = '';
-			}
-
-			if (!prepared || generation !== activeGeneration) {
-				return false;
 			}
 		}
 
@@ -121,35 +119,42 @@ export function createRouteMotionController(
 					{ transform: 'translateX(0)', opacity: 1 },
 					{ transform: 'translateX(100%)', opacity: 0.95 }
 				];
-		activeAnimations.push(
-			secondaryRoot.animate(secondaryFrames, {
-				duration,
-				easing: forward ? 'cubic-bezier(0.05, 0.7, 0.1, 1)' : 'cubic-bezier(0.3, 0, 0.8, 0.15)',
-				fill: 'both'
-			})
-		);
-		if (animateShell && shellRoot) {
-			const shellFrames = [
-				{ transform: 'translateX(0)', opacity: 1 },
-				{ transform: 'translateX(-25%)', opacity: 0.55 }
-			];
+		try {
 			activeAnimations.push(
-				shellRoot.animate(forward ? shellFrames : shellFrames.toReversed(), {
+				secondaryRoot.animate(secondaryFrames, {
 					duration,
-					easing: 'cubic-bezier(0.05, 0.7, 0.1, 1)',
+					easing: forward ? 'cubic-bezier(0.05, 0.7, 0.1, 1)' : 'cubic-bezier(0.3, 0, 0.8, 0.15)',
 					fill: 'both'
 				})
 			);
-		}
+			if (animateShell && shellRoot) {
+				const shellFrames = [
+					{ transform: 'translateX(0)', opacity: 1 },
+					{ transform: 'translateX(-25%)', opacity: 0.55 }
+				];
+				activeAnimations.push(
+					shellRoot.animate(forward ? shellFrames : shellFrames.toReversed(), {
+						duration,
+						easing: 'cubic-bezier(0.05, 0.7, 0.1, 1)',
+						fill: 'both'
+					})
+				);
+			}
 
-		// Register rejection handlers before onStart can trigger cancellation.
-		const finished = Promise.all(activeAnimations.map((animation) => animation.finished)).then(
-			() => generation === activeGeneration,
-			() => false
-		);
-		onStart?.();
-		// Keep the final frame until the router commits and releases the motion.
-		return finished;
+			// Register rejection handlers before onStart can trigger cancellation.
+			const finished = Promise.all(activeAnimations.map((animation) => animation.finished)).then(
+				() => generation === activeGeneration,
+				() => false
+			);
+			onStart?.();
+			// Keep the final frame until the router commits and releases the motion.
+			return finished;
+		} catch {
+			// A later element may fail after earlier animations have already started.
+			for (const animation of activeAnimations) void animation.finished.catch(() => {});
+			cancelMotion();
+			return false;
+		}
 	}
 
 	return {
