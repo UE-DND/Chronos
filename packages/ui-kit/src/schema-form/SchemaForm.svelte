@@ -83,7 +83,11 @@
 					required={field.required}
 					{disabled}
 					value={resolvedValue[key] as number}
-					oninput={(e) => updateField(key, Number(e.currentTarget.value))}
+					oninput={(e) =>
+						updateField(
+							key,
+							e.currentTarget.value === '' ? undefined : Number(e.currentTarget.value)
+						)}
 				/>
 			{:else if field.type === 'boolean'}
 				<Checkbox
@@ -121,7 +125,7 @@
 					}))}
 					{disabled}
 					value={resolvedValue[key] as string | number}
-					onchange={(e) => updateField(key, e.currentTarget.value)}
+					onValueChange={(nextValue) => updateField(key, nextValue)}
 				/>
 			{:else if field.type === 'file'}
 				<FileField

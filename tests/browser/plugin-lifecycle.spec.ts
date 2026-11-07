@@ -91,6 +91,175 @@ test.beforeEach(async ({ page, request, context }) => {
 	});
 });
 
+test('plugin settings preserve numeric and string option values and reject empty required numbers', async ({
+	page,
+	context
+}) => {
+	const id = 'schema-form-regression';
+	const name = 'Schema Regression';
+	const defaultConfig = { amount: 5, selection: 1, mixedSelection: 1, stringSelection: 'first' };
+	const bundle = `export default { id: '${id}', name: () => '${name}', version: '1.0.0', defaultConfig: ${JSON.stringify(defaultConfig)}, apply() {} };`;
+	const configSchema = {
+		amount: { type: 'number', title: 'Amount', required: true, default: 5 },
+		selection: {
+			type: 'select',
+			title: 'Numeric selection',
+			required: true,
+			default: 1,
+			options: [
+				{ label: 'One', value: 1 },
+				{ label: 'Two', value: 2 }
+			]
+		},
+		mixedSelection: {
+			type: 'select',
+			title: 'Mixed selection',
+			required: true,
+			default: 1,
+			options: [
+				{ label: 'Number one', value: 1 },
+				{ label: 'String one', value: '1' }
+			]
+		},
+		stringSelection: {
+			type: 'select',
+			title: 'String selection',
+			default: 'first',
+			options: [
+				{ label: 'First', value: 'first' },
+				{ label: 'Second', value: 'second' }
+			]
+		}
+	};
+	await context.route('https://schema.example/**', async (route) => {
+		const manifest = new URL(route.request().url()).pathname.endsWith('manifest.json');
+		await route.fulfill({
+			contentType: manifest ? 'application/json' : 'text/javascript',
+			body: manifest
+				? JSON.stringify({
+						id,
+						name: { en: name, 'zh-CN': name },
+						description: { en: 'Schema form regression' },
+						author: 'Browser test',
+						version: '1.0.0',
+						type: 'tool',
+						toolGroup: 'dev',
+						bundleFormat: 'esm',
+						bundleUrl: './bundle.js',
+						sha256: createHash('sha256').update(bundle).digest('hex'),
+						configSchema
+					})
+				: bundle
+		});
+	});
+	await page.goto('/Chronos/plugins');
+	await page.getByRole('tab', { name: '插件市场', exact: true }).click();
+	await page.getByRole('button', { name: '从链接安装', exact: true }).click();
+	await page
+		.getByPlaceholder('https://example.com/plugin.manifest.json')
+		.fill('https://schema.example/manifest.json');
+	await page.getByRole('button', { name: '确认安装', exact: true }).click();
+	await expect
+		.poll(async () =>
+			(await installation(page)).records.some((record) => record.manifest.id === id)
+		)
+		.toBe(true);
+	await page.getByRole('tab', { name: /^已安装/ }).click();
+	const settings = pluginRow(page, name).getByRole('button', { name: '设置', exact: true });
+	const dialog = page.getByRole('dialog');
+	const save = dialog.getByRole('button', { name: '保存设置', exact: true });
+	const amount = dialog.getByRole('spinbutton', { name: 'Amount' });
+	const selection = dialog.getByRole('combobox', { name: 'Numeric selection' });
+	const mixedSelection = dialog.getByRole('combobox', { name: 'Mixed selection' });
+	const stringSelection = dialog.getByRole('combobox', { name: 'String selection' });
+	await page.evaluate(
+		() =>
+			new Promise<void>((resolve, reject) => {
+				const request = indexedDB.open('chronos:/Chronos:db');
+				request.onerror = () => reject(request.error);
+				request.onsuccess = () => {
+					const database = request.result;
+					const transaction = database.transaction('pluginData', 'readwrite');
+					let released = false;
+					Object.assign(window, { releaseConfigRead: () => (released = true) });
+					transaction.oncomplete = () => database.close();
+					transaction.onerror = () => reject(transaction.error);
+					const keepAlive = () => {
+						const read = transaction.objectStore('pluginData').get('config-read-lock');
+						read.onsuccess = () => {
+							resolve();
+							if (!released) keepAlive();
+						};
+					};
+					keepAlive();
+				};
+			})
+	);
+	try {
+		await settings.click();
+		await expect(amount).toBeDisabled();
+		await expect(save).toBeDisabled();
+	} finally {
+		await page.evaluate(() =>
+			(window as unknown as { releaseConfigRead(): void }).releaseConfigRead()
+		);
+	}
+	await expect(amount).toBeEnabled();
+	await expect(amount).toHaveValue('5');
+	await amount.fill('');
+	await expect(amount).toHaveValue('');
+	await expect(save).toBeDisabled();
+
+	await amount.fill('0');
+	await selection.selectOption({ label: 'Two' });
+	await mixedSelection.selectOption({ label: 'String one' });
+	await stringSelection.selectOption({ label: 'Second' });
+	await save.click();
+	await expect(dialog).toBeHidden();
+	const saved = await page.evaluate(async (pluginId) => {
+		const database = await new Promise<IDBDatabase>((resolve, reject) => {
+			const request = indexedDB.open('chronos:/Chronos:db');
+			request.onsuccess = () => resolve(request.result);
+			request.onerror = () => reject(request.error);
+		});
+		try {
+			return await new Promise<Record<string, unknown>>((resolve, reject) => {
+				const request = database
+					.transaction('pluginData')
+					.objectStore('pluginData')
+					.get(`${pluginId}:__config__`);
+				request.onsuccess = () => resolve(JSON.parse(request.result.valueJson));
+				request.onerror = () => reject(request.error);
+			});
+		} finally {
+			database.close();
+		}
+	}, id);
+	expect(saved).toEqual({
+		amount: 0,
+		selection: 2,
+		mixedSelection: '1',
+		stringSelection: 'second'
+	});
+	await page.reload();
+	await settings.click();
+	await expect(amount).toHaveValue('0');
+	await expect(selection.locator('option:checked')).toHaveText('Two');
+	await expect(mixedSelection.locator('option:checked')).toHaveText('String one');
+	await expect(stringSelection.locator('option:checked')).toHaveText('Second');
+
+	await mixedSelection.selectOption({ label: 'Number one' });
+	for (const value of ['-2', '1.5']) {
+		await amount.fill(value);
+		await expect(save).toBeEnabled();
+		await save.click();
+		await expect(dialog).toBeHidden();
+		await settings.click();
+		await expect(amount).toHaveValue(value);
+		await expect(mixedSelection.locator('option:checked')).toHaveText('Number one');
+	}
+});
+
 for (const stage of ['catalog', 'manifest']) {
 	test(`uninstall during host-sync ${stage} does not resurrect the plugin`, async ({
 		page,

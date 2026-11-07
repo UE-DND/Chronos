@@ -12,7 +12,7 @@
 		disabled?: boolean;
 		required?: boolean;
 		description?: string;
-		onchange?: (e: Event & { currentTarget: HTMLSelectElement }) => void;
+		onValueChange?: (value: string | number | undefined) => void;
 	}
 
 	let {
@@ -23,7 +23,7 @@
 		disabled = false,
 		required = false,
 		description = '',
-		onchange
+		onValueChange
 	}: Props = $props();
 
 	const instanceId = $props.id();
@@ -42,11 +42,13 @@
 		id={inputId}
 		{disabled}
 		{required}
-		value={value ?? options[0]?.value ?? ''}
-		onchange={(e) => {
-			value = e.currentTarget.value;
-			onchange?.(e);
-		}}
+		bind:value={
+			() => value ?? options[0]?.value ?? '',
+			(nextValue) => {
+				value = nextValue;
+				onValueChange?.(nextValue);
+			}
+		}
 		class="ui-form-field-input"
 	>
 		{#each options as opt (opt.value)}
