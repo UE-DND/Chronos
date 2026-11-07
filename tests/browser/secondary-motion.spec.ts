@@ -115,3 +115,69 @@ test.describe('native reduced motion', () => {
 		expect(await page.evaluate(() => window.__routeMotion.animations.length)).toBe(0);
 	});
 });
+
+async function openSnapshotMine(page: Page, request: APIRequestContext) {
+	await request.post('/__e2e/deploy?build=old');
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
+	await page.goto('/Chronos/');
+	await page.getByRole('tab', { name: '我的', exact: true }).click();
+}
+
+test('a paused snapshot entry is canceled by back without stale classes or a frozen shell', async ({
+	page,
+	request
+}) => {
+	await openSnapshotMine(page, request);
+	await page.addStyleTag({
+		content:
+			':root.nav-forward::view-transition-old(*), :root.nav-forward::view-transition-new(*) { animation-play-state: paused !important; }'
+	});
+	await page.getByText('显示设置', { exact: true }).click();
+	await expect(page.locator('html')).toHaveClass(/nav-forward/);
+	await expect
+		.poll(() =>
+			page.evaluate(
+				() =>
+					document.getAnimations().filter((animation) => animation.playState === 'paused').length
+			)
+		)
+		.toBeGreaterThan(0);
+	await expect(page.locator('.shell-content')).toHaveCSS('content-visibility', 'visible');
+	await page.evaluate(() => {
+		(document.querySelector('.secondary-page button[aria-label="返回"]') as HTMLElement).click();
+	});
+	await expect(page.locator('.secondary-page')).toHaveCount(0);
+	await expect(page.locator('html')).not.toHaveClass(/nav-forward|nav-back|vt-cross-shell/);
+	await expect(page.locator('.shell-content')).toHaveCSS('content-visibility', 'visible');
+	await expect(page.locator('.shell-root')).not.toHaveAttribute('inert', '');
+	await expect(page.getByRole('tab', { name: '我的', exact: true })).toHaveAttribute(
+		'aria-selected',
+		'true'
+	);
+});
+
+test('a failed destination snapshot settles on the committed page and still allows returning', async ({
+	page,
+	request
+}) => {
+	await openSnapshotMine(page, request);
+	// The destination now has two elements with the same snapshot name.
+	await page.addStyleTag({
+		content: '.shell-root { view-transition-name: page-root !important; }'
+	});
+	await page.getByText('显示设置', { exact: true }).click();
+	await expect(page.locator('.secondary-page')).toBeVisible();
+	await expect(page.locator('html')).not.toHaveClass(/nav-forward|nav-back|vt-cross-shell/);
+	await expect(page.locator('.shell-content')).toHaveCSS('content-visibility', 'hidden');
+	await expect(page.locator('.shell-root')).toHaveAttribute('inert', '');
+	await page
+		.locator('.secondary-page')
+		.getByRole('button', { name: '返回', exact: true })
+		.first()
+		.click();
+	await expect(page.locator('.secondary-page')).toHaveCount(0);
+	await expect(page.locator('html')).not.toHaveClass(/nav-forward|nav-back|vt-cross-shell/);
+	await expect(page.locator('.shell-content')).toHaveCSS('content-visibility', 'visible');
+});

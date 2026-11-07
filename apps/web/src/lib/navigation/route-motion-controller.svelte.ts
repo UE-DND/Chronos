@@ -167,4 +167,3 @@ export function createRouteMotionController(
 }
 
 export type RouteMotionController = ReturnType<typeof createRouteMotionController>;
-export const routeMotionController = createRouteMotionController();

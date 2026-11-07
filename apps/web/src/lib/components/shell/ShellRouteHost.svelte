@@ -23,7 +23,7 @@
 	import EdgeBarActionButtons from '#lib/components/ui/EdgeBarActionButtons.svelte';
 	import { getAppController } from '#lib/services/app-engine.ts';
 	import { isShellRoute } from '#lib/navigation/routes.ts';
-	import { secondaryTransitionGate } from '#lib/navigation/index.ts';
+	import { getNavigationPresentation } from '#lib/navigation/index.ts';
 
 	const shell = getContext<AppShellController>('appShell');
 	const shellTab = getContext<ShellTabController>('shellTab');
@@ -31,7 +31,7 @@
 	const controller = getAppController();
 	const edgeActions = createEdgeBarActions();
 	setEdgeBarActions(edgeActions);
-	const gate = secondaryTransitionGate;
+	const presentation = getNavigationPresentation();
 	const compactLandscape = new MediaQuery('(orientation: landscape) and (max-height: 500px)');
 	const activeTab = $derived(
 		controller.getSlots('shell.bottom-bar.tab').find((tab) => tab.id === shellTab.activeTabId)
@@ -79,8 +79,8 @@
 	$effect(() => {
 		if (appStartup.state.core !== 'ready') return;
 		const pathname = page.url.pathname;
+		presentation.syncRoute(pathname);
 		if (isShellRoute(pathname)) {
-			gate.syncRoute(pathname);
 			if (ready) shellTab.init();
 			if (ready && !markedVisible && typeof performance !== 'undefined') {
 				markedVisible = true;
@@ -89,15 +89,11 @@
 			return;
 		}
 
-		if (gate.shellHostEnabled) {
-			if (!gate.transitioning) gate.syncRoute(pathname);
-			return;
-		}
+		if (presentation.state.shellHostEnabled) return;
 
 		return scheduleIdle(() => {
-			gate.enableShellHost();
+			presentation.enableShellHost();
 			if (ready) shellTab.init();
-			if (!gate.transitioning) gate.syncRoute(pathname);
 		});
 	});
 
@@ -111,7 +107,7 @@
 	}
 </script>
 
-{#if browser && gate.shellHostEnabled}
+{#if browser && presentation.state.shellHostEnabled}
 	<div class="shell-page min-h-dvh bg-canvas text-ink">
 		<div class="relative h-[calc(100dvh-var(--bottom-bar-height))]">
 			{#if wallpaperUri}
@@ -122,11 +118,15 @@
 				/>
 			{/if}
 
-			<div class={['shell-content h-full', gate.skipPaint && 'is-frozen']}>
-				<ShellTabPanels {ready} frozen={gate.frozen} />
+			<div class={['shell-content h-full', presentation.state.skipPaint && 'is-frozen']}>
+				<ShellTabPanels {ready} frozen={presentation.state.frozen} />
 			</div>
 		</div>
-		<div class="shell-tab-bar" class:hidden={gate.skipPaint} inert={gate.frozen}>
+		<div
+			class="shell-tab-bar"
+			class:hidden={presentation.state.skipPaint}
+			inert={presentation.state.frozen}
+		>
 			<AdaptiveEdgeBar kind="shell" alert={dropActive}>
 				{#snippet top()}
 					{#if activeTab?.hostPanel === 'timetable' && timetableScreen.state.currentTimetable}
@@ -147,7 +147,7 @@
 									controller,
 									pluginId: activePluginId,
 									viewId: 'index',
-									active: !gate.frozen
+									active: !presentation.state.frozen
 								}}
 								class="w-full"
 							/>

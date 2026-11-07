@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { appRouteHref } from '#lib/navigation/routes.ts';
-	import { beforeNavigate, afterNavigate, goto } from '$app/navigation';
-	import { onMount, untrack } from 'svelte';
+	import { beforeNavigate, afterNavigate, onNavigate, goto } from '$app/navigation';
+	import { onMount, onDestroy, untrack } from 'svelte';
 	import type { Component } from 'svelte';
 	import { createAppShell } from '#lib/app/app-shell.svelte.ts';
 	import { getTimetableScreen } from '#lib/timetable/timetable-screen.svelte.ts';
@@ -14,9 +14,8 @@
 	import { getAppController, getAppEngine } from '#lib/services/app-engine.ts';
 	import { onboardingController } from '#lib/client/onboarding.svelte.ts';
 	import {
-		updateTransitionDirection,
-		setupSecondaryPageViewTransition,
-		secondaryTransitionGate,
+		createNavigationPresentation,
+		setNavigationPresentation,
 		configureNavigationCoordinator,
 		stageShellTabDeparture,
 		isShellRoute,
@@ -40,7 +39,9 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import { pwaInfo } from 'virtual:pwa-info';
 
-	setupSecondaryPageViewTransition();
+	const presentation = setNavigationPresentation(createNavigationPresentation(page.url.pathname));
+	onNavigate(presentation.handleNavigation);
+	onDestroy(presentation.dispose);
 
 	$effect(() => {
 		if (updated.current && getHostPlatform().getUpdateAction?.().mode === 'service-worker')
@@ -48,7 +49,6 @@
 	});
 
 	const webManifestLink = $derived(pwaInfo ? pwaInfo.webManifest.linkTag : '');
-	const gate = secondaryTransitionGate;
 
 	let { children } = $props();
 
@@ -76,8 +76,7 @@
 	beforeNavigate((navigation) => {
 		if (navigation.shallow && navigation.type === 'goto') return;
 
-		const { from, to, type } = navigation;
-		const delta = type === 'popstate' ? navigation.delta : undefined;
+		const { from, to } = navigation;
 		const traversal = getPendingTraversal();
 		const fromPath = traversal?.from ?? from?.url.pathname;
 		const toPath = to?.url.pathname;
@@ -87,12 +86,6 @@
 			stageShellTabDeparture(shellTab.activeTabId);
 		}
 
-		updateTransitionDirection(
-			fromPath,
-			toPath,
-			traversal ? 'popstate' : type,
-			traversal?.delta ?? delta
-		);
 		onBeforeNavigate(navigation);
 	});
 
@@ -134,7 +127,7 @@
 	setContext('shellTab', shellTab);
 	setContext(
 		PREVIEW_PAINT_READY_CONTEXT,
-		toStore(() => gate.previewPaintReady)
+		toStore(() => presentation.state.previewPaintReady)
 	);
 	setContext(
 		TIMETABLE_PRESENTATION_CONTEXT,
@@ -182,11 +175,11 @@
 	<div
 		class={[
 			'shell-root col-start-1 row-start-1 h-dvh w-full bg-canvas text-ink',
-			gate.isReceded && 'is-receded'
+			presentation.state.receded && 'is-receded'
 		]}
 		class:invisible={blockShell}
-		class:pointer-events-none={blockShell || gate.frozen}
-		inert={gate.frozen}
+		class:pointer-events-none={blockShell || presentation.state.frozen}
+		inert={presentation.state.frozen}
 	>
 		<ShellRouteHost />
 	</div>
