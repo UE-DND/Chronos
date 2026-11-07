@@ -55,6 +55,7 @@ export function createCourseEditor(
 ) {
 	let draft = $state<CourseDraft | null>(null);
 	let syncedCourseKey = $state<string | null>(null);
+	let syncedTimetableId = $state<string | null>(null);
 	let isSaving = $state(false);
 	let isDeleting = $state(false);
 	let newCourseId = '';
@@ -79,6 +80,7 @@ export function createCourseEditor(
 	});
 	const canSave = $derived(
 		Boolean(candidate && draft?.name.trim() && draft.remark.length <= COURSE_REMARK_MAX_LENGTH) &&
+			timetable?.id === syncedTimetableId &&
 			!isSaving &&
 			!isDeleting
 	);
@@ -88,12 +90,22 @@ export function createCourseEditor(
 		const currentTimetable = shell.controller.currentTimetable;
 		if (courseId && !currentTimetable) {
 			syncedCourseKey = null;
+			syncedTimetableId = null;
 			draft = null;
 			return;
 		}
 		const key = courseId ?? '__new__';
-		if (syncedCourseKey === key) return;
+		const timetableId = currentTimetable?.id ?? null;
+		if (
+			syncedCourseKey === key &&
+			(syncedTimetableId === timetableId || (!courseId && syncedTimetableId === null))
+		) {
+			// Preserve a new draft made before the first timetable finishes loading.
+			syncedTimetableId = timetableId;
+			return;
+		}
 		syncedCourseKey = key;
+		syncedTimetableId = timetableId;
 		if (!courseId) {
 			newCourseId = createCourseId();
 			draft = emptyDraft();
@@ -104,7 +116,14 @@ export function createCourseEditor(
 	}
 
 	async function save() {
-		if (!timetable || !draft || !candidate || !canSave) return;
+		if (
+			!timetable ||
+			!draft ||
+			!candidate ||
+			!canSave ||
+			shell.controller.currentTimetable?.id !== syncedTimetableId
+		)
+			return;
 		const course = candidate;
 		const courseIndex = timetable.courses.findIndex((entry) => entry.id === course.id);
 		const courses = [...timetable.courses];
@@ -130,7 +149,13 @@ export function createCourseEditor(
 	}
 
 	async function deleteCourse() {
-		if (!draft?.id || isSaving || isDeleting) return;
+		if (
+			!draft?.id ||
+			isSaving ||
+			isDeleting ||
+			shell.controller.currentTimetable?.id !== syncedTimetableId
+		)
+			return;
 		isDeleting = true;
 		try {
 			await controller.deleteCourse(draft.id);

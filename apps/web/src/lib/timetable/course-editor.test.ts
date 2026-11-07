@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { createTimetable, type Timetable } from '@chronos/core';
+import { createCourse, createTimetable, type Timetable } from '@chronos/core';
 import { createCourseEditor } from './course-editor.svelte';
 import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
 
@@ -117,12 +117,109 @@ describe('createCourseEditor', () => {
 		const shell = shellWith(null);
 		const editor = createCourseEditor(shell, () => null, vi.fn());
 		editor.syncFromRoute();
-		editor.draft!.name = '新课程';
+		Object.assign(editor.draft!, {
+			name: '新课程',
+			dayOfWeek: 1,
+			startPeriod: 1,
+			endPeriod: 2
+		});
 		shell.controller.currentTimetable = timetable();
 		shell.state.initialized = true;
 		editor.syncFromRoute();
 		expect(editor.draft?.name).toBe('新课程');
+		expect(editor.canSave).toBe(true);
 	});
+
+	it('clears the existing course draft when another timetable becomes active', async () => {
+		const existing = createCourse({
+			id: 'course-a',
+			name: '课表 A 的课程',
+			dayOfWeek: 1,
+			startPeriod: 1,
+			endPeriod: 2
+		});
+		const shell = shellWith(timetable({ courses: [existing] }));
+		const onDone = vi.fn();
+		const editor = createCourseEditor(shell, () => existing.id, onDone);
+		editor.syncFromRoute();
+		editor.draft!.name = '未保存的修改';
+		shell.controller.currentTimetable = timetable({ id: 'timetable-b' });
+		editor.syncFromRoute();
+
+		expect(editor.draft).toBeNull();
+		expect(editor.canSave).toBe(false);
+		await editor.save();
+		await editor.deleteCourse();
+		expect(mocks.updateTimetableDetails).not.toHaveBeenCalled();
+		expect(mocks.deleteCourse).not.toHaveBeenCalled();
+		expect(onDone).not.toHaveBeenCalled();
+	});
+
+	it('starts a fresh new-course draft after switching timetables', () => {
+		const shell = shellWith(timetable());
+		const editor = createCourseEditor(shell, () => null, vi.fn());
+		editor.syncFromRoute();
+		Object.assign(editor.draft!, {
+			name: '课表 A 的新课程',
+			dayOfWeek: 1,
+			startPeriod: 1,
+			endPeriod: 2
+		});
+		shell.controller.currentTimetable = timetable({ id: 'timetable-b' });
+		editor.syncFromRoute();
+
+		expect(editor.draft).toMatchObject({
+			name: '',
+			dayOfWeek: null,
+			startPeriod: null,
+			endPeriod: null
+		});
+		expect(editor.canSave).toBe(false);
+	});
+
+	it('preserves unsaved edits when the same timetable is refreshed', () => {
+		const existing = createCourse({
+			id: 'course-a',
+			name: '课程',
+			dayOfWeek: 1,
+			startPeriod: 1,
+			endPeriod: 2
+		});
+		const shell = shellWith(timetable({ courses: [existing] }));
+		const editor = createCourseEditor(shell, () => existing.id, vi.fn());
+		editor.syncFromRoute();
+		editor.draft!.name = '未保存的修改';
+		shell.controller.currentTimetable = timetable({ courses: [{ ...existing }] });
+		editor.syncFromRoute();
+
+		expect(editor.draft?.name).toBe('未保存的修改');
+		expect(editor.canSave).toBe(true);
+	});
+
+	it.each(['save', 'deleteCourse'] as const)(
+		'rejects %s after a timetable switch before the route effect synchronizes',
+		async (action) => {
+			const existing = createCourse({
+				id: 'course-a',
+				name: '课表 A 的课程',
+				dayOfWeek: 1,
+				startPeriod: 1,
+				endPeriod: 2
+			});
+			const shell = shellWith(timetable({ courses: [existing] }));
+			const onDone = vi.fn();
+			const editor = createCourseEditor(shell, () => existing.id, onDone);
+			editor.syncFromRoute();
+			shell.controller.currentTimetable = timetable({ id: 'timetable-b' });
+
+			await editor[action]();
+
+			expect(editor.canSave).toBe(false);
+			expect(mocks.updateTimetableDetails).not.toHaveBeenCalled();
+			expect(mocks.deleteCourse).not.toHaveBeenCalled();
+			expect(onDone).not.toHaveBeenCalled();
+		}
+	);
 
 	it('requires at least one week in selected-week mode', () => {
 		const editor = createCourseEditor(shellWith(timetable()), () => null, vi.fn());
