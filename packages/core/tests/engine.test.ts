@@ -273,6 +273,62 @@ describe('ChronosEngine in @chronos/core', () => {
 		expect(onThemeChanged).toHaveBeenCalledWith({ themeId: 'catppuccin' });
 	});
 
+	it('keeps failed preference writes out of state and subsequent updates', async () => {
+		const { env } = createMockEnv();
+		const engine = new ChronosEngine({ env });
+		await engine.init();
+		const updated = vi.fn();
+		engine.on('preferences:updated', updated);
+		try {
+			vi.spyOn(env.storage, 'savePreferences').mockRejectedValueOnce(new Error('quota exceeded'));
+			await expect(engine.updatePreferences({ themeMode: 'dark' })).rejects.toThrow(
+				'quota exceeded'
+			);
+			expect(engine.state.userPreferences).toEqual(DEFAULT_USER_PREFERENCES);
+			expect(await env.storage.getPreferences()).toEqual(DEFAULT_USER_PREFERENCES);
+			expect(updated).not.toHaveBeenCalled();
+
+			await engine.updatePreferences({ timetableLayoutMode: 'fixed' });
+			const expected = { ...DEFAULT_USER_PREFERENCES, timetableLayoutMode: 'fixed' };
+			expect(engine.state.userPreferences).toEqual(expected);
+			expect(await env.storage.getPreferences()).toEqual(expected);
+			expect(updated).toHaveBeenCalledExactlyOnceWith({ preferences: expected });
+		} finally {
+			engine.dispose();
+		}
+	});
+
+	it('preserves different preference fields when overlapping saves finish out of order', async () => {
+		const { env } = createMockEnv();
+		const engine = new ChronosEngine({ env });
+		await engine.init();
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const savePreferences = env.storage.savePreferences.bind(env.storage);
+		vi.spyOn(env.storage, 'savePreferences').mockImplementationOnce(async (patch) => {
+			await gate;
+			await savePreferences(patch);
+		});
+		try {
+			const first = engine.updatePreferences({ themeMode: 'dark' });
+			await engine.updatePreferences({ timetableLayoutMode: 'fixed' });
+			release();
+			await first;
+			const expected = {
+				...DEFAULT_USER_PREFERENCES,
+				themeMode: 'dark',
+				timetableLayoutMode: 'fixed'
+			};
+			expect(engine.state.userPreferences).toEqual(expected);
+			expect(await env.storage.getPreferences()).toEqual(expected);
+		} finally {
+			release();
+			engine.dispose();
+		}
+	});
+
 	it('loads and unloads plugins with ChronosEnv ports and HierarchicalSlotRegistry', async () => {
 		const { env } = createMockEnv();
 		const engine = new ChronosEngine({ env });

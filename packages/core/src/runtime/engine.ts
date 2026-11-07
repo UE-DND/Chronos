@@ -422,12 +422,12 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 		) {
 			throw new RangeError('prepareReminderMinutes must be 5–60 in steps of 5');
 		}
+		await this.storage.savePreferences(patch);
 		this._userPreferences = {
 			...this._userPreferences,
 			...patch,
 			schemaVersion: CURRENT_PREFERENCES_SCHEMA_VERSION
 		};
-		await this.storage.savePreferences(patch);
 		this.emitIconThemeChanged();
 		this.events.emit('preferences:updated', { preferences: this._userPreferences });
 	}
