@@ -25,6 +25,43 @@ const source: Timetable = {
 };
 const payload = await encodeSharePayload(source);
 
+test('date labels initialize the current value and discard cancelled drafts', async ({
+	page,
+	request
+}) => {
+	await request.post('/__e2e/deploy?build=old');
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
+	await page.goto(`/Chronos/s#${payload}`);
+	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
+	await expect(page.locator('.timetable-week-pager')).toBeVisible();
+	await page.goto('/Chronos/timetable/details');
+	const label = page.getByRole('button', { name: '学期起始日（周一）', exact: true });
+	const trigger = page.getByRole('button', {
+		name: '学期起始日（周一）：2026/03/02',
+		exact: true
+	});
+	const confirm = page.getByRole('button', { name: '确认', exact: true });
+	await expect(trigger).toBeVisible();
+
+	await label.click();
+	await confirm.click();
+	await expect(trigger).toBeVisible();
+
+	await trigger.click();
+	await page.getByRole('button', { name: '清除', exact: true }).click();
+	await page.keyboard.press('Escape');
+	await expect(confirm).toHaveCount(0);
+	await label.click();
+	await confirm.click();
+	await expect(trigger).toBeVisible();
+	await page.getByRole('button', { name: '保存', exact: true }).click();
+	await expect(page.locator('.timetable-week-pager')).toBeVisible();
+	await page.goto('/Chronos/timetable/details');
+	await expect(trigger).toBeVisible();
+});
+
 test.describe('touch edit dismissal', () => {
 	test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
 

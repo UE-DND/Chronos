@@ -98,6 +98,12 @@
 		}
 	}
 
+	function openPicker() {
+		if (disabled) return;
+		handleOpenChange(true);
+		open = true;
+	}
+
 	function handleDraftChange(next: DateValue | undefined) {
 		const nextIso = calendarDateToIso(next);
 		if (nextIso !== draftIso) {
@@ -173,7 +179,8 @@
 					type="button"
 					id={labelId}
 					class="ui-field-label cursor-pointer border-0 bg-transparent p-0 text-left"
-					onclick={() => (open = true)}
+					{disabled}
+					onclick={openPicker}
 				>
 					{label}
 					{#if required}
