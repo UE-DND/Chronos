@@ -5,7 +5,7 @@ export function createViewPrefsSaver(save: (prefs: TimetableViewPrefs) => Promis
 	let inFlight = false;
 	let inflightPromise = Promise.resolve();
 
-	async function flush() {
+	function flush() {
 		if (inFlight) return inflightPromise;
 		inFlight = true;
 		inflightPromise = (async () => {
@@ -15,9 +15,11 @@ export function createViewPrefsSaver(save: (prefs: TimetableViewPrefs) => Promis
 					await save(snapshot);
 					if (latest === snapshot) latest = undefined;
 				}
+			} catch (error) {
+				latest = undefined;
+				throw error;
 			} finally {
 				inFlight = false;
-				if (latest !== undefined) await flush();
 			}
 		})();
 		return inflightPromise;
@@ -25,9 +27,11 @@ export function createViewPrefsSaver(save: (prefs: TimetableViewPrefs) => Promis
 
 	return {
 		apply(base: TimetableViewPrefs, patch: Partial<TimetableViewPrefs>): TimetableViewPrefs {
-			latest = { ...(latest ?? base), ...patch };
-			void flush();
-			return latest;
+			const next = { ...(latest ?? base), ...patch };
+			latest = next;
+			// The save callback reports failures; whenIdle still exposes the rejected write.
+			void flush().catch(() => {});
+			return next;
 		},
 		whenIdle() {
 			return inflightPromise;

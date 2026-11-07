@@ -228,6 +228,83 @@ async function releaseStorage(page: Page) {
 	await page.evaluate(() => (window as unknown as { releaseStorage(): void }).releaseStorage());
 }
 
+test('layout options roll back a failed save and retry only after another user action', async ({
+	page,
+	request
+}) => {
+	await request.post('/__e2e/deploy?build=old');
+	await page.clock.install({ time: new Date('2026-03-02T08:00:00+08:00') });
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
+	const errors: string[] = [];
+	page.on('pageerror', (error) => errors.push(error.message));
+	await page.goto(`/Chronos/s#${payload}`);
+	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
+	const pager = page.locator('.timetable-week-pager');
+	await expect(pager).toBeVisible();
+	await pager.locator('.timetable-week-page').first().locator('.course-capsule').first().hover();
+	await page.mouse.down();
+	await page.clock.runFor(500);
+	await expect(page.locator('.timetable-delete-zone')).toBeVisible();
+	await page.mouse.up();
+	await page.getByRole('button', { name: '布局选项', exact: true }).click();
+	const saturday = page.getByRole('switch', { name: '显示周六', exact: true });
+	await expect(saturday).toBeVisible();
+	const initial = await saturday.isChecked();
+	const storedSaturday = () =>
+		page.evaluate(
+			() =>
+				new Promise<boolean>((resolve, reject) => {
+					const id = localStorage.getItem(
+						'chronos:/Chronos:chronos_preferences:current_timetable_id'
+					);
+					const open = indexedDB.open('chronos:/Chronos:db');
+					open.onerror = () => reject(open.error);
+					open.onsuccess = () => {
+						const db = open.result;
+						const read = db.transaction('timetables').objectStore('timetables').get(id!);
+						read.onsuccess = () => {
+							resolve(JSON.parse(read.result.configJson).viewPrefs.showSaturday);
+							db.close();
+						};
+						read.onerror = () => {
+							reject(read.error);
+							db.close();
+						};
+					};
+				})
+		);
+	expect(await storedSaturday()).toBe(initial);
+	await page.evaluate(() => {
+		const put = Object.getOwnPropertyDescriptor(IDBObjectStore.prototype, 'put')!
+			.value as IDBObjectStore['put'];
+		const id = localStorage.getItem('chronos:/Chronos:chronos_preferences:current_timetable_id');
+		let attempts = 0;
+		Object.assign(window, { layoutSaveAttempts: () => attempts });
+		IDBObjectStore.prototype.put = function (value, key) {
+			if (this.name === 'timetables' && value.id === id && ++attempts === 1)
+				throw new DOMException('Test layout save failure', 'QuotaExceededError');
+			return put.call(this, value, key);
+		};
+	});
+	const attempts = () =>
+		page.evaluate(() =>
+			(window as unknown as { layoutSaveAttempts(): number }).layoutSaveAttempts()
+		);
+	await saturday.click();
+	await expect(page.getByRole('status').filter({ hasText: '保存课表失败' })).toBeVisible();
+	await expect(saturday).toBeChecked({ checked: initial });
+	expect(await storedSaturday()).toBe(initial);
+	expect(await attempts()).toBe(1);
+
+	await saturday.click();
+	await expect(saturday).toBeChecked({ checked: !initial });
+	await expect.poll(storedSaturday).toBe(!initial);
+	expect(await attempts()).toBe(2);
+	expect(errors).toEqual([]);
+});
+
 for (const viewport of [
 	{ width: 390, height: 844 },
 	{ width: 844, height: 390 }

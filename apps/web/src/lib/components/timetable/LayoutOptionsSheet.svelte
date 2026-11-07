@@ -8,6 +8,7 @@
 	import MineRow from '#lib/components/mine/MineRow.svelte';
 	import Switch from '#lib/components/ui/Switch.svelte';
 	import { createViewPrefsSaver } from '#lib/timetable/view-prefs-save.ts';
+	import { snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
 
 	let {
 		open = $bindable(false)
@@ -23,7 +24,13 @@
 	const saver = createViewPrefsSaver(async (prefs) => {
 		const timetableId = shell.controller.currentTimetable?.id;
 		if (!timetableId) return;
-		await getAppController().updateTimetableDetails(timetableId, { viewPrefs: prefs });
+		try {
+			await getAppController().updateTimetableDetails(timetableId, { viewPrefs: prefs });
+		} catch (error) {
+			localPrefs = null;
+			snackbarKey('transfer.error.saveFailed', undefined, undefined, 4000, 'assertive');
+			throw error;
+		}
 	});
 
 	function setPref<K extends keyof TimetableViewPrefs>(key: K, next: boolean) {
