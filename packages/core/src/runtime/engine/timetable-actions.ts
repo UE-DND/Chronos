@@ -145,7 +145,7 @@ export class TimetableActions implements Pick<
 			viewPrefs: { ...current.viewPrefs, ...patch.viewPrefs },
 			updatedAt: Date.now()
 		};
-		await this.host.storage.saveTimetable(updated);
+		await this.host.storage.saveTimetable(updated, { requireExisting: true });
 		await this.host.refreshTimetables();
 		if (this.host.getCurrentTimetable()?.id !== timetableId) return;
 		this.host.setCurrentTimetable(updated);

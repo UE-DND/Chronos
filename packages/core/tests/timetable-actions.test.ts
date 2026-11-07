@@ -107,6 +107,27 @@ describe('updateTimetableDetails', () => {
 			engine.dispose();
 		}
 	});
+	it('does not recreate a timetable deleted while its update is reading', async () => {
+		const { engine, env, a, b, timetables } = await harness();
+		let release!: (timetable: Timetable) => void;
+		vi.spyOn(env.storage, 'getTimetable').mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					release = resolve;
+				})
+		);
+		try {
+			const pending = engine.updateTimetableDetails(a.id, { name: 'Updated A' });
+			await engine.deleteTimetable(a.id);
+			release(a);
+			await expect(pending).rejects.toThrow('Timetable not found: a');
+			expect(timetables.has(a.id)).toBe(false);
+			expect(engine.state.currentTimetable?.id).toBe(b.id);
+			expect(engine.state.timetables.map((timetable) => timetable.id)).toEqual([b.id]);
+		} finally {
+			engine.dispose();
+		}
+	});
 	it('keeps the explicit target when selection changes while reading it', async () => {
 		const { engine, env, a, b, timetables } = await harness();
 		let release!: (timetable: Timetable) => void;
