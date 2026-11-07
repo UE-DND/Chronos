@@ -28,32 +28,43 @@
 	const officialPlugins = getOfficialPluginService();
 
 	let formValues = $state<Record<string, unknown>>({});
+	let loading = $state(true);
 	let saving = $state(false);
 
 	const invalidFields = $derived(findInvalidSchemaFields(schema, formValues));
 
 	$effect(() => {
-		if (open && pluginId) {
-			void loadConfig();
+		const id = pluginId;
+		let active = true;
+		loading = true;
+		if (open && id) {
+			void loadConfig(id, () => active && open && pluginId === id);
 		}
+		return () => {
+			active = false;
+		};
 	});
 
-	async function loadConfig() {
+	async function loadConfig(id: string, isCurrent: () => boolean) {
 		try {
-			const saved = await officialPlugins.getPluginConfig(pluginId);
+			const saved = await officialPlugins.getPluginConfig(id);
+			if (!isCurrent()) return;
 			if (saved) {
 				formValues = { ...saved };
 			} else {
-				const ctx = engine.getPluginContext(pluginId);
+				const ctx = engine.getPluginContext(id);
 				formValues = { ...ctx.config };
 			}
 		} catch {
-			formValues = {};
+			if (isCurrent()) formValues = {};
+		} finally {
+			if (isCurrent()) loading = false;
 		}
 	}
 
 	async function handleSave() {
-		if (findInvalidSchemaFields(schema, formValues).length > 0) return;
+		if (loading || saving || !open || findInvalidSchemaFields(schema, formValues).length > 0)
+			return;
 		saving = true;
 		try {
 			const ctx = engine.getPluginContext(pluginId);
@@ -72,7 +83,12 @@
 <Dialog bind:open title={hostT('plugins.config.title', { name: pluginName || pluginId })}>
 	<div class="py-2">
 		{#if Object.keys(schema).length > 0}
-			<SchemaForm {schema} bind:value={formValues} controller={appController} disabled={saving} />
+			<SchemaForm
+				{schema}
+				bind:value={formValues}
+				controller={appController}
+				disabled={loading || saving}
+			/>
 		{:else}
 			<p class="text-body-medium text-on-surface-variant">
 				{hostT('plugins.config.empty')}
@@ -84,7 +100,11 @@
 		<Button variant="text" disabled={saving} onclick={() => (open = false)}>
 			{hostT('common.cancel')}
 		</Button>
-		<Button variant="filled" disabled={saving || invalidFields.length > 0} onclick={handleSave}>
+		<Button
+			variant="filled"
+			disabled={loading || saving || invalidFields.length > 0}
+			onclick={handleSave}
+		>
 			{saving ? hostT('plugins.config.saving') : hostT('plugins.config.save')}
 		</Button>
 	{/snippet}
