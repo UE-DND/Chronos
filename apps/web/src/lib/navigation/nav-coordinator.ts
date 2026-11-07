@@ -54,7 +54,6 @@ function createCoordinatorState(): CoordinatorState {
 
 let state = createCoordinatorState();
 let requestId = 0;
-const navigationCompletionWaiters = new Set<() => void>();
 function href(url: URL): string {
 	return url.pathname + url.search + url.hash;
 }
@@ -95,34 +94,20 @@ export async function navigateForward(
 export function navigateBack(
 	fallback = state.fallbackRegistration?.fallback ?? ({ kind: 'shell' } as BackFallback)
 ): void {
-	void performNavigateBack(fallback);
-}
-
-/** Navigate back and resolve after SvelteKit commits the destination route. */
-export function navigateBackAndWait(
-	fallback = state.fallbackRegistration?.fallback ?? ({ kind: 'shell' } as BackFallback)
-): Promise<void> {
-	return performNavigateBack(fallback);
-}
-
-function performNavigateBack(fallback: BackFallback): Promise<void> {
-	if (!deps || state.backPending) return Promise.resolve();
+	if (!deps || state.backPending) return;
 	const plan = resolveBack(getNavigationSnapshot(), fallback);
 	state.backPending = true;
 	if (
 		plan.type === 'traverse' &&
 		findRecord(deps.getPage().state.chronosNavigation)?.id === getTopFrame()?.id
 	) {
-		const completed = new Promise<void>((resolve) => {
-			navigationCompletionWaiters.add(resolve);
-		});
 		deps.historyGo(plan.delta);
-		return completed;
+		return;
 	}
 	const target = plan.type === 'fallback' ? plan.fallback : fallback;
 	state.pendingFallbackTab = target.kind === 'shell' ? target.tab : undefined;
 	state.requestedReplace = true;
-	return Promise.resolve(
+	void Promise.resolve(
 		deps.goto(appRouteHref(target.kind === 'shell' ? '/' : target.href), { replace: true })
 	)
 		.catch(() => {
@@ -134,16 +119,6 @@ function performNavigateBack(fallback: BackFallback): Promise<void> {
 			state.pendingFallbackTab = undefined;
 			state.intent = undefined;
 		});
-}
-
-/** True when the resolved back target is a shell route (edge-swipe preview only). */
-export function backTargetIsShell(): boolean {
-	if (!deps) return false;
-	const fallback = state.fallbackRegistration?.fallback ?? ({ kind: 'shell' } as BackFallback);
-	const plan = resolveBack(getNavigationSnapshot(), fallback);
-	if (plan.type === 'fallback') return plan.fallback.kind === 'shell';
-	const target = getNavigationSnapshot().records.find((frame) => frame.id === plan.targetId);
-	return target?.kind === 'route' && isShellRoute(target.href.split(/[?#]/)[0]);
 }
 
 /**
@@ -311,8 +286,6 @@ export function syncNavigationPage(completed = false): void {
 }
 export function onAfterNavigate(): void {
 	syncNavigationPage(true);
-	for (const resolve of navigationCompletionWaiters) resolve();
-	navigationCompletionWaiters.clear();
 }
 export function openOverlayHistory(
 	overlayId: string,

@@ -20,25 +20,6 @@ const NAV_DIRECTION_CLASSES = ['nav-forward', 'nav-back'] as const;
 const NAV_CROSS_SHELL_CLASS = 'vt-cross-shell';
 
 let currentTransitionDirection: NavigationDirection = 'none';
-let suppressedTransitionToken: number | null = null;
-let transitionTokenCounter = 0;
-
-export function requestSuppressNextTransition(): number {
-	suppressedTransitionToken = ++transitionTokenCounter;
-	return suppressedTransitionToken;
-}
-
-export function consumeSuppressedTransition(token?: number): boolean {
-	if (suppressedTransitionToken == null) return false;
-	if (token != null && suppressedTransitionToken !== token) return false;
-	suppressedTransitionToken = null;
-	return true;
-}
-
-export function clearSuppressedTransition(): void {
-	suppressedTransitionToken = null;
-}
-
 function getTransitionDirection(): NavigationDirection {
 	return currentTransitionDirection;
 }
@@ -316,12 +297,6 @@ export function setupSecondaryPageViewTransition(
 		const fail = () => settle(isSecondaryRoute(fromPath));
 
 		if (direction !== 'forward' && direction !== 'back') {
-			clearSuppressedTransition();
-			void navigation.complete.then(finish, fail);
-			return;
-		}
-
-		if (consumeSuppressedTransition()) {
 			void navigation.complete.then(finish, fail);
 			return;
 		}

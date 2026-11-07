@@ -21,10 +21,7 @@
 		stageShellTabDeparture,
 		isShellRoute,
 		isSecondaryRoute,
-		canSystemBack,
-		backTargetIsShell,
-		edgeSwipeBackAction,
-		navigateBackAndWait
+		canSystemBack
 	} from '#lib/navigation/index.ts';
 	import { getHostPlatform } from '#lib/platform/host-platform.ts';
 	import {
@@ -197,12 +194,6 @@
 		class="secondary-root col-start-1 row-start-1 h-dvh w-full"
 		class:is-blocked={blockShell}
 		class:invisible={blockShell}
-		use:edgeSwipeBackAction={{
-			canSwipeBack: () =>
-				!getHostPlatform().isNative && isSecondaryRoute(page.url.pathname) && canSystemBack(),
-			revealsShell: backTargetIsShell,
-			onBack: () => navigateBackAndWait()
-		}}
 	>
 		{@render children()}
 	</div>

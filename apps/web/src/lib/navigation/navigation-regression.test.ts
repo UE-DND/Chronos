@@ -2,7 +2,6 @@ import { createHistoryOverlaySync } from '@chronos/ui-kit';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import {
 	canSystemBack,
-	backTargetIsShell,
 	configureNavigationCoordinator,
 	dispatchSystemBack,
 	navigateBack,
@@ -459,18 +458,10 @@ describe('navigation and overlay browser contract', () => {
 			await navigateForward('/about/terms');
 			expect(browser.renderedHref).toBe('/about/terms');
 			expect(canSystemBack()).toBe(true);
-			expect(backTargetIsShell()).toBe(false);
 
 			// First back: secondary -> secondary (child to parent)
 			expect(dispatchSystemBack()).toBe('consumed');
 			expect(browser.historyGo).toHaveBeenCalledWith(-1);
-		});
-
-		it('identifies a shell route as the resolved back target', async () => {
-			const browser = browserAdapter('/');
-			await navigateForward('/about');
-			expect(browser.renderedHref).toBe('/about');
-			expect(backTargetIsShell()).toBe(true);
 		});
 
 		it('consumes back and replaces to shell when on a deeplink secondary route', () => {

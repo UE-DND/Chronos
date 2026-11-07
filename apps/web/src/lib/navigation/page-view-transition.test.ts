@@ -6,13 +6,10 @@ import {
 } from '#lib/platform/host-platform.ts';
 import {
 	createSecondaryTransitionGate,
-	clearSuppressedTransition,
-	consumeSuppressedTransition,
 	getNavigationDirection,
 	hasUAVisualTransition,
 	isActiveNavDirectionTransition,
 	nextNavDirectionTransitionGeneration,
-	requestSuppressNextTransition,
 	shouldUseViewTransition,
 	resolveNavigationDirection,
 	shouldUseViewTransitionWhenSupported,
@@ -142,20 +139,6 @@ describe('view transition support and classification', () => {
 		expect(gen2).toBeGreaterThan(gen1);
 		expect(isActiveNavDirectionTransition(gen2)).toBe(true);
 		expect(isActiveNavDirectionTransition(gen1)).toBe(false);
-	});
-
-	it('suppresses and consumes transition token once', () => {
-		clearSuppressedTransition();
-		expect(consumeSuppressedTransition()).toBe(false);
-
-		const token = requestSuppressNextTransition();
-		expect(token).toBeGreaterThan(0);
-		expect(consumeSuppressedTransition(token)).toBe(true);
-		expect(consumeSuppressedTransition(token)).toBe(false);
-
-		requestSuppressNextTransition();
-		clearSuppressedTransition();
-		expect(consumeSuppressedTransition()).toBe(false);
 	});
 });
 
