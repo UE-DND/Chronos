@@ -1,0 +1,56 @@
+{
+	"formatVersion": 1,
+	"release": {
+		"tagName": "v1.3.2",
+		"name": "Chronos 1.3.2",
+		"body": "## 修复\n\n- 编辑课程期间切换课表，不再将原草稿保存到其他课表或误删其他课表的课程。尚未完成的保存也不会重新创建已删除的课表。\n- 偏好设置仅在保存成功后生效。课表布局设置保存失败时恢复原显示并提示错误，不再持续重试。\n- 修复日期解析中的无效日期换算和年份偏移。点击日期字段标题时会从当前值开始选择，取消后不会沿用旧草稿，禁用字段不能打开选择器。\n- 滚轮选择后立即确认会保留刚选中的值，不再被尚未结束的滚动覆盖。\n- 插件配置读取完成后才能编辑和保存。数字下拉选项保留数字类型，清空数字输入不再被保存为 `0`。\n- 修复页面转场被打断或动画创建失败后，页面显示和交互未能恢复的问题。\n\n## 优化\n\n- 统一页面切换时的动画、页面状态和资源清理。\n- 更新 Dexie、bits-ui、Paraglide、Vite+ 及移动端和发布流程的依赖。\n\n## 兼容性与限制\n\n- 现有课表、偏好设置和分享格式无需迁移。\n- 移除应用自定义的边缘侧滑返回，返回手势由浏览器或系统提供。返回按钮和原生系统返回仍可使用；不支持系统手势的环境不再额外提供应用内侧滑返回。\n- 直接使用 ui-kit `SelectField` 的插件需将 `onchange` 改为 `onValueChange`，回调接收所选值，不再接收 DOM 事件。使用 `SchemaForm` 的插件无需调整。\n- iOS 仍需下载 IPA 后使用自签工具覆盖安装，并保持原 Bundle ID 和同一 Apple ID。教务在线导入、精确闹钟和桌面小组件仍不可用。",
+		"publishedAt": "2026-11-09"
+	},
+	"packageId": "org.uednd.chronos",
+	"versionCode": 1003002,
+	"signingCertificateSha256": "22e59e404c8384fd31bb21c15e66960155350a7a82c8cdfe460e93c5423cb468",
+	"profiles": {
+		"chronos-default": {
+			"host": {
+				"version": "1.3.2",
+				"buildId": "0419cca15322528a72df4a5893aed2dfc0b420a36fd40db34e5b989b9bac7af3",
+				"sourceCommit": "5ab1742ec7263ccd1cdd13f95b840d2a2e9259b8",
+				"profileId": "chronos-default",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.2/Chronos-default-1.3.2.apk",
+			"sha256": "bfa530d34f049199eebbc27d621c7a018e711c02afd10b58c334a5d923a26f54",
+			"sizeBytes": 2235712,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.2/catalog.json"
+		},
+		"chronos-cqut": {
+			"host": {
+				"version": "1.3.2",
+				"buildId": "7ecb7447f8707146e2f8e3eccb0d0dfc9cf82c3542a2e018d86404a21c42001e",
+				"sourceCommit": "5ab1742ec7263ccd1cdd13f95b840d2a2e9259b8",
+				"profileId": "chronos-cqut",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.2/Chronos-cqut-1.3.2.apk",
+			"sha256": "bc2b266f1c874921e2df956253dcec5b275627f42317dc3084c93e411299fdea",
+			"sizeBytes": 2267268,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.2/catalog.json"
+		},
+		"chronos-cqut-offline": {
+			"host": {
+				"version": "1.3.2",
+				"buildId": "77bd26cf5fa30d3c1f08676209a912adf31ff9af6bc9490d057de056f22ea04d",
+				"sourceCommit": "5ab1742ec7263ccd1cdd13f95b840d2a2e9259b8",
+				"profileId": "chronos-cqut-offline",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.2/Chronos-cqut-offline-1.3.2.apk",
+			"sha256": "55794ad7b693ef185482488681532051534de587ddeda96ff9596ebed3baa235",
+			"sizeBytes": 2232387,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.2/catalog.json"
+		}
+	}
+}
