@@ -1,4 +1,5 @@
 import { planPreinstall } from './preinstall-policy';
+import { dev } from '$app/env';
 import { appStartup } from '#lib/boot/startup.svelte.ts';
 import { ImageRepository } from '#lib/storage/image-repository.ts';
 import { resolveManifestForDownload } from './manifest-url';
@@ -138,11 +139,21 @@ export class OfficialPluginService implements Disposable {
 	private async installPreinstall(id: string): Promise<void> {
 		const entry = this.profile?.preinstall.find((p) => p.id === id);
 		if (!entry || !this.profile) throw new Error(`Unknown preinstall: ${id}`);
-		const catalog = await this.fetchCatalog(BUNDLED_CATALOG_URL);
-		const url = catalog.manifests.find((url) => url.endsWith(`/${id}.manifest.json`));
-		if (!url) throw new Error(`Preinstall missing from official catalog: ${id}`);
-		const manifest = await this.fetchManifest(url);
-		if (manifest.id !== id) throw new Error(`Preinstall manifest ID mismatch: ${id}`);
+		const resolveManifest = async (catalogUrl: string) => {
+			const catalog = await this.fetchCatalog(catalogUrl);
+			const url = catalog.manifests.find((url) => url.endsWith(`/${id}.manifest.json`));
+			if (!url) throw new Error(`Preinstall missing from official catalog: ${id}`);
+			const manifest = await this.fetchManifest(url);
+			if (manifest.id !== id) throw new Error(`Preinstall manifest ID mismatch: ${id}`);
+			return { manifest, url };
+		};
+		const { manifest, url } = await resolveManifest(BUNDLED_CATALOG_URL).catch((error) => {
+			this.lifecycle.signal.throwIfAborted();
+			if (dev || this.hostUpdates.hostBuild?.target === 'mobile') throw error;
+			// A missing precache entry can fetch a newer deployment's mutable catalog.
+			// Recover from this host version's published catalog, retaining all validation.
+			return resolveManifest(officialCatalogUrl(this.hostVersion, false));
+		});
 		await this.install(manifest, url, {
 			silent: true,
 			system: true,
@@ -391,7 +402,10 @@ export class OfficialPluginService implements Disposable {
 
 	async fetchCatalog(catalogUrl = officialCatalogUrl(this.hostVersion)) {
 		const catalog = await this.catalogClient.fetchCatalog(catalogUrl);
-		if (catalogUrl === officialCatalogUrl(this.hostVersion) || catalogUrl === BUNDLED_CATALOG_URL) {
+		if (
+			catalogUrl === officialCatalogUrl(this.hostVersion, false) ||
+			catalogUrl === BUNDLED_CATALOG_URL
+		) {
 			const remoteDirectory = catalogUrl.startsWith('https:')
 				? new URL('./manifests/', catalogUrl).href
 				: undefined;

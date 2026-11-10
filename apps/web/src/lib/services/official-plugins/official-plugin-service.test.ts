@@ -1256,7 +1256,7 @@ describe('OfficialPluginService', () => {
 });
 
 describe('profile preinstallation lifecycle', () => {
-	async function setupProfile() {
+	async function setupProfile(prepare = true) {
 		const { env, httpRequest } = createMockEnv();
 		const engine = new ChronosEngine({ env });
 		await engine.init();
@@ -1321,9 +1321,77 @@ describe('profile preinstallation lifecycle', () => {
 			preinstall: [{ id: theme.id }, { id: tool.id, config: { answer: 42 } }]
 		};
 		const service = createService(engine);
-		await service.prepareProfile(profile);
+		if (prepare) await service.prepareProfile(profile);
 		return { engine, env, httpRequest, profile, service, theme, tool, colors };
 	}
+	it.each(['newer deployment', 'missing manifest'])(
+		'restores the matching default theme from the versioned market after a bundled %s',
+		async (failure) => {
+			const { engine, service, profile, httpRequest, theme } = await setupProfile(false);
+			const request = httpRequest.getMockImplementation()!;
+			const market = 'https://ue-dnd.github.io/Chronos/plugins/releases/0.4.1/';
+			httpRequest.mockImplementation(async (url, options) => {
+				if (url === `${market}catalog.json`)
+					return httpResponse({
+						json: async <T>() =>
+							({
+								version: 1,
+								manifests: ['./manifests/revision/custom-theme.manifest.json']
+							}) as T
+					});
+				if (url === `${market}manifests/revision/custom-theme.manifest.json`)
+					return httpResponse({ json: async <T>() => theme as T });
+				if (url === '/official-plugins/manifests/revision/custom-theme.manifest.json')
+					return failure === 'missing manifest'
+						? httpResponse({ ok: false, status: 404 })
+						: httpResponse({ json: async <T>() => ({ ...theme, version: '0.4.2' }) as T });
+				return request(url, options);
+			});
+
+			await service.prepareProfile(profile);
+
+			expect(engine.defaultThemeId).toBe('custom-default');
+			expect(service.getInstalled(theme.id)).toMatchObject({
+				manifest: { version: '0.4.1' },
+				manifestUrl: `${market}manifests/revision/custom-theme.manifest.json`,
+				origin: { kind: 'profile', profileId: profile.profileId }
+			});
+			service.dispose();
+			engine.dispose();
+		}
+	);
+
+	it('rejects mismatched versions from the recovery market without changing installed data', async () => {
+		const { engine, service, profile, httpRequest, theme } = await setupProfile();
+		const original = service.getInstalled(theme.id);
+		service.dispose();
+		const market = 'https://ue-dnd.github.io/Chronos/plugins/releases/0.4.0/';
+		const request = httpRequest.getMockImplementation()!;
+		httpRequest.mockImplementation(async (url, options) => {
+			if (url === `${market}catalog.json`)
+				return httpResponse({
+					json: async <T>() =>
+						({
+							version: 1,
+							manifests: ['./manifests/revision/custom-theme.manifest.json']
+						}) as T
+				});
+			if (url === `${market}manifests/revision/custom-theme.manifest.json`)
+				return httpResponse({ json: async <T>() => theme as T });
+			return request(url, options);
+		});
+		const restarted = createService(engine, '0.4.0');
+
+		await expect(restarted.prepareProfile(profile)).rejects.toThrow(
+			'Official plugin version must match host 0.4.0'
+		);
+		expect(httpRequest).toHaveBeenCalledWith(`${market}catalog.json`, expect.anything());
+		expect(restarted.getInstalled(theme.id)).toEqual(original);
+		expect(restarted.isPluginActive(theme.id)).toBe(false);
+		restarted.dispose();
+		engine.dispose();
+	});
+
 	it('retries a previously failed preinstall when recovery is requested again', async () => {
 		const { httpRequest, service, tool } = await setupProfile();
 		httpRequest.mockRejectedValueOnce(new Error('temporary catalog failure'));
