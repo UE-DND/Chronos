@@ -15,6 +15,7 @@ import {
 import { configureHostI18n } from '#lib/i18n/host-i18n.svelte.ts';
 import { getHostPlatform } from '#lib/platform/host-platform.ts';
 import { installScrollBoundaryFeedback } from '#lib/platform/scroll-boundary-feedback.ts';
+import { installIosPwaRailLayout } from '#lib/platform/ios-pwa-rail.ts';
 import { dispatchSystemBack } from '#lib/navigation/nav-coordinator.ts';
 import type { TimetableScreenController } from '#lib/timetable/timetable-screen.svelte.ts';
 import type { ShellTabController } from '#lib/shell/shell-tab.svelte.ts';
@@ -77,6 +78,9 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 			window.__chronosShowBootFailure?.();
 		}
 		try {
+			if (!platform.isNative && pwaInstallController.isIOS && isPwaStandalone()) {
+				own(installIosPwaRailLayout());
+			}
 			if (
 				(platform.isNative && platform.platformType === 'android') ||
 				(!platform.isNative && isPwaStandalone())

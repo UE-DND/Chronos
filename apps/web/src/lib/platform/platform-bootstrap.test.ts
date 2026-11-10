@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
 	setInstallPromptGate: vi.fn(),
 	tryScheduleInstallDialog: vi.fn(),
 	isPwaStandalone: vi.fn(() => false),
+	pwaEnvironment: { isIOS: false },
+	installIosPwaRailLayout: vi.fn(() => vi.fn()),
 	installScrollBoundaryFeedback: vi.fn(() => vi.fn()),
 	setAnalyticsCollectionEnabled: vi.fn(),
 	attachOfflineUx: vi.fn(() => vi.fn()),
@@ -31,6 +33,9 @@ vi.mock('#lib/platform/connectivity.svelte.ts', () => ({
 vi.mock('#lib/client/pwa-install.svelte.ts', () => ({
 	isPwaStandalone: mocks.isPwaStandalone,
 	pwaInstallController: {
+		get isIOS() {
+			return mocks.pwaEnvironment.isIOS;
+		},
 		init: mocks.pwaInstallInit,
 		setInstallPromptGate: mocks.setInstallPromptGate,
 		cancelScheduledDialog: vi.fn(),
@@ -41,6 +46,10 @@ vi.mock('#lib/client/pwa-install.svelte.ts', () => ({
 
 vi.mock('#lib/platform/scroll-boundary-feedback.ts', () => ({
 	installScrollBoundaryFeedback: mocks.installScrollBoundaryFeedback
+}));
+
+vi.mock('#lib/platform/ios-pwa-rail.ts', () => ({
+	installIosPwaRailLayout: mocks.installIosPwaRailLayout
 }));
 
 vi.mock('#lib/client/web-host-update.ts', () => ({ recoverInterruptedWebUpdate: vi.fn() }));
@@ -119,6 +128,8 @@ describe('createPlatformBootstrap', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.pwaEnvironment.isIOS = false;
+		mocks.isPwaStandalone.mockReturnValue(false);
 		mocks.tabIds = ['today'];
 		mocks.onboardingState.open = false;
 		timetableScreen.state.hasLoadedAppState = false;
@@ -225,6 +236,34 @@ describe('createPlatformBootstrap', () => {
 		platform.init();
 
 		expect(mocks.connectivityInit).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		{ isIOS: true, standalone: true, isNative: false, enabled: true },
+		{ isIOS: true, standalone: false, isNative: false, enabled: false },
+		{ isIOS: false, standalone: true, isNative: false, enabled: false },
+		{ isIOS: true, standalone: true, isNative: true, enabled: false }
+	])('only installs the rail adjustment for iOS PWA: %j', async (environment) => {
+		const { setHostPlatform, resetHostPlatform } = await import('./host-platform');
+		mocks.pwaEnvironment.isIOS = environment.isIOS;
+		mocks.isPwaStandalone.mockReturnValue(environment.standalone);
+		setHostPlatform({
+			id: environment.isNative ? 'mobile' : 'web',
+			isNative: environment.isNative,
+			platformType: environment.isNative ? 'ios' : 'web',
+			supportsPwaInstall: !environment.isNative,
+			shouldShowInstallGuide: !environment.isNative
+		});
+		try {
+			const dispose = createPlatformBootstrap(deps).init();
+			dispose();
+			expect(mocks.installIosPwaRailLayout).toHaveBeenCalledTimes(environment.enabled ? 1 : 0);
+			if (environment.enabled) {
+				expect(mocks.installIosPwaRailLayout.mock.results[0]!.value).toHaveBeenCalledOnce();
+			}
+		} finally {
+			resetHostPlatform();
+		}
 	});
 
 	it('checks app updates through the native resume callback', async () => {

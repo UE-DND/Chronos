@@ -24,6 +24,75 @@ async function setNativeInsets(
 	);
 }
 
+test.describe('iOS landscape rail', () => {
+	test.use({
+		userAgent:
+			'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+	});
+
+	for (const standalone of [true, false]) {
+		test(`reserves the right cutout only when needed in ${standalone ? 'PWA' : 'Safari'}`, async ({
+			page,
+			request
+		}, testInfo) => {
+			await request.post('/__e2e/deploy?build=old');
+			await page.addInitScript((installed) => {
+				Object.defineProperty(navigator, 'standalone', { value: installed });
+				Object.defineProperty(navigator, 'userAgentData', { value: undefined });
+				Object.defineProperty(window, 'orientation', { value: 90, configurable: true });
+				localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1');
+				localStorage.setItem(
+					'chronos:/Chronos:chronos:pwa-install-snoozed-until',
+					String(Date.now() + 86400000)
+				);
+			}, standalone);
+			await page.setViewportSize({ width: 932, height: 430 });
+			const cdp = await page.context().newCDPSession(page);
+			await cdp.send('Emulation.setSafeAreaInsetsOverride', {
+				insets: { top: 0, right: 59, bottom: 21, left: 59 }
+			});
+			await page.goto('/Chronos/');
+			await page.getByRole('tab', { name: '我的', exact: true }).click();
+			const rail = page.locator('.adaptive-edge-bar--shell');
+			await expect(rail).toHaveCSS('padding-right', standalone ? '0px' : '59px');
+			await expect(rail).toHaveCSS('width', standalone ? '72px' : '131px');
+			await expect(page.locator('.shell-page')).toHaveCSS('padding-left', '59px');
+			await expect(rail).toHaveCSS('padding-bottom', '29px');
+			await page.getByText('显示设置', { exact: true }).click();
+			const secondary = page.locator('.adaptive-edge-bar--secondary');
+			await expect(secondary).toHaveCSS('width', standalone ? '72px' : '131px');
+			await expect(page.locator('.secondary-page')).toHaveCSS(
+				'padding-right',
+				standalone ? '72px' : '131px'
+			);
+			await page.screenshot({ path: testInfo.outputPath('landscape-left-cutout.png') });
+
+			// Rotating to put the sensor housing on the right must restore the full inset.
+			await page.evaluate(() => {
+				Object.defineProperty(window, 'orientation', { value: -90, configurable: true });
+				window.dispatchEvent(new Event('orientationchange'));
+			});
+			await expect(secondary).toHaveCSS('padding-right', '59px');
+			await expect(secondary).toHaveCSS('width', '131px');
+			await page.evaluate(() => {
+				Object.defineProperty(window, 'orientation', { value: 90, configurable: true });
+				window.dispatchEvent(new Event('orientationchange'));
+			});
+			await expect(secondary).toHaveCSS('padding-right', standalone ? '0px' : '59px');
+			// Explicit host insets remain authoritative, even in an iOS-looking environment.
+			await setNativeInsets(page, 0, 32, 21, 59);
+			await expect(secondary).toHaveCSS('padding-right', '32px');
+			await expect(secondary).toHaveCSS('width', '104px');
+			await page.setViewportSize({ width: 430, height: 932 });
+			await setNativeInsets(page, 59, 0, 34, 0);
+			await page.getByRole('button', { name: '返回', exact: true }).click();
+			await expect(rail).toHaveCSS('padding-bottom', '34px');
+			await expect(page.locator('.shell-tab-bar')).toHaveCSS('width', '430px');
+			await cdp.detach();
+		});
+	}
+});
+
 test('sheet stays docked while its handle is pulled upwards', async ({
 	page,
 	request
