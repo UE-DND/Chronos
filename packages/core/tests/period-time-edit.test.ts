@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'vite-plus/test';
-import type { Course } from '../src/domain/course';
-import { countDistinctCoursesAffectedByPeriodDelete } from '../src/domain/course';
 import {
 	hasRoomForNextPeriod,
 	parseTimeMinutesStrict,
@@ -76,25 +74,5 @@ describe('period-time-edit', () => {
 			endTime: '09:40'
 		});
 		expect(suggestNextPeriodTime([])).toEqual({ startTime: '08:10', endTime: '08:55' });
-	});
-
-	it('counts distinct courses whose pointers shift when a period is deleted', () => {
-		const courses = [
-			{ name: '高等数学', startPeriod: 1, endPeriod: 1 },
-			{ name: '线性代数', startPeriod: 2, endPeriod: 4 },
-			{ name: '大学物理', startPeriod: 5, endPeriod: 6 }
-		] as Course[];
-		expect(countDistinctCoursesAffectedByPeriodDelete(courses, 2)).toBe(2);
-		expect(countDistinctCoursesAffectedByPeriodDelete(courses, 5)).toBe(1);
-		expect(countDistinctCoursesAffectedByPeriodDelete(courses, 7)).toBe(0);
-	});
-
-	it('deduplicates split entries of the same course when counting period-delete impact', () => {
-		const courses = [
-			{ name: '数据库原理及应用★', startPeriod: 1, endPeriod: 1 },
-			{ name: '数据库原理及应用☆', startPeriod: 2, endPeriod: 4 },
-			{ name: '操作系统', startPeriod: 5, endPeriod: 6 }
-		] as Course[];
-		expect(countDistinctCoursesAffectedByPeriodDelete(courses, 2)).toBe(2);
 	});
 });

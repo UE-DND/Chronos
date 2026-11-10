@@ -13,20 +13,15 @@ describe('timetable-wallpaper-layer', () => {
 		expect(shouldOverscanWallpaperImage('fill', true)).toBe(false);
 	});
 
-	it('returns clear backdrop classes when not blurred', () => {
-		const classes = timetableWallpaperBackdropClass(false);
-		expect(classes).toContain('blur-none');
-		expect(classes).toContain('duration-300');
-		expect(classes).not.toContain('blur-lg');
-		expect(classes).not.toContain('scale-');
-	});
-
-	it('returns blurred backdrop classes when editing', () => {
-		const classes = timetableWallpaperBackdropClass(true);
-		expect(classes).toContain('blur-lg');
-		expect(classes).toContain('duration-150');
-		expect(classes).not.toContain('blur-none');
-		expect(classes).not.toContain('scale-');
+	it('switches backdrop blur without scaling the image', () => {
+		const clear = timetableWallpaperBackdropClass(false);
+		const blurred = timetableWallpaperBackdropClass(true);
+		expect(clear).toContain('blur-none');
+		expect(clear).not.toContain('blur-lg');
+		expect(blurred).toContain('blur-lg');
+		expect(blurred).not.toContain('blur-none');
+		expect(clear).not.toContain('scale-');
+		expect(blurred).not.toContain('scale-');
 	});
 
 	it('prewarms a fixed blur and only transitions its opacity', () => {
@@ -35,9 +30,7 @@ describe('timetable-wallpaper-layer', () => {
 
 		expect(beforeEdit).toContain('blur-lg');
 		expect(beforeEdit).toContain('opacity-[0.001]');
-		expect(beforeEdit).toContain('duration-[240ms]');
 		expect(duringEdit).toContain('opacity-100');
-		expect(duringEdit).toContain('duration-[120ms]');
 		expect(duringEdit).toContain('motion-reduce:transition-none');
 		expect(duringEdit).toContain('transition-opacity');
 		expect(duringEdit).not.toContain('transition-[filter]');

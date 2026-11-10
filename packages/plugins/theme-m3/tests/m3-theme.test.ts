@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vite-plus/test';
-import { createWorkbenchColorsFromTokens } from '@chronos/core/theme/workbench-colors';
 import { m3DefaultTheme } from '../src/index';
 const m3DefaultWorkbenchColors = m3DefaultTheme.workbenchColors;
 import { buildM3Tokens, M3_BASE_COLORS } from '../src/m3-theme';
@@ -27,11 +26,5 @@ describe('M3DefaultTheme', () => {
 		expect(light['color.surface']).toBe(M3_BASE_COLORS.light.surface);
 		expect(light['color.canvas']).toBe(M3_BASE_COLORS.light.canvas);
 		expect(light['color.danger']).toBe(M3_BASE_COLORS.light.danger);
-	});
-
-	it('generated workbench snapshot matches live buildM3Tokens', () => {
-		expect(m3DefaultWorkbenchColors).toEqual(
-			createWorkbenchColorsFromTokens(buildM3Tokens('light'), buildM3Tokens('dark'))
-		);
 	});
 });

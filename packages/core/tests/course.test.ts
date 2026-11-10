@@ -69,24 +69,17 @@ describe('course counting', () => {
 		expect(countDistinctHiddenCourses(courses, 10)).toBe(0);
 	});
 
-	it('counts distinct courses affected by period delete', () => {
+	it('counts affected courses once by their normalized names when deleting a period', () => {
+		// Keep the raw names: createCourse would normalize away the suffixes before counting.
 		const courses = [
-			createCourse({
-				id: '1',
-				name: '数据库原理及应用★',
-				dayOfWeek: 1,
-				startPeriod: 1,
-				endPeriod: 1
-			}),
-			createCourse({
-				id: '2',
-				name: '数据库原理及应用☆',
-				dayOfWeek: 2,
-				startPeriod: 2,
-				endPeriod: 4
-			}),
-			createCourse({ id: '3', name: '操作系统', dayOfWeek: 3, startPeriod: 5, endPeriod: 6 })
-		];
+			{ name: '高等数学', startPeriod: 1, endPeriod: 1 },
+			{ name: '数据库原理及应用★', startPeriod: 1, endPeriod: 2 },
+			{ name: '数据库原理及应用☆', startPeriod: 2, endPeriod: 4 },
+			{ name: '操作系统', startPeriod: 5, endPeriod: 6 }
+		].map((course, index) => ({
+			...createCourse({ id: String(index), dayOfWeek: 1, ...course }),
+			name: course.name
+		}));
 		expect(countDistinctCoursesAffectedByPeriodDelete(courses, 2)).toBe(2);
 		expect(countDistinctCoursesAffectedByPeriodDelete(courses, 5)).toBe(1);
 		expect(countDistinctCoursesAffectedByPeriodDelete(courses, 7)).toBe(0);

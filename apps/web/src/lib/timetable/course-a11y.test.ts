@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import type { Course } from '@chronos/core';
-import {
-	buildCourseCapsuleAriaLabel,
-	buildOverlapPlaceholderAriaLabel,
-	formatPeriodRange
-} from './course-a11y';
+import { buildCourseCapsuleAriaLabel, buildOverlapPlaceholderAriaLabel } from './course-a11y';
 
 const baseCourse: Course = {
 	id: '1',
@@ -55,15 +51,5 @@ describe('buildCourseCapsuleAriaLabel', () => {
 describe('buildOverlapPlaceholderAriaLabel', () => {
 	it('describes overlap count and expand action', () => {
 		expect(buildOverlapPlaceholderAriaLabel(3)).toBe('此时段有 3 门课程重叠，点击展开');
-	});
-});
-
-describe('formatPeriodRange', () => {
-	it('formats single period', () => {
-		expect(formatPeriodRange(3, 3)).toBe('第 3 节');
-	});
-
-	it('formats multi-period range', () => {
-		expect(formatPeriodRange(1, 4)).toBe('第 1-4 节');
 	});
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vite-plus/test';
+import { describe, it, expect, vi } from 'vite-plus/test';
 import {
 	parseIsoDate,
 	formatIsoDate,
@@ -23,16 +23,14 @@ describe('Date & AcademicCalendar in @chronos/core', () => {
 		expect(formatCompactDate('2026-03-02')).toBe('03/02');
 	});
 
-	it('todayIsoDate uses local calendar day for wall-clock instants', () => {
-		const localMidnight = new Date(2026, 8, 11, 0, 30, 0);
-		expect(todayIsoDate(localMidnight)).toBe('2026-09-11');
-	});
-
-	it('formatIsoDate is not interchangeable with todayIsoDate after local midnight in UTC+ offsets', () => {
-		const localMidnight = new Date(2026, 8, 11, 0, 30, 0);
-		expect(todayIsoDate(localMidnight)).toBe('2026-09-11');
-		if (localMidnight.getDate() !== localMidnight.getUTCDate()) {
-			expect(formatIsoDate(localMidnight)).not.toBe(todayIsoDate(localMidnight));
+	it('distinguishes the local calendar day from UTC after midnight', () => {
+		vi.stubEnv('TZ', 'Asia/Shanghai');
+		try {
+			const localMidnight = new Date('2026-09-11T00:30:00+08:00');
+			expect(todayIsoDate(localMidnight)).toBe('2026-09-11');
+			expect(formatIsoDate(localMidnight)).toBe('2026-09-10');
+		} finally {
+			vi.unstubAllEnvs();
 		}
 	});
 
