@@ -68,6 +68,10 @@ vp run test:browser
 
 CI 将检查、发行版构建和浏览器产物构建并行启动。浏览器产物只构建一次，通过 artifact 分发给四个独立 job，每个 job 安装 Chromium 并运行 `vp exec playwright test --shard=N/4`。各分片保持单 worker 和独立服务器，避免部署切换及下载失败模拟的共享状态互相干扰。`CI complete` 检查全部 job 的结果，任一失败、取消或跳过都不能通过。Android 发布构建与 Quality 并行准备 APK，插件历史写入、部署和 Release 发布仍等待 Quality 通过。
 
+浏览器分片按文件历史耗时分配：先安排预计最慢的文件，再放到预计用时最少的分片。历史基准在 `scripts/e2e/durations.json`，最初取自 2026-11-09 的四个 CI 分片；用例数量变化时，按该文件每例平均耗时调整估计。新文件自动使用现有文件每例平均耗时的中位数，不需要手工加入清单。未指定 `--shard` 时仍运行全部用例。
+
+每次实际运行会生成 `dist/e2e/durations-N.json`（未分片时为 `durations-all.json`），CI 将其上传为独立的 `pwa-regression-timings-*` artifact。要更新基准，下载同一次成功运行的四个报告，然后执行 `vpx scripts/e2e/update-durations.ts <报告1> <报告2> <报告3> <报告4>` 并运行 `vp fmt scripts/e2e/durations.json`。更新命令拒绝失败运行、空报告、缺失分片和重复文件；CI 不会自动修改仓库中的基准。检查分片时可使用 `vpx playwright test --list --shard=N/4`；覆盖并集应与不分片的 `--list` 相同，各分片之间没有重复用例。需要机器可读清单时，使用 `PLAYWRIGHT_JSON_OUTPUT_FILE=/tmp/browser-list.json vpx playwright test --list --shard=N/4 --add-reporter=json`；不要使用 `--reporter=json` 覆盖配置中的分片 reporter，否则会退回 Playwright 默认的按用例数量分片。
+
 浏览器回归默认只保留失败截图。需要检查布局参考图时，运行 `CHRONOS_E2E_SCREENSHOTS=1 vp run test:browser`，或对已有产物执行 `CHRONOS_E2E_SCREENSHOTS=1 vpx playwright test`。
 
 Android 发布通过 `setup-java` 缓存 Gradle 依赖和 Wrapper，并使用 `--build-cache` 复用可缓存任务的输出。GitHub 缓存按分支或标签限制访问：同一标签重试可以复用缓存，新标签不能直接读取其他标签的缓存；默认分支已有的缓存可供标签使用。缓存加速效果需在实际 CI 中确认。

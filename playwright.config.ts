@@ -7,7 +7,11 @@ export default defineConfig({
 	forbidOnly: Boolean(process.env.CI),
 	timeout: 90_000,
 	expect: { timeout: 15_000 },
-	reporter: [['list'], ['html', { outputFolder: 'dist/e2e/report', open: 'never' }]],
+	reporter: [
+		['list'],
+		['html', { outputFolder: 'dist/e2e/report', open: 'never' }],
+		['./scripts/e2e/sharding-reporter.ts']
+	],
 	use: {
 		baseURL: 'http://127.0.0.1:4179',
 		actionTimeout: 15_000,
