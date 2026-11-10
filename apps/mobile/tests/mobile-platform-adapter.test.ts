@@ -27,12 +27,25 @@ const mockStatusBar = vi.hoisted(() => ({
 
 const mockApp = vi.hoisted(() => ({
 	addListener: vi.fn(),
+	getLaunchUrl: vi.fn(),
 	exitApp: vi.fn()
 }));
 
 const mockUpdater = vi.hoisted(() => ({
 	startUpdate: vi.fn().mockResolvedValue({ phase: 'downloading', percent: 0, canCancel: true }),
+	getState: vi.fn().mockResolvedValue({ phase: 'idle', percent: null, canCancel: false }),
 	takeEvents: vi.fn().mockResolvedValue({ events: [] })
+}));
+
+const mockPluginService = vi.hoisted(() => ({
+	installationStore: { load: vi.fn().mockResolvedValue(undefined), prepared: undefined },
+	prepareHostUpdate: vi.fn().mockResolvedValue('preparation-token'),
+	cancelHostPreparation: vi.fn().mockResolvedValue(undefined)
+}));
+
+vi.mock('../../web/src/lib/services/app-engine', () => ({
+	ensureEngineFullyReady: vi.fn().mockResolvedValue(undefined),
+	getOfficialPluginService: () => mockPluginService
 }));
 
 const mockAppLauncher = vi.hoisted(() => ({ openUrl: vi.fn().mockResolvedValue(undefined) }));
@@ -122,15 +135,28 @@ vi.mock('@capacitor/filesystem', () => ({
 }));
 
 describe('mobile-platform-adapter', () => {
+	let teardown: (() => void) | undefined;
+
+	function cleanupPlatform() {
+		teardown?.();
+		teardown = undefined;
+	}
+
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockApp.addListener.mockReset().mockResolvedValue({ remove: vi.fn() });
+		mockApp.getLaunchUrl.mockReset().mockResolvedValue(undefined);
+		mockShare.share.mockReset().mockResolvedValue({});
+		mockFilesystem.writeFile.mockReset().mockResolvedValue({ uri: 'file:///cache/test.txt' });
 		capacitorState.isNative = false;
 		capacitorState.platform = 'web';
 		capacitorState.isPluginAvailable = () => true;
 		vi.stubGlobal('window', {});
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		cleanupPlatform();
+		await Promise.resolve();
 		vi.unstubAllGlobals();
 	});
 
@@ -208,8 +234,8 @@ describe('mobile-platform-adapter', () => {
 
 		it('rejects unsupported haptic method explicitly', async () => {
 			const bridge = createCapacitorNativeBridge();
-			await expect(bridge.callNative('haptic', 'vibrate', {})).rejects.toThrow(
-				'Unsupported haptic method: "vibrate"'
+			await expect(bridge.callNative('haptic', 'unknown', {})).rejects.toThrow(
+				'Unsupported haptic method: "unknown"'
 			);
 		});
 	});
@@ -259,12 +285,12 @@ describe('mobile-platform-adapter', () => {
 			const handleRemove = vi.fn().mockResolvedValue(undefined);
 			mockApp.addListener.mockResolvedValue({ remove: handleRemove });
 
-			const teardown = initMobilePlatform();
+			teardown = initMobilePlatform();
 			expect(
 				(window as unknown as Record<string, unknown>)[CHRONOS_NATIVE_BRIDGE_KEY]
 			).toBeDefined();
 
-			teardown();
+			cleanupPlatform();
 			expect(
 				(window as unknown as Record<string, unknown>)[CHRONOS_NATIVE_BRIDGE_KEY]
 			).toBeUndefined();
@@ -281,9 +307,9 @@ describe('mobile-platform-adapter', () => {
 			});
 			mockApp.addListener.mockReturnValue(listenerPromise);
 
-			const teardown = initMobilePlatform();
+			teardown = initMobilePlatform();
 			// Teardown is called immediately before listener promise resolves
-			teardown();
+			cleanupPlatform();
 
 			const handleRemove = vi.fn().mockResolvedValue(undefined);
 			resolveListener({ remove: handleRemove });
@@ -303,7 +329,7 @@ describe('mobile-platform-adapter', () => {
 			});
 
 			const onSystemBack = vi.fn().mockReturnValue('exit');
-			initMobilePlatform({ onSystemBack });
+			teardown = initMobilePlatform({ onSystemBack });
 
 			backHandler?.();
 			expect(onSystemBack).toHaveBeenCalled();
@@ -319,7 +345,7 @@ describe('mobile-platform-adapter', () => {
 			});
 
 			const adapter = createMobilePlatformAdapter();
-			const teardown = adapter.init?.({ onSystemBack: vi.fn() });
+			teardown = adapter.init?.({ onSystemBack: vi.fn() });
 
 			// Initial call in init attaches back listener
 			expect(mockApp.addListener).toHaveBeenCalledWith('backButton', expect.any(Function));
@@ -335,11 +361,12 @@ describe('mobile-platform-adapter', () => {
 			adapter.updateBackState?.(true);
 			expect(mockApp.addListener).toHaveBeenCalledWith('backButton', expect.any(Function));
 
-			teardown?.();
+			cleanupPlatform();
 		});
 
-		it('invokes onDeepLink and onAppResume callbacks', async () => {
+		it('delivers cold-start and subsequent deep links and invokes onAppResume', async () => {
 			capacitorState.isNative = true;
+			mockApp.getLaunchUrl.mockResolvedValue({ url: 'chronos://s#1.cold-start' });
 			const handlers: Record<string, (ev: unknown) => void> = {};
 			mockApp.addListener.mockImplementation((event: string, handler: (ev: unknown) => void) => {
 				handlers[event] = handler;
@@ -348,10 +375,12 @@ describe('mobile-platform-adapter', () => {
 
 			const onDeepLink = vi.fn();
 			const onAppResume = vi.fn();
-			initMobilePlatform({ onDeepLink, onAppResume });
+			teardown = initMobilePlatform({ onDeepLink, onAppResume });
+			await Promise.resolve();
+			expect(onDeepLink).toHaveBeenNthCalledWith(1, new URL('chronos://s#1.cold-start'));
 
 			handlers.appUrlOpen?.({ url: 'chronos://s#1.payload' });
-			expect(onDeepLink).toHaveBeenCalledWith(new URL('chronos://s#1.payload'));
+			expect(onDeepLink).toHaveBeenNthCalledWith(2, new URL('chronos://s#1.payload'));
 
 			handlers.appStateChange?.({ isActive: true });
 			expect(onAppResume).toHaveBeenCalled();
@@ -460,7 +489,18 @@ describe('mobile-platform-adapter', () => {
 			await action?.applyUpdate({ ...release, androidUpdate });
 			expect(action?.mode).toBe('native-apk');
 			expect(action?.canApplyInApp).toBe(true);
-			expect(mockUpdater.startUpdate).toHaveBeenCalledWith({ update: androidUpdate });
+			expect(mockPluginService.prepareHostUpdate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					host: androidUpdate.host,
+					pluginCatalogUrl: androidUpdate.pluginCatalogUrl
+				}),
+				expect.any(Function),
+				expect.objectContaining({ signal: expect.any(AbortSignal) })
+			);
+			expect(mockUpdater.startUpdate).toHaveBeenCalledWith({
+				update: androidUpdate,
+				preparationToken: 'preparation-token'
+			});
 			expect(mockAppLauncher.openUrl).not.toHaveBeenCalled();
 		});
 

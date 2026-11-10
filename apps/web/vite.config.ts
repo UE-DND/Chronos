@@ -320,12 +320,14 @@ export default defineConfig(({ mode }) => {
 			include: [
 				'src/**/*.{test,spec}.{js,ts}',
 				'scripts/**/*.{test,spec}.{js,ts}',
+				'../mobile/**/*.{test,spec}.{js,ts}',
 				'../../packages/**/*.{test,spec}.{js,ts}',
 				'../../scripts/**/*.{test,spec}.{js,ts}'
 			],
 			exclude: [
 				'src/**/*.svelte.{test,spec}.{js,ts}',
 				'**/node_modules/**',
+				'../mobile/**/node_modules/**',
 				'../../packages/**/node_modules/**'
 			]
 		}
