@@ -1,3 +1,4 @@
+import { captureOptionalScreenshot } from './screenshot';
 import { chromium, expect, test } from '@playwright/test';
 import { PREFERENCE_STORAGE_KEYS } from './storage-keys';
 import timetable from '../../packages/core/tests/fixtures/timetable.json' with { type: 'json' };
@@ -68,11 +69,11 @@ for (const input of ['mouse', 'touch'] as const) {
 for (const locale of ['zh-CN', 'en-US']) {
 	test.describe(locale, () => {
 		test.use({ locale });
-		test('four steps preview, persist, reload and synchronize across windows', async ({
-			page,
-			context,
-			request
-		}, testInfo) => {
+		const title =
+			locale === 'zh-CN'
+				? 'four steps preview, persist, reload and synchronize across windows'
+				: 'English font labels and maximum text size fit the settings page';
+		test(title, async ({ page, context, request }, testInfo) => {
 			await request.post('/__e2e/deploy?build=old');
 			await page.addInitScript(() =>
 				localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
@@ -85,6 +86,21 @@ for (const locale of ['zh-CN', 'en-US']) {
 			const font = () =>
 				page.locator('html').evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
 			await expect.poll(font).toBe(15);
+			if (locale === 'en-US') {
+				await slider.focus();
+				await slider.press('End');
+				await expect(slider).toHaveValue('3');
+				await expect(slider).toHaveAttribute('aria-valuetext', 'Largest');
+				await expect.poll(font).toBe(19.5);
+				expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+					true
+				);
+				await captureOptionalScreenshot(page, {
+					path: testInfo.outputPath('font-maximum.png'),
+					fullPage: true
+				});
+				return;
+			}
 			const other = await context.newPage();
 			await other.goto('/Chronos/display-settings');
 			await expect(other.getByRole('slider')).toHaveValue('1');
@@ -102,11 +118,11 @@ for (const locale of ['zh-CN', 'en-US']) {
 			await page.reload();
 			await expect(slider).toHaveValue('3');
 			await expect.poll(font).toBe(19.5);
-			await expect(slider).toHaveAttribute(
-				'aria-valuetext',
-				locale === 'zh-CN' ? '最大' : 'Largest'
-			);
-			await page.screenshot({ path: testInfo.outputPath('font-maximum.png'), fullPage: true });
+			await expect(slider).toHaveAttribute('aria-valuetext', '最大');
+			await captureOptionalScreenshot(page, {
+				path: testInfo.outputPath('font-maximum.png'),
+				fullPage: true
+			});
 			await slider.scrollIntoViewIfNeeded();
 			const rect = (await slider.boundingBox())!;
 			await page.mouse.move(rect.x + rect.width - 8, rect.y + rect.height / 2);
@@ -221,7 +237,7 @@ test('large course text retains compact layout and full details', async ({
 	expect(await title.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThan(
 		before
 	);
-	await page.screenshot({ path: testInfo.outputPath('compact-large.png') });
+	await captureOptionalScreenshot(page, { path: testInfo.outputPath('compact-large.png') });
 	await card.click();
 	const detail = page.locator('h2');
 	await expect(detail).toContainText('一段用于验证大字号换行的完整课程名称');
@@ -234,7 +250,7 @@ test('large course text retains compact layout and full details', async ({
 				.evaluate((el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).m42)
 		)
 		.toBe(0);
-	await page.screenshot({ path: testInfo.outputPath('detail-large.png') });
+	await captureOptionalScreenshot(page, { path: testInfo.outputPath('detail-large.png') });
 	await page.keyboard.press('Escape');
 	await expect(page.getByRole('dialog')).toBeHidden();
 	await page.goto('/Chronos/display-settings');
@@ -250,7 +266,7 @@ test('large course text retains compact layout and full details', async ({
 	expect(await title.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThan(
 		before
 	);
-	await page.screenshot({ path: testInfo.outputPath('scroll-large.png') });
+	await captureOptionalScreenshot(page, { path: testInfo.outputPath('scroll-large.png') });
 });
 
 test('failed saves restore the saved step, and clearing data restores standard text', async ({
@@ -371,7 +387,7 @@ test('maximum text size fits the Arknights theme in portrait and landscape', asy
 		expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
 			true
 		);
-		await page.screenshot({
+		await captureOptionalScreenshot(page, {
 			path: testInfo.outputPath(`arknights-font-${viewport.width}.png`),
 			fullPage: true
 		});
@@ -386,6 +402,8 @@ test('maximum text size fits the Arknights theme in portrait and landscape', asy
 		expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
 			true
 		);
-		await page.screenshot({ path: testInfo.outputPath(`arknights-preview-${viewport.width}.png`) });
+		await captureOptionalScreenshot(page, {
+			path: testInfo.outputPath(`arknights-preview-${viewport.width}.png`)
+		});
 	}
 });

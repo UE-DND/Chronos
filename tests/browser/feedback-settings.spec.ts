@@ -1,3 +1,4 @@
+import { captureOptionalScreenshot } from './screenshot';
 import { test, expect } from '@playwright/test';
 
 test.use({ viewport: { width: 430, height: 932 }, isMobile: true, hasTouch: true });
@@ -49,7 +50,9 @@ for (const labels of [
 						.evaluate((node) => Math.round(node.getBoundingClientRect().bottom))
 				)
 				.toBe(932);
-			await page.screenshot({ path: testInfo.outputPath(`feedback-${labels.locale}.png`) });
+			await captureOptionalScreenshot(page, {
+				path: testInfo.outputPath(`feedback-${labels.locale}.png`)
+			});
 			await wheel.focus();
 			await wheel.press('End');
 			await expect.poll(() => wheel.evaluate((node) => Math.round(node.scrollTop))).toBe(440);

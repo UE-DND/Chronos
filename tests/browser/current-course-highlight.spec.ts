@@ -1,3 +1,4 @@
+import { captureOptionalScreenshot } from './screenshot';
 import { expect, test, type Page, type Locator } from '@playwright/test';
 import fixture from '../../packages/core/tests/fixtures/timetable.json' with { type: 'json' };
 import { encodeSharePayload } from '../../packages/plugins/codec-share/src/share-link/chronos-share-link-codec.ts';
@@ -191,7 +192,7 @@ for (const variant of [
 		const pager = page.locator('.timetable-week-pager');
 		await expect(current(pager)).toHaveCount(1);
 		await expectCurrentCourseHighlight(current(pager));
-		await page.screenshot({ path: testInfo.outputPath('main.png') });
+		await captureOptionalScreenshot(page, { path: testInfo.outputPath('main.png') });
 
 		await page.goto('/Chronos/wallpaper/preview');
 		const data = await page.evaluate(() => {
@@ -212,7 +213,7 @@ for (const variant of [
 		await expect(current(preview)).toHaveCount(1);
 		await expectCurrentCourseHighlight(current(preview));
 		await expect(preview.locator('.period-active')).toHaveCount(0);
-		await page.screenshot({ path: testInfo.outputPath('crop-preview.png') });
+		await captureOptionalScreenshot(page, { path: testInfo.outputPath('crop-preview.png') });
 		await setTime(page, '2026-03-02T08:50:00+08:00');
 		await expect(current(preview)).toHaveCount(1);
 		await setTime(page, '2026-03-02T12:00:00+08:00');
@@ -226,7 +227,7 @@ for (const variant of [
 		await expect(page.getByLabel('画布裁剪手势', { exact: true })).toHaveCount(0);
 		await expect(current(preview)).toHaveCount(1);
 		await expectCurrentCourseHighlight(current(preview));
-		await page.screenshot({ path: testInfo.outputPath('wallpaper-preview.png') });
+		await captureOptionalScreenshot(page, { path: testInfo.outputPath('wallpaper-preview.png') });
 
 		await page.goto('/Chronos/display-settings');
 		await page.getByRole('switch', { name: '高亮当前节次', exact: true }).click();

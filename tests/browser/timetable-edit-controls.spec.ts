@@ -1,3 +1,4 @@
+import { captureOptionalScreenshot } from './screenshot';
 import { expect, test, type Page } from '@playwright/test';
 import fixture from '../../packages/core/tests/fixtures/timetable.json' with { type: 'json' };
 import type { Timetable } from '../../packages/core/src/domain/timetable';
@@ -207,7 +208,9 @@ for (const viewport of [
 		expect((await storedCourses(page))[0]?.weeksCsv).toBe('1,2');
 		await expect(card).toBeVisible();
 		await requestDeletion();
-		await page.screenshot({ path: testInfo.outputPath('real-delete-confirmation.png') });
+		await captureOptionalScreenshot(page, {
+			path: testInfo.outputPath('real-delete-confirmation.png')
+		});
 		await page.getByRole('button', { name: '删除', exact: true }).click();
 		await expect(page.getByRole('dialog')).toHaveCount(0);
 		await expect.poll(async () => (await storedCourses(page))[0]?.weeksCsv).toBe('2');

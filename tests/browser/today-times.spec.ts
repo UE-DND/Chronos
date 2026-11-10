@@ -1,3 +1,4 @@
+import { captureOptionalScreenshot } from './screenshot';
 import { expect, test } from '@playwright/test';
 import fixture from '../../packages/core/tests/fixtures/timetable.json' with { type: 'json' };
 import { encodeSharePayload } from '../../packages/plugins/codec-share/src/share-link/chronos-share-link-codec.ts';
@@ -54,11 +55,10 @@ for (const viewport of [
 			hasTouch: viewport.isMobile,
 			timezoneId: 'Asia/Shanghai'
 		});
-		test('Today uses each timetable time across scopes, routes and clock states', async ({
-			page,
-			context,
-			request
-		}, testInfo) => {
+		const title = viewport.isMobile
+			? 'Today uses each timetable time across scopes, routes and clock states'
+			: 'Today desktop layout keeps scope switching and course editing reachable';
+		test(title, async ({ page, context, request }, testInfo) => {
 			const errors: string[] = [];
 			page.on('pageerror', (error) => errors.push(error.message));
 			await request.post('/__e2e/deploy?build=old');
@@ -69,7 +69,9 @@ for (const viewport of [
 			await context.route('https://ue-dnd.github.io/Chronos/plugins/releases/**', async (route) => {
 				const url = new URL(route.request().url());
 				const path = url.pathname.replace('/Chronos/plugins/releases/', '/__e2e/market/');
-				const response = await route.fetch({ url: `http://127.0.0.1:4179${path}${url.search}` });
+				const response = await route.fetch({
+					url: `http://127.0.0.1:4179${path}${url.search}`
+				});
 				await route.fulfill({ response });
 			});
 			await page.goto(`/Chronos/s#${payload}`);
@@ -139,7 +141,23 @@ for (const viewport of [
 			await page.keyboard.press('Escape');
 			await expect(detail).toBeHidden();
 			await expect(early.getByRole('button')).toHaveClass(/opacity-60/);
-			await page.screenshot({ path: testInfo.outputPath('today-preparing.png') });
+			await captureOptionalScreenshot(page, { path: testInfo.outputPath('today-preparing.png') });
+			if (!viewport.isMobile) {
+				expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+					true
+				);
+				await page.goto('/Chronos/plugins/tool-today');
+				await expect(later).toContainText('09:00');
+				await later.getByRole('button').click();
+				await expect(detail.getByRole('heading', { name: '晚课', exact: true })).toBeVisible();
+				await detail.getByRole('button', { name: '编辑课程', exact: true }).click();
+				await expect(page).toHaveURL(/\/timetable\/course-editor\?courseId=later$/);
+				await expect(page.getByRole('textbox', { name: '课程名称', exact: true })).toHaveValue(
+					'晚课'
+				);
+				expect(errors).toEqual([]);
+				return;
+			}
 
 			await page.goto('/Chronos/plugins/tool-today');
 			await expect(later).toContainText('准备上课');

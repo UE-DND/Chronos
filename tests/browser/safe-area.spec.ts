@@ -1,3 +1,4 @@
+import { captureOptionalScreenshot } from './screenshot';
 import { expect, test, type Page } from '@playwright/test';
 import timetable from '../../packages/core/tests/fixtures/timetable.json' with { type: 'json' };
 import { encodeSharePayload } from '../../packages/plugins/codec-share/src/share-link/chronos-share-link-codec.ts';
@@ -65,7 +66,9 @@ test.describe('iOS landscape rail', () => {
 				'padding-right',
 				standalone ? '72px' : '131px'
 			);
-			await page.screenshot({ path: testInfo.outputPath('landscape-left-cutout.png') });
+			await captureOptionalScreenshot(page, {
+				path: testInfo.outputPath('landscape-left-cutout.png')
+			});
 
 			// Rotating to put the sensor housing on the right must restore the full inset.
 			await page.evaluate(() => {
@@ -126,7 +129,9 @@ test('sheet stays docked while its handle is pulled upwards', async ({
 		expect(await offset()).toBe(0);
 		const bounds = (await sheet.boundingBox())!;
 		expect(bounds.y + bounds.height).toBeCloseTo(viewport.height, 0);
-		await page.screenshot({ path: testInfo.outputPath(`sheet-upward-${viewport.width}.png`) });
+		await captureOptionalScreenshot(page, {
+			path: testInfo.outputPath(`sheet-upward-${viewport.width}.png`)
+		});
 		await page.mouse.move(x, y - 5);
 		await page.mouse.up();
 		await expect(sheet).not.toHaveAttribute('data-dragging');
@@ -270,7 +275,7 @@ test('clock summary below the host toolbar does not add the native top inset aga
 	await expect(page.getByRole('listbox', { name: '时间时', exact: true })).toBeVisible();
 	await page.getByRole('button', { name: '取消', exact: true }).click();
 	await expect(page.locator('[role="dialog"]')).toBeHidden();
-	await page.screenshot({ path: testInfo.outputPath('clock-portrait.png') });
+	await captureOptionalScreenshot(page, { path: testInfo.outputPath('clock-portrait.png') });
 	await page.setViewportSize({ width: 932, height: 430 });
 	await setNativeInsets(page, 24, 0, 16, 32);
 	await expect(summary).toHaveCount(0);

@@ -68,6 +68,8 @@ vp run test:browser
 
 CI 将检查、发行版构建和浏览器产物构建并行启动。浏览器产物只构建一次，通过 artifact 分发给四个独立 job，每个 job 安装 Chromium 并运行 `vp exec playwright test --shard=N/4`。各分片保持单 worker 和独立服务器，避免部署切换及下载失败模拟的共享状态互相干扰。`CI complete` 检查全部 job 的结果，任一失败、取消或跳过都不能通过。Android 发布构建与 Quality 并行准备 APK，插件历史写入、部署和 Release 发布仍等待 Quality 通过。
 
+浏览器回归默认只保留失败截图。需要检查布局参考图时，运行 `CHRONOS_E2E_SCREENSHOTS=1 vp run test:browser`，或对已有产物执行 `CHRONOS_E2E_SCREENSHOTS=1 vpx playwright test`。
+
 Android 发布通过 `setup-java` 缓存 Gradle 依赖和 Wrapper，并使用 `--build-cache` 复用可缓存任务的输出。GitHub 缓存按分支或标签限制访问：同一标签重试可以复用缓存，新标签不能直接读取其他标签的缓存；默认分支已有的缓存可供标签使用。缓存加速效果需在实际 CI 中确认。
 
 领域、HTML 解析、分享往返和浏览器导入共用[课表场景](packages/core/tests/fixtures/README.md)。新增场景时同步维护输入和预期结果，避免各层使用不同的示例。浏览器失败截图、跟踪文件和 HTML 报告写入 `dist/e2e`，不提交到仓库。

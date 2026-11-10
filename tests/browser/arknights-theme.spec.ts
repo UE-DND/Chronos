@@ -1,3 +1,4 @@
+import { captureOptionalScreenshot } from './screenshot';
 import { test, expect } from '@playwright/test';
 
 for (const viewport of [
@@ -75,7 +76,7 @@ for (const viewport of [
 			await toggle.focus();
 			await page.keyboard.press('Space');
 			await expect(toggle).toHaveAttribute('aria-checked', initial === 'true' ? 'false' : 'true');
-			await page.screenshot({
+			await captureOptionalScreenshot(page, {
 				animations: 'disabled',
 				path: `dist/e2e/arknights-${viewport.width}-${mode}.png`
 			});
@@ -91,7 +92,7 @@ for (const viewport of [
 				/data:image\/jpeg/
 			);
 			await expect(page.getByText('显示设置', { exact: true })).toBeVisible();
-			await page.screenshot({
+			await captureOptionalScreenshot(page, {
 				animations: 'disabled',
 				path: `dist/e2e/arknights-mine-${viewport.width}-${mode}.png`
 			});
@@ -114,7 +115,7 @@ for (const viewport of [
 			'background-color',
 			/rgb\(74,\s*171,\s*234\)|rgb\(0,\s*106,\s*147\)/
 		);
-		await page.screenshot({
+		await captureOptionalScreenshot(page, {
 			animations: 'disabled',
 			path: `dist/e2e/arknights-market-${viewport.width}.png`
 		});
@@ -126,7 +127,7 @@ for (const viewport of [
 		}
 		await expect(page.locator('.rounded-inset')).toHaveCSS('border-radius', '0px');
 		await expect(page.locator('.ui-btn-filled')).toHaveCSS('border-radius', '0px');
-		await page.screenshot({
+		await captureOptionalScreenshot(page, {
 			animations: 'disabled',
 			path: `dist/e2e/arknights-install-${viewport.width}.png`
 		});
@@ -155,7 +156,7 @@ for (const viewport of [
 		const chooser = page.waitForEvent('filechooser');
 		await htmlButton.click();
 		expect((await chooser).isMultiple()).toBe(false);
-		await page.screenshot({
+		await captureOptionalScreenshot(page, {
 			animations: 'disabled',
 			path: `dist/e2e/arknights-html-${viewport.width}.png`
 		});

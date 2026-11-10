@@ -1,3 +1,4 @@
+import { captureOptionalScreenshot } from './screenshot';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import fixture from '../../packages/core/tests/fixtures/timetable.json' with { type: 'json' };
 import type { Timetable } from '../../packages/core/src/domain/timetable';
@@ -103,7 +104,9 @@ test('temporary weekends follow midnight, week navigation and saved switches', a
 		.poll(() => pager.evaluate((node) => node.scrollLeft / node.clientWidth))
 		.toBeCloseTo(0);
 	await expectWeekend(firstWeek, true, true);
-	await page.screenshot({ path: testInfo.outputPath('sunday-temporary-columns.png') });
+	await captureOptionalScreenshot(page, {
+		path: testInfo.outputPath('sunday-temporary-columns.png')
+	});
 
 	// Reopening the app and settings must retain disabled switches even while both columns are shown.
 	await page.reload();

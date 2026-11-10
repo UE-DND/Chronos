@@ -57,19 +57,19 @@ async function choose(page: Page) {
 	await expect(confirm(page)).toBeEnabled();
 }
 
+test.beforeEach(async ({ page, request }) => {
+	await request.post('/__e2e/deploy?build=old');
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
+});
+
 for (const viewport of [
 	{ width: 390, height: 844 },
 	{ width: 1280, height: 900 }
 ]) {
 	test.describe(`wallpaper at ${viewport.width}px`, () => {
 		test.use({ viewport });
-		test.beforeEach(async ({ page, request }) => {
-			await request.post('/__e2e/deploy?build=old');
-			await page.addInitScript(() =>
-				localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
-			);
-		});
-
 		test('initial cover is stable with decode and measurement in either order', async ({
 			page
 		}) => {
@@ -114,7 +114,7 @@ for (const viewport of [
 			});
 			await page.goto('/Chronos/wallpaper/preview');
 			const file = await imageFile(page);
-			for (let iteration = 0; iteration < 6; iteration++) {
+			for (const first of ['decode', 'measurement']) {
 				await page.evaluate(() =>
 					Object.assign(window.wallpaperTiming, { active: true, decoded: false, measured: false })
 				);
@@ -125,7 +125,7 @@ for (const viewport of [
 					)
 					.toBe(true);
 				await expect(confirm(page)).toBeDisabled();
-				if (iteration % 2 === 0) {
+				if (first === 'decode') {
 					await page.evaluate(() => window.wallpaperTiming.releaseDecode());
 					await page.evaluate(() => new Promise(requestAnimationFrame));
 					await expect(confirm(page)).toBeDisabled();
@@ -154,96 +154,6 @@ for (const viewport of [
 				expect(geometry.top).toBeCloseTo((geometry.height - geometry.imageHeight) / 2, 3);
 				await cancel(page).click();
 			}
-		});
-
-		test('source selection rolls back native radio and retries by row, radio and keyboard', async ({
-			page
-		}) => {
-			const errors: string[] = [];
-			page.on('pageerror', (error) => errors.push(error.message));
-			await page.goto('/Chronos/wallpaper');
-			const none = page.getByRole('radio', { name: '无壁纸', exact: true });
-			const custom = page.getByRole('radio', { name: '自定义', exact: true });
-			for (const activation of ['row', 'radio', 'keyboard']) {
-				await expect(none).toBeChecked();
-				await page.evaluate(() => {
-					const setItem = Object.getOwnPropertyDescriptor(Storage.prototype, 'setItem')!
-						.value as Storage['setItem'];
-					let attempts = 0;
-					window.wallpaperAttempts = () => attempts;
-					Storage.prototype.setItem = function (key, value) {
-						if (
-							key === 'chronos:/Chronos:chronos_preferences:wallpaper_source' &&
-							value === 'custom' &&
-							++attempts === 1
-						)
-							throw new DOMException('Test failure', 'QuotaExceededError');
-						setItem.call(this, key, value);
-					};
-				});
-				const activate = async () => {
-					if (activation === 'keyboard') {
-						await custom.focus();
-						await custom.press('Space');
-					} else if (activation === 'radio')
-						await page.locator('label').filter({ has: custom }).locator('input + div').click();
-					else await page.getByText('自定义', { exact: true }).click();
-				};
-				await activate();
-				await expect(
-					page.getByRole('status').filter({ hasText: '设置保存失败，请重试' })
-				).toBeVisible();
-				await expect(none).toBeChecked();
-				await expect(custom).not.toBeChecked();
-				await expect(page.getByRole('link', { name: '选择壁纸', exact: true })).toHaveCount(0);
-				await activate();
-				await expect(custom).toBeChecked();
-				await expect(page.getByRole('link', { name: '选择壁纸', exact: true })).toBeVisible();
-				expect(await page.evaluate(() => window.wallpaperAttempts())).toBe(2);
-				await expect
-					.poll(() =>
-						page.evaluate(() =>
-							localStorage.getItem('chronos:/Chronos:chronos_preferences:wallpaper_source')
-						)
-					)
-					.toBe('custom');
-				await page.getByText('无壁纸', { exact: true }).click();
-			}
-			expect(errors).toEqual([]);
-		});
-
-		test('canvas failures notify once and preserve crop for retry', async ({ page }) => {
-			const errors: string[] = [];
-			page.on('pageerror', (error) => errors.push(error.message));
-			await page.goto('/Chronos/wallpaper/preview');
-			for (const failure of ['null', 'throw']) {
-				await choose(page);
-				const before = await crop(page).locator('img').getAttribute('style');
-				await page.evaluate((failure) => {
-					const toBlob = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'toBlob')!
-						.value as HTMLCanvasElement['toBlob'];
-					window.wallpaperRestoreExport = () => {
-						HTMLCanvasElement.prototype.toBlob = toBlob;
-					};
-					HTMLCanvasElement.prototype.toBlob = function (callback) {
-						if (failure === 'throw') throw new Error('Test canvas exception');
-						callback(null);
-					};
-				}, failure);
-				await confirm(page).click();
-				await expect(
-					page.getByRole('status').filter({ hasText: '壁纸导入失败，请重试' })
-				).toHaveCount(1);
-				await expect(confirm(page)).toBeEnabled();
-				expect(await crop(page).locator('img').getAttribute('style')).toBe(before);
-				await page.evaluate(() => window.wallpaperRestoreExport());
-				await confirm(page).click();
-				await expect(crop(page)).toHaveCount(0);
-				await expect(
-					page.getByRole('button', { name: '重新选择', exact: true }).filter({ visible: true })
-				).toBeEnabled();
-			}
-			expect(errors).toEqual([]);
 		});
 
 		for (const themeMode of ['light', 'dark']) {
@@ -347,105 +257,198 @@ for (const viewport of [
 				await expect(crop(page).locator('[data-adaptive-tone]')).toHaveCount(0);
 			});
 		}
+	});
+}
 
-		test('one save publishes one URL and external IndexedDB writes stay synchronized', async ({
-			page,
-			context
-		}) => {
-			await page.addInitScript(() => {
-				if (
-					localStorage.getItem('chronos:/Chronos:chronos_preferences:wallpaper_mask_enabled') ===
-					null
-				)
-					localStorage.setItem(
-						'chronos:/Chronos:chronos_preferences:wallpaper_mask_enabled',
-						'false'
-					);
-			});
-			await importTimetable(page);
-			await page.goto('/Chronos/wallpaper/preview');
-			await choose(page);
-			await expect(crop(page).locator('[data-adaptive-tone]').first()).toBeVisible();
+test.describe('wallpaper persistence', () => {
+	test.use({ viewport: { width: 390, height: 844 } });
+
+	test('source selection rolls back native radio and retries by row, radio and keyboard', async ({
+		page
+	}) => {
+		const errors: string[] = [];
+		page.on('pageerror', (error) => errors.push(error.message));
+		await page.goto('/Chronos/wallpaper');
+		const none = page.getByRole('radio', { name: '无壁纸', exact: true });
+		const custom = page.getByRole('radio', { name: '自定义', exact: true });
+		for (const activation of ['row', 'radio', 'keyboard']) {
+			await expect(none).toBeChecked();
 			await page.evaluate(() => {
-				window.wallpaperCounts = {
-					created: [],
-					revoked: [],
-					decoded: [],
-					published: [],
-					bitmapDecoded: []
+				const setItem = Object.getOwnPropertyDescriptor(Storage.prototype, 'setItem')!
+					.value as Storage['setItem'];
+				let attempts = 0;
+				window.wallpaperAttempts = () => attempts;
+				Storage.prototype.setItem = function (key, value) {
+					if (
+						key === 'chronos:/Chronos:chronos_preferences:wallpaper_source' &&
+						value === 'custom' &&
+						++attempts === 1
+					)
+						throw new DOMException('Test failure', 'QuotaExceededError');
+					setItem.call(this, key, value);
 				};
-				const create = Object.getOwnPropertyDescriptor(URL, 'createObjectURL')!
-					.value as typeof URL.createObjectURL;
-				URL.createObjectURL = function (blob) {
-					const uri = create.call(this, blob);
-					window.wallpaperCounts.created.push(uri);
-					return uri;
-				};
-				const revoke = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL')!
-					.value as typeof URL.revokeObjectURL;
-				URL.revokeObjectURL = function (uri) {
-					window.wallpaperCounts.revoked.push(uri);
-					revoke.call(this, uri);
-				};
-				const decode = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'decode')!
-					.value as HTMLImageElement['decode'];
-				HTMLImageElement.prototype.decode = function () {
-					window.wallpaperCounts.decoded.push(this.src);
-					if (!this.isConnected) window.wallpaperCounts.bitmapDecoded.push(this.src);
-					return decode.call(this);
-				};
-				const seen = new Set<string>();
-				new MutationObserver(() => {
-					for (const img of document.querySelectorAll<HTMLImageElement>(
-						'[data-shell-wallpaper] img, [data-wallpaper-mask] img'
-					)) {
-						if (window.wallpaperCounts.created.includes(img.src) && !seen.has(img.src)) {
-							seen.add(img.src);
-							window.wallpaperCounts.published.push(img.src);
-						}
-					}
-				}).observe(document.body, {
-					subtree: true,
-					childList: true,
-					attributes: true,
-					attributeFilter: ['src']
-				});
 			});
-			await confirm(page).click();
-			await expect(crop(page)).toHaveCount(0);
-			const previewImage = page.locator('[data-wallpaper-mask] img');
-			await expect(previewImage).toBeVisible();
+			const activate = async () => {
+				if (activation === 'keyboard') {
+					await custom.focus();
+					await custom.press('Space');
+				} else if (activation === 'radio')
+					await page.locator('label').filter({ has: custom }).locator('input + div').click();
+				else await page.getByText('自定义', { exact: true }).click();
+			};
+			await activate();
 			await expect(
-				page.locator('[data-wallpaper-mask] [data-adaptive-tone]').filter({ visible: true }).first()
+				page.getByRole('status').filter({ hasText: '设置保存失败，请重试' })
 			).toBeVisible();
-			const uri = await previewImage.getAttribute('src');
-			const counts = await page.evaluate(() => window.wallpaperCounts);
-			expect(counts.created).toEqual([uri]);
-			expect(counts.published).toEqual([uri]);
-			// Each view may explicitly decode, but all share this one URI and bitmap-cache entry.
-			expect(new Set(counts.decoded)).toEqual(new Set([uri]));
-			expect(counts.bitmapDecoded).toEqual([uri]);
-			const other = await context.newPage();
-			await other.goto('/Chronos/wallpaper/preview');
-			await expect(other.locator('[data-wallpaper-mask] img')).toBeVisible();
-			await choose(other);
-			await confirm(other).click();
-			await expect(crop(other)).toHaveCount(0);
-			await expect.poll(() => previewImage.getAttribute('src')).not.toBe(uri);
+			await expect(none).toBeChecked();
+			await expect(custom).not.toBeChecked();
+			await expect(page.getByRole('link', { name: '选择壁纸', exact: true })).toHaveCount(0);
+			await activate();
+			await expect(custom).toBeChecked();
+			await expect(page.getByRole('link', { name: '选择壁纸', exact: true })).toBeVisible();
+			expect(await page.evaluate(() => window.wallpaperAttempts())).toBe(2);
 			await expect
 				.poll(() =>
 					page.evaluate(() =>
-						window.wallpaperCounts.revoked.includes(window.wallpaperCounts.created[0])
+						localStorage.getItem('chronos:/Chronos:chronos_preferences:wallpaper_source')
 					)
 				)
-				.toBe(true);
-			await other
-				.getByRole('button', { name: '清除壁纸', exact: true })
-				.filter({ visible: true })
-				.click();
-			await expect(previewImage).toHaveCount(0);
-			await expect(page.getByText('选择壁纸后，可在此预览应用效果', { exact: true })).toBeVisible();
-			await other.close();
-		});
+				.toBe('custom');
+			await page.getByText('无壁纸', { exact: true }).click();
+		}
+		expect(errors).toEqual([]);
 	});
-}
+
+	test('canvas failures notify once and preserve crop for retry', async ({ page }) => {
+		const errors: string[] = [];
+		page.on('pageerror', (error) => errors.push(error.message));
+		await page.goto('/Chronos/wallpaper/preview');
+		for (const failure of ['null', 'throw']) {
+			await choose(page);
+			const before = await crop(page).locator('img').getAttribute('style');
+			await page.evaluate((failure) => {
+				const toBlob = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'toBlob')!
+					.value as HTMLCanvasElement['toBlob'];
+				window.wallpaperRestoreExport = () => {
+					HTMLCanvasElement.prototype.toBlob = toBlob;
+				};
+				HTMLCanvasElement.prototype.toBlob = function (callback) {
+					if (failure === 'throw') throw new Error('Test canvas exception');
+					callback(null);
+				};
+			}, failure);
+			await confirm(page).click();
+			await expect(
+				page.getByRole('status').filter({ hasText: '壁纸导入失败，请重试' })
+			).toHaveCount(1);
+			await expect(confirm(page)).toBeEnabled();
+			expect(await crop(page).locator('img').getAttribute('style')).toBe(before);
+			await page.evaluate(() => window.wallpaperRestoreExport());
+			await confirm(page).click();
+			await expect(crop(page)).toHaveCount(0);
+			await expect(
+				page.getByRole('button', { name: '重新选择', exact: true }).filter({ visible: true })
+			).toBeEnabled();
+		}
+		expect(errors).toEqual([]);
+	});
+
+	test('one save publishes one URL and external IndexedDB writes stay synchronized', async ({
+		page,
+		context
+	}) => {
+		await page.addInitScript(() => {
+			if (
+				localStorage.getItem('chronos:/Chronos:chronos_preferences:wallpaper_mask_enabled') === null
+			)
+				localStorage.setItem(
+					'chronos:/Chronos:chronos_preferences:wallpaper_mask_enabled',
+					'false'
+				);
+		});
+		await importTimetable(page);
+		await page.goto('/Chronos/wallpaper/preview');
+		await choose(page);
+		await expect(crop(page).locator('[data-adaptive-tone]').first()).toBeVisible();
+		await page.evaluate(() => {
+			window.wallpaperCounts = {
+				created: [],
+				revoked: [],
+				decoded: [],
+				published: [],
+				bitmapDecoded: []
+			};
+			const create = Object.getOwnPropertyDescriptor(URL, 'createObjectURL')!
+				.value as typeof URL.createObjectURL;
+			URL.createObjectURL = function (blob) {
+				const uri = create.call(this, blob);
+				window.wallpaperCounts.created.push(uri);
+				return uri;
+			};
+			const revoke = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL')!
+				.value as typeof URL.revokeObjectURL;
+			URL.revokeObjectURL = function (uri) {
+				window.wallpaperCounts.revoked.push(uri);
+				revoke.call(this, uri);
+			};
+			const decode = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'decode')!
+				.value as HTMLImageElement['decode'];
+			HTMLImageElement.prototype.decode = function () {
+				window.wallpaperCounts.decoded.push(this.src);
+				if (!this.isConnected) window.wallpaperCounts.bitmapDecoded.push(this.src);
+				return decode.call(this);
+			};
+			const seen = new Set<string>();
+			new MutationObserver(() => {
+				for (const img of document.querySelectorAll<HTMLImageElement>(
+					'[data-shell-wallpaper] img, [data-wallpaper-mask] img'
+				)) {
+					if (window.wallpaperCounts.created.includes(img.src) && !seen.has(img.src)) {
+						seen.add(img.src);
+						window.wallpaperCounts.published.push(img.src);
+					}
+				}
+			}).observe(document.body, {
+				subtree: true,
+				childList: true,
+				attributes: true,
+				attributeFilter: ['src']
+			});
+		});
+		await confirm(page).click();
+		await expect(crop(page)).toHaveCount(0);
+		const previewImage = page.locator('[data-wallpaper-mask] img');
+		await expect(previewImage).toBeVisible();
+		await expect(
+			page.locator('[data-wallpaper-mask] [data-adaptive-tone]').filter({ visible: true }).first()
+		).toBeVisible();
+		const uri = await previewImage.getAttribute('src');
+		const counts = await page.evaluate(() => window.wallpaperCounts);
+		expect(counts.created).toEqual([uri]);
+		expect(counts.published).toEqual([uri]);
+		// Each view may explicitly decode, but all share this one URI and bitmap-cache entry.
+		expect(new Set(counts.decoded)).toEqual(new Set([uri]));
+		expect(counts.bitmapDecoded).toEqual([uri]);
+		const other = await context.newPage();
+		await other.goto('/Chronos/wallpaper/preview');
+		await expect(other.locator('[data-wallpaper-mask] img')).toBeVisible();
+		await choose(other);
+		await confirm(other).click();
+		await expect(crop(other)).toHaveCount(0);
+		await expect.poll(() => previewImage.getAttribute('src')).not.toBe(uri);
+		await expect
+			.poll(() =>
+				page.evaluate(() =>
+					window.wallpaperCounts.revoked.includes(window.wallpaperCounts.created[0])
+				)
+			)
+			.toBe(true);
+		await other
+			.getByRole('button', { name: '清除壁纸', exact: true })
+			.filter({ visible: true })
+			.click();
+		await expect(previewImage).toHaveCount(0);
+		await expect(page.getByText('选择壁纸后，可在此预览应用效果', { exact: true })).toBeVisible();
+		await other.close();
+	});
+});

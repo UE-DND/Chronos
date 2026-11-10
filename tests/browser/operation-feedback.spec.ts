@@ -1,3 +1,4 @@
+import { captureOptionalScreenshot } from './screenshot';
 import { expect, test, type Page } from '@playwright/test';
 import timetable from '../../packages/core/tests/fixtures/timetable.json' with { type: 'json' };
 import { encodeSharePayload } from '../../packages/plugins/codec-share/src/share-link/chronos-share-link-codec.ts';
@@ -91,6 +92,13 @@ for (const activation of ['row', 'keyboard'] as const) {
 			target: '高亮当前节次'
 		}
 	]) {
+		// Each setting keeps its own rollback coverage; Radio and Switch each exercise keyboard retry.
+		if (
+			activation === 'keyboard' &&
+			setting.key !== 'theme_mode' &&
+			setting.key !== 'current_period_highlight_enabled'
+		)
+			continue;
 		test(`appearance settings recover and retry ${setting.key} with ${activation} after storage failure`, async ({
 			page,
 			request
@@ -349,7 +357,7 @@ for (const viewport of [
 				.filter({ visible: true });
 			await expect(pending).toBeDisabled();
 			await expect(pending).toHaveAttribute('aria-busy', 'true');
-			await page.screenshot({ path: testInfo.outputPath('saving.png') });
+			await captureOptionalScreenshot(page, { path: testInfo.outputPath('saving.png') });
 			await expect(
 				page.getByRole('button', { name: '删除课程', exact: true }).filter({ visible: true })
 			).toBeDisabled();

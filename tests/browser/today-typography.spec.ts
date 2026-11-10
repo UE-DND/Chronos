@@ -1,3 +1,4 @@
+import { captureOptionalScreenshot } from './screenshot';
 import { expect, test } from '@playwright/test';
 import fixture from '../../packages/core/tests/fixtures/timetable.json' with { type: 'json' };
 import { encodeSharePayload } from '../../packages/plugins/codec-share/src/share-link/chronos-share-link-codec.ts';
@@ -130,7 +131,9 @@ for (const locale of ['zh-CN', 'en-US']) {
 							);
 						})
 					).toBe(true);
-					await page.screenshot({ path: testInfo.outputPath(`today-${width}-${scale}.png`) });
+					await captureOptionalScreenshot(page, {
+						path: testInfo.outputPath(`today-${width}-${scale}.png`)
+					});
 				}
 			}
 		});

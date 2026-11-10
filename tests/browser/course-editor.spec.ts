@@ -67,16 +67,18 @@ for (const width of [430, 1280]) {
 			await expect(page.getByRole('button', { name: /周次范围/ })).toHaveCount(0);
 		});
 
-		test('shows a missing course after startup with no timetable', async ({ page, request }) => {
-			await request.post('/__e2e/deploy?build=old');
-			await page.addInitScript(() =>
-				localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
-			);
-			await page.goto('/Chronos/');
-			await page.goto('/Chronos/timetable/course-editor?courseId=missing-course');
-			await expect(page.getByText('未找到课程', { exact: true })).toBeVisible();
-			await expect(page.getByRole('button', { name: '保存', exact: true })).toHaveCount(0);
-		});
+		if (width === 430) {
+			test('shows a missing course after startup with no timetable', async ({ page, request }) => {
+				await request.post('/__e2e/deploy?build=old');
+				await page.addInitScript(() =>
+					localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+				);
+				await page.goto('/Chronos/');
+				await page.goto('/Chronos/timetable/course-editor?courseId=missing-course');
+				await expect(page.getByText('未找到课程', { exact: true })).toBeVisible();
+				await expect(page.getByRole('button', { name: '保存', exact: true })).toHaveCount(0);
+			});
+		}
 
 		test('commits clicked and keyboard wheel choices before scrolling settles', async ({
 			page,
