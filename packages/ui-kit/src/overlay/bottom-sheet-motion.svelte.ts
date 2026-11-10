@@ -1,5 +1,5 @@
-import { createGestureVelocity, rubberband } from '../motion/gesture-motion';
-import { shouldDismissSheet } from './bottom-sheet-drag';
+import { createGestureVelocity } from '../motion/gesture-motion';
+import { clampDragOffset, shouldDismissSheet } from './bottom-sheet-drag';
 
 export function createBottomSheetMotion(options: {
 	height: () => number;
@@ -89,14 +89,14 @@ export function createBottomSheetMotion(options: {
 		move(y: number) {
 			if (phase !== 'dragging') return;
 			samples.add(y);
-			const next = y - startY;
-			offset = next >= 0 ? next : rubberband(next, dragDimension);
+			offset = clampDragOffset(y - startY);
 		},
 		release(y: number, canceled = false) {
 			if (phase !== 'dragging') return;
 			samples.add(y);
 			const velocity = canceled ? 0 : samples.velocity();
-			if (!canceled && shouldDismissSheet(offset, dragDimension, 0.25, velocity)) close();
+			if (!canceled && offset > 0 && shouldDismissSheet(offset, dragDimension, 0.25, velocity))
+				close();
 			else returnHome();
 		},
 		destroy: cancel

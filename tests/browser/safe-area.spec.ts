@@ -24,6 +24,51 @@ async function setNativeInsets(
 	);
 }
 
+test('sheet stays docked while its handle is pulled upwards', async ({
+	page,
+	request
+}, testInfo) => {
+	await request.post('/__e2e/deploy?build=old');
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
+	await page.goto(`/Chronos/s#${payload}`);
+	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
+	await expect(page).toHaveURL(/\/Chronos\/$/);
+	await setNativeInsets(page, 24, 0, 34, 0);
+	await page.locator('.course-capsule').first().click();
+	const sheet = page.getByRole('dialog', { name: '课程详情', exact: true });
+	const offset = () =>
+		sheet.evaluate((node) => new DOMMatrix(getComputedStyle(node).transform).m42);
+	await expect.poll(offset).toBe(0);
+
+	for (const viewport of [
+		{ width: 430, height: 932 },
+		{ width: 932, height: 430 }
+	]) {
+		await page.setViewportSize(viewport);
+		const handle = (await sheet.locator('.touch-none').boundingBox())!;
+		const x = handle.x + handle.width / 2;
+		const y = handle.y + handle.height / 2;
+		await page.mouse.move(x, y);
+		await page.mouse.down();
+		await page.mouse.move(x, Math.max(0, y - 270), { steps: 10 });
+		await expect(sheet).toHaveAttribute('data-dragging', '');
+		expect(await offset()).toBe(0);
+		const bounds = (await sheet.boundingBox())!;
+		expect(bounds.y + bounds.height).toBeCloseTo(viewport.height, 0);
+		await page.screenshot({ path: testInfo.outputPath(`sheet-upward-${viewport.width}.png`) });
+		await page.mouse.move(x, y - 5);
+		await page.mouse.up();
+		await expect(sheet).not.toHaveAttribute('data-dragging');
+		await expect(sheet).not.toHaveAttribute('data-snapping-back');
+		await expect(sheet).toBeVisible();
+		await expect.poll(offset).toBe(0);
+	}
+	await page.keyboard.press('Escape');
+	await expect(sheet).toBeHidden();
+});
+
 test('dialog keeps its input and footer reachable in a short viewport with safe areas', async ({
 	page,
 	request

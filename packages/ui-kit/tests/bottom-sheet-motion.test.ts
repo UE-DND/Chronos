@@ -82,6 +82,33 @@ describe('bottom sheet motion', () => {
 		expect(sheet.state).toMatchObject({ present: true, offset: 0 });
 		expect(onClosed).not.toHaveBeenCalled();
 	});
+	it('keeps the sheet at the bottom during an upward drag and its return', () => {
+		const { sheet, onClosed } = harness();
+		sheet.start(400);
+		vi.advanceTimersByTime(20);
+		sheet.move(130);
+		expect(sheet.state).toMatchObject({ phase: 'dragging', offset: 0 });
+		vi.advanceTimersByTime(20);
+		sheet.move(380);
+		expect(sheet.state.offset).toBe(0);
+		// A fast downward return above the starting point is not a dismiss gesture.
+		sheet.release(380);
+		vi.advanceTimersByTime(240);
+		expect(sheet.state).toMatchObject({ present: true, phase: 'open', offset: 0 });
+		expect(onClosed).not.toHaveBeenCalled();
+	});
+	it('dismisses after an upward drag reverses into a downward pull', () => {
+		const { sheet, onClosed } = harness();
+		sheet.start(400);
+		sheet.move(130);
+		vi.advanceTimersByTime(100);
+		sheet.move(560);
+		expect(sheet.state.offset).toBe(160);
+		sheet.release(560);
+		vi.advanceTimersByTime(240);
+		expect(sheet.state.present).toBe(false);
+		expect(onClosed).toHaveBeenCalledOnce();
+	});
 	it('ignores a new drag during a return animation', () => {
 		const { sheet } = harness();
 		sheet.start(100);
