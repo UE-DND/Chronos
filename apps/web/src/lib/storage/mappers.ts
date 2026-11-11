@@ -19,16 +19,14 @@ export function courseToRow(course: Course, timetableId: string): CourseRow {
 }
 
 function parseWeeksCsv(weeksCsv: string): number[] {
-	if (!weeksCsv) return [];
-	const parts = weeksCsv.split(',');
-	const result: number[] = [];
-	for (let i = 0; i < parts.length; i += 1) {
-		const parsed = Number.parseInt(parts[i]!, 10);
-		if (!Number.isNaN(parsed)) {
-			result.push(parsed);
+	if (weeksCsv === '') return [];
+	return weeksCsv.split(',').map((token) => {
+		const week = Number(token);
+		if (!/^-?\d+$/.test(token) || !Number.isSafeInteger(week)) {
+			throw new TypeError('Invalid stored course weeks');
 		}
-	}
-	return result;
+		return week;
+	});
 }
 
 export function courseFromRow(row: CourseRow): Course {

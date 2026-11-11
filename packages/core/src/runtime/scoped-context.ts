@@ -13,6 +13,8 @@ export class ScopedContext<Config extends object = Record<string, unknown>>
 {
 	readonly subscriptions: Disposable[] = [];
 	private _config: Config;
+	private configWrites: Promise<void> | undefined;
+	private disposed = false;
 
 	readonly storage: ReturnType<typeof createPluginStorage>;
 	readonly i18n: ReturnType<typeof createPluginI18n>;
@@ -34,16 +36,31 @@ export class ScopedContext<Config extends object = Record<string, unknown>>
 		return this._config;
 	}
 
-	async updateConfig(patch: Partial<Config>): Promise<void> {
-		this._config = {
-			...this._config,
-			...patch
-		};
-		await this.storage.set(PLUGIN_CONFIG_STORAGE_KEY, this._config);
-		this.host.events.emit('config:changed', {
-			pluginId: this.pluginId,
-			config: this._config as Record<string, unknown>
+	updateConfig(patch: Partial<Config>): Promise<void> {
+		if (this.disposed)
+			return Promise.reject(new Error(`Plugin context "${this.pluginId}" is disposed`));
+		const values = { ...patch };
+		const result = (this.configWrites ?? Promise.resolve()).then(async () => {
+			if (this.disposed) throw new Error(`Plugin context "${this.pluginId}" is disposed`);
+			const next = { ...this._config, ...values };
+			await this.storage.set(PLUGIN_CONFIG_STORAGE_KEY, next);
+			if (this.disposed) return;
+			this._config = next;
+			this.host.events.emit('config:changed', {
+				pluginId: this.pluginId,
+				config: next as Record<string, unknown>
+			});
 		});
+		const clearQueue = () => {
+			if (this.configWrites === settled) this.configWrites = undefined;
+		};
+		const settled = result.then(clearQueue, clearQueue);
+		this.configWrites = settled;
+		return result;
+	}
+
+	whenConfigWritesSettled(): Promise<void> | undefined {
+		return this.configWrites;
 	}
 
 	service<T>(identifier: ServiceIdentifier<T>): T {
@@ -133,6 +150,7 @@ export class ScopedContext<Config extends object = Record<string, unknown>>
 	}
 
 	dispose(): void {
+		this.disposed = true;
 		for (let i = this.subscriptions.length - 1; i >= 0; i--) {
 			const sub = this.subscriptions[i];
 			if (sub) {

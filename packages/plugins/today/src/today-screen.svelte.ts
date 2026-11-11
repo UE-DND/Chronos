@@ -21,6 +21,12 @@ export function coursePaintKey(timetableId: string, courseName: string): string 
 	return `${timetableId}\0${normalizedCourseName(courseName)}`;
 }
 export interface TodayScreenController {
+	readonly state: {
+		readonly phase: 'loading' | 'ready' | 'failed';
+		readonly error: unknown;
+		readonly hasResult: boolean;
+		readonly saveError: unknown;
+	};
 	readonly today: string;
 	readonly now: Date;
 	readonly scope: TodayScope;
@@ -30,6 +36,7 @@ export interface TodayScreenController {
 	init(controller: ChronosUiController, pluginId: string): Promise<void>;
 	dispose(): void;
 	persistScope(nextScope: TodayScope): Promise<void>;
+	retry(): Promise<void>;
 }
 export function createTodayScreenController(): TodayScreenController {
 	let controller: ChronosUiController | undefined;
@@ -38,12 +45,19 @@ export function createTodayScreenController(): TodayScreenController {
 	let scope = $state<TodayScope>('active');
 	let courseEntries = $state.raw<TodayCourseEntry[]>([]);
 	let paintByCourseKey = $state.raw<Map<string, CoursePaletteEntry>>(new Map());
+	let state = $state.raw<TodayScreenController['state']>({
+		phase: 'loading',
+		error: null,
+		hasResult: false,
+		saveError: null
+	});
 	let hits: TodayCourseHit[] = [];
 	let disposed = false;
 	let unsubscribeSnapshot: (() => void) | undefined;
 	let unsubscribeConfig: (() => void) | undefined;
 	let courseRequest = 0;
 	let paintRequest = 0;
+	let saveRequest = 0;
 	let queryKey = '';
 	let paletteRevision: number | undefined;
 	let queryDirty = false;
@@ -71,10 +85,11 @@ export function createTodayScreenController(): TodayScreenController {
 	}
 	async function refreshPaints() {
 		const request = ++paintRequest;
-		const ctx = controller?.getPluginContext(pluginId);
-		const presentation = ctx?.tryService(ICoursePresentationService);
 		const entries = courseEntries;
 		try {
+			const presentation = controller
+				?.getPluginContext(pluginId)
+				.tryService(ICoursePresentationService);
 			const paints = new Map<string, CoursePaletteEntry>();
 			if (presentation)
 				await Promise.all(
@@ -84,17 +99,25 @@ export function createTodayScreenController(): TodayScreenController {
 					})
 				);
 			if (!disposed && request === paintRequest) paintByCourseKey = paints;
-		} catch {
-			if (!disposed && request === paintRequest) paintByCourseKey = new Map();
+		} catch (error) {
+			if (disposed || request !== paintRequest) return;
+			console.error('[today] course colors failed', error);
+			paintByCourseKey = new Map();
 		}
+	}
+	function failQuery(error: unknown) {
+		console.error('[today] course query failed', error);
+		state = { ...state, phase: 'failed', error };
 	}
 	async function queryCourses() {
 		const request = ++courseRequest;
 		const timetable = snapshot?.currentTimetable;
+		state = { ...state, phase: 'loading', error: null };
 		if (!controller || !timetable) {
 			hits = [];
-			updateStatuses();
-			await refreshPaints();
+			courseEntries = [];
+			paintByCourseKey = new Map();
+			state = { ...state, phase: 'ready', hasResult: true };
 			return;
 		}
 		try {
@@ -103,14 +126,19 @@ export function createTodayScreenController(): TodayScreenController {
 				{ todayIso: today(), scope, timetable }
 			);
 			if (disposed || request !== courseRequest) return;
+			const entries = attachCourseStatuses(
+				result,
+				currentTimeMinutes(now()),
+				prepareReminderMinutes(),
+				appLocaleToBcp47(snapshot?.locale)
+			);
 			hits = result;
-			updateStatuses();
+			courseEntries = entries;
+			state = { ...state, phase: 'ready', error: null, hasResult: true };
 			await refreshPaints();
-		} catch {
+		} catch (error) {
 			if (disposed || request !== courseRequest) return;
-			hits = [];
-			courseEntries = [];
-			paintByCourseKey = new Map();
+			failQuery(error);
 			++paintRequest;
 		}
 	}
@@ -145,9 +173,13 @@ export function createTodayScreenController(): TodayScreenController {
 			queryDirty = false;
 			paintsDirty = false;
 			if (query) await queryCourses();
-			else {
-				updateStatuses();
-				if (paint) await refreshPaints();
+			else if (state.phase === 'ready') {
+				try {
+					updateStatuses();
+					if (paint) await refreshPaints();
+				} catch (error) {
+					if (!disposed) failQuery(error);
+				}
 			}
 		});
 		return queued;
@@ -178,21 +210,34 @@ export function createTodayScreenController(): TodayScreenController {
 	}
 	async function persistScope(next: TodayScope) {
 		if (disposed || !controller) return;
+		const request = ++saveRequest;
 		if (scope !== next) haptic.medium();
 		scope = next;
+		state = { ...state, saveError: null };
 		const refresh = schedule();
 		try {
 			await controller.getPluginContext(pluginId).updateConfig({ scope: next });
-		} catch {
-			/* Preserve local selection. */
+		} catch (error) {
+			if (!disposed && request === saveRequest) {
+				console.error('[today] scope save failed', error);
+				state = { ...state, saveError: error };
+			}
 		}
 		await refresh;
+	}
+	function retry() {
+		if (disposed || !controller || state.phase === 'loading') return Promise.resolve();
+		queryDirty = true;
+		++courseRequest;
+		++paintRequest;
+		return schedule();
 	}
 	function dispose() {
 		if (disposed) return;
 		disposed = true;
 		++courseRequest;
 		++paintRequest;
+		++saveRequest;
 		unsubscribeSnapshot?.();
 		unsubscribeConfig?.();
 		controller = undefined;
@@ -200,8 +245,12 @@ export function createTodayScreenController(): TodayScreenController {
 		hits = [];
 		courseEntries = [];
 		paintByCourseKey = new Map();
+		state = { phase: 'loading', error: null, hasResult: false, saveError: null };
 	}
 	return {
+		get state() {
+			return state;
+		},
 		get today() {
 			return today();
 		},
@@ -222,6 +271,7 @@ export function createTodayScreenController(): TodayScreenController {
 		},
 		init,
 		dispose,
-		persistScope
+		persistScope,
+		retry
 	};
 }

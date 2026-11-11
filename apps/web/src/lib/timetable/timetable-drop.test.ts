@@ -3,10 +3,11 @@ import {
 	createCourse,
 	createTimetable,
 	type Timetable,
+	type Course,
 	type PlacedCourseCapsule
 } from '@chronos/core';
 import { createTimetableDropController } from './timetable-drop.svelte';
-function harness() {
+function harness(rendered: () => Promise<void> = async () => {}) {
 	let timetable: Timetable | null = createTimetable({
 		id: 'a',
 		name: 'A',
@@ -14,11 +15,11 @@ function harness() {
 			createCourse({ id: 'c', name: 'A', dayOfWeek: 1, startPeriod: 1, endPeriod: 2, weeks: [2] })
 		]
 	});
-	let resolve!: () => void;
+	let resolve!: (moved: Course | null) => void;
 	let reject!: (error: Error) => void;
 	const save = vi.fn(
-		(_id: string, _courses: import('@chronos/core').Course[]) =>
-			new Promise<void>((yes, no) => {
+		(_id: string, _courseId: string, _change: import('@chronos/core').CourseRearrangement) =>
+			new Promise<import('@chronos/core').Course | null>((yes, no) => {
 				resolve = yes;
 				reject = no;
 			})
@@ -29,7 +30,7 @@ function harness() {
 		save,
 		onError,
 		onSaved: vi.fn(),
-		rendered: async () => {}
+		rendered
 	});
 	controller.sync({ timetableId: 'a', week: 2, active: true });
 	const session = {
@@ -48,7 +49,7 @@ function harness() {
 		session,
 		save,
 		onError,
-		resolve: () => resolve(),
+		resolve: (moved: Course | null = null) => resolve(moved),
 		reject: () => reject(new Error('disk')),
 		switch: () => {
 			timetable = createTimetable({ id: 'b', name: 'B' });
@@ -57,6 +58,19 @@ function harness() {
 	};
 }
 describe('timetable drop submission', () => {
+	it('uses the persisted canonical course in the settling preview', async () => {
+		const painted = Promise.withResolvers<void>();
+		const h = harness(() => painted.promise);
+		const pending = h.controller.submit(h.session, 10);
+		h.resolve({ ...h.session.course, id: 'canonical-after-merge', startPeriod: 3, endPeriod: 4 });
+		await vi.waitFor(() =>
+			expect(h.controller.state.preview?.course.id).toBe('canonical-after-merge')
+		);
+		painted.resolve();
+		await pending;
+		expect(h.controller.state.preview).toBeNull();
+	});
+
 	it('retains canonical preview during slow save and rejects another drop', async () => {
 		const h = harness();
 		const pending = h.controller.submit(h.session, 10);

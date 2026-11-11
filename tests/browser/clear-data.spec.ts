@@ -1,5 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import type { PluginInstallationState } from '../../apps/web/src/lib/services/official-plugins/installed-store';
+import { createTimetable } from '../../packages/core/src/domain/timetable.ts';
+import { encodeTimetableConfig } from '../../apps/web/src/lib/storage/timetable-config-codec.ts';
 
 const installationId = 'core.official-plugins:installed_plugins';
 const tableNames = [
@@ -53,7 +55,13 @@ async function snapshot(page: Page) {
 }
 
 async function seedUserData(page: Page) {
-	await page.evaluate(async () => {
+	const timetable = createTimetable({ id: 'user-timetable', name: '用户课表' });
+	const configJson = encodeTimetableConfig(
+		timetable.academicConfig,
+		{ source: 'TEST' },
+		timetable.viewPrefs
+	);
+	await page.evaluate(async (configJson) => {
 		const database = await new Promise<IDBDatabase>((resolve, reject) => {
 			const request = indexedDB.open('chronos:/Chronos:db');
 			request.onsuccess = () => resolve(request.result);
@@ -68,7 +76,7 @@ async function seedUserData(page: Page) {
 				tx.objectStore('timetables').put({
 					id: 'user-timetable',
 					name: '用户课表',
-					configJson: '{}',
+					configJson,
 					createdAt: 1,
 					updatedAt: 1
 				});
@@ -108,7 +116,7 @@ async function seedUserData(page: Page) {
 		}
 		localStorage.setItem('chronos:/Chronos:chronos:private', 'secret');
 		localStorage.setItem('third-party', 'keep');
-	});
+	}, configJson);
 }
 
 async function confirmClear(page: Page) {
@@ -143,6 +151,38 @@ test.beforeEach(async ({ page, request, context }) => {
 		.toBe(true);
 	await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
 	await seedUserData(page);
+});
+
+test('reports corrupt timetable data as a startup failure and preserves its records', async ({
+	page
+}) => {
+	await page.evaluate(async () => {
+		const database = await new Promise<IDBDatabase>((resolve, reject) => {
+			const opening = indexedDB.open('chronos:/Chronos:db');
+			opening.onsuccess = () => resolve(opening.result);
+			opening.onerror = () => reject(opening.error);
+		});
+		try {
+			await new Promise<void>((resolve, reject) => {
+				const transaction = database.transaction('timetables', 'readwrite');
+				const table = transaction.objectStore('timetables');
+				const request = table.get('user-timetable');
+				request.onsuccess = () => table.put({ ...request.result, configJson: '{}' });
+				transaction.oncomplete = () => resolve();
+				transaction.onabort = () => reject(transaction.error);
+			});
+		} finally {
+			database.close();
+		}
+	});
+	await page.reload();
+	await expect(page.locator('[data-startup-state="failed"]')).toBeVisible();
+	await expect(
+		page.getByText('无法准备本地应用数据，请重新启动后重试。', { exact: true })
+	).toBeVisible();
+	const persisted = await snapshot(page);
+	expect(persisted.rows[0]).toEqual(['user-timetable']);
+	expect(persisted.rows[1]).toEqual(['user-course']);
 });
 
 test('clears real IndexedDB offline without reinstalling preinstalls and reloads other windows', async ({

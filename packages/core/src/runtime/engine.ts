@@ -25,6 +25,7 @@ import type { ThemeContribution } from '../types/contributions';
 import type { EngineActionHost } from './engine/engine-action-host';
 import type {
 	ChronosActions,
+	CourseRearrangement,
 	DeleteTimetableResult,
 	TimetableDetailsPatch
 } from '../types/actions';
@@ -36,6 +37,7 @@ import { TimetableActions } from './engine/timetable-actions';
 import { CourseActions } from './engine/course-actions';
 import { StorageSyncHandler } from './engine/storage-sync-handler';
 import { PluginLifecycleManager } from './engine/plugin-lifecycle-manager';
+import { immutableSnapshot } from './immutable-snapshot';
 
 export interface ChronosEngineOptions {
 	env: ChronosEnv;
@@ -68,7 +70,7 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 	private _activeThemeId: string | null = null;
 	private readonly replacingPlugins = new Set<string>();
 	private defaultTheme: { pluginId: string; themeId: string } | null = null;
-	private _userPreferences: UserPreferences = { ...DEFAULT_USER_PREFERENCES };
+	private _userPreferences: UserPreferences = immutableSnapshot({ ...DEFAULT_USER_PREFERENCES });
 
 	private readonly actionHost: EngineActionHost;
 	private readonly timeKeeper: EngineTimeKeeper;
@@ -118,15 +120,16 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 			themes: this.themes,
 			getCurrentTimetable: () => this._currentTimetable,
 			setCurrentTimetable: (timetable) => {
-				this._currentTimetable = timetable;
+				this._currentTimetable = immutableSnapshot(timetable);
 			},
 			getTimetables: () => this._timetables,
 			setTimetables: (timetables) => {
-				this._timetables = timetables;
+				this.listRevision += 1;
+				this._timetables = immutableSnapshot(timetables);
 			},
 			getUserPreferences: () => this._userPreferences,
 			setUserPreferences: (preferences) => {
-				this._userPreferences = preferences;
+				this._userPreferences = immutableSnapshot(preferences);
 				this.emitIconThemeChanged();
 			},
 			getActiveThemeId: () => this._activeThemeId,
@@ -253,6 +256,8 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 			saveCourse: this.saveCourse.bind(this),
 			updateCourse: this.updateCourse.bind(this),
 			deleteCourse: this.deleteCourse.bind(this),
+			deleteCourseForWeek: this.deleteCourseForWeek.bind(this),
+			rearrangeCourse: this.rearrangeCourse.bind(this),
 			setTheme: this.setTheme.bind(this),
 			updatePreferences: this.updatePreferences.bind(this),
 			revertToDefaultThemes: this.revertToDefaultThemes.bind(this),
@@ -265,7 +270,7 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 		const revision = ++this.listRevision;
 		const list = await this.storage.listTimetables();
 		if (revision !== this.listRevision) return;
-		this._timetables = list;
+		this._timetables = immutableSnapshot(list);
 		this.events.emit('timetables:updated', { timetables: this._timetables });
 	}
 
@@ -274,7 +279,14 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 	}
 
 	async clearAllData(): Promise<void> {
-		await this.storageSync.clearAllData();
+		this.listRevision += 1;
+		this.timetableActions.invalidatePublications();
+		try {
+			await this.storageSync.clearAllData();
+		} finally {
+			this.listRevision += 1;
+			this.timetableActions.invalidatePublications();
+		}
 	}
 
 	now(): Date {
@@ -316,16 +328,32 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 		return this.timetableActions.updateTimetableDetails(timetableId, patch);
 	}
 
-	async saveCourse(course: Course): Promise<void> {
-		return this.courseActions.saveCourse(course);
+	async saveCourse(course: Course, timetableId?: string): Promise<void> {
+		return this.courseActions.saveCourse(course, timetableId);
 	}
 
-	async updateCourse(courseId: string, patch: Partial<Course>): Promise<void> {
-		return this.courseActions.updateCourse(courseId, patch);
+	async updateCourse(
+		courseId: string,
+		patch: Partial<Course>,
+		timetableId?: string
+	): Promise<void> {
+		return this.courseActions.updateCourse(courseId, patch, timetableId);
 	}
 
-	async deleteCourse(courseId: string): Promise<void> {
-		return this.courseActions.deleteCourse(courseId);
+	async deleteCourse(courseId: string, timetableId?: string): Promise<void> {
+		return this.courseActions.deleteCourse(courseId, timetableId);
+	}
+
+	async deleteCourseForWeek(courseId: string, week: number, timetableId?: string): Promise<void> {
+		return this.courseActions.deleteCourseForWeek(courseId, week, timetableId);
+	}
+
+	async rearrangeCourse(
+		courseId: string,
+		options: CourseRearrangement,
+		timetableId?: string
+	): Promise<Course | null> {
+		return this.courseActions.rearrangeCourse(courseId, options, timetableId);
 	}
 
 	get defaultThemeId(): string | null {
@@ -407,27 +435,28 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 	}
 
 	async updatePreferences(patch: Partial<UserPreferences>): Promise<void> {
+		const ownedPatch = immutableSnapshot(patch);
 		if (
-			'classNotificationsEnabled' in patch &&
-			typeof patch.classNotificationsEnabled !== 'boolean'
+			'classNotificationsEnabled' in ownedPatch &&
+			typeof ownedPatch.classNotificationsEnabled !== 'boolean'
 		) {
 			throw new TypeError('classNotificationsEnabled must be a boolean');
 		}
-		if ('analyticsEnabled' in patch && typeof patch.analyticsEnabled !== 'boolean') {
+		if ('analyticsEnabled' in ownedPatch && typeof ownedPatch.analyticsEnabled !== 'boolean') {
 			throw new TypeError('analyticsEnabled must be a boolean');
 		}
 		if (
-			'prepareReminderMinutes' in patch &&
-			!isPrepareReminderMinutes(patch.prepareReminderMinutes)
+			'prepareReminderMinutes' in ownedPatch &&
+			!isPrepareReminderMinutes(ownedPatch.prepareReminderMinutes)
 		) {
 			throw new RangeError('prepareReminderMinutes must be 5–60 in steps of 5');
 		}
-		await this.storage.savePreferences(patch);
-		this._userPreferences = {
+		await this.storage.savePreferences(ownedPatch);
+		this._userPreferences = immutableSnapshot({
 			...this._userPreferences,
-			...patch,
+			...ownedPatch,
 			schemaVersion: CURRENT_PREFERENCES_SCHEMA_VERSION
-		};
+		});
 		this.emitIconThemeChanged();
 		this.events.emit('preferences:updated', { preferences: this._userPreferences });
 	}

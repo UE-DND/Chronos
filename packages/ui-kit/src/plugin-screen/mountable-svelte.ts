@@ -28,7 +28,9 @@ export function mountableSvelteComponent<P extends Record<string, unknown>>(
 					propsStore.set({ ...nextProps });
 				},
 				unmount: () => {
-					void unmount(instance);
+					void unmount(instance).catch((error) =>
+						console.error('[MountableSvelteHost] unmount failed:', error)
+					);
 				}
 			};
 		}

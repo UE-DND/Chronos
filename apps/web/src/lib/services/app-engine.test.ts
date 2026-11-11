@@ -67,6 +67,7 @@ function createMockDb(): ChronosDB {
 		},
 		courses: {
 			clear: vi.fn(async () => {}),
+			toArray: vi.fn(async () => []),
 			where: vi.fn(() => ({
 				equals: () => ({
 					toArray: async () => [],

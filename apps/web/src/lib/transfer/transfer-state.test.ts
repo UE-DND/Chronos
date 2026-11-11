@@ -1,6 +1,8 @@
 import { describe, expect, it, beforeEach, vi } from 'vite-plus/test';
 import { ImportMode } from '#lib/domain/import-mode.ts';
 import { createTransferState, shareImportErrorSnackbarKey } from './transfer-state.svelte';
+import { ImportSlotError } from '@chronos/core';
+import { ImportSlotError as PluginImportSlotError } from '../../../../../packages/core/tests/fixtures/plugin-import-slot-error';
 
 vi.mock('#lib/i18n/host-i18n.svelte.ts', () => ({
 	hostT: (key: string) => key
@@ -37,6 +39,7 @@ describe('createTransferState', () => {
 	let mockStorage: Record<string, string> = {};
 
 	beforeEach(() => {
+		vi.restoreAllMocks();
 		mockStorage = {};
 		slotImportHandlers.clear();
 		vi.stubGlobal('sessionStorage', {
@@ -48,6 +51,81 @@ describe('createTransferState', () => {
 				delete mockStorage[key];
 			}
 		});
+	});
+	it('uses the same known-error result and message for interactive and persisted previews', async () => {
+		const error = new ImportSlotError('network', 'Offline import source');
+		slotImportHandlers.set('broken', async () => {
+			throw error;
+		});
+		const controller = createTransferState();
+		expect(await controller.previewWithSlot('broken', {})).toBe(false);
+		expect(controller.state.errorMessage).toBe(error.message);
+		expect(await controller.previewAndPersist('broken', {})).toEqual({
+			ok: false,
+			kind: 'network'
+		});
+		expect(controller.state.errorMessage).toBe(error.message);
+	});
+	it('recognizes a known import error from an independent plugin bundle constructor', async () => {
+		const error = new PluginImportSlotError('no-data', 'No valid timetable share link');
+		const report = vi.spyOn(console, 'error').mockImplementation(() => {});
+		expect(error).not.toBeInstanceOf(ImportSlotError);
+		slotImportHandlers.set('bundled-plugin', async () => {
+			throw error;
+		});
+		const controller = createTransferState();
+		expect(await controller.previewWithSlot('bundled-plugin', {})).toBe(false);
+		expect(controller.state.errorMessage).toBe(error.message);
+		expect(await controller.previewAndPersist('bundled-plugin', {})).toEqual({
+			ok: false,
+			kind: 'no-data'
+		});
+		expect(controller.state.error).toBe(error);
+		expect(report).not.toHaveBeenCalled();
+	});
+	it.each([
+		Object.assign(new Error('Unexpected failure'), { kind: 'network' }),
+		{ kind: 'network' }
+	])('keeps non-contract plugin errors unexpected: %s', async (error) => {
+		const report = vi.spyOn(console, 'error').mockImplementation(() => {});
+		slotImportHandlers.set('unexpected-plugin', async () => {
+			throw error;
+		});
+		const controller = createTransferState();
+		expect(await controller.previewAndPersist('unexpected-plugin', {})).toEqual({
+			ok: false,
+			kind: 'unknown'
+		});
+		expect(controller.state.errorMessage).toBe('transfer.error.fetchFailed');
+		expect(controller.state.error).toBe(error);
+		expect(report).toHaveBeenCalledWith('[transfer] preview failed', error);
+	});
+	it('preserves and reports an unexpected preview exception instead of showing its internal message', async () => {
+		const error = new TypeError('Unexpected parser bug', { cause: new Error('Original cause') });
+		const report = vi.spyOn(console, 'error').mockImplementation(() => {});
+		slotImportHandlers.set('broken', async () => {
+			throw error;
+		});
+		const controller = createTransferState();
+		expect(await controller.previewAndPersist('broken', {})).toEqual({
+			ok: false,
+			kind: 'unknown'
+		});
+		expect(controller.state.errorMessage).toBe('transfer.error.fetchFailed');
+		expect(controller.state.error).toBe(error);
+		expect(report).toHaveBeenCalledWith('[transfer] preview failed', error);
+	});
+	it('returns the preview failure contract when session persistence fails and leaves no new preview accepted', async () => {
+		const error = new Error('Storage quota exceeded');
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		vi.spyOn(sessionStorage, 'setItem').mockImplementation(() => {
+			throw error;
+		});
+		slotImportHandlers.set('valid', async () => ({ name: 'Preview', courses: [{ id: 'c1' }] }));
+		const controller = createTransferState();
+		expect(await controller.previewAndPersist('valid', {})).toEqual({ ok: false, kind: 'unknown' });
+		expect(controller.state.error).toBe(error);
+		expect(controller.state.preview).toBeNull();
 	});
 
 	it('clears preview from memory and sessionStorage when clearPreview is called', () => {

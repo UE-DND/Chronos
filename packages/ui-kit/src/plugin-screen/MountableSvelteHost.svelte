@@ -2,6 +2,8 @@
 	import type { Component } from 'svelte';
 	import type { Readable } from 'svelte/store';
 	import { fromStore } from 'svelte/store';
+	import type { ChronosUiController } from '../reactivity/chronos-ui-controller';
+	import PluginScreenFailure from './PluginScreenFailure.svelte';
 
 	interface Props {
 		component: Component<Record<string, unknown>>;
@@ -14,5 +16,15 @@
 </script>
 
 <div class="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
-	<ResolvedComponent {...resolvedProps} />
+	<svelte:boundary
+		onerror={(error) => console.error('[MountableSvelteHost] render failed:', error)}
+	>
+		<ResolvedComponent {...resolvedProps} />
+		{#snippet failed(_error, reset)}
+			<PluginScreenFailure
+				controller={resolvedProps.controller as ChronosUiController | undefined}
+				retry={reset}
+			/>
+		{/snippet}
+	</svelte:boundary>
 </div>

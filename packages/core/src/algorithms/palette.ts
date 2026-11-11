@@ -62,7 +62,7 @@ interface CourseSlotPreference {
 
 /** Spread courses across the display palette by name hash. */
 export function assignCourseDisplayColors(
-	courses: { name: string }[],
+	courses: readonly { name: string }[],
 	palette: readonly CoursePaletteEntry[] = COURSE_PALETTE_ENTRIES
 ): Map<string, CoursePaletteEntry> {
 	if (palette.length === 0) return new Map();

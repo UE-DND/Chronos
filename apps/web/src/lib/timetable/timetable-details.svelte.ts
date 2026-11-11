@@ -1,6 +1,6 @@
 import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
 import type { TimetableSettingsDraft } from '#lib/models/drafts.ts';
-import type { Timetable } from '@chronos/core';
+import type { ReadonlyTimetable } from '@chronos/core';
 import { trackEvent } from '#lib/client/analytics.ts';
 import { toSettingsDraft } from '#lib/timetable/timetable-mappers.ts';
 import { validatePeriodTimes } from '@chronos/core';
@@ -19,7 +19,7 @@ export class TimetableDetailsEditor {
 		private onDone: () => void | Promise<void>
 	) {}
 
-	loadFromTimetable(timetable: Timetable | null) {
+	loadFromTimetable(timetable: ReadonlyTimetable | null) {
 		if (!timetable) {
 			this.draft = null;
 			this.loadedTimetableId = null;

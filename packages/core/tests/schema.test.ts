@@ -85,4 +85,18 @@ describe('ConfigSchema & Validator in @chronos/core', () => {
 		expect(result.errors.campus).toBe('Selected option is not in the allowed list');
 		expect(result.errors.syncInterval).toBe('Interval must be at least 5 minutes');
 	});
+
+	it('propagates validator bugs instead of reporting user input errors', () => {
+		const failure = new TypeError('Validator contract failed');
+		const schema = defineSchema<{ value: string }>({
+			value: {
+				type: 'string',
+				title: 'Value',
+				validate: () => {
+					throw failure;
+				}
+			}
+		});
+		expect(() => validateConfig({ value: 'valid input' }, schema)).toThrow(failure);
+	});
 });

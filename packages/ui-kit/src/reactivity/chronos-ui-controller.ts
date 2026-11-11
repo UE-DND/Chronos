@@ -1,21 +1,22 @@
 import type {
 	ChronosContext,
 	ChronosEngine,
-	CourseBadge,
+	ReadonlyCourseBadges,
 	Disposable,
 	StandardSlotMap,
 	ChronosActions,
 	ChronosState,
-	TimetableSummary
+	TimetableSummary,
+	DeepReadonly
 } from '@chronos/core';
 import type { Readable } from 'svelte/store';
 import type { OverlayHistoryPort } from '../overlay/history-overlay';
 
 export type ChronosUiSnapshot = ChronosState & {
-	timetables: TimetableSummary[];
-	slotVersion: number;
-	courseBadges: Record<string, CourseBadge[]>;
-	coursePaletteRevision: number;
+	readonly timetables: readonly DeepReadonly<TimetableSummary>[];
+	readonly slotVersion: number;
+	readonly courseBadges: ReadonlyCourseBadges;
+	readonly coursePaletteRevision: number;
 };
 
 export interface ChronosUiController
@@ -31,6 +32,8 @@ export interface ChronosUiController
 			| 'saveCourse'
 			| 'updateCourse'
 			| 'deleteCourse'
+			| 'deleteCourseForWeek'
+			| 'rearrangeCourse'
 			| 'setTheme'
 			| 'updatePreferences'
 			| 'notify'

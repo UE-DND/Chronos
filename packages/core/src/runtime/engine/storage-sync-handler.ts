@@ -1,7 +1,6 @@
 import { StorageClearError } from '../../types/services';
 import type { TimetableSelection } from './timetable-selection';
 import { DEFAULT_USER_PREFERENCES } from '../../domain/preferences';
-import type { Timetable } from '../../domain/timetable';
 import type { StorageChangeEvent } from '../../types/env';
 import type { Disposable } from '../../types/services';
 import type { EngineActionHost } from './engine-action-host';
@@ -34,51 +33,41 @@ export class StorageSyncHandler {
 			storage.getPreferences(),
 			storage.getActiveTimetableId()
 		]);
-		this.host.setUserPreferences(prefs);
-
-		const listPromise = storage.listTimetables();
-		void listPromise.then(
-			(list) => {
-				this.applyTimetableList(list, generation);
-			},
-			() => {}
-		);
-
-		let activeId = storedActiveId;
-		let current = activeId ? await storage.getTimetable(activeId) : null;
+		const activeId = storedActiveId;
+		const [list, storedCurrent] = await Promise.all([
+			storage.listTimetables(),
+			activeId ? storage.getTimetable(activeId) : null
+		]);
+		let current = storedCurrent;
 
 		if (!this.selection.isCurrent(revision) || this.disposed)
 			return this.subscribeIfActive(storage);
-
-		if (!current) {
-			const list = await listPromise;
-			if (!this.applyTimetableList(list, generation)) {
-				return this.subscribeIfActive(storage);
-			}
-			if (!this.selection.isCurrent(revision) || this.disposed)
-				return this.subscribeIfActive(storage);
-			if (list.length > 0 && list[0]) {
-				activeId = list[0].id;
-				await storage.setActiveTimetableId(activeId);
-				current = await storage.getTimetable(activeId);
-			}
+		if (!current && list[0]) {
+			current = await storage.getTimetable(list[0].id);
 		}
 
 		if (!this.selection.isCurrent(revision) || this.disposed)
 			return this.subscribeIfActive(storage);
 
-		if (current) {
-			this.host.setCurrentTimetable(current);
-		}
+		await this.selection.change(async () => {
+			if (this.disposed || generation !== this.listGeneration) return;
+			if (current && current.id !== activeId) {
+				await storage.setActiveTimetableId(current.id);
+			}
+			if (!this.applyTimetableList(list, generation)) return;
+			this.host.setUserPreferences(prefs);
+			if (current) this.host.setCurrentTimetable(current);
 
-		this.timeKeeper.updateTime();
-		this.timeKeeper.start();
+			this.timeKeeper.updateTime();
+			this.timeKeeper.start();
 
-		if (current) {
-			await this.host.badges.recalculate(current.courses);
-			this.host.emit('timetable:loaded', { timetable: current });
-		}
-		this.host.emit('preferences:updated', { preferences: this.host.getUserPreferences() });
+			if (current) {
+				await this.host.badges.recalculate(current.courses);
+				if (this.disposed || generation !== this.listGeneration) return;
+				this.host.emit('timetable:loaded', { timetable: current });
+			}
+			this.host.emit('preferences:updated', { preferences: this.host.getUserPreferences() });
+		});
 
 		return this.subscribeIfActive(storage);
 	}
@@ -92,46 +81,50 @@ export class StorageSyncHandler {
 			await this.selection.whenSettled();
 			if (this.disposed) return;
 			const revision = this.selection.snapshot();
-			this.listGeneration += 1;
-			await this.host.refreshTimetables();
-			const activeId = await storage.getActiveTimetableId();
+			const generation = ++this.listGeneration;
+			const [list, activeId] = await Promise.all([
+				storage.listTimetables(),
+				storage.getActiveTimetableId()
+			]);
 			const updated = activeId ? await storage.getTimetable(activeId) : null;
 			if (this.disposed || !this.selection.isCurrent(revision)) return;
+			if (!this.applyTimetableList(list, generation)) return;
 			this.host.setCurrentTimetable(updated);
 			this.timeKeeper.updateTime();
 			this.timeKeeper.reschedule();
 			await this.host.badges.recalculate(updated?.courses ?? []);
 			if (this.disposed || !this.selection.isCurrent(revision)) return;
-			this.host.emit('timetable:updated', { timetable: updated as Timetable });
+			this.host.emit('timetable:updated', { timetable: updated });
 		}
 	}
 
 	async clearAllData(): Promise<void> {
-		this.selection.invalidate();
 		this.listGeneration += 1;
-		const storage = this.host.storage;
-		let cleanupError: StorageClearError | undefined;
-		if (storage.clearAllData) {
-			try {
-				await storage.clearAllData();
-			} catch (error) {
-				if (!(error instanceof StorageClearError)) throw error;
-				cleanupError = error;
+		return this.selection.change(async () => {
+			const storage = this.host.storage;
+			let cleanupError: StorageClearError | undefined;
+			if (storage.clearAllData) {
+				try {
+					await storage.clearAllData();
+				} catch (error) {
+					if (!(error instanceof StorageClearError)) throw error;
+					cleanupError = error;
+				}
+			} else {
+				const list = await storage.listTimetables();
+				for (const t of list) {
+					await storage.deleteTimetable(t.id);
+				}
+				await storage.setActiveTimetableId('');
 			}
-		} else {
-			const list = await storage.listTimetables();
-			for (const t of list) {
-				await storage.deleteTimetable(t.id);
-			}
-			await storage.setActiveTimetableId('');
-		}
-		this.host.setCurrentTimetable(null);
-		this.host.setTimetables([]);
-		this.host.setUserPreferences({ ...DEFAULT_USER_PREFERENCES });
-		this.host.emit('timetables:updated', { timetables: [] });
-		this.host.emit('timetable:updated', { timetable: null as unknown as Timetable });
-		this.host.emit('preferences:updated', { preferences: this.host.getUserPreferences() });
-		if (cleanupError) throw cleanupError;
+			this.host.setCurrentTimetable(null);
+			this.host.setTimetables([]);
+			this.host.setUserPreferences({ ...DEFAULT_USER_PREFERENCES });
+			this.host.emit('timetables:updated', { timetables: [] });
+			this.host.emit('timetable:updated', { timetable: null });
+			this.host.emit('preferences:updated', { preferences: this.host.getUserPreferences() });
+			if (cleanupError) throw cleanupError;
+		});
 	}
 
 	private applyTimetableList(list: TimetableSummary[], generation: number): boolean {

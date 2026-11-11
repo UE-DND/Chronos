@@ -10,7 +10,7 @@ import {
 	createCourse,
 	findCourseScheduleConflicts,
 	type Course,
-	type Timetable
+	type ReadonlyTimetable
 } from '@chronos/core';
 import {
 	buildCourseSchedule,
@@ -35,7 +35,11 @@ function createCourseId(): string {
 	return `c_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function draftCourse(draft: CourseDraft, timetable: Timetable, newCourseId: string): Course | null {
+function draftCourse(
+	draft: CourseDraft,
+	timetable: ReadonlyTimetable,
+	newCourseId: string
+): Course | null {
 	const schedule = buildCourseSchedule(draft, timetable.academicConfig);
 	if (!schedule) return null;
 	return createCourse({
@@ -126,19 +130,10 @@ export function createCourseEditor(
 			return;
 		const course = candidate;
 		const courseIndex = timetable.courses.findIndex((entry) => entry.id === course.id);
-		const courses = [...timetable.courses];
-		if (courseIndex === -1) courses.push(course);
-		else courses[courseIndex] = course;
-
-		const viewPrefs = {
-			...timetable.viewPrefs,
-			showSaturday: timetable.viewPrefs.showSaturday || course.dayOfWeek === 6,
-			showSunday: timetable.viewPrefs.showSunday || course.dayOfWeek === 7
-		};
 
 		isSaving = true;
 		try {
-			await controller.updateTimetableDetails(timetable.id, { courses, viewPrefs });
+			await controller.saveCourse(course, timetable.id);
 			trackEvent('course_save', { action: courseIndex === -1 ? 'create' : 'update' });
 			await onDone();
 		} catch {
@@ -158,7 +153,7 @@ export function createCourseEditor(
 			return;
 		isDeleting = true;
 		try {
-			await controller.deleteCourse(draft.id);
+			await controller.deleteCourse(draft.id, syncedTimetableId ?? undefined);
 			trackEvent('course_delete');
 			await onDone();
 		} catch {

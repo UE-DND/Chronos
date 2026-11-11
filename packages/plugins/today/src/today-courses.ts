@@ -3,7 +3,8 @@ import {
 	type CourseQueryHit,
 	type IStorageService,
 	type PeriodTime,
-	type Timetable,
+	type ReadonlyTimetable,
+	type DeepReadonly,
 	findCurrentPeriodIndex,
 	parsePeriodRanges,
 	queryTimetableCoursesForDate
@@ -15,7 +16,7 @@ export type { TodayScope };
 export type CourseTimeStatus = 'past' | 'current' | 'preparing' | 'upcoming';
 
 export interface TodayCourseHit extends CourseQueryHit {
-	periodTimes: PeriodTime[];
+	periodTimes: readonly PeriodTime[];
 }
 
 export interface TodayCourseEntry {
@@ -26,7 +27,7 @@ export interface TodayCourseEntry {
 }
 
 export function resolvePeriodTimeRange(
-	periodTimes: PeriodTime[],
+	periodTimes: readonly PeriodTime[],
 	startPeriod: number,
 	endPeriod: number
 ): { startTime: string; endTime: string } | null {
@@ -47,8 +48,8 @@ export function sortCourseHits<T extends CourseQueryHit>(hits: T[], locale: stri
 }
 
 export function resolveMinutesUntilCourseStart(
-	course: Course,
-	periodTimes: PeriodTime[],
+	course: DeepReadonly<Course>,
+	periodTimes: readonly PeriodTime[],
 	nowMinutes: number
 ): number | null {
 	const ranges = parsePeriodRanges(periodTimes);
@@ -58,8 +59,8 @@ export function resolveMinutesUntilCourseStart(
 }
 
 export function resolveCourseTimeStatus(
-	course: Course,
-	periodTimes: PeriodTime[],
+	course: DeepReadonly<Course>,
+	periodTimes: readonly PeriodTime[],
 	nowMinutes: number,
 	currentPeriodIndex: number | null,
 	prepareReminderMinutes = 0
@@ -117,13 +118,13 @@ export async function queryTodayCourses(
 	options: {
 		todayIso: string;
 		scope: TodayScope;
-		timetable: Timetable | null;
+		timetable: ReadonlyTimetable | null;
 	}
 ): Promise<TodayCourseHit[]> {
 	const { todayIso, scope, timetable } = options;
 	if (!timetable) return [];
 
-	const query = (entry: Timetable): TodayCourseHit[] =>
+	const query = (entry: ReadonlyTimetable): TodayCourseHit[] =>
 		queryTimetableCoursesForDate(entry, todayIso).map((hit) => ({
 			...hit,
 			periodTimes: entry.academicConfig.periodTimes

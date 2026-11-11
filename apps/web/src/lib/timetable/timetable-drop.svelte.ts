@@ -1,10 +1,15 @@
 import { tick } from 'svelte';
-import { rearrangeCourseSchedule, type Course, type Timetable } from '@chronos/core';
+import {
+	rearrangeCourseSchedule,
+	type Course,
+	type CourseRearrangement,
+	type ReadonlyTimetable
+} from '@chronos/core';
 import type { TimetableDragSession } from './timetable-interaction-types';
 
 export function createTimetableDropController(options: {
-	getTimetable(): Timetable | null;
-	save(timetableId: string, courses: Course[]): Promise<void>;
+	getTimetable(): ReadonlyTimetable | null;
+	save(timetableId: string, courseId: string, change: CourseRearrangement): Promise<Course | null>;
 	onError(): void;
 	onSaved(): void;
 	rendered?: () => Promise<void>;
@@ -60,7 +65,15 @@ export function createTimetableDropController(options: {
 			targetStartPeriod: result.movedCourse.startPeriod
 		};
 		try {
-			await options.save(timetable.id, result.courses);
+			const moved = await options.save(timetable.id, session.course.id, {
+				targetDayOfWeek: session.targetDayOfWeek,
+				targetStartPeriod: session.targetStartPeriod,
+				currentWeek: session.week,
+				displayedPeriodCount
+			});
+			if (task === generation && preview && moved) {
+				preview = { ...preview, course: moved, targetStartPeriod: moved.startPeriod };
+			}
 			options.onSaved();
 			await (options.rendered ?? tick)();
 		} catch {

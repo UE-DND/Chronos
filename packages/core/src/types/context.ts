@@ -1,12 +1,16 @@
-import type { Timetable } from '../domain/timetable';
-import type { UserPreferences } from '../domain/preferences';
 import type { ChronosActions } from './actions';
-import type { ChronosState, TimetableSummary } from './state';
+import type {
+	ChronosState,
+	TimetableSummary,
+	ReadonlyTimetable,
+	ReadonlyUserPreferences
+} from './state';
+import type { DeepReadonly } from './readonly';
 import type { Disposable, ServiceIdentifier } from './services';
 import type {
 	ChronosSlotMap,
 	LocalizedText,
-	CourseBadge,
+	ReadonlyCourseBadges,
 	ImportTabSlotContribution
 } from './slots';
 import type { ConfigSchema } from '../schema/schema';
@@ -101,13 +105,22 @@ export interface ChronosContext<Config extends object = Record<string, unknown>>
 }
 
 export interface ChronosEvents {
-	'timetable:loaded': { timetable: Timetable };
-	'timetable:switched': { previousId: string | null; currentId: string; timetable: Timetable };
-	'timetable:updated': { timetable: Timetable };
-	'timetables:updated': {
-		timetables: TimetableSummary[];
+	'timetable:loaded': { timetable: ReadonlyTimetable };
+	'timetable:switched': {
+		previousId: string | null;
+		currentId: string;
+		timetable: ReadonlyTimetable;
 	};
-	'preferences:updated': { preferences: UserPreferences };
+	'timetable:updated': { timetable: ReadonlyTimetable | null };
+	'timetable:followUpFailed': {
+		operation: 'create' | 'import' | 'update';
+		timetableId: string;
+		cause: unknown;
+	};
+	'timetables:updated': {
+		timetables: readonly DeepReadonly<TimetableSummary>[];
+	};
+	'preferences:updated': { preferences: ReadonlyUserPreferences };
 	'time:tick': {
 		currentWeek: number;
 		/** First period from midnight, then active or next period during breaks; null after the last end. */
@@ -121,7 +134,7 @@ export interface ChronosEvents {
 	'i18n:localeChanged': { locale: string };
 	'config:changed': { pluginId: string; config: Record<string, unknown> };
 	'slots:updated': void;
-	'badges:updated': { badges: Record<string, CourseBadge[]> };
+	'badges:updated': { badges: ReadonlyCourseBadges };
 	'plugin:loaded': { pluginId: string };
 	'plugin:unloaded': { pluginId: string };
 	'coursePalette:changed': void;

@@ -65,6 +65,40 @@ describe('rearrangeCourseSchedule', () => {
 		expect(newA.weeks).toEqual([2]);
 	});
 
+	it('returns editable metadata owned independently of mutable or frozen input courses', () => {
+		for (const frozen of [false, true]) {
+			const metadata = { plugin: { tags: ['original'], nested: { label: 'original' } } };
+			if (frozen) {
+				Object.freeze(metadata.plugin.tags);
+				Object.freeze(metadata.plugin.nested);
+				Object.freeze(metadata.plugin);
+				Object.freeze(metadata);
+			}
+			const source = createCourse({
+				...courseA,
+				weeks: [1, 2],
+				customMetadata: metadata
+			});
+			const untouched = createCourse({ ...courseB, customMetadata: metadata });
+			const result = rearrangeCourseSchedule({
+				currentCourses: [source, untouched],
+				draggedCourseId: source.id,
+				targetDayOfWeek: 4,
+				targetStartPeriod: 5,
+				currentWeek: 2,
+				displayedPeriodCount: 10
+			})!;
+			expect(result.courses).toContain(result.movedCourse);
+			for (const course of result.courses) {
+				const copied = course.customMetadata!.plugin as typeof metadata.plugin;
+				copied.tags.push('edited');
+				copied.nested.label = 'edited';
+			}
+			expect(metadata.plugin).toEqual({ tags: ['original'], nested: { label: 'original' } });
+			expect(source.weeks).toEqual([1, 2]);
+		}
+	});
+
 	it('mutates single-week course in-place without creating extra entry', () => {
 		const singleWeekCourse = createCourse({
 			id: 'course-single',

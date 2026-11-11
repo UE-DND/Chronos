@@ -8,13 +8,12 @@ import {
 	parsePeriodRanges,
 	todayIsoDate,
 	type Course,
-	type Timetable,
+	type ReadonlyTimetable,
 	type TimetableCourseDisplayModel,
 	type TimetableGridModel,
 	type TimetableWeekLayoutResult
 } from '@chronos/core';
 import { snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
-import { deleteCourseForWeek } from './course-delete-week';
 import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
 import {
 	academicBounds,
@@ -36,7 +35,7 @@ const calendarService = new AcademicCalendarService();
 let sharedTimetableScreen: TimetableScreenController | null = null;
 
 interface TimetableScreenState {
-	currentTimetable: Timetable | null;
+	currentTimetable: ReadonlyTimetable | null;
 	hasLoadedAppState: boolean;
 	today: string;
 	academicWeek: number;
@@ -64,7 +63,7 @@ export function getTimetableScreen(): TimetableScreenController {
 
 function createTimetableScreen() {
 	let shellRef = $state<AppShellController | null>(null);
-	let expandedSlots = $state(new SvelteSet<string>());
+	const expandedSlots = new SvelteSet<string>();
 	const interaction = createTimetableInteraction({
 		onLongPressFeedback: () => {
 			if (!drop.state.busy && getHostPlatform().isNative) {
@@ -78,14 +77,14 @@ function createTimetableScreen() {
 
 	const drop = createTimetableDropController({
 		getTimetable: currentTimetable,
-		save: (id, courses) => shellRef!.controller.updateTimetableDetails(id, { courses }),
+		save: (id, courseId, change) => shellRef!.controller.rearrangeCourse(courseId, change, id),
 		onError: () => snackbarKey('transfer.error.saveFailed'),
 		onSaved: () => trackEvent('timetable_course_reorder')
 	});
 
 	const layoutCache = createWeekLayoutCache();
 
-	function currentTimetable(): Timetable | null {
+	function currentTimetable(): ReadonlyTimetable | null {
 		return shellRef?.controller.currentTimetable ?? null;
 	}
 
@@ -281,25 +280,8 @@ function createTimetableScreen() {
 			return;
 		}
 
-		const academicConfig = timetable.academicConfig;
-		const totalWeeks = academicConfig
-			? { startWeek: academicConfig.startWeek ?? 1, endWeek: academicConfig.endWeek ?? 20 }
-			: undefined;
-
-		const updatedCourses = deleteCourseForWeek({
-			currentCourses: timetable.courses,
-			courseId: pending.course.id,
-			currentWeek: pending.week,
-			totalWeeks
-		});
-
-		if (!updatedCourses) {
-			pendingWeekDelete = null;
-			return;
-		}
-
 		try {
-			await shellRef?.controller.updateTimetableDetails(timetable.id, { courses: updatedCourses });
+			await shellRef?.controller.deleteCourseForWeek(pending.course.id, pending.week, timetable.id);
 			pendingWeekDelete = null;
 			trackEvent('timetable_course_delete_week');
 			haptic.warning();

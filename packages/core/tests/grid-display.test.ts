@@ -4,6 +4,7 @@ import {
 	createCourse,
 	buildVisibleDayIndices,
 	weekMonthLabel,
+	buildDisplayPeriods,
 	calculateTimetableGrid,
 	buildTimetableCourseDisplayModels,
 	periodSlotKey,
@@ -61,6 +62,63 @@ describe('Grid & Display Models in @chronos/core', () => {
 		expect(grid.displayedPeriodCount).toBe(2);
 		expect(grid.periods).toHaveLength(2);
 		expect(grid.periods[0]?.startTime).toBe('08:30');
+	});
+
+	it('returns owned configured and fallback period records', () => {
+		const configured = [{ index: 1, startTime: '08:30', endTime: '09:15' }];
+		const fallback = [
+			{ index: 1, startTime: '08:00', endTime: '08:45' },
+			{ index: 2, startTime: '09:00', endTime: '09:45' }
+		];
+		const periods = buildDisplayPeriods(configured, 2, fallback);
+		periods[0]!.startTime = 'Changed';
+		periods[1]!.endTime = 'Changed';
+		expect(configured[0]!.startTime).toBe('08:30');
+		expect(fallback[1]!.endTime).toBe('09:45');
+	});
+
+	it('returns editable course models with owned nested metadata for current and future courses', () => {
+		const courses = [1, 2].map((week) =>
+			createCourse({
+				id: `c${week}`,
+				name: `Course ${week}`,
+				dayOfWeek: week,
+				startPeriod: 1,
+				endPeriod: 1,
+				weeks: [week],
+				customMetadata: { plugin: { tags: ['original'], nested: { label: 'original' } } }
+			})
+		);
+		const timetable = createTimetable({
+			id: 'owned-models',
+			name: 'Owned models',
+			courses,
+			academicConfig: {
+				termStartDate: '2026-03-02',
+				startWeek: 1,
+				endWeek: 2,
+				periodTimes: [{ index: 1, startTime: '08:30', endTime: '09:15' }]
+			},
+			viewPrefs: { showSaturday: false, showSunday: false, showNonCurrentWeekCourses: true }
+		});
+		const models = buildTimetableCourseDisplayModels(timetable, new Set([1, 2]), 1);
+		expect(models.map((model) => model.isInDisplayedWeek)).toEqual([true, false]);
+		for (const model of models) {
+			const metadata = model.course.customMetadata!.plugin as {
+				tags: string[];
+				nested: { label: string };
+			};
+			metadata.tags.push('edited');
+			metadata.nested.label = 'edited';
+			model.course.weeks.push(9);
+		}
+		for (const course of courses) {
+			expect(course.customMetadata!.plugin).toEqual({
+				tags: ['original'],
+				nested: { label: 'original' }
+			});
+			expect(course.weeks).toHaveLength(1);
+		}
 	});
 
 	it('hides rows and courses beyond the configured periods, restoring them when re-added', () => {

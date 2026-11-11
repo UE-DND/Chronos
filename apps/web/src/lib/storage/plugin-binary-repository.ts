@@ -24,13 +24,10 @@ export class PluginBinaryRepository {
 
 	async get(pluginId: string, key: string): Promise<Blob | null> {
 		const id = pluginDataId(pluginId, key);
-		try {
-			const row = await this.database.pluginBinary.get(id);
-			if (!row?.bytes) return null;
-			return new Blob([row.bytes], { type: row.mimeType || DEFAULT_MIME });
-		} catch {
-			return null;
-		}
+		const row = await this.database.pluginBinary.get(id);
+		if (!row) return null;
+		if (!(row.bytes instanceof ArrayBuffer)) throw new TypeError('Invalid stored plugin bytes');
+		return new Blob([row.bytes], { type: row.mimeType || DEFAULT_MIME });
 	}
 
 	async set(pluginId: string, key: string, value: Blob | Uint8Array): Promise<void> {
@@ -50,17 +47,13 @@ export class PluginBinaryRepository {
 	}
 
 	async estimateBytes(): Promise<number> {
-		try {
-			const rows = await this.database.pluginBinary.toArray();
-			let total = 0;
-			for (const row of rows) {
-				total += row.bytes.byteLength;
-				total += row.mimeType.length;
-			}
-			return total;
-		} catch {
-			return 0;
+		const rows = await this.database.pluginBinary.toArray();
+		let total = 0;
+		for (const row of rows) {
+			total += row.bytes.byteLength;
+			total += row.mimeType.length;
 		}
+		return total;
 	}
 }
 

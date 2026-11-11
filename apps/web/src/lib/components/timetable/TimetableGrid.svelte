@@ -6,7 +6,7 @@
 		ALL_CORNERS_ROUNDED,
 		placeCapsules,
 		type Course,
-		type CourseBadge,
+		type ReadonlyCourseBadges,
 		type CoursePaletteEntry,
 		type PlacedCourseCapsule,
 		type TimetableCourseDisplayModel,
@@ -76,7 +76,7 @@
 		courseDisplayModels: TimetableCourseDisplayModel[];
 		hasDynamicBackground: boolean;
 		coursePalette: readonly CoursePaletteEntry[];
-		paletteCourses?: { name: string }[];
+		paletteCourses?: readonly { name: string }[];
 		layoutMode?: TimetableLayoutMode;
 		capsuleCornerStyle?: CapsuleCornerStyle;
 		onCourseClick?: (course: Course) => void;
@@ -85,7 +85,7 @@
 		drop: TimetableDropController;
 		active?: boolean;
 		interactive?: boolean;
-		courseBadges?: Record<string, CourseBadge[]>;
+		courseBadges?: ReadonlyCourseBadges;
 	}
 
 	let {

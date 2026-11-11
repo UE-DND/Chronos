@@ -1,5 +1,6 @@
 import type { PeriodTime, Timetable } from '../domain/timetable';
 import type { CalendarHoliday } from '../domain/timetable';
+import type { ReadonlyTimetable } from '../types/state';
 import { AcademicCalendarService, resolveEffectiveWeekendViewPrefs } from './calendar';
 import { buildHolidayLookup } from './holiday-calendar';
 import { addDays, formatIsoDate, parseIsoDate } from './date';
@@ -35,9 +36,9 @@ export function weekMonthLabel(weekDates: string[]): string {
 }
 
 export function buildDisplayPeriods(
-	configuredPeriods: PeriodTime[],
+	configuredPeriods: readonly PeriodTime[],
 	count: number,
-	defaultPeriods: PeriodTime[] = []
+	defaultPeriods: readonly PeriodTime[] = []
 ): PeriodTime[] {
 	const configured = new Map<number, PeriodTime>();
 	for (const period of configuredPeriods) {
@@ -46,21 +47,21 @@ export function buildDisplayPeriods(
 
 	return Array.from({ length: count }, (_, index) => {
 		const periodIndex = index + 1;
-		return (
-			configured.get(periodIndex) ??
-			defaultPeriods[index] ?? {
-				index: periodIndex,
-				startTime: '--:--',
-				endTime: '--:--'
-			}
-		);
+		return {
+			...(configured.get(periodIndex) ??
+				defaultPeriods[index] ?? {
+					index: periodIndex,
+					startTime: '--:--',
+					endTime: '--:--'
+				})
+		};
 	});
 }
 
 export function calculateTimetableGrid(
 	today: string,
 	displayedWeek: number,
-	timetable: Timetable,
+	timetable: ReadonlyTimetable,
 	options?: {
 		academicCalendarService?: AcademicCalendarService;
 		defaultPeriods?: PeriodTime[];

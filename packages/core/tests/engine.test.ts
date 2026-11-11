@@ -9,6 +9,14 @@ import type { ChronosContext, ChronosPlugin } from '../src/types/context';
 import { defineSchema } from '../src/schema/schema';
 import { IHttpService, StorageClearError } from '../src/types/services';
 
+function deferred<T>() {
+	let resolve!: (value: T) => void;
+	const promise = new Promise<T>((accept) => {
+		resolve = accept;
+	});
+	return { promise, resolve };
+}
+
 function createMockEnv(options?: { holdList?: boolean }) {
 	const timetables = new Map<string, Timetable>();
 	let activeId: string | null = null;
@@ -30,12 +38,13 @@ function createMockEnv(options?: { holdList?: boolean }) {
 		storage: {
 			getTimetable: async (id: string) => timetables.get(id) ?? null,
 			listTimetables: async () => {
-				await listHeld;
-				return Array.from(timetables.values()).map((t) => ({
+				const snapshot = Array.from(timetables.values()).map((t) => ({
 					id: t.id,
 					name: t.name,
 					updatedAt: t.updatedAt
 				}));
+				await listHeld;
+				return snapshot;
 			},
 			saveTimetable: async (t: Timetable) => {
 				timetables.set(t.id, t);
@@ -94,6 +103,25 @@ function createMockEnv(options?: { holdList?: boolean }) {
 }
 
 describe('ChronosEngine in @chronos/core', () => {
+	it('preserves the complete previous snapshot when a cross-tab current read fails', async () => {
+		const { env, timetables, triggerStorageChange } = createMockEnv();
+		timetables.set('a', createTimetable({ id: 'a', name: 'Original' }));
+		await env.storage.setActiveTimetableId('a');
+		const engine = new ChronosEngine({ env });
+		await engine.init();
+		const before = engine.state;
+		const failure = new Error('Cannot read the current timetable');
+		timetables.set('a', createTimetable({ id: 'a', name: 'Changed elsewhere' }));
+		vi.spyOn(env.storage, 'getTimetable').mockRejectedValueOnce(failure);
+		try {
+			await expect(triggerStorageChange({ type: 'timetable', key: 'a' })).rejects.toBe(failure);
+			expect(engine.state.currentTimetable).toBe(before.currentTimetable);
+			expect(engine.state.timetables).toBe(before.timetables);
+		} finally {
+			engine.dispose();
+		}
+	});
+
 	it('initializes and loads active timetable and preferences from storage', async () => {
 		const { env, timetables } = createMockEnv();
 		const tt = createTimetable({ id: 't1', name: '我的课表' });
@@ -117,7 +145,7 @@ describe('ChronosEngine in @chronos/core', () => {
 		});
 	});
 
-	it('finishes init from the active timetable without waiting for the timetable list', async () => {
+	it('waits for the complete local data snapshot before finishing init', async () => {
 		const { env, timetables, releaseList } = createMockEnv({ holdList: true });
 		const tt = createTimetable({ id: 't1', name: '我的课表' });
 		timetables.set('t1', tt);
@@ -132,18 +160,57 @@ describe('ChronosEngine in @chronos/core', () => {
 			});
 		});
 
-		await engine.init();
-
-		expect(engine.state.currentTimetable?.id).toBe('t1');
+		let ready = false;
+		const initializing = engine.init().then(() => {
+			ready = true;
+		});
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(ready).toBe(false);
+		expect(engine.state.currentTimetable).toBeNull();
 		expect(engine.state.timetables).toEqual([]);
 		expect(onListUpdated).not.toHaveBeenCalled();
 
 		releaseList();
+		await initializing;
 		await listUpdated;
+		expect(engine.state.currentTimetable?.id).toBe('t1');
 		expect(engine.state.timetables).toEqual([
 			expect.objectContaining({ id: 't1', name: '我的课表' })
 		]);
 		engine.dispose();
+	});
+
+	it('fails init when the timetable list cannot be read even with a valid active timetable', async () => {
+		const { env, timetables } = createMockEnv();
+		timetables.set('t1', createTimetable({ id: 't1', name: 'T1' }));
+		await env.storage.setActiveTimetableId('t1');
+		const failure = new Error('List read failed');
+		vi.spyOn(env.storage, 'listTimetables').mockRejectedValueOnce(failure);
+		const engine = new ChronosEngine({ env });
+		try {
+			await expect(engine.init()).rejects.toBe(failure);
+			expect(engine.state.currentTimetable).toBeNull();
+			expect(await env.storage.getActiveTimetableId()).toBe('t1');
+		} finally {
+			engine.dispose();
+		}
+	});
+
+	it('does not replace a selection when its stored timetable cannot be read', async () => {
+		const { env, timetables } = createMockEnv();
+		timetables.set('t1', createTimetable({ id: 't1', name: 'T1' }));
+		timetables.set('t2', createTimetable({ id: 't2', name: 'T2' }));
+		await env.storage.setActiveTimetableId('t1');
+		const failure = new Error('Active read failed');
+		vi.spyOn(env.storage, 'getTimetable').mockRejectedValueOnce(failure);
+		const engine = new ChronosEngine({ env });
+		try {
+			await expect(engine.init()).rejects.toBe(failure);
+			expect(await env.storage.getActiveTimetableId()).toBe('t1');
+		} finally {
+			engine.dispose();
+		}
 	});
 
 	it('falls back to the first listed timetable when no active id is stored', async () => {
@@ -173,6 +240,81 @@ describe('ChronosEngine in @chronos/core', () => {
 		engine.dispose();
 	});
 
+	it('does not persist a fallback selection when its timetable read fails', async () => {
+		const { env, timetables } = createMockEnv();
+		timetables.set('fallback', createTimetable({ id: 'fallback', name: 'Fallback' }));
+		await env.storage.setActiveTimetableId('missing');
+		const failure = new Error('Fallback read failed');
+		const read = env.storage.getTimetable.bind(env.storage);
+		vi.spyOn(env.storage, 'getTimetable').mockImplementation((id) =>
+			id === 'fallback' ? Promise.reject(failure) : read(id)
+		);
+		const selectionWrite = vi.spyOn(env.storage, 'setActiveTimetableId');
+		const engine = new ChronosEngine({ env });
+		try {
+			await expect(engine.init()).rejects.toBe(failure);
+			expect(selectionWrite).not.toHaveBeenCalled();
+			expect(await env.storage.getActiveTimetableId()).toBe('missing');
+			expect(engine.state.timetables).toEqual([]);
+			expect(engine.state.currentTimetable).toBeNull();
+		} finally {
+			engine.dispose();
+		}
+	});
+
+	it('clears a fallback selection even when its persistence finishes late', async () => {
+		const { env, timetables } = createMockEnv();
+		timetables.set('fallback', createTimetable({ id: 'fallback', name: 'Fallback' }));
+		const writing = deferred<void>();
+		const started = deferred<void>();
+		const write = env.storage.setActiveTimetableId.bind(env.storage);
+		vi.spyOn(env.storage, 'setActiveTimetableId').mockImplementationOnce(async (id) => {
+			started.resolve();
+			await writing.promise;
+			await write(id);
+		});
+		const engine = new ChronosEngine({ env });
+		try {
+			const initializing = engine.init();
+			await started.promise;
+			const clearing = engine.clearAllData();
+			writing.resolve();
+			await Promise.all([initializing, clearing]);
+			expect(await env.storage.getActiveTimetableId()).toBeNull();
+			expect(engine.state.currentTimetable).toBeNull();
+			expect(engine.state.timetables).toEqual([]);
+		} finally {
+			writing.resolve();
+			engine.dispose();
+		}
+	});
+
+	it('does not select a fallback read that finishes after data is cleared', async () => {
+		const { env, timetables } = createMockEnv();
+		const fallback = createTimetable({ id: 'fallback', name: 'Fallback' });
+		timetables.set(fallback.id, fallback);
+		const reading = deferred<Timetable | null>();
+		const started = deferred<void>();
+		vi.spyOn(env.storage, 'getTimetable').mockImplementationOnce(() => {
+			started.resolve();
+			return reading.promise;
+		});
+		const engine = new ChronosEngine({ env });
+		try {
+			const initializing = engine.init();
+			await started.promise;
+			await engine.clearAllData();
+			reading.resolve(fallback);
+			await initializing;
+			expect(await env.storage.getActiveTimetableId()).toBeNull();
+			expect(engine.state.currentTimetable).toBeNull();
+			expect(engine.state.timetables).toEqual([]);
+		} finally {
+			reading.resolve(null);
+			engine.dispose();
+		}
+	});
+
 	it('drops a stale timetable list that resolves after clearAllData', async () => {
 		const { env, timetables, releaseList } = createMockEnv({ holdList: true });
 		const tt = createTimetable({ id: 't1', name: '我的课表' });
@@ -180,16 +322,94 @@ describe('ChronosEngine in @chronos/core', () => {
 		await env.storage.setActiveTimetableId('t1');
 
 		const engine = new ChronosEngine({ env });
-		await engine.init();
+		const initializing = engine.init();
+		await Promise.resolve();
+		await Promise.resolve();
 		await engine.clearAllData();
 
 		releaseList();
-		await Promise.resolve();
-		await Promise.resolve();
+		await initializing;
 
 		expect(engine.state.currentTimetable).toBeNull();
 		expect(engine.state.timetables).toEqual([]);
 		engine.dispose();
+	});
+
+	it('drops a held storage-change list snapshot after clearing initialized data', async () => {
+		const { env, timetables, triggerStorageChange } = createMockEnv();
+		const timetable = createTimetable({ id: 't1', name: 'T1' });
+		timetables.set(timetable.id, timetable);
+		await env.storage.setActiveTimetableId(timetable.id);
+		const engine = new ChronosEngine({ env });
+		try {
+			await engine.init();
+			const reading = deferred<Awaited<ReturnType<typeof env.storage.listTimetables>>>();
+			const started = deferred<void>();
+			vi.spyOn(env.storage, 'listTimetables').mockImplementationOnce(() => {
+				started.resolve();
+				return reading.promise;
+			});
+			const syncing = triggerStorageChange({ type: 'timetable', key: timetable.id });
+			await started.promise;
+			await engine.clearAllData();
+			reading.resolve([
+				{ id: timetable.id, name: timetable.name, updatedAt: timetable.updatedAt, courseCount: 0 }
+			]);
+			await syncing;
+			expect(engine.state.timetables).toEqual([]);
+			expect(engine.state.currentTimetable).toBeNull();
+			expect(await env.storage.getActiveTimetableId()).toBeNull();
+		} finally {
+			engine.dispose();
+		}
+	});
+
+	it('fails plugin activation when saved configuration cannot be read', async () => {
+		const { env } = createMockEnv();
+		const engine = new ChronosEngine({ env });
+		const failure = new Error('Config read failed');
+		vi.spyOn(env.storage, 'getPluginData').mockRejectedValueOnce(failure);
+		const apply = vi.fn();
+		try {
+			await expect(
+				engine.loadPlugin({ id: 'config-failure', name: 'Config failure', version: '1', apply })
+			).rejects.toBe(failure);
+			expect(apply).not.toHaveBeenCalled();
+			expect(engine.isPluginLoaded('config-failure')).toBe(false);
+		} finally {
+			engine.dispose();
+		}
+	});
+
+	it('reports asynchronous plugin disposal failures after releasing its context', async () => {
+		const { env } = createMockEnv();
+		const engine = new ChronosEngine({ env });
+		const failure = new Error('Async dispose failed');
+		const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			await engine.loadPlugin({
+				id: 'async-dispose',
+				name: 'Async dispose',
+				version: '1',
+				apply(ctx) {
+					ctx.registerSlot('mine.item', {
+						id: 'temporary',
+						title: 'Temporary',
+						sectionId: 'app-support'
+					});
+				},
+				dispose: () => Promise.reject(failure)
+			});
+			engine.dispose();
+			await Promise.resolve();
+			expect(engine.slots.get('mine.item')).toEqual([]);
+			expect(logged).toHaveBeenCalledWith(
+				'[ChronosEngine] Error disposing plugin async-dispose:',
+				failure
+			);
+		} finally {
+			logged.mockRestore();
+		}
 	});
 
 	it('skips the locale announcement when the hydrated locale already matches', async () => {
@@ -480,9 +700,7 @@ describe('ChronosEngine in @chronos/core', () => {
 				settled = true;
 				return error;
 			});
-			await Promise.resolve();
-			await Promise.resolve();
-			expect(pluginDispose).toHaveBeenCalledTimes(1);
+			await vi.waitFor(() => expect(pluginDispose).toHaveBeenCalledTimes(1));
 			expect(resourceDispose).toHaveBeenCalledTimes(1);
 			expect(settled).toBe(false);
 			finishCleanup();

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { ChronosUiController } from '@chronos/ui-kit';
 	import { appLocaleToBcp47, appShellScroll, pluginText } from '@chronos/ui-kit';
+	import { fromStore } from 'svelte/store';
 	import {
 		filterHolidaysInTermRange,
 		formatCompactDate,
@@ -21,7 +22,8 @@
 	let syncing = $state(false);
 	let errorMessage = $state<string | null>(null);
 
-	const timetable = $derived(controller.currentTimetable);
+	const ui = $derived(fromStore(controller.snapshot));
+	const timetable = $derived(ui.current.currentTimetable);
 	const holidayCalendar = $derived(timetable?.academicConfig.holidayCalendar);
 	const termHolidays = $derived(
 		timetable && holidayCalendar
@@ -38,6 +40,7 @@
 	} as const;
 
 	function pt(key: keyof (typeof HOLIDAY_MESSAGES)['zh-cn']) {
+		void ui.current.slotVersion;
 		return pluginText(controller, HOLIDAY_PLUGIN_ID, HOLIDAY_MESSAGES, key);
 	}
 
@@ -167,7 +170,7 @@
 								{#each group.items as holiday (holiday.date)}
 									<li class="py-3">
 										<span class="text-body-medium text-on-surface"
-											>{formatHolidayRow(holiday, controller.locale)}</span
+											>{formatHolidayRow(holiday, appLocaleToBcp47(ui.current.locale))}</span
 										>
 									</li>
 								{/each}

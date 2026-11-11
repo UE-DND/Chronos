@@ -13,7 +13,7 @@ import { createTodayScreenController } from '../src/today-screen.svelte';
 import * as todayCourses from '../src/today-courses';
 import type { TodayCourseHit } from '../src/today-courses';
 afterEach(() => vi.restoreAllMocks());
-async function harness() {
+async function harness(initialQueryError?: Error) {
 	const paints = vi.fn(
 		async () =>
 			new Map<string, CoursePaletteEntry>([['A', { background: '#111111', foreground: '#ffffff' }]])
@@ -37,6 +37,7 @@ async function harness() {
 	const ctx = engine.getPluginContext('tool-today');
 	await ctx.actions.updatePreferences({ prepareReminderMinutes: 10 });
 	const query = vi.spyOn(todayCourses, 'queryTodayCourses');
+	if (initialQueryError) query.mockRejectedValueOnce(initialQueryError);
 	const snapshot = writable({
 		currentTimetable: timetable,
 		userPreferences: engine.state.userPreferences,
@@ -62,6 +63,7 @@ async function harness() {
 		paints,
 		ctx,
 		timetables,
+		academicConfig: timetable.academicConfig,
 		periodTimes: timetable.academicConfig.periodTimes
 	};
 }
@@ -69,22 +71,91 @@ async function settle() {
 	for (let i = 0; i < 20; i++) await Promise.resolve();
 }
 describe('Today relevant input refresh', () => {
+	it('distinguishes an initial query failure from a successful empty day and retries explicitly', async () => {
+		const error = new Error('IndexedDB unavailable');
+		const report = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const { engine, screen, query } = await harness(error);
+		expect(screen.state).toMatchObject({ phase: 'failed', error, hasResult: false });
+		expect(screen.courseEntries).toEqual([]);
+		expect(report).toHaveBeenCalledWith('[today] course query failed', error);
+		query.mockResolvedValueOnce([]);
+		await screen.retry();
+		expect(screen.state).toEqual({ phase: 'ready', error: null, hasResult: true, saveError: null });
+		expect(screen.courseEntries).toEqual([]);
+		screen.dispose();
+		engine.dispose();
+	});
+	it('retains the last successful courses while loading and after failure until retry succeeds', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const { engine, screen, query, snapshot } = await harness();
+		const previous = screen.courseEntries;
+		const error = new TypeError('Invalid internal course state');
+		let reject!: (reason: unknown) => void;
+		query.mockImplementationOnce(() => new Promise((_resolve, fail) => (reject = fail)));
+		snapshot.update((s) => ({ ...s, todayIso: '2026-03-03' }));
+		await settle();
+		expect(screen.state).toMatchObject({ phase: 'loading', hasResult: true });
+		expect(screen.courseEntries).toBe(previous);
+		reject(error);
+		await settle();
+		expect(screen.state).toMatchObject({ phase: 'failed', error, hasResult: true });
+		expect(screen.courseEntries).toBe(previous);
+		query.mockResolvedValueOnce([]);
+		await screen.retry();
+		expect(screen.state.phase).toBe('ready');
+		expect(screen.courseEntries).toEqual([]);
+		screen.dispose();
+		engine.dispose();
+	});
+	it('keeps successful courses when coloring fails and reports the original error', async () => {
+		const report = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const { engine, screen, snapshot, paints } = await harness();
+		const error = new Error('Palette failure');
+		paints.mockRejectedValueOnce(error);
+		snapshot.update((s) => ({ ...s, coursePaletteRevision: 1 }));
+		await settle();
+		expect(screen.state.phase).toBe('ready');
+		expect(screen.courseEntries).toHaveLength(1);
+		expect(screen.paintByCourseKey.size).toBe(0);
+		expect(report).toHaveBeenCalledWith('[today] course colors failed', error);
+		screen.dispose();
+		engine.dispose();
+	});
+	it('reports scope persistence failure while preserving the local selection', async () => {
+		const report = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const { engine, screen, ctx } = await harness();
+		const error = new Error('Config write failed');
+		vi.spyOn(ctx, 'updateConfig').mockRejectedValueOnce(error);
+		await screen.persistScope('all');
+		expect(screen.scope).toBe('all');
+		expect(screen.state.saveError).toBe(error);
+		expect(report).toHaveBeenCalledWith('[today] scope save failed', error);
+		screen.dispose();
+		engine.dispose();
+	});
 	it('refreshes holiday additions and removal without remounting the active screen', async () => {
 		const { engine, screen, snapshot, query } = await harness();
 		expect(screen.courseEntries).toHaveLength(1);
-		snapshot.update((s) => {
-			s.currentTimetable!.academicConfig.holidayCalendar = {
-				holidays: [{ date: '2026-03-02', label: '休息日' }]
-			};
-			return { ...s };
-		});
+		snapshot.update((s) => ({
+			...s,
+			currentTimetable: {
+				...s.currentTimetable!,
+				academicConfig: {
+					...s.currentTimetable!.academicConfig,
+					holidayCalendar: { holidays: [{ date: '2026-03-02', label: '休息日' }] }
+				}
+			}
+		}));
 		await settle();
 		expect(screen.courseEntries).toEqual([]);
 		expect(query).toHaveBeenCalledTimes(2);
-		snapshot.update((s) => {
-			delete s.currentTimetable!.academicConfig.holidayCalendar;
-			return { ...s };
-		});
+		snapshot.update((s) => ({
+			...s,
+			currentTimetable: {
+				...s.currentTimetable!,
+				academicConfig: { ...s.currentTimetable!.academicConfig, holidayCalendar: undefined }
+			}
+		}));
 		await settle();
 		expect(screen.courseEntries).toHaveLength(1);
 		expect(query).toHaveBeenCalledTimes(3);
@@ -92,12 +163,12 @@ describe('Today relevant input refresh', () => {
 		engine.dispose();
 	});
 	it('refreshes all scope when an inactive timetable holiday calendar changes', async () => {
-		const { engine, screen, snapshot, course, timetables } = await harness();
+		const { engine, screen, snapshot, course, timetables, academicConfig } = await harness();
 		const other = createTimetable({
 			id: 'other',
 			name: 'Other',
 			courses: [course],
-			academicConfig: { ...engine.state.currentTimetable!.academicConfig }
+			academicConfig: { ...academicConfig }
 		});
 		timetables.set(other.id, other);
 		await screen.persistScope('all');
@@ -116,12 +187,12 @@ describe('Today relevant input refresh', () => {
 		engine.dispose();
 	});
 	it.each([1, 2])('uses each timetable clock for all-scope period %i', async (startPeriod) => {
-		const { engine, screen, snapshot, query, course, timetables } = await harness();
+		const { engine, screen, snapshot, query, course, timetables, academicConfig } = await harness();
 		const other = createTimetable({
 			id: 'other',
 			name: 'Other',
 			academicConfig: {
-				...engine.state.currentTimetable!.academicConfig,
+				...academicConfig,
 				periodTimes: [
 					...(startPeriod === 2 ? [{ index: 1, startTime: '08:00', endTime: '08:45' }] : []),
 					{ index: startPeriod, startTime: '09:00', endTime: '09:45' }

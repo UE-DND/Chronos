@@ -104,6 +104,8 @@ export interface IStorageService {
 	listTimetables(): Promise<TimetableSummary[]>;
 	/** requireExisting must be checked atomically with the write. */
 	saveTimetable(timetable: Timetable, options?: { requireExisting?: boolean }): Promise<void>;
+	/** Read and apply a synchronous domain change in the same persistence transaction. */
+	mutateTimetable?(id: string, change: (current: Timetable) => Timetable): Promise<Timetable>;
 	deleteTimetable(id: string): Promise<void>;
 	getActiveTimetableId(): Promise<string | null>;
 	setActiveTimetableId(id: string): Promise<void>;
@@ -130,7 +132,7 @@ export interface IStorageService {
 	deletePluginData(pluginId: string, key: string): Promise<void>;
 	clearPluginData?(pluginId: string): Promise<void>;
 
-	onChanged?(listener: (event: StorageChangeEvent) => void): Disposable;
+	onChanged?(listener: (event: StorageChangeEvent) => void | Promise<void>): Disposable;
 }
 export const IStorageService = createServiceIdentifier<IStorageService>('storage');
 

@@ -1,4 +1,4 @@
-import type { Timetable } from '../domain/timetable';
+import type { ReadonlyTimetable } from '../types/state';
 import {
 	DEFAULT_USER_PREFERENCES,
 	type CapsuleCornerStyle,
@@ -14,7 +14,7 @@ import { placeCapsules, type PlacedItem } from './capsule-layout';
 import { COURSE_PALETTE_ENTRIES, type CoursePaletteEntry } from './palette';
 
 export interface TimetableWeekLayoutInput {
-	timetable: Timetable;
+	timetable: ReadonlyTimetable;
 	displayedWeek: number;
 	todayIso: string;
 	columnWidthPx?: number;
@@ -22,7 +22,7 @@ export interface TimetableWeekLayoutInput {
 	layoutMode?: TimetableLayoutMode;
 	capsuleCornerStyle?: CapsuleCornerStyle;
 	coursePalette?: readonly CoursePaletteEntry[];
-	paletteCourses?: { name: string; color?: string }[];
+	paletteCourses?: readonly { name: string; color?: string }[];
 	academicCalendarService?: AcademicCalendarService;
 }
 

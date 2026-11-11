@@ -1,4 +1,4 @@
-import type { Timetable } from '../domain/timetable';
+import type { ReadonlyTimetable } from '../types/state';
 import { isPrepareReminderMinutes } from '../domain/preferences';
 import { queryTimetableCourseOccurrences } from './course-schedule';
 
@@ -23,7 +23,7 @@ export interface ClassNotificationBatch {
 
 /** Actual occurrences within the semester; display-clock clamping is intentionally not used. */
 export function buildClassNotificationPlan(options: {
-	timetable: Timetable | null;
+	timetable: ReadonlyTimetable | null;
 	prepareReminderMinutes: number;
 	now?: Date;
 	graceMs?: number;

@@ -1,4 +1,4 @@
-import type { Timetable } from '#lib/models/timetable.ts';
+import type { ReadonlyTimetable } from '@chronos/core';
 
 export function buildWeekList(startWeek: number, endWeek: number): number[] {
 	const start = Math.min(startWeek, endWeek);
@@ -15,7 +15,7 @@ export function clampDisplayedWeek(week: number, startWeek: number, endWeek: num
 }
 
 export function resolveDisplayedWeek(
-	timetable: Timetable | null,
+	timetable: ReadonlyTimetable | null,
 	displayedWeek: number,
 	displayedWeekTimetableId: string | null | undefined,
 	academicWeek: number
@@ -88,7 +88,7 @@ export function shouldPaintPagerWeek(
 	return Math.abs(week - displayedWeek) <= radius;
 }
 
-export function academicBounds(timetable: Timetable | null): {
+export function academicBounds(timetable: ReadonlyTimetable | null): {
 	startWeek: number;
 	endWeek: number;
 } {

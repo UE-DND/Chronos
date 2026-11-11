@@ -1,15 +1,9 @@
 <script lang="ts">
-	import { getAppEngine } from '#lib/services/app-engine.ts';
 	import { formatBytes } from '#lib/utils/format-bytes.ts';
 	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { onMount } from 'svelte';
-	import {
-		getOfficialPluginService,
-		getAppController,
-		ensureEngineFullyReady
-	} from '#lib/services/app-engine.ts';
-	import type { InstalledOfficialPluginRecord } from '#lib/services/official-plugins/official-plugin-service.ts';
-	import type { PluginManifest, ConfigSchema } from '@chronos/core';
+	import { getAppController } from '#lib/services/app-engine.ts';
+	import type { ConfigSchema } from '@chronos/core';
 	import { resolveLocaleMapText } from '@chronos/core';
 	import SegmentedControl from '#lib/components/ui/SegmentedControl.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
@@ -19,24 +13,19 @@
 	import FormScreenLayout from '#lib/components/ui/FormScreenLayout.svelte';
 	import type { EdgeBarAction } from '@chronos/ui-kit';
 	import PluginConfigModal from './PluginConfigModal.svelte';
-	import { snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
 	import { groupCatalogManifestsByCategory } from '#lib/services/official-plugins/catalog-sort.ts';
 	import {
 		getPluginCategoryMeta,
 		resolvePluginCatalogCategory
 	} from '#lib/services/official-plugins/plugin-tags.ts';
-	import {
-		assertValidManifestInstallUrl,
-		describeInstallSource
-	} from '#lib/services/official-plugins/manifest-url.ts';
-	import type { PluginInstallTask } from '#lib/services/official-plugins/install-queue.ts';
+	import { describeInstallSource } from '#lib/services/official-plugins/manifest-url.ts';
 	import PluginInstallAction from './PluginInstallAction.svelte';
 	import { CheckCircleFill, DownloadFill, TuneFill } from '#lib/icons/index.ts';
+	import { createPluginsScreen } from './plugins-screen.svelte';
 
-	const officialPlugins = getOfficialPluginService();
+	const screen = createPluginsScreen();
 	const appController = getAppController();
-
-	let installationFrozen = $state(false);
+	onMount(screen.start);
 	let activeTab = $state<'installed' | 'official'>('installed');
 	const edgeActions = $derived.by((): EdgeBarAction[] =>
 		activeTab === 'official'
@@ -46,143 +35,38 @@
 						label: hostT('plugins.link.open'),
 						icon: DownloadFill,
 						variant: 'outlined',
-						disabled: installationFrozen,
+						disabled: screen.state.installationFrozen,
 						onClick: promptLinkInstall
 					}
 				]
 			: []
 	);
-
-	let updateStatuses = $state.raw<
-		Record<string, ReturnType<typeof officialPlugins.getUpdateStatus>>
-	>({});
-	let preinstallFailures = $state.raw<[string, string][]>([]);
-	let installedRecords = $state.raw<InstalledOfficialPluginRecord[]>([]);
-	let catalogManifests = $state.raw<Array<{ url: string; manifest: PluginManifest }>>([]);
-	let queueTasks = $state.raw<ReadonlyArray<PluginInstallTask>>([]);
-	let loadingCatalog = $state(false);
-	let catalogError = $state<string | null>(null);
-	let operatingPluginId = $state<string | null>(null);
-
-	const taskMap = $derived.by(() => {
-		const map = new Map<string, PluginInstallTask>();
-		for (const task of queueTasks) {
-			map.set(task.pluginId, task);
-		}
-		return map;
-	});
-
-	const activeInstallTasks = $derived.by(() =>
-		queueTasks.filter((task) => task.status !== 'completed' && task.status !== 'canceled')
-	);
-
 	let configModalOpen = $state(false);
 	let configModalData = $state<{
 		id: string;
 		name: string;
 		schema: ConfigSchema<Record<string, unknown>>;
-	}>({
-		id: '',
-		name: '',
-		schema: {}
-	});
-
+	}>({ id: '', name: '', schema: {} });
 	let uninstallDialogOpen = $state(false);
-	let uninstallTarget = $state<{ id: string; name: string }>({ id: '', name: '' });
-
+	let uninstallTarget = $state({ id: '', name: '' });
 	let linkInstallDialogOpen = $state(false);
-	let linkInstallInProgress = $state(false);
 	let manifestUrlInput = $state('');
 	const linkInstallSource = $derived(describeInstallSource(manifestUrlInput.trim()));
-
-	function refreshInstalled() {
-		installationFrozen = officialPlugins.installationStore.isFrozen;
-		installedRecords = [...officialPlugins.listInstalled()];
-		updateStatuses = Object.fromEntries(
-			installedRecords.map((record) => [
-				record.manifest.id,
-				officialPlugins.getUpdateStatus(record.manifest.id)
-			])
-		);
-		preinstallFailures = [...officialPlugins.listFailures()];
-	}
-
-	function refreshQueue() {
-		queueTasks = officialPlugins.installQueue.getTasks();
-	}
-
-	onMount(() => {
-		void ensureEngineFullyReady()
-			.then(async () => {
-				refreshInstalled();
-				refreshQueue();
-				await loadOfficialCatalog();
-			})
-			.catch((error) => console.error('[plugins-startup]', error));
-
-		const subInstalled = officialPlugins.onChanged(() => {
-			refreshInstalled();
-		});
-
-		const subQueue = officialPlugins.installQueue.onChanged(({ kind }) => {
-			refreshQueue();
-			if (kind === 'state') {
-				refreshInstalled();
-			}
-		});
-
-		return () => {
-			subInstalled.dispose();
-			subQueue.dispose();
-		};
-	});
-
-	async function loadOfficialCatalog() {
-		loadingCatalog = true;
-		catalogError = null;
-		try {
-			const catalog = await officialPlugins.fetchCatalog();
-			const entries = await Promise.all(
-				catalog.manifests.map(async (url) => {
-					try {
-						const manifest = await officialPlugins.fetchManifest(url);
-						return { url, manifest };
-					} catch (err) {
-						console.error(`[PluginsScreen] Failed to fetch manifest ${url}:`, err);
-						return null;
-					}
-				})
-			);
-			catalogManifests = entries.filter((entry) => entry !== null);
-		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : String(err);
-			catalogError = msg;
-		} finally {
-			loadingCatalog = false;
-		}
-	}
-
 	const activeLocale = $derived(appController.locale);
-
-	const groupedCatalogManifests = $derived.by(() => {
-		const locale = activeLocale;
-		return groupCatalogManifestsByCategory(catalogManifests, locale);
-	});
-
+	const groupedCatalogManifests = $derived(
+		groupCatalogManifestsByCategory(screen.state.catalogManifests, activeLocale)
+	);
 	const tabSegments = $derived.by(() => {
 		void appController.locale;
 		void appController.slotVersion;
 		return [
 			{
 				value: 'installed',
-				label: hostT('plugins.tab.installed', {
-					count: installedRecords.length
-				})
+				label: hostT('plugins.tab.installed', { count: screen.state.installedRecords.length })
 			},
 			{ value: 'official', label: hostT('plugins.tab.market') }
 		];
 	});
-
 	function resolveManifestText(
 		value: string | Record<string, string> | (() => string) | undefined
 	): string {
@@ -191,104 +75,33 @@
 		if (typeof value === 'string') return value;
 		return resolveLocaleMapText(value, activeLocale);
 	}
-
-	function isInstalled(pluginId: string): boolean {
-		return installedRecords.some((r) => r.manifest.id === pluginId);
-	}
-
-	function handleInstall(manifest: PluginManifest, manifestUrl?: string) {
-		if (installationFrozen) return;
-		officialPlugins.installQueue.enqueue(manifest, manifestUrl);
-	}
-
-	function handleCancel(pluginId: string) {
-		officialPlugins.installQueue.cancel(pluginId);
-	}
-
-	function handleRetry(pluginId: string) {
-		if (installationFrozen) return;
-		officialPlugins.installQueue.retry(pluginId);
-	}
-
 	function promptLinkInstall() {
 		manifestUrlInput = '';
 		linkInstallDialogOpen = true;
 	}
-
 	async function confirmLinkInstall() {
-		if (installationFrozen) return;
-		const url = manifestUrlInput.trim();
-		if (!url) {
-			snackbarKey('snackbar.manifestRequired');
-			return;
-		}
-
-		try {
-			assertValidManifestInstallUrl(url);
-		} catch {
-			snackbarKey('snackbar.manifestInvalid');
-			return;
-		}
-
-		linkInstallInProgress = true;
-		try {
-			const manifest = await officialPlugins.fetchManifest(url);
-			officialPlugins.installQueue.enqueue(manifest, url);
+		if (await screen.installLink(manifestUrlInput)) {
 			activeTab = 'installed';
 			linkInstallDialogOpen = false;
 			manifestUrlInput = '';
-		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : String(err);
-			snackbarKey('snackbar.install.failed', { message: msg });
-		} finally {
-			linkInstallInProgress = false;
 		}
 	}
-
-	function promptUninstall(pluginId: string, pluginName: string) {
-		uninstallTarget = { id: pluginId, name: pluginName };
+	function promptUninstall(id: string, name: string) {
+		uninstallTarget = { id, name };
 		uninstallDialogOpen = true;
 	}
-
 	async function confirmUninstall() {
-		if (installationFrozen) return;
-		const targetId = uninstallTarget.id;
-		if (!targetId) return;
+		if (screen.state.installationFrozen || !uninstallTarget.id) return;
 		uninstallDialogOpen = false;
-		operatingPluginId = targetId;
-		try {
-			await officialPlugins.uninstall(targetId);
-		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : String(err);
-			snackbarKey('snackbar.uninstall.failed', { message: msg });
-		} finally {
-			operatingPluginId = null;
-		}
+		await screen.uninstall(uninstallTarget.id);
 	}
-
-	async function handleConfirmCompatibility(pluginId: string) {
-		operatingPluginId = pluginId;
-		try {
-			await officialPlugins.confirmHostCompatibility(pluginId);
-		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : String(err);
-			snackbarKey('snackbar.confirmCompatibility.failed', { message: msg });
-		} finally {
-			operatingPluginId = null;
-		}
-	}
-
 	function handleOpenConfig(
 		id: string,
 		name: string,
 		schema?: ConfigSchema<Record<string, unknown>>
 	) {
 		if (!schema) return;
-		configModalData = {
-			id,
-			name,
-			schema
-		};
+		configModalData = { id, name, schema };
 		configModalOpen = true;
 	}
 </script>
@@ -304,30 +117,32 @@
 {/snippet}
 
 <FormScreenLayout class="text-on-surface" header={tabHeader} actions={edgeActions}>
-	{#if installationFrozen}<p role="status" class="text-body-medium px-4 text-on-surface-variant">
+	{#if screen.state.installationFrozen}<p
+			role="status"
+			class="text-body-medium px-4 text-on-surface-variant"
+		>
 			{hostT('plugins.update.locked')}
 		</p>{/if}
 	{#if activeTab === 'installed'}
-		{#if preinstallFailures.length}
+		{#if screen.state.preinstallFailures.length}
 			<section class="ui-section">
-				{#each preinstallFailures as [id, error] (id)}<p>{id}: {error}</p>{/each}
-				<Button onclick={() => officialPlugins.retryPreinstall()}
-					>{hostT('plugins.preinstall.retry')}</Button
+				{#each screen.state.preinstallFailures as [id, error] (id)}<p>{id}: {error}</p>{/each}
+				<Button onclick={() => screen.retryPreinstall()}>{hostT('plugins.preinstall.retry')}</Button
 				>
 			</section>
 		{/if}
-		{#if activeInstallTasks.length > 0}
+		{#if screen.state.activeInstallTasks.length > 0}
 			<section class="ui-section">
 				<div class="flex items-center justify-between px-1">
 					<h3 class="text-label-large font-command font-medium text-on-surface">
 						{hostT('plugins.installing.heading')}
 					</h3>
 					<span class="text-label-small text-supporting text-on-surface-variant">
-						{hostT('plugins.builtin.count', { count: activeInstallTasks.length })}
+						{hostT('plugins.builtin.count', { count: screen.state.activeInstallTasks.length })}
 					</span>
 				</div>
 				<div class="ui-section-surface [&>*+*]:border-t [&>*+*]:border-border/40">
-					{#each activeInstallTasks as task (task.pluginId)}
+					{#each screen.state.activeInstallTasks as task (task.pluginId)}
 						{@const manifest = task.manifest}
 						{@const name = resolveManifestText(manifest.name)}
 						{@const desc = resolveManifestText(manifest.description)}
@@ -345,13 +160,13 @@
 								{/if}
 							</div>
 							<PluginInstallAction
-								disabled={installationFrozen}
+								disabled={screen.state.installationFrozen}
 								{manifest}
-								installed={isInstalled(manifest.id)}
+								installed={screen.isInstalled(manifest.id)}
 								{task}
-								onInstall={() => handleInstall(manifest, task.manifestUrl)}
-								onCancel={() => handleCancel(manifest.id)}
-								onRetry={() => handleRetry(manifest.id)}
+								onInstall={() => screen.install(manifest, task.manifestUrl)}
+								onCancel={() => screen.cancel(manifest.id)}
+								onRetry={() => screen.retry(manifest.id)}
 							/>
 						</div>
 					{/each}
@@ -366,12 +181,12 @@
 				</h3>
 				<span class="text-label-small text-supporting text-on-surface-variant"
 					>{hostT('plugins.builtin.count', {
-						count: installedRecords.length
+						count: screen.state.installedRecords.length
 					})}</span
 				>
 			</div>
 
-			{#if installedRecords.length === 0}
+			{#if screen.state.installedRecords.length === 0}
 				<div
 					class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-surface/40 px-4 py-8 text-center text-on-surface-variant"
 				>
@@ -387,12 +202,12 @@
 				</div>
 			{:else}
 				<div class="ui-section-surface [&>*+*]:border-t [&>*+*]:border-border/40">
-					{#each installedRecords as record (record.manifest.id)}
+					{#each screen.state.installedRecords as record (record.manifest.id)}
 						{@const name = resolveManifestText(record.manifest.name)}
 						{@const desc = resolveManifestText(record.manifest.description)}
 						{@const meta = getPluginCategoryMeta(resolvePluginCatalogCategory(record.manifest))}
-						{@const isBusy = operatingPluginId === record.manifest.id}
-						{@const update = updateStatuses[record.manifest.id]}
+						{@const isBusy = screen.state.operatingPluginId === record.manifest.id}
+						{@const update = screen.state.updateStatuses[record.manifest.id]}
 						<div class="ui-row-state flex items-center justify-between gap-3 p-3 transition-colors">
 							<div class="flex min-w-0 flex-1 flex-col gap-2">
 								<div>
@@ -430,15 +245,15 @@
 									{#if update.status === 'confirmation-required'}
 										<Button
 											variant="outlined"
-											disabled={isBusy || installationFrozen}
-											onclick={() => handleConfirmCompatibility(record.manifest.id)}
+											disabled={isBusy || screen.state.installationFrozen}
+											onclick={() => screen.confirmCompatibility(record.manifest.id)}
 											>{hostT('plugins.action.confirmCompatibility')}</Button
 										>
 									{:else if update.status !== 'downloading'}
 										<Button
 											variant="outlined"
-											disabled={installationFrozen}
-											onclick={() => officialPlugins.retryPendingUpdates()}
+											disabled={screen.state.installationFrozen}
+											onclick={() => screen.retryPendingUpdates()}
 											>{hostT('plugins.action.retry')}</Button
 										>
 									{/if}
@@ -459,7 +274,7 @@
 								{/if}
 							</div>
 							<div class="flex shrink-0 items-center justify-end">
-								{#if officialPlugins.isPreinstalledPlugin(record.manifest.id)}
+								{#if screen.isPreinstalled(record.manifest.id)}
 									<span
 										class="text-label-large inline-flex h-7 min-h-7 min-w-24 shrink-0 items-center justify-center gap-1 rounded-full border border-transparent bg-surface-variant px-2.5 text-on-surface-variant"
 									>
@@ -471,7 +286,7 @@
 										variant="text"
 										tone="danger"
 										class="text-caption h-6 shrink-0 px-1.5"
-										disabled={isBusy || installationFrozen}
+										disabled={isBusy || screen.state.installationFrozen}
 										onclick={() => promptUninstall(record.manifest.id, name)}
 									>
 										{hostT('common.uninstall')}
@@ -485,26 +300,28 @@
 		</section>
 	{:else}
 		<section class="ui-section">
-			{#if loadingCatalog}
+			{#if screen.state.loadingCatalog}
 				<div class="flex flex-col items-center justify-center py-12">
 					<LoadingIndicator size="large" />
 					<p class="text-body-small text-supporting mt-2 text-on-surface-variant">
 						{hostT('plugins.catalog.loading')}
 					</p>
 				</div>
-			{:else if catalogError}
+			{:else if screen.state.catalogError}
 				<div
 					class="flex flex-col items-center justify-center rounded-2xl border border-error/30 bg-error-container/20 p-6 text-center"
 				>
 					<p class="text-body-medium font-medium text-error">
 						{hostT('plugins.catalog.error.title')}
 					</p>
-					<p class="text-body-small text-supporting mt-1 text-on-surface-variant">{catalogError}</p>
-					<Button variant="outlined" class="mt-3 h-8 px-4 text-xs" onclick={loadOfficialCatalog}>
+					<p class="text-body-small text-supporting mt-1 text-on-surface-variant">
+						{screen.state.catalogError}
+					</p>
+					<Button variant="outlined" class="mt-3 h-8 px-4 text-xs" onclick={screen.loadCatalog}>
 						{hostT('plugins.catalog.retry')}
 					</Button>
 				</div>
-			{:else if catalogManifests.length === 0}
+			{:else if screen.state.catalogManifests.length === 0}
 				<div
 					class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-surface/40 px-4 py-12 text-center text-on-surface-variant"
 				>
@@ -525,7 +342,7 @@
 									{@const manifest = entry.manifest}
 									{@const name = resolveManifestText(manifest.name)}
 									{@const desc = resolveManifestText(manifest.description)}
-									{@const installed = isInstalled(manifest.id)}
+									{@const installed = screen.isInstalled(manifest.id)}
 									<div
 										class="ui-row-state flex items-center justify-between gap-3 p-3 transition-colors"
 									>
@@ -542,7 +359,7 @@
 													{desc}
 												</p>
 											{/if}
-											{#if manifest.optionalServerCapabilities?.some((cap) => !getAppEngine().http.supportsPluginServer?.(cap.pluginId, cap.action))}
+											{#if screen.hasUnavailableServerCapability(manifest)}
 												<p class="text-body-small text-supporting mt-1 text-on-surface-variant">
 													{hostT('plugins.online.unavailable')}
 												</p>
@@ -568,18 +385,14 @@
 
 										<div class="flex shrink-0 flex-col items-end gap-1">
 											<PluginInstallAction
-												disabled={installationFrozen}
+												disabled={screen.state.installationFrozen}
 												{manifest}
 												{installed}
-												needsUpdate={installedRecords.some(
-													(record) =>
-														record.manifest.id === manifest.id &&
-														record.manifest.version !== manifest.version
-												)}
-												task={taskMap.get(manifest.id)}
-												onInstall={() => handleInstall(manifest, entry.url)}
-												onCancel={() => handleCancel(manifest.id)}
-												onRetry={() => handleRetry(manifest.id)}
+												needsUpdate={screen.needsUpdate(manifest)}
+												task={screen.state.taskMap.get(manifest.id)}
+												onInstall={() => screen.install(manifest, entry.url)}
+												onCancel={() => screen.cancel(manifest.id)}
+												onRetry={() => screen.retry(manifest.id)}
 											/>
 										</div>
 									</div>
@@ -630,7 +443,7 @@
 				type="url"
 				placeholder={hostT('plugins.link.placeholder')}
 				bind:value={manifestUrlInput}
-				disabled={linkInstallInProgress}
+				disabled={screen.state.linkInstallInProgress}
 			/>
 		</div>
 		{#if linkInstallSource}
@@ -638,7 +451,7 @@
 				{hostT('plugins.link.source', { origin: linkInstallSource })}
 			</p>
 		{/if}
-		{#if linkInstallInProgress}
+		{#if screen.state.linkInstallInProgress}
 			<div class="flex items-center gap-2 text-on-surface-variant">
 				<LoadingIndicator size="small" />
 				<span class="text-body-small">{hostT('plugins.link.installing')}</span>
@@ -648,17 +461,19 @@
 	{#snippet footer()}
 		<Button
 			variant="text"
-			disabled={linkInstallInProgress}
+			disabled={screen.state.linkInstallInProgress}
 			onclick={() => (linkInstallDialogOpen = false)}
 		>
 			{hostT('common.cancel')}
 		</Button>
 		<Button
 			variant="filled"
-			disabled={linkInstallInProgress || installationFrozen}
+			disabled={screen.state.linkInstallInProgress || screen.state.installationFrozen}
 			onclick={confirmLinkInstall}
 		>
-			{linkInstallInProgress ? hostT('plugins.action.installing') : hostT('plugins.link.confirm')}
+			{screen.state.linkInstallInProgress
+				? hostT('plugins.action.installing')
+				: hostT('plugins.link.confirm')}
 		</Button>
 	{/snippet}
 </Dialog>

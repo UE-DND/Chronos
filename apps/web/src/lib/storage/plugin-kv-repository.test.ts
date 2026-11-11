@@ -102,6 +102,90 @@ describe('PluginKvRepository', () => {
 		expect(pluginDataMap.has('plugin-a:asset')).toBe(true);
 		expect(await repo.get<{ version: number }>('plugin-a', 'asset')).toEqual({ version: 1 });
 	});
+
+	it('returns null only for a missing value and preserves empty binary values', async () => {
+		const { db } = createMockDb();
+		const repo = new PluginKvRepository(db);
+		await expect(repo.get('plugin', 'missing')).resolves.toBeNull();
+		await repo.set('plugin', 'empty', new Uint8Array());
+		const empty = await repo.get<Blob>('plugin', 'empty');
+		expect(empty).toBeInstanceOf(Blob);
+		expect(empty!.size).toBe(0);
+	});
+
+	it.each(['pluginData', 'pluginBinary'] as const)('propagates %s read failures', async (table) => {
+		const { db } = createMockDb();
+		const repo = new PluginKvRepository(db);
+		const error = new Error('idb unavailable');
+		vi.spyOn(db[table], 'get').mockRejectedValueOnce(error);
+
+		await expect(repo.get('plugin', 'key')).rejects.toBe(error);
+	});
+
+	it.each(['{broken', ''])(
+		'rejects malformed JSON %j without treating an existing record as missing',
+		async (valueJson) => {
+			const { db, pluginDataMap } = createMockDb();
+			pluginDataMap.set('plugin:key', {
+				id: 'plugin:key',
+				pluginId: 'plugin',
+				key: 'key',
+				valueJson,
+				updatedAt: 0
+			});
+			const repo = new PluginKvRepository(db);
+
+			await expect(repo.get('plugin', 'key')).rejects.toBeInstanceOf(SyntaxError);
+			expect(pluginDataMap.get('plugin:key')!.valueJson).toBe(valueJson);
+		}
+	);
+
+	it.each([null, 42, false])(
+		'rejects a non-string persisted JSON payload %j',
+		async (valueJson) => {
+			const { db, pluginDataMap } = createMockDb();
+			pluginDataMap.set('plugin:key', {
+				id: 'plugin:key',
+				pluginId: 'plugin',
+				key: 'key',
+				valueJson,
+				updatedAt: 0
+			} as unknown as PluginDataRow);
+
+			await expect(new PluginKvRepository(db).get('plugin', 'key')).rejects.toThrow(
+				'Invalid stored plugin JSON'
+			);
+		}
+	);
+
+	it('rejects malformed binary records without falling back to JSON', async () => {
+		const { db, pluginBinaryMap } = createMockDb();
+		pluginBinaryMap.set('plugin:key', {
+			id: 'plugin:key',
+			pluginId: 'plugin',
+			key: 'key',
+			bytes: undefined,
+			mimeType: 'text/plain',
+			updatedAt: 0
+		} as unknown as PluginBinaryRow);
+		const repo = new PluginKvRepository(db);
+		const readJson = vi.spyOn(db.pluginData, 'get');
+
+		await expect(repo.get('plugin', 'key')).rejects.toThrow('Invalid stored plugin bytes');
+		expect(readJson).not.toHaveBeenCalled();
+	});
+
+	it.each(['pluginData', 'pluginBinary'] as const)(
+		'propagates %s size read failures',
+		async (table) => {
+			const { db } = createMockDb();
+			const error = new Error('idb unavailable');
+			vi.spyOn(db[table], 'toArray').mockRejectedValueOnce(error);
+			const repo = new PluginKvRepository(db);
+
+			await expect(repo.estimateBytes()).rejects.toBe(error);
+		}
+	);
 });
 
 it('does not delete the old value when Blob conversion fails', async () => {

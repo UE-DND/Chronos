@@ -42,7 +42,7 @@ function isTimetableChangeMessage(value: unknown): value is TimetableChangeMessa
  * using Dexie (IndexedDB) for structured records and localStorage for user preferences.
  */
 export class DexieStorageProvider implements IStorageService {
-	private listeners = new Set<(event: StorageChangeEvent) => void>();
+	private listeners = new Set<(event: StorageChangeEvent) => void | Promise<void>>();
 	private changeChannel?: BroadcastChannel;
 	private storageListener?: (e: StorageEvent) => void;
 	private readonly preferences: PreferencesStore;
@@ -100,27 +100,20 @@ export class DexieStorageProvider implements IStorageService {
 	private notifyChange(event: StorageChangeEvent): void {
 		for (const listener of this.listeners) {
 			try {
-				listener(event);
+				void Promise.resolve(listener(event)).catch((error: unknown) => {
+					console.error('[DexieStorageProvider] Error in onChanged listener:', error);
+				});
 			} catch (err) {
 				console.error('[DexieStorageProvider] Error in onChanged listener:', err);
 			}
 		}
 	}
 
-	private async withStorageNotify<T>(
-		event: StorageChangeEvent,
-		action: string,
-		fn: () => Promise<T>
-	): Promise<T> {
-		try {
-			const result = await fn();
-			this.notifyChange(event);
-			if (event.type === 'timetable') this.broadcastChange(event);
-			return result;
-		} catch (err) {
-			console.warn(`[DexieStorageProvider] Failed to ${action}:`, err);
-			throw err;
-		}
+	private async withStorageNotify<T>(event: StorageChangeEvent, fn: () => Promise<T>): Promise<T> {
+		const result = await fn();
+		this.notifyChange(event);
+		if (event.type === 'timetable') this.broadcastChange(event);
+		return result;
 	}
 
 	private broadcastChange(event: StorageChangeEvent): void {
@@ -131,7 +124,7 @@ export class DexieStorageProvider implements IStorageService {
 		}
 	}
 
-	onChanged(listener: (event: StorageChangeEvent) => void): Disposable {
+	onChanged(listener: (event: StorageChangeEvent) => void | Promise<void>): Disposable {
 		this.listeners.add(listener);
 		return {
 			dispose: () => {
@@ -158,7 +151,7 @@ export class DexieStorageProvider implements IStorageService {
 		timetable: Timetable,
 		options?: { requireExisting?: boolean }
 	): Promise<void> {
-		await this.withStorageNotify({ type: 'timetable', key: timetable.id }, 'save timetable', () =>
+		await this.withStorageNotify({ type: 'timetable', key: timetable.id }, () =>
 			this.timetables.saveTimetable(timetable, options)
 		);
 		void this.requestPersistence?.().catch((error) => {
@@ -167,9 +160,19 @@ export class DexieStorageProvider implements IStorageService {
 	}
 
 	async deleteTimetable(id: string): Promise<void> {
-		await this.withStorageNotify({ type: 'timetable', key: id }, 'delete timetable', () =>
+		await this.withStorageNotify({ type: 'timetable', key: id }, () =>
 			this.timetables.deleteTimetable(id)
 		);
+	}
+
+	async mutateTimetable(id: string, change: (current: Timetable) => Timetable): Promise<Timetable> {
+		const timetable = await this.withStorageNotify({ type: 'timetable', key: id }, () =>
+			this.timetables.mutateTimetable(id, change)
+		);
+		void this.requestPersistence?.().catch((error) => {
+			console.warn('[DexieStorageProvider] Persistence request failed:', error);
+		});
+		return timetable;
 	}
 
 	async getActiveTimetableId(): Promise<string | null> {
@@ -196,25 +199,21 @@ export class DexieStorageProvider implements IStorageService {
 
 	async setPluginData<T>(pluginId: string, key: string, value: T): Promise<void> {
 		const id = `${pluginId}:${key}`;
-		await this.withStorageNotify({ type: 'pluginData', key: id }, `set plugin data for ${id}`, () =>
+		await this.withStorageNotify({ type: 'pluginData', key: id }, () =>
 			this.pluginKv.set(pluginId, key, value)
 		);
 	}
 
 	async deletePluginData(pluginId: string, key: string): Promise<void> {
 		const id = `${pluginId}:${key}`;
-		await this.withStorageNotify(
-			{ type: 'pluginData', key: id },
-			`delete plugin data for ${id}`,
-			() => this.pluginKv.delete(pluginId, key)
+		await this.withStorageNotify({ type: 'pluginData', key: id }, () =>
+			this.pluginKv.delete(pluginId, key)
 		);
 	}
 
 	async clearPluginData(pluginId: string): Promise<void> {
-		await this.withStorageNotify(
-			{ type: 'pluginData', key: pluginId },
-			`clear plugin data for ${pluginId}`,
-			() => this.pluginKv.clear(pluginId)
+		await this.withStorageNotify({ type: 'pluginData', key: pluginId }, () =>
+			this.pluginKv.clear(pluginId)
 		);
 	}
 

@@ -6,13 +6,10 @@ export class PluginDataRepository {
 
 	async get<T>(pluginId: string, key: string): Promise<T | null> {
 		const id = `${pluginId}:${key}`;
-		try {
-			const row = await this.database.pluginData.get(id);
-			if (!row?.valueJson) return null;
-			return JSON.parse(row.valueJson) as T;
-		} catch {
-			return null;
-		}
+		const row = await this.database.pluginData.get(id);
+		if (!row) return null;
+		if (typeof row.valueJson !== 'string') throw new TypeError('Invalid stored plugin JSON');
+		return JSON.parse(row.valueJson) as T;
 	}
 
 	async set<T>(pluginId: string, key: string, value: T): Promise<void> {
@@ -40,16 +37,12 @@ export class PluginDataRepository {
 	}
 
 	async estimateBytes(): Promise<number> {
-		try {
-			const pluginData = await this.database.pluginData.toArray();
-			const encoder = new TextEncoder();
-			let total = 0;
-			for (const row of pluginData) {
-				total += encoder.encode(JSON.stringify(row)).length;
-			}
-			return total;
-		} catch {
-			return 0;
+		const pluginData = await this.database.pluginData.toArray();
+		const encoder = new TextEncoder();
+		let total = 0;
+		for (const row of pluginData) {
+			total += encoder.encode(JSON.stringify(row)).length;
 		}
+		return total;
 	}
 }

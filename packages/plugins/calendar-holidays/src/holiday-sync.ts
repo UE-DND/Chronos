@@ -5,7 +5,7 @@ import {
 	type HolidayCalendarConfig,
 	IHttpService,
 	IStorageService,
-	type Timetable
+	type ReadonlyTimetable
 } from '@chronos/core';
 import { fetchHolidayCnYears } from './holiday-cn-client';
 
@@ -72,7 +72,7 @@ export async function syncHolidayCalendarFromHolidayCn(
 async function performHolidaySync(
 	ctx: ChronosContext,
 	timetableId: string,
-	academicConfig: Timetable['academicConfig'],
+	academicConfig: ReadonlyTimetable['academicConfig'],
 	options: SyncHolidayCalendarOptions
 ): Promise<boolean> {
 	const requiredYears = inferYearsFromAcademicConfig(academicConfig);

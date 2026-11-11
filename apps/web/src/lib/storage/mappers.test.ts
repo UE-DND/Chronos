@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
+import { createCourse } from '@chronos/core';
 import { courseFromRow, courseToRow } from './mappers';
 
 describe('storage mappers', () => {
@@ -22,4 +23,26 @@ describe('storage mappers', () => {
 		expect(restored.weeks).toEqual([1, 3, 5]);
 		expect(restored.remark).toBe('note');
 	});
+
+	it('preserves empty weeks as every academic week', () => {
+		const course = createCourse({
+			id: 'course',
+			name: 'Math',
+			dayOfWeek: 1,
+			startPeriod: 1,
+			endPeriod: 1
+		});
+		expect(courseFromRow(courseToRow(course, 'timetable')).weeks).toEqual([]);
+	});
+
+	it.each(['1,2junk', '1,NaN', '1,,2', '1,', '1,2.5', '1,Infinity', '1,9007199254740993', '1, 2'])(
+		'rejects malformed stored weeks %j',
+		(weeksCsv) => {
+			const row = courseToRow(
+				createCourse({ id: 'course', name: 'Math', dayOfWeek: 1, startPeriod: 1, endPeriod: 1 }),
+				'timetable'
+			);
+			expect(() => courseFromRow({ ...row, weeksCsv })).toThrow('Invalid stored course weeks');
+		}
+	);
 });

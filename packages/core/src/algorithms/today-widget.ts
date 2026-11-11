@@ -1,6 +1,7 @@
 import type { Course } from '../domain/course';
 import { isPrepareReminderMinutes } from '../domain/preferences';
-import type { PeriodTime, Timetable } from '../domain/timetable';
+import type { PeriodTime } from '../domain/timetable';
+import type { ReadonlyTimetable } from '../types/state';
 import type { CourseQueryHit } from '../types/course-query';
 import { AcademicCalendarService } from './calendar';
 import { addDays, formatIsoDate, parseIsoDate } from './date';
@@ -64,7 +65,7 @@ function sortCourseHits(hits: CourseQueryHit[], locale: string): CourseQueryHit[
 }
 
 function projectCourse(
-	course: Course,
+	course: Pick<Course, 'id' | 'name' | 'location' | 'startPeriod' | 'endPeriod'>,
 	periodTimes: readonly PeriodTime[],
 	colorsByCourseName?: ReadonlyMap<string, string>
 ): TodayWidgetCourse {
@@ -87,7 +88,7 @@ function projectCourse(
 
 export function buildTodayWidgetSnapshot(options: {
 	prepareReminderMinutes: number;
-	timetable: Timetable | null;
+	timetable: ReadonlyTimetable | null;
 	startDateIso: string;
 	generatedAt?: number;
 	locale?: string;

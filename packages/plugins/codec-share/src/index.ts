@@ -5,7 +5,8 @@ import {
 	registerImportTab,
 	type ChronosMountable,
 	type ExportResult,
-	type Timetable
+	type Timetable,
+	type ReadonlyTimetable
 } from '@chronos/core';
 import {
 	decodeSharePayload,
@@ -117,7 +118,7 @@ export function createShareCodecPlugin(options: CreateShareCodecPluginOptions = 
 					};
 				},
 				estimateLength: (timetable) => estimateShareLinkLength(timetable, importUrl()),
-				async checkWarning(timetable: Timetable): Promise<string | null> {
+				async checkWarning(timetable: ReadonlyTimetable): Promise<string | null> {
 					if (!timetable.courses?.length) return null;
 					try {
 						const length = await estimateShareLinkLength(timetable, importUrl());

@@ -5,12 +5,16 @@ import type {
 	UserPreferences,
 	Disposable,
 	StandardSlotMap,
-	CourseBadge,
+	ReadonlyCourseBadges,
 	Course,
 	AcademicConfig,
 	ChronosContext,
 	TimetableDetailsPatch,
-	TimetableSummary
+	TimetableSummary,
+	ReadonlyTimetable,
+	ReadonlyUserPreferences,
+	DeepReadonly,
+	CourseRearrangement
 } from '@chronos/core';
 import { todayIsoDate, DEFAULT_USER_PREFERENCES } from '@chronos/core';
 import { writable, type Readable, type Writable } from 'svelte/store';
@@ -33,13 +37,13 @@ export class ReactiveChronosController implements ChronosUiController {
 	private disposables: Disposable[] = [];
 
 	// Svelte 5 Runes reactive core state
-	currentTimetable = $state.raw<Timetable | null>(null);
-	timetables = $state.raw<TimetableSummary[]>([]);
+	private _currentTimetable = $state.raw<ReadonlyTimetable | null>(null);
+	private _timetables = $state.raw<readonly DeepReadonly<TimetableSummary>[]>([]);
 	activeWeek = $state<number>(1);
 	currentPeriodIndex = $state<number | null>(null);
 	activeThemeId = $state<string | null>(null);
 	activeIconThemeId = $state<string>('host-default');
-	userPreferences = $state<UserPreferences>({ ...DEFAULT_USER_PREFERENCES });
+	private _userPreferences = $state.raw<ReadonlyUserPreferences>({ ...DEFAULT_USER_PREFERENCES });
 	locale = $state<string>('zh-cn');
 	now = $state<Date>(new Date());
 	todayIso = $state<string>(todayIsoDate());
@@ -47,36 +51,60 @@ export class ReactiveChronosController implements ChronosUiController {
 
 	// Slot reactivity version signal (increments on slot changes or locale switches)
 	slotVersion = $state<number>(0);
-	courseBadges = $state<Record<string, CourseBadge[]>>({});
+	private _courseBadges = $state.raw<ReadonlyCourseBadges>(Object.freeze({}));
 	coursePaletteRevision = $state<number>(0);
+
+	get currentTimetable(): ReadonlyTimetable | null {
+		return this._currentTimetable;
+	}
+
+	get timetables(): readonly DeepReadonly<TimetableSummary>[] {
+		return this._timetables;
+	}
+
+	get userPreferences(): ReadonlyUserPreferences {
+		return this._userPreferences;
+	}
+
+	get courseBadges(): ReadonlyCourseBadges {
+		return this._courseBadges;
+	}
 
 	constructor(engine: ChronosEngine, options: ReactiveChronosControllerOptions = {}) {
 		this.overlayHistoryPort = options.overlayHistoryPort;
 		this.engine = engine;
 		this.snapshotStore = writable(this.readSnapshot());
-		this.snapshot = this.snapshotStore;
+		this.snapshot = Object.freeze({ subscribe: this.snapshotStore.subscribe });
 		this.syncAllState();
 
 		// Subscribe to engine lifecycle events
 		this.disposables.push(
-			this.engine.on('timetable:loaded', ({ timetable }: { timetable: Timetable }) => {
-				this.currentTimetable = timetable;
+			this.engine.on('timetable:loaded', () => {
+				this._currentTimetable = this.engine.state.currentTimetable;
 				this.pushSnapshot();
 			}),
-			this.engine.on('timetable:switched', ({ timetable }: { timetable: Timetable }) => {
-				this.currentTimetable = timetable;
+			this.engine.on('timetable:switched', () => {
+				this._currentTimetable = this.engine.state.currentTimetable;
 				this.pushSnapshot();
 			}),
-			this.engine.on('timetable:updated', ({ timetable }: { timetable: Timetable }) => {
-				this.currentTimetable = timetable;
+			this.engine.on('timetable:updated', () => {
+				this._currentTimetable = this.engine.state.currentTimetable;
 				this.pushSnapshot();
 			}),
-			this.engine.on('timetables:updated', ({ timetables }: { timetables: TimetableSummary[] }) => {
-				this.timetables = timetables;
+			this.engine.on('timetable:followUpFailed', ({ operation, timetableId, cause }) => {
+				console.error(
+					'[timetable] Write committed but follow-up failed:',
+					{ operation, timetableId },
+					cause
+				);
+				this.notify(this.translatePlugin('host-ui', 'timetable.savedFollowUpFailed'), 'warn');
+			}),
+			this.engine.on('timetables:updated', () => {
+				this._timetables = this.engine.state.timetables;
 				this.pushSnapshot();
 			}),
-			this.engine.on('preferences:updated', ({ preferences }: { preferences: UserPreferences }) => {
-				this.userPreferences = preferences;
+			this.engine.on('preferences:updated', () => {
+				this._userPreferences = this.engine.state.userPreferences;
 				this.pushSnapshot();
 			}),
 			this.engine.on(
@@ -119,8 +147,8 @@ export class ReactiveChronosController implements ChronosUiController {
 				this.slotVersion++;
 				this.pushSnapshot();
 			}),
-			this.engine.on('badges:updated', ({ badges }: { badges: Record<string, CourseBadge[]> }) => {
-				this.courseBadges = badges;
+			this.engine.on('badges:updated', () => {
+				this._courseBadges = this.engine.badges.getAll();
 				this.pushSnapshot();
 			}),
 			this.engine.on('plugin:loaded', () => {
@@ -182,7 +210,7 @@ export class ReactiveChronosController implements ChronosUiController {
 	}
 
 	private readSnapshot(): ChronosUiSnapshot {
-		return {
+		return Object.freeze({
 			currentTimetable: this.currentTimetable,
 			timetables: this.timetables,
 			activeWeek: this.activeWeek,
@@ -197,22 +225,22 @@ export class ReactiveChronosController implements ChronosUiController {
 			slotVersion: this.slotVersion,
 			courseBadges: this.courseBadges,
 			coursePaletteRevision: this.coursePaletteRevision
-		};
+		});
 	}
 
 	private syncAllState(): void {
-		this.currentTimetable = this.engine.state.currentTimetable;
-		this.timetables = this.engine.state.timetables ?? [];
+		this._currentTimetable = this.engine.state.currentTimetable;
+		this._timetables = this.engine.state.timetables ?? [];
 		this.activeWeek = this.engine.state.activeWeek;
 		this.currentPeriodIndex = this.engine.state.currentPeriodIndex;
 		this.activeThemeId = this.engine.state.activeThemeId;
 		this.activeIconThemeId = this.engine.state.activeIconThemeId;
-		this.userPreferences = this.engine.state.userPreferences;
+		this._userPreferences = this.engine.state.userPreferences;
 		this.locale = this.engine.locale;
 		this.now = this.engine.now();
 		this.todayIso = todayIsoDate(this.now);
 		this.clockFrozen = this.engine.state.clockFrozen;
-		this.courseBadges = this.engine.badges.getAll();
+		this._courseBadges = this.engine.badges.getAll();
 		this.slotVersion++;
 		this.pushSnapshot();
 	}
@@ -236,16 +264,32 @@ export class ReactiveChronosController implements ChronosUiController {
 		return this.engine.updateTimetableDetails(timetableId, patch);
 	}
 
-	async saveCourse(course: Course): Promise<void> {
-		return this.engine.saveCourse(course);
+	async saveCourse(course: Course, timetableId?: string): Promise<void> {
+		return this.engine.saveCourse(course, timetableId);
 	}
 
-	async updateCourse(courseId: string, patch: Partial<Course>): Promise<void> {
-		return this.engine.updateCourse(courseId, patch);
+	async updateCourse(
+		courseId: string,
+		patch: Partial<Course>,
+		timetableId?: string
+	): Promise<void> {
+		return this.engine.updateCourse(courseId, patch, timetableId);
 	}
 
-	async deleteCourse(courseId: string): Promise<void> {
-		return this.engine.deleteCourse(courseId);
+	async deleteCourse(courseId: string, timetableId?: string): Promise<void> {
+		return this.engine.deleteCourse(courseId, timetableId);
+	}
+
+	async deleteCourseForWeek(courseId: string, week: number, timetableId?: string): Promise<void> {
+		return this.engine.deleteCourseForWeek(courseId, week, timetableId);
+	}
+
+	async rearrangeCourse(
+		courseId: string,
+		options: CourseRearrangement,
+		timetableId?: string
+	): Promise<Course | null> {
+		return this.engine.rearrangeCourse(courseId, options, timetableId);
 	}
 
 	setTheme(themeId: string): void {

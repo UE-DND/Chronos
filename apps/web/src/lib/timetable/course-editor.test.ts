@@ -4,14 +4,14 @@ import { createCourseEditor } from './course-editor.svelte';
 import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
 
 const mocks = vi.hoisted(() => ({
-	updateTimetableDetails: vi.fn(),
+	saveCourse: vi.fn(),
 	deleteCourse: vi.fn(),
 	snackbarKey: vi.fn()
 }));
 
 vi.mock('#lib/services/app-engine.ts', () => ({
 	getAppController: () => ({
-		updateTimetableDetails: mocks.updateTimetableDetails,
+		saveCourse: mocks.saveCourse,
 		deleteCourse: mocks.deleteCourse
 	})
 }));
@@ -44,18 +44,21 @@ function timetable(patch: Partial<Timetable> = {}): Timetable {
 }
 
 function shellWith(currentTimetable: Timetable | null) {
-	return {
+	const controller = { currentTimetable, todayIso: '2026-03-16' };
+	const shell = {
 		state: { initialized: currentTimetable !== null },
-		controller: {
-			currentTimetable,
-			todayIso: '2026-03-16'
-		}
+		controller
 	} as unknown as AppShellController;
+	return Object.assign(shell, {
+		setTimetable(timetable: Timetable | null) {
+			controller.currentTimetable = timetable;
+		}
+	});
 }
 
 describe('createCourseEditor', () => {
 	beforeEach(() => {
-		mocks.updateTimetableDetails.mockReset().mockResolvedValue(undefined);
+		mocks.saveCourse.mockReset().mockResolvedValue(undefined);
 		mocks.deleteCourse.mockReset().mockResolvedValue(undefined);
 		mocks.snackbarKey.mockReset();
 		vi.stubGlobal('crypto', { randomUUID: () => 'test-uuid' });
@@ -92,7 +95,7 @@ describe('createCourseEditor', () => {
 		editor.syncFromRoute();
 		expect(editor.isLoading).toBe(true);
 		expect(editor.draft).toBeNull();
-		shell.controller.currentTimetable = timetable({ courses: [existing] });
+		shell.setTimetable(timetable({ courses: [existing] }));
 		shell.state.initialized = true;
 		editor.syncFromRoute();
 		expect(editor.isLoading).toBe(false);
@@ -106,7 +109,7 @@ describe('createCourseEditor', () => {
 		const shell = shellWith(null);
 		const editor = createCourseEditor(shell, () => 'missing-course', vi.fn());
 		editor.syncFromRoute();
-		shell.controller.currentTimetable = timetable();
+		shell.setTimetable(timetable());
 		shell.state.initialized = true;
 		editor.syncFromRoute();
 		expect(editor.draft).toBeNull();
@@ -123,7 +126,7 @@ describe('createCourseEditor', () => {
 			startPeriod: 1,
 			endPeriod: 2
 		});
-		shell.controller.currentTimetable = timetable();
+		shell.setTimetable(timetable());
 		shell.state.initialized = true;
 		editor.syncFromRoute();
 		expect(editor.draft?.name).toBe('新课程');
@@ -143,14 +146,14 @@ describe('createCourseEditor', () => {
 		const editor = createCourseEditor(shell, () => existing.id, onDone);
 		editor.syncFromRoute();
 		editor.draft!.name = '未保存的修改';
-		shell.controller.currentTimetable = timetable({ id: 'timetable-b' });
+		shell.setTimetable(timetable({ id: 'timetable-b' }));
 		editor.syncFromRoute();
 
 		expect(editor.draft).toBeNull();
 		expect(editor.canSave).toBe(false);
 		await editor.save();
 		await editor.deleteCourse();
-		expect(mocks.updateTimetableDetails).not.toHaveBeenCalled();
+		expect(mocks.saveCourse).not.toHaveBeenCalled();
 		expect(mocks.deleteCourse).not.toHaveBeenCalled();
 		expect(onDone).not.toHaveBeenCalled();
 	});
@@ -165,7 +168,7 @@ describe('createCourseEditor', () => {
 			startPeriod: 1,
 			endPeriod: 2
 		});
-		shell.controller.currentTimetable = timetable({ id: 'timetable-b' });
+		shell.setTimetable(timetable({ id: 'timetable-b' }));
 		editor.syncFromRoute();
 
 		expect(editor.draft).toMatchObject({
@@ -189,7 +192,7 @@ describe('createCourseEditor', () => {
 		const editor = createCourseEditor(shell, () => existing.id, vi.fn());
 		editor.syncFromRoute();
 		editor.draft!.name = '未保存的修改';
-		shell.controller.currentTimetable = timetable({ courses: [{ ...existing }] });
+		shell.setTimetable(timetable({ courses: [{ ...existing }] }));
 		editor.syncFromRoute();
 
 		expect(editor.draft?.name).toBe('未保存的修改');
@@ -210,12 +213,12 @@ describe('createCourseEditor', () => {
 			const onDone = vi.fn();
 			const editor = createCourseEditor(shell, () => existing.id, onDone);
 			editor.syncFromRoute();
-			shell.controller.currentTimetable = timetable({ id: 'timetable-b' });
+			shell.setTimetable(timetable({ id: 'timetable-b' }));
 
 			await editor[action]();
 
 			expect(editor.canSave).toBe(false);
-			expect(mocks.updateTimetableDetails).not.toHaveBeenCalled();
+			expect(mocks.saveCourse).not.toHaveBeenCalled();
 			expect(mocks.deleteCourse).not.toHaveBeenCalled();
 			expect(onDone).not.toHaveBeenCalled();
 		}
@@ -254,7 +257,7 @@ describe('createCourseEditor', () => {
 		expect(editor.canSave).toBe(false);
 	});
 
-	it('saves a globally unique new weekend course and reveals that day', async () => {
+	it('saves a globally unique new weekend course through the semantic action', async () => {
 		const onDone = vi.fn();
 		const editor = createCourseEditor(shellWith(timetable()), () => null, onDone);
 		editor.syncFromRoute();
@@ -269,27 +272,21 @@ describe('createCourseEditor', () => {
 		const candidateId = editor.candidate?.id;
 		await editor.save();
 
-		expect(mocks.updateTimetableDetails).toHaveBeenCalledWith('timetable-1', {
-			courses: [
-				expect.objectContaining({
-					id: 'c_test-uuid',
-					name: '临时课程',
-					dayOfWeek: 6,
-					weeks: []
-				})
-			],
-			viewPrefs: {
-				showSaturday: true,
-				showSunday: false,
-				showNonCurrentWeekCourses: true
-			}
-		});
+		expect(mocks.saveCourse).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: 'c_test-uuid',
+				name: '临时课程',
+				dayOfWeek: 6,
+				weeks: []
+			}),
+			'timetable-1'
+		);
 		expect(candidateId).toBe('c_test-uuid');
 		expect(onDone).toHaveBeenCalledOnce();
 	});
 
 	it('keeps the draft open and reports a failed save', async () => {
-		mocks.updateTimetableDetails.mockRejectedValueOnce(new Error('storage failed'));
+		mocks.saveCourse.mockRejectedValueOnce(new Error('storage failed'));
 		const onDone = vi.fn();
 		const editor = createCourseEditor(shellWith(timetable()), () => null, onDone);
 		editor.syncFromRoute();
@@ -335,11 +332,9 @@ describe('createCourseEditor', () => {
 
 		await editor.save();
 
-		expect(mocks.updateTimetableDetails).toHaveBeenCalledWith(
-			'timetable-1',
-			expect.objectContaining({
-				courses: [expect.objectContaining({ id: 'existing-id', name: '高等数学 A' })]
-			})
+		expect(mocks.saveCourse).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'existing-id', name: '高等数学 A' }),
+			'timetable-1'
 		);
 	});
 
@@ -394,7 +389,7 @@ describe('createCourseEditor', () => {
 
 		await editor.deleteCourse();
 
-		expect(mocks.deleteCourse).toHaveBeenCalledWith('existing-to-delete');
+		expect(mocks.deleteCourse).toHaveBeenCalledWith('existing-to-delete', 'timetable-1');
 		expect(onDone).toHaveBeenCalledOnce();
 	});
 
@@ -435,7 +430,7 @@ describe('createCourseEditor', () => {
 	});
 	it('exposes pending save state and blocks duplicate saves and deletion', async () => {
 		const pending = Promise.withResolvers<void>();
-		mocks.updateTimetableDetails.mockReturnValueOnce(pending.promise);
+		mocks.saveCourse.mockReturnValueOnce(pending.promise);
 		const onDone = vi.fn();
 		const editor = createCourseEditor(shellWith(timetable()), () => null, onDone);
 		editor.syncFromRoute();
@@ -445,7 +440,7 @@ describe('createCourseEditor', () => {
 		expect(editor.canSave).toBe(false);
 		await editor.save();
 		await editor.deleteCourse();
-		expect(mocks.updateTimetableDetails).toHaveBeenCalledOnce();
+		expect(mocks.saveCourse).toHaveBeenCalledOnce();
 		expect(mocks.deleteCourse).not.toHaveBeenCalled();
 		pending.resolve();
 		await save;
@@ -480,7 +475,7 @@ describe('createCourseEditor', () => {
 		await editor.deleteCourse();
 		await editor.save();
 		expect(mocks.deleteCourse).toHaveBeenCalledOnce();
-		expect(mocks.updateTimetableDetails).not.toHaveBeenCalled();
+		expect(mocks.saveCourse).not.toHaveBeenCalled();
 		pending.reject(new Error('storage failed'));
 		await deletion;
 		expect(editor.isDeleting).toBe(false);

@@ -29,104 +29,100 @@ export class TimetableRepository {
 	constructor(private database: ChronosDB) {}
 
 	async getTimetable(id: string): Promise<Timetable | null> {
-		try {
-			const row = await this.database.timetables.get(id);
-			if (!row) return null;
-			const courses = await this.database.courses.where('timetableId').equals(id).toArray();
-			return timetableFromRow(row, courses);
-		} catch {
-			// intentional: offline-first read fallback
-			return null;
-		}
+		const row = await this.database.timetables.get(id);
+		if (!row) return null;
+		const courses = await this.database.courses.where('timetableId').equals(id).toArray();
+		return timetableFromRow(row, courses);
 	}
 
 	async listTimetables(): Promise<
 		Array<{ id: string; name: string; courseCount: number; updatedAt: number }>
 	> {
-		try {
-			const [rows, courseRows] = await Promise.all([
-				this.database.timetables.orderBy('updatedAt').reverse().toArray(),
-				this.database.courses.toArray()
-			]);
-			const coursesByTimetable = groupCoursesByTimetable(courseRows);
-			return rows.map((r) => ({
-				id: r.id,
-				name: r.name,
-				courseCount: countDistinctCourseNames(coursesByTimetable.get(r.id) ?? []),
-				updatedAt: r.updatedAt
-			}));
-		} catch {
-			// intentional: offline-first read fallback
-			return [];
-		}
+		const [rows, courseRows] = await Promise.all([
+			this.database.timetables.orderBy('updatedAt').reverse().toArray(),
+			this.database.courses.toArray()
+		]);
+		const coursesByTimetable = groupCoursesByTimetable(courseRows);
+		return rows.map((r) => ({
+			id: r.id,
+			name: r.name,
+			courseCount: countDistinctCourseNames(coursesByTimetable.get(r.id) ?? []),
+			updatedAt: r.updatedAt
+		}));
 	}
 
 	async queryCourses(filter: CourseQueryFilter = {}): Promise<CourseQueryHit[]> {
-		try {
-			const timetableRows = await this.database.timetables.toArray();
-			const timetableNameById = new Map(timetableRows.map((row) => [row.id, row.name]));
-			const allowedTimetableIds =
-				filter.timetableIds !== undefined
-					? new Set(filter.timetableIds)
-					: new Set(timetableRows.map((row) => row.id));
+		const timetableRows = await this.database.timetables.toArray();
+		const timetableNameById = new Map(timetableRows.map((row) => [row.id, row.name]));
+		const allowedTimetableIds =
+			filter.timetableIds !== undefined
+				? new Set(filter.timetableIds)
+				: new Set(timetableRows.map((row) => row.id));
 
-			let courseRows;
-			const ids = filter.timetableIds;
-			if (ids?.length === 1) {
-				courseRows = await this.database.courses.where('timetableId').equals(ids[0]!).toArray();
-			} else if (ids && ids.length > 1) {
-				courseRows = await this.database.courses.where('timetableId').anyOf(ids).toArray();
-			} else {
-				courseRows = await this.database.courses.toArray();
-			}
-
-			const hits: CourseQueryHit[] = [];
-			for (const row of courseRows) {
-				if (!allowedTimetableIds.has(row.timetableId)) continue;
-				const course = courseFromRow(row);
-				if (!matchesCourseQuery(course, filter)) continue;
-				hits.push({
-					timetableId: row.timetableId,
-					timetableName: timetableNameById.get(row.timetableId) ?? '',
-					course
-				});
-			}
-			return hits;
-		} catch {
-			// intentional: offline-first read fallback
-			return [];
+		let courseRows;
+		const ids = filter.timetableIds;
+		if (ids?.length === 1) {
+			courseRows = await this.database.courses.where('timetableId').equals(ids[0]!).toArray();
+		} else if (ids && ids.length > 1) {
+			courseRows = await this.database.courses.where('timetableId').anyOf(ids).toArray();
+		} else {
+			courseRows = await this.database.courses.toArray();
 		}
+
+		const hits: CourseQueryHit[] = [];
+		for (const row of courseRows) {
+			if (!allowedTimetableIds.has(row.timetableId)) continue;
+			const course = courseFromRow(row);
+			if (!matchesCourseQuery(course, filter)) continue;
+			hits.push({
+				timetableId: row.timetableId,
+				timetableName: timetableNameById.get(row.timetableId) ?? '',
+				course
+			});
+		}
+		return hits;
 	}
 
 	async saveTimetable(
 		timetable: Timetable,
 		options?: { requireExisting?: boolean }
 	): Promise<void> {
+		await this.database.transaction('rw', this.database.timetables, this.database.courses, () =>
+			this.writeTimetable(timetable, options)
+		);
+	}
+
+	private async writeTimetable(
+		timetable: Timetable,
+		options?: { requireExisting?: boolean }
+	): Promise<void> {
 		const row = timetableToRow(timetable);
 		const courseRows = timetable.courses.map((course) => courseToRow(course, timetable.id));
+		if (options?.requireExisting && !(await this.database.timetables.get(timetable.id))) {
+			throw new Error(`Timetable not found: ${timetable.id}`);
+		}
+		await this.database.timetables.put(row);
+		const persistedIds = new Set(
+			await this.database.courses.where('timetableId').equals(timetable.id).primaryKeys()
+		);
+		const incomingIds = new Set(courseRows.map((course) => course.id));
+		const removedIds = [...persistedIds].filter((id) => !incomingIds.has(String(id)));
+		if (removedIds.length > 0) await this.database.courses.bulkDelete(removedIds);
+		if (courseRows.length > 0) await this.database.courses.bulkPut(courseRows);
+	}
 
-		await this.database.transaction(
+	async mutateTimetable(id: string, change: (current: Timetable) => Timetable): Promise<Timetable> {
+		return this.database.transaction(
 			'rw',
 			this.database.timetables,
 			this.database.courses,
 			async () => {
-				if (options?.requireExisting && !(await this.database.timetables.get(timetable.id))) {
-					throw new Error(`Timetable not found: ${timetable.id}`);
-				}
-				await this.database.timetables.put(row);
-
-				const persistedIds = new Set(
-					await this.database.courses.where('timetableId').equals(timetable.id).primaryKeys()
-				);
-				const incomingIds = new Set(courseRows.map((course) => course.id));
-				const removedIds = [...persistedIds].filter((id) => !incomingIds.has(String(id)));
-
-				if (removedIds.length > 0) {
-					await this.database.courses.bulkDelete(removedIds);
-				}
-				if (courseRows.length > 0) {
-					await this.database.courses.bulkPut(courseRows);
-				}
+				const current = await this.getTimetable(id);
+				if (!current) throw new Error(`Timetable not found: ${id}`);
+				const updated = change(current);
+				if (updated.id !== id) throw new Error('Timetable mutation cannot change its identity');
+				await this.writeTimetable(updated, { requireExisting: true });
+				return updated;
 			}
 		);
 	}
@@ -156,24 +152,19 @@ export class TimetableRepository {
 	}
 
 	async estimateBytes(): Promise<number> {
-		try {
-			const [timetables, courses] = await Promise.all([
-				this.database.timetables.toArray(),
-				this.database.courses.toArray()
-			]);
+		const [timetables, courses] = await Promise.all([
+			this.database.timetables.toArray(),
+			this.database.courses.toArray()
+		]);
 
-			const encoder = new TextEncoder();
-			let total = 0;
-			for (const row of timetables) {
-				total += encoder.encode(JSON.stringify(row)).length;
-			}
-			for (const row of courses) {
-				total += encoder.encode(JSON.stringify(row)).length;
-			}
-			return total;
-		} catch {
-			// intentional: offline-first read fallback
-			return 0;
+		const encoder = new TextEncoder();
+		let total = 0;
+		for (const row of timetables) {
+			total += encoder.encode(JSON.stringify(row)).length;
 		}
+		for (const row of courses) {
+			total += encoder.encode(JSON.stringify(row)).length;
+		}
+		return total;
 	}
 }

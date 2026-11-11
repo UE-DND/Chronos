@@ -1,15 +1,20 @@
 import type { Course } from '../domain/course';
 import type { Timetable } from '../domain/timetable';
+import type { ReadonlyTimetable } from './state';
+import type { DeepReadonly } from './readonly';
 import type { ChronosContext } from './context';
 import type { ConfigSchema } from '../schema/schema';
 import type { ThemeContribution } from './contributions';
 
-export type ImportSlotErrorKind =
-	| 'no-data'
-	| 'invalid-data'
-	| 'network'
-	| 'unsupported'
-	| 'unknown';
+const IMPORT_SLOT_ERROR_KINDS = [
+	'no-data',
+	'invalid-data',
+	'network',
+	'unsupported',
+	'unknown'
+] as const;
+
+export type ImportSlotErrorKind = (typeof IMPORT_SLOT_ERROR_KINDS)[number];
 
 export class ImportSlotError extends Error {
 	readonly kind: ImportSlotErrorKind;
@@ -19,6 +24,17 @@ export class ImportSlotError extends Error {
 		this.name = 'ImportSlotError';
 		this.kind = kind;
 	}
+}
+
+/** Plugin bundles carry separate constructors, so recognize the existing error fields. */
+export function isImportSlotError(value: unknown): value is ImportSlotError {
+	if (typeof value !== 'object' || value === null) return false;
+	const error = value as Partial<ImportSlotError>;
+	return (
+		error.name === 'ImportSlotError' &&
+		typeof error.message === 'string' &&
+		IMPORT_SLOT_ERROR_KINDS.some((kind) => kind === error.kind)
+	);
 }
 
 import { resolveLocaleMapText } from '../i18n/i18n-catalog';
@@ -91,9 +107,9 @@ export interface ExportActionSlotContribution {
 	description?: LocalizedText;
 	disposition?: ExportDisposition;
 	isPrimary?: boolean;
-	export(timetable: Timetable, ctx?: ChronosContext): Promise<ExportResult>;
-	estimateLength?(timetable: Timetable, ctx?: ChronosContext): Promise<number>;
-	checkWarning?(timetable: Timetable, ctx?: ChronosContext): Promise<string | null>;
+	export(timetable: ReadonlyTimetable, ctx?: ChronosContext): Promise<ExportResult>;
+	estimateLength?(timetable: ReadonlyTimetable, ctx?: ChronosContext): Promise<number>;
+	checkWarning?(timetable: ReadonlyTimetable, ctx?: ChronosContext): Promise<string | null>;
 }
 
 // 3. Mine/Settings section and item slot contribution specification
@@ -133,9 +149,11 @@ export interface CourseBadge {
 	colorScheme?: 'primary' | 'secondary' | 'error' | 'warning' | 'tertiary';
 }
 
+export type ReadonlyCourseBadges = DeepReadonly<Record<string, CourseBadge[]>>;
+
 export interface CourseBadgeSlotContribution {
 	id: string;
-	getBadge(course: Course, ctx: ChronosContext): CourseBadge | CourseBadge[] | null;
+	getBadge(course: DeepReadonly<Course>, ctx: ChronosContext): CourseBadge | CourseBadge[] | null;
 }
 
 export interface CourseActionSlotContribution {
@@ -143,7 +161,7 @@ export interface CourseActionSlotContribution {
 	label: LocalizedText;
 	icon?: string;
 	order?: number;
-	onExecute(course: Course, ctx: ChronosContext): void | Promise<void>;
+	onExecute(course: DeepReadonly<Course>, ctx: ChronosContext): void | Promise<void>;
 }
 
 // 6. Theme slot contribution specification

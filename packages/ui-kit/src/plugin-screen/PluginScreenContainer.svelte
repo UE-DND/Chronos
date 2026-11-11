@@ -24,19 +24,13 @@
 		)
 	);
 
-	let formValues = $state<Record<string, unknown>>({});
+	let formValues = $derived<Record<string, unknown>>(
+		screenSlot?.schema && !screenSlot.component
+			? { ...controller.getPluginContext(pluginId).config }
+			: {}
+	);
 	let saving = $state(false);
 	let saveError = $state<string | null>(null);
-
-	$effect(() => {
-		if (!screenSlot?.schema || screenSlot?.component) return;
-		try {
-			const ctx = controller.getPluginContext(pluginId);
-			formValues = { ...ctx.config };
-		} catch {
-			formValues = {};
-		}
-	});
 
 	async function saveSchemaConfig() {
 		if (!screenSlot?.schema) return;
@@ -46,10 +40,8 @@
 			const ctx = controller.getPluginContext(pluginId);
 			await ctx.updateConfig(formValues);
 		} catch (err: unknown) {
-			saveError =
-				err instanceof Error
-					? hostT('plugins.config.saveFailed', { message: err.message })
-					: hostT('plugins.config.saveFailed', { message: hostT('common.loadFailed') });
+			console.error('[PluginScreenContainer] config save failed', err);
+			saveError = hostT('plugins.config.saveUnavailable');
 		} finally {
 			saving = false;
 		}

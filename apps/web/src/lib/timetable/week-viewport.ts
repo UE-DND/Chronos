@@ -1,14 +1,14 @@
 import {
 	AcademicCalendarService,
 	computeTimetableWeekLayout,
-	type Timetable,
+	type ReadonlyTimetable,
 	type TimetableCourseDisplayModel,
 	type TimetableGridModel,
 	type TimetableWeekLayoutResult
 } from '@chronos/core';
 
 export interface WeekViewportInput {
-	timetable: Timetable | null;
+	timetable: ReadonlyTimetable | null;
 	todayIso: string;
 	displayedWeek: number;
 	expandedSlotKeys: ReadonlySet<string>;
@@ -27,7 +27,7 @@ export interface WeekLayoutCache {
 }
 
 class WeekLayoutCacheImpl implements WeekLayoutCache {
-	private cachedTimetable: Timetable | null = null;
+	private cachedTimetable: ReadonlyTimetable | null = null;
 	private cachedToday = '';
 	private cachedExpandedKey = '';
 	private readonly weekLayouts = new Map<number, TimetableWeekLayoutResult>();
@@ -39,7 +39,7 @@ class WeekLayoutCacheImpl implements WeekLayoutCache {
 		this.weekLayouts.clear();
 	}
 
-	syncScope(timetable: Timetable | null, todayIso: string, expandedKey: string): void {
+	syncScope(timetable: ReadonlyTimetable | null, todayIso: string, expandedKey: string): void {
 		const canReuse =
 			timetable != null &&
 			timetable === this.cachedTimetable &&

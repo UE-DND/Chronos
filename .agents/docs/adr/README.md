@@ -77,3 +77,5 @@
 
 - [0048：Android 原生自更新](0048-android-native-self-update.md)
 - [0049：有界的宿主启动与首屏衔接](0049-bounded-host-startup.md)
+- [0050：错误契约与失败边界](0050-error-contracts-and-failure-boundaries.md)
+- [0051：领域修改与插件资源的原子边界](0051-atomic-domain-and-plugin-boundaries.md)

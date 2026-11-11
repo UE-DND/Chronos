@@ -118,6 +118,7 @@ describe('updateTimetableDetails', () => {
 		);
 		try {
 			const pending = engine.updateTimetableDetails(a.id, { name: 'Updated A' });
+			await vi.waitFor(() => expect(release).toBeTypeOf('function'));
 			await engine.deleteTimetable(a.id);
 			release(a);
 			await expect(pending).rejects.toThrow('Timetable not found: a');
@@ -139,6 +140,7 @@ describe('updateTimetableDetails', () => {
 		);
 		try {
 			const pending = engine.updateTimetableDetails(a.id, { name: 'Updated A' });
+			await vi.waitFor(() => expect(release).toBeTypeOf('function'));
 			await engine.switchTimetable(b.id);
 			release(a);
 			await pending;
@@ -155,7 +157,10 @@ describe('delete commit boundary', () => {
 		const { engine, env, timetables } = await harness();
 		try {
 			vi.spyOn(env.storage, 'setActiveTimetableId').mockRejectedValue(new Error('write failed'));
-			await expect(engine.deleteTimetable('a')).resolves.toEqual({ followUpFailed: true });
+			await expect(engine.deleteTimetable('a')).resolves.toMatchObject({
+				followUpFailed: true,
+				cause: expect.any(Error)
+			});
 			expect(timetables.has('a')).toBe(false);
 			expect(engine.state.currentTimetable).toBeNull();
 			expect(engine.state.timetables.map((t) => t.id)).toEqual(['b']);
@@ -179,7 +184,10 @@ describe('delete commit boundary', () => {
 		try {
 			timetables.delete('b');
 			vi.spyOn(env.storage, 'setActiveTimetableId').mockRejectedValue(new Error('write failed'));
-			await expect(engine.deleteTimetable('a')).resolves.toEqual({ followUpFailed: true });
+			await expect(engine.deleteTimetable('a')).resolves.toMatchObject({
+				followUpFailed: true,
+				cause: expect.any(Error)
+			});
 			expect(engine.state.currentTimetable).toBeNull();
 			expect(engine.state.timetables).toEqual([]);
 		} finally {
@@ -191,8 +199,12 @@ describe('delete commit boundary', () => {
 it('keeps committed deletion state when refreshing the list fails', async () => {
 	const { engine, env, timetables } = await harness();
 	try {
-		vi.spyOn(env.storage, 'listTimetables').mockRejectedValueOnce(new Error('read failed'));
-		await expect(engine.deleteTimetable('a')).resolves.toEqual({ followUpFailed: true });
+		const failure = new Error('read failed');
+		vi.spyOn(env.storage, 'listTimetables').mockRejectedValueOnce(failure);
+		await expect(engine.deleteTimetable('a')).resolves.toEqual({
+			followUpFailed: true,
+			cause: failure
+		});
 		expect(timetables.has('a')).toBe(false);
 		expect(engine.state.currentTimetable).toBeNull();
 		expect(engine.state.timetables.map((t) => t.id)).toEqual(['b']);
@@ -252,7 +264,10 @@ it('clears the persisted deleted id before trying to save its successor', async 
 		await original(id);
 	});
 	try {
-		await expect(engine.deleteTimetable('a')).resolves.toEqual({ followUpFailed: true });
+		await expect(engine.deleteTimetable('a')).resolves.toMatchObject({
+			followUpFailed: true,
+			cause: expect.any(Error)
+		});
 		expect(await env.storage.getActiveTimetableId()).toBeNull();
 		expect(engine.state.currentTimetable).toBeNull();
 	} finally {

@@ -1,5 +1,7 @@
 import type { Course } from '../domain/course';
-import type { Timetable } from '../domain/timetable';
+import { cloneDomainValue } from '../domain/clone-domain-value';
+import type { ReadonlyTimetable } from '../types/state';
+import type { DeepReadonly } from '../types/readonly';
 import { courseSlotKey } from './slot-key';
 
 export interface TimetableCourseDisplayModel {
@@ -9,9 +11,16 @@ export interface TimetableCourseDisplayModel {
 }
 
 interface FutureCourseCandidate {
-	course: Course;
+	course: DeepReadonly<Course>;
 	nextWeek: number;
 	originalIndex: number;
+}
+
+function copyCourse(course: DeepReadonly<Course>): Course {
+	return cloneDomainValue({
+		...course,
+		weeks: [...course.weeks]
+	});
 }
 
 /**
@@ -36,13 +45,13 @@ function isBetterFutureCandidate(
 }
 
 export function buildTimetableCourseDisplayModels(
-	timetable: Timetable,
+	timetable: ReadonlyTimetable,
 	visibleDayOfWeeks: Set<number>,
 	displayedWeek: number,
 	holidayMutedDayOfWeeks: ReadonlySet<number> = new Set()
 ): TimetableCourseDisplayModel[] {
 	const currentEntries: TimetableCourseDisplayModel[] = [];
-	const nonCurrentCandidates: Array<{ course: Course; originalIndex: number }> = [];
+	const nonCurrentCandidates: Array<{ course: DeepReadonly<Course>; originalIndex: number }> = [];
 	const configuredPeriodCount = timetable.academicConfig.periodTimes.length;
 
 	for (let i = 0; i < timetable.courses.length; i += 1) {
@@ -56,7 +65,7 @@ export function buildTimetableCourseDisplayModels(
 
 		if (course.weeks.length === 0 || course.weeks.includes(displayedWeek)) {
 			currentEntries.push({
-				course: { ...course, weeks: [...course.weeks] },
+				course: copyCourse(course),
 				isInDisplayedWeek: true,
 				...(holidayMutedDayOfWeeks.has(course.dayOfWeek) ? { isHolidayMuted: true } : {})
 			});
@@ -99,7 +108,7 @@ export function buildTimetableCourseDisplayModels(
 	const futureEntries = [...futureCandidatesBySlot.values()]
 		.sort((left, right) => left.originalIndex - right.originalIndex)
 		.map((candidate) => ({
-			course: { ...candidate.course, weeks: [...candidate.course.weeks] },
+			course: copyCourse(candidate.course),
 			isInDisplayedWeek: false,
 			...(holidayMutedDayOfWeeks.has(candidate.course.dayOfWeek) ? { isHolidayMuted: true } : {})
 		}));

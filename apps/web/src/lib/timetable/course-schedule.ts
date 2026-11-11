@@ -1,4 +1,4 @@
-import type { AcademicConfig, Course } from '@chronos/core';
+import type { AcademicConfig, Course, DeepReadonly } from '@chronos/core';
 import type { CourseDraft } from '#lib/models/drafts.ts';
 
 export type CourseRecurrenceMode = CourseDraft['recurrenceMode'];
@@ -28,7 +28,7 @@ export function createCourseScheduleDraft(): CourseScheduleDraft {
 	};
 }
 
-export function courseScheduleFromCourse(course: Course): CourseScheduleDraft {
+export function courseScheduleFromCourse(course: DeepReadonly<Course>): CourseScheduleDraft {
 	const weeks = sortedUniqueWeeks(course.weeks);
 	const base = {
 		dayOfWeek: course.dayOfWeek,
@@ -42,7 +42,7 @@ export function courseScheduleFromCourse(course: Course): CourseScheduleDraft {
 
 export function buildCourseSchedule(
 	draft: CourseScheduleDraft,
-	academicConfig: AcademicConfig
+	academicConfig: DeepReadonly<AcademicConfig>
 ): ResolvedCourseSchedule | null {
 	const { startPeriod, endPeriod } = draft;
 	const periodIndexes = new Set(academicConfig.periodTimes.map((period) => period.index));

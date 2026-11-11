@@ -1,8 +1,10 @@
 import type { Course } from './course';
+import { cloneDomainValue } from './clone-domain-value';
 import { mergeOfferingsWithIdentity } from './course-merge';
+import type { DeepReadonly } from '../types/readonly';
 
 export interface RearrangeCourseOptions {
-	currentCourses: Course[];
+	currentCourses: readonly DeepReadonly<Course>[];
 	draggedCourseId: string;
 	targetDayOfWeek: number;
 	targetStartPeriod: number;
@@ -36,7 +38,7 @@ export function rearrangeCourseSchedule(
 	options: RearrangeCourseOptions
 ): { courses: Course[]; movedCourse: Course } | null {
 	const {
-		currentCourses,
+		currentCourses: inputCourses,
 		draggedCourseId,
 		targetDayOfWeek,
 		targetStartPeriod,
@@ -44,6 +46,9 @@ export function rearrangeCourseSchedule(
 		totalWeeks,
 		displayedPeriodCount
 	} = options;
+	const currentCourses = inputCourses.map((course) =>
+		cloneDomainValue({ ...course, weeks: [...course.weeks] })
+	);
 
 	const draggedIndex = currentCourses.findIndex((c) => c.id === draggedCourseId);
 	if (draggedIndex === -1) return null;

@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { getAllContexts, untrack } from 'svelte';
-	import { isChronosMountable, isChronosMountHandle, type ChronosMountHandle } from '@chronos/core';
+	import type { ChronosUiController } from '../reactivity/chronos-ui-controller';
+	import { createMountableController } from './mountable-controller.svelte';
+	import PluginScreenFailure from './PluginScreenFailure.svelte';
 
 	interface Props {
 		/** A contribution whose `component` may be a CHRONOS_MOUNTABLE bundle UI. */
 		component: unknown;
 		/** Props forwarded to `mount(target, props)`. */
-		props?: Record<string, unknown>;
+		props?: Record<string, unknown> & { controller?: ChronosUiController };
 		class?: string;
 	}
 
@@ -14,50 +16,26 @@
 
 	let containerEl = $state<HTMLDivElement>();
 	const parentContext = getAllContexts();
-
-	const mountable = $derived(isChronosMountable(component));
-
-	let mountHandle = $state.raw<ChronosMountHandle | undefined>();
+	const screen = createMountableController();
+	const failed = $derived(screen.state.phase === 'failed');
 
 	$effect(() => {
-		if (!containerEl || !isChronosMountable(component)) {
-			mountHandle = undefined;
-			return;
-		}
-
+		if (!containerEl) return;
+		const target = containerEl;
 		const targetComponent = component;
-		const initialProps = untrack(() => props);
-		let handle: ChronosMountHandle;
-		try {
-			handle = targetComponent.mount(containerEl, initialProps, parentContext);
-			if (!isChronosMountHandle(handle))
-				throw new Error(
-					'Invalid mount handle: expected an object with unmount() and optional update()'
-				);
-			mountHandle = handle;
-		} catch (error) {
-			console.error('[MountableSlotOutlet] mount failed:', error);
-			mountHandle = undefined;
-			return;
-		}
-
-		return () => {
-			try {
-				handle.unmount();
-			} catch (error) {
-				console.error('[MountableSlotOutlet] unmount failed:', error);
-			} finally {
-				if (mountHandle === handle) mountHandle = undefined;
-			}
-		};
+		untrack(() => screen.mount(targetComponent, target, props, parentContext));
+		return () => untrack(screen.dispose);
 	});
 
 	$effect(() => {
-		if (!mountHandle?.update) return;
-		mountHandle.update(props);
+		const nextProps = props;
+		untrack(() => screen.update(nextProps));
 	});
 </script>
 
-{#if mountable}
-	<div bind:this={containerEl} class={className}></div>
+<div bind:this={containerEl} class={className} style:display={failed ? 'none' : undefined}></div>
+{#if failed}
+	<div class={className}>
+		<PluginScreenFailure controller={props.controller} retry={() => screen.retry(props)} />
+	</div>
 {/if}

@@ -2,10 +2,11 @@ import {
 	computeTimetableWeekLayout,
 	createCourse,
 	createTimetable,
+	deleteCourseForWeek,
+	rearrangeCourseSchedule,
 	type Course,
 	type PlacedCourseCapsule
 } from '@chronos/core';
-import { deleteCourseForWeek } from '#lib/timetable/course-delete-week.ts';
 import { createTimetableInteraction } from '#lib/timetable/timetable-interaction.svelte.ts';
 import { createTimetableDropController } from '#lib/timetable/timetable-drop.svelte.ts';
 
@@ -60,8 +61,15 @@ export function createLongPressDemo(names: () => { primary: string; secondary: s
 	);
 	const drop = createTimetableDropController({
 		getTimetable: () => timetable,
-		save: async (_id, courses) => {
-			timetable = { ...timetable, courses };
+		save: async (_id, courseId, change) => {
+			const result = rearrangeCourseSchedule({
+				...change,
+				currentCourses: timetable.courses,
+				draggedCourseId: courseId,
+				totalWeeks: { startWeek: 1, endWeek: 2 }
+			});
+			if (result) timetable = { ...timetable, courses: result.courses };
+			return result?.movedCourse ?? null;
 		},
 		onSaved() {},
 		onError() {

@@ -1,20 +1,21 @@
 import type { AcademicConfig, CalendarHoliday, HolidayCalendarConfig } from '../domain/timetable';
+import type { DeepReadonly } from '../types/readonly';
 import { AcademicCalendarService } from './calendar';
 import { addDays, formatIsoDate, parseIsoDate, todayIsoDate } from './date';
 
 export function buildHolidayLookup(
-	config: HolidayCalendarConfig | undefined | null
+	config: DeepReadonly<HolidayCalendarConfig> | undefined | null
 ): Map<string, CalendarHoliday> {
 	const lookup = new Map<string, CalendarHoliday>();
 	if (!config?.holidays?.length) return lookup;
 	for (const holiday of config.holidays) {
-		lookup.set(holiday.date, holiday);
+		lookup.set(holiday.date, { ...holiday });
 	}
 	return lookup;
 }
 
 function resolveTermDateRange(
-	academicConfig: AcademicConfig,
+	academicConfig: DeepReadonly<AcademicConfig>,
 	referenceDate: string = todayIsoDate()
 ): { startDate: string; endDate: string } {
 	const calendarService = new AcademicCalendarService();
@@ -33,15 +34,17 @@ function resolveTermDateRange(
 
 export function filterHolidaysInTermRange(
 	holidays: readonly CalendarHoliday[],
-	academicConfig: AcademicConfig,
+	academicConfig: DeepReadonly<AcademicConfig>,
 	referenceDate: string = todayIsoDate()
 ): CalendarHoliday[] {
 	const { startDate, endDate } = resolveTermDateRange(academicConfig, referenceDate);
-	return holidays.filter((holiday) => holiday.date >= startDate && holiday.date <= endDate);
+	return holidays
+		.filter((holiday) => holiday.date >= startDate && holiday.date <= endDate)
+		.map((holiday) => ({ ...holiday }));
 }
 
 export function inferYearsFromAcademicConfig(
-	academicConfig: AcademicConfig,
+	academicConfig: DeepReadonly<AcademicConfig>,
 	referenceDate: string = todayIsoDate()
 ): number[] {
 	const { startDate, endDate } = resolveTermDateRange(academicConfig, referenceDate);

@@ -1,4 +1,5 @@
 import type { Course } from '../domain/course';
+import type { DeepReadonly } from './readonly';
 
 export interface CourseQueryFilter {
 	/** Limit to specific timetables; omit to query all */
@@ -18,5 +19,5 @@ export interface CourseQueryFilter {
 export interface CourseQueryHit {
 	timetableId: string;
 	timetableName: string;
-	course: Course;
+	course: DeepReadonly<Course>;
 }

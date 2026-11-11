@@ -1,4 +1,5 @@
 import type { AcademicConfig, TimetableViewPrefs } from '../domain/timetable';
+import type { DeepReadonly } from '../types/readonly';
 import {
 	addDays,
 	addWeeks,
@@ -47,7 +48,10 @@ export class AcademicCalendarService {
 		return null;
 	}
 
-	calculateAcademicWeek(today: string, academicConfig?: AcademicConfig | null): number {
+	calculateAcademicWeek(
+		today: string,
+		academicConfig?: DeepReadonly<AcademicConfig> | null
+	): number {
 		const configured = academicConfig ?? {
 			termStartDate: '',
 			startWeek: 1,
@@ -68,7 +72,11 @@ export class AcademicCalendarService {
 		);
 	}
 
-	resolveWeekStart(academicConfig: AcademicConfig, week: number, referenceDate: string): string {
+	resolveWeekStart(
+		academicConfig: DeepReadonly<AcademicConfig>,
+		week: number,
+		referenceDate: string
+	): string {
 		const termStart = parseIsoDate(
 			this.normalizeTermStartDate(academicConfig.termStartDate, referenceDate)
 		);
@@ -76,7 +84,7 @@ export class AcademicCalendarService {
 	}
 
 	resolveCourseDate(
-		academicConfig: AcademicConfig,
+		academicConfig: DeepReadonly<AcademicConfig>,
 		week: number,
 		dayOfWeek: number,
 		referenceDate: string
@@ -111,7 +119,7 @@ export function resolveEffectiveWeekendViewPrefs(
 }
 
 export function formatWeekDateRange(
-	academicConfig: AcademicConfig | undefined | null,
+	academicConfig: DeepReadonly<AcademicConfig> | undefined | null,
 	week: number,
 	today: string,
 	viewPrefs?: { showSaturday?: boolean; showSunday?: boolean } | null,

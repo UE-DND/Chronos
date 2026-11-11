@@ -64,13 +64,9 @@
 		return screen.paintByCourseKey.get(key) ?? COURSE_PALETTE_ENTRIES[0]!;
 	}
 
-	const courseNavigation = $derived.by(() => {
-		try {
-			return controller.getPluginContext(pluginId).tryService(IHostNavigation);
-		} catch {
-			return undefined;
-		}
-	});
+	const courseNavigation = $derived(
+		controller.getPluginContext(pluginId).tryService(IHostNavigation)
+	);
 
 	function openCourseDetail(courseId: string, timetableId: string) {
 		courseNavigation?.openCourseDetail?.(courseId, timetableId);
@@ -105,7 +101,7 @@
 			<p class="text-body-medium text-on-surface-variant">
 				{pt('screen.week', { week: academicWeek })}
 			</p>
-			{#if screen.courseEntries.length > 0}
+			{#if screen.state.phase === 'ready' && screen.courseEntries.length > 0}
 				<p class="text-label-large shrink-0 text-on-surface-variant">
 					{pt('screen.summary.count', { count: screen.courseEntries.length })}
 				</p>
@@ -120,6 +116,9 @@
 		animateThumb={active}
 		onValueChange={(scope) => void screen.persistScope(scope as 'active' | 'all')}
 	/>
+	{#if screen.state.saveError}
+		<p class="text-body-small mt-2 text-error" role="alert">{pt('screen.scope.saveFailed')}</p>
+	{/if}
 {/snippet}
 
 <div class="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
@@ -138,6 +137,23 @@
 					{@render headerContent()}
 				</section>
 			{/if}
+			{#if timetable && screen.state.phase === 'loading'}
+				<p class="text-body-medium text-on-surface-variant" role="status">{pt('screen.loading')}</p>
+			{:else if timetable && screen.state.phase === 'failed'}
+				<section class="ui-section-surface ui-section-surface--comfortable">
+					<p class="text-body-medium text-error" role="alert">{pt('screen.queryFailed')}</p>
+					{#if screen.state.hasResult && screen.courseEntries.length > 0}
+						<p class="text-body-small mt-2 text-on-surface-variant">{pt('screen.stale')}</p>
+					{/if}
+					<button
+						type="button"
+						class="ui-btn ui-btn-outlined mt-3"
+						onclick={() => void screen.retry()}
+					>
+						{pt('screen.retry')}
+					</button>
+				</section>
+			{/if}
 			{#if !timetable}
 				<section
 					class="ui-section-surface ui-section-surface--comfortable flex flex-1 flex-col items-center justify-center py-16 text-center"
@@ -154,7 +170,7 @@
 					</div>
 					<p class="text-title-medium text-on-surface">{pt('screen.empty.noTimetable')}</p>
 				</section>
-			{:else if screen.courseEntries.length === 0}
+			{:else if screen.state.phase === 'ready' && screen.courseEntries.length === 0}
 				<section
 					class="ui-section-surface ui-section-surface--comfortable flex flex-1 flex-col items-center justify-center py-16 text-center"
 				>
@@ -170,7 +186,7 @@
 					</div>
 					<p class="text-title-medium text-on-surface">{pt('screen.empty.noCourses')}</p>
 				</section>
-			{:else}
+			{:else if screen.courseEntries.length > 0}
 				<section class="ui-section-surface overflow-hidden">
 					<ul class="divide-y divide-outline/10">
 						{#each screen.courseEntries as entry (`${entry.hit.timetableId}-${entry.hit.course.id}`)}

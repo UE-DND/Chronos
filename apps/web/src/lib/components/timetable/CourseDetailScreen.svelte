@@ -2,7 +2,7 @@
 	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { slide } from 'svelte/transition';
 	import type { AppShellController } from '#lib/app/app-shell.svelte.ts';
-	import type { CoursePaletteEntry, Timetable } from '@chronos/core';
+	import type { CoursePaletteEntry, ReadonlyTimetable } from '@chronos/core';
 	import {
 		assignCourseDisplayColors,
 		lookupCoursePaint,
@@ -20,7 +20,7 @@
 	}: {
 		shell: AppShellController;
 		courseId: string | null;
-		timetable: Timetable | null;
+		timetable: ReadonlyTimetable | null;
 	} = $props();
 
 	let remarkExpanded = $state(true);
@@ -70,7 +70,7 @@
 		};
 	});
 
-	function formatWeeks(weeks: number[]) {
+	function formatWeeks(weeks: readonly number[]) {
 		if (weeks.length === 0) return hostT('course.detail.allWeeks');
 		return weeks.join(', ');
 	}

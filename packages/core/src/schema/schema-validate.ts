@@ -112,14 +112,8 @@ export function validateConfig<T extends object>(
 		}
 
 		if (!errors[key] && field.validate) {
-			try {
-				const errorMsg = field.validate(values[key] as never);
-				if (errorMsg) {
-					errors[key] = errorMsg;
-				}
-			} catch (err: unknown) {
-				errors[key] = err instanceof Error ? err.message : 'Validation failed';
-			}
+			const errorMsg = field.validate(values[key] as never);
+			if (errorMsg) errors[key] = errorMsg;
 		}
 	}
 

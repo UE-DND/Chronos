@@ -24,7 +24,7 @@
 		timetableTopTextClass
 	} from './timetable-grid-chrome';
 	import type { CapsuleCornerStyle, TimetableLayoutMode } from '@chronos/core';
-	import type { Course, CourseBadge } from '@chronos/core';
+	import type { Course, ReadonlyCourseBadges } from '@chronos/core';
 
 	import { getContext } from 'svelte';
 	import { fromStore } from 'svelte/store';
@@ -57,7 +57,7 @@
 		gridModel: TimetableGridModel;
 		courseDisplayModels: TimetableCourseDisplayModel[];
 		coursePalette: readonly CoursePaletteEntry[];
-		paletteCourses?: { name: string; color?: string }[];
+		paletteCourses?: readonly { name: string; color?: string }[];
 		hasDynamicBackground?: boolean;
 		layoutMode?: TimetableLayoutMode;
 		capsuleCornerStyle?: CapsuleCornerStyle;
@@ -65,7 +65,7 @@
 		isCurrentWeek?: boolean;
 		currentPeriodIndex?: number | null;
 		periodHighlightEnabled?: boolean;
-		courseBadges?: Record<string, CourseBadge[]>;
+		courseBadges?: ReadonlyCourseBadges;
 		expandedSlots?: ReadonlySet<string>;
 		onExpandSlot?: (slotKey: string) => void;
 		onCourseClick?: (course: Course) => void;

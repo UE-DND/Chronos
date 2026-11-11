@@ -15,7 +15,7 @@ export function parseTimeMinutes(value: string): number {
 	return Number(match[1]) * 60 + Number(match[2]);
 }
 
-export function parsePeriodRanges(periods: PeriodTime[]): ParsedPeriodRange[] {
+export function parsePeriodRanges(periods: readonly PeriodTime[]): ParsedPeriodRange[] {
 	return periods
 		.map((period) => ({
 			index: period.index,

@@ -1,11 +1,17 @@
 import type { Course } from '../domain/course';
 import type { AcademicConfig, Timetable, TimetableViewPrefs } from '../domain/timetable';
 import type { UserPreferences } from '../domain/preferences';
+import type { RearrangeCourseOptions } from '../domain/course-reorder';
+
+export type CourseRearrangement = Omit<
+	RearrangeCourseOptions,
+	'currentCourses' | 'draggedCourseId' | 'totalWeeks'
+>;
 
 /** Deletion has committed; follow-up refresh or selection may need retrying. */
-export interface DeleteTimetableResult {
-	followUpFailed: boolean;
-}
+export type DeleteTimetableResult =
+	| { followUpFailed: false }
+	| { followUpFailed: true; cause: unknown };
 
 /** Editable details; timetable identity and persistence timestamps belong to the host. */
 export type TimetableDetailsPatch = Partial<
@@ -26,9 +32,15 @@ export interface ChronosActions {
 	switchTimetable(timetableId: string): Promise<void>;
 	deleteTimetable(timetableId: string): Promise<DeleteTimetableResult>;
 	updateTimetableDetails(timetableId: string, patch: TimetableDetailsPatch): Promise<void>;
-	saveCourse(course: Course): Promise<void>;
-	updateCourse(courseId: string, patch: Partial<Course>): Promise<void>;
-	deleteCourse(courseId: string): Promise<void>;
+	saveCourse(course: Course, timetableId?: string): Promise<void>;
+	updateCourse(courseId: string, patch: Partial<Course>, timetableId?: string): Promise<void>;
+	deleteCourse(courseId: string, timetableId?: string): Promise<void>;
+	deleteCourseForWeek(courseId: string, week: number, timetableId?: string): Promise<void>;
+	rearrangeCourse(
+		courseId: string,
+		options: CourseRearrangement,
+		timetableId?: string
+	): Promise<Course | null>;
 	setTheme(themeId: string): void;
 	updatePreferences(patch: Partial<UserPreferences>): Promise<void>;
 	revertToDefaultThemes(): Promise<void>;

@@ -1,5 +1,9 @@
 import type { Timetable } from '../domain/timetable';
 import type { UserPreferences } from '../domain/preferences';
+import type { DeepReadonly } from './readonly';
+
+export type ReadonlyTimetable = DeepReadonly<Timetable>;
+export type ReadonlyUserPreferences = DeepReadonly<UserPreferences>;
 
 export interface TimetableSummary {
 	id: string;
@@ -10,13 +14,13 @@ export interface TimetableSummary {
 
 /** Shared read-only state; reactive subscription belongs to the UI adapter. */
 export interface ChronosState {
-	readonly currentTimetable: Readonly<Timetable> | null;
+	readonly currentTimetable: ReadonlyTimetable | null;
 	readonly activeWeek: number;
 	/** First period from midnight, then active or next period during breaks; null after the last end. */
 	readonly currentPeriodIndex: number | null;
 	readonly activeThemeId: string | null;
 	readonly activeIconThemeId: string;
-	readonly userPreferences: Readonly<UserPreferences>;
+	readonly userPreferences: ReadonlyUserPreferences;
 	readonly now: Date;
 	readonly todayIso: string;
 	readonly clockFrozen: boolean;
@@ -24,5 +28,5 @@ export interface ChronosState {
 }
 
 export interface ChronosEngineState extends ChronosState {
-	readonly timetables: TimetableSummary[];
+	readonly timetables: readonly DeepReadonly<TimetableSummary>[];
 }

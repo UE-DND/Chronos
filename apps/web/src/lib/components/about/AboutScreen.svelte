@@ -35,13 +35,16 @@
 	let clearDialogOpen = $state(false);
 	let clearing = $state(false);
 	let dataUsageBytes = $state<number | null>(null);
+	let dataUsageFailed = $state(false);
 
 	const dataUsageSupporting = $derived(
-		dataUsageBytes === null
-			? hostT('about.storage.calculating')
-			: hostT('about.storage.usage', {
-					size: formatBytes(dataUsageBytes)
-				})
+		dataUsageFailed
+			? hostT('about.storage.failed')
+			: dataUsageBytes === null
+				? hostT('about.storage.calculating')
+				: hostT('about.storage.usage', {
+						size: formatBytes(dataUsageBytes)
+					})
 	);
 
 	let savingAnalytics = $state(false);
@@ -50,7 +53,13 @@
 	const analyticsChecked = $derived(localAnalyticsOverride ?? analyticsEnabled);
 
 	async function refreshDataUsage() {
-		dataUsageBytes = await estimateAppDataBytes();
+		dataUsageFailed = false;
+		try {
+			dataUsageBytes = await estimateAppDataBytes();
+		} catch (error) {
+			dataUsageFailed = true;
+			console.error('[AboutScreen] Could not calculate storage usage:', error);
+		}
 	}
 
 	async function toggleAnalytics(enabled: boolean) {
@@ -104,12 +113,7 @@
 			});
 			if (!result) return;
 			clearDialogOpen = false;
-			try {
-				await refreshDataUsage();
-			} catch (error) {
-				dataUsageBytes = null;
-				console.warn('[AboutScreen] Could not refresh data usage after clearing:', error);
-			}
+			await refreshDataUsage();
 			snackbarKey(
 				result.status === 'complete' ? 'about.clear.success' : 'about.clear.recoveryFailed'
 			);
@@ -159,6 +163,9 @@
 			iconTone="neutral"
 			onclick={() => (clearDialogOpen = true)}
 		/>
+		{#if dataUsageFailed}
+			<Button variant="text" onclick={refreshDataUsage}>{hostT('common.retry')}</Button>
+		{/if}
 	</MineSection>
 
 	<MineSection title={hostT('about.section.info')}>

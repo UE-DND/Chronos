@@ -1,4 +1,4 @@
-import type { Timetable } from '@chronos/core';
+import type { Timetable, ReadonlyTimetable } from '@chronos/core';
 import { normalizeTimetableName } from '@chronos/core';
 import {
 	decodeBinaryToTimetable,
@@ -48,7 +48,7 @@ function shareFailure<T>(errorMessage: string): ShareLinkResult<T> {
 	return { ok: false, errorMessage };
 }
 
-export async function encodeSharePayload(timetable: Timetable): Promise<string> {
+export async function encodeSharePayload(timetable: ReadonlyTimetable): Promise<string> {
 	const binary = appendCrc32(encodeTimetableToBinary(timetable));
 	return `${SHARE_LINK_PREFIX}${bytesToBase64Url(await compressShare(binary))}`;
 }
@@ -87,7 +87,10 @@ export async function decodeSharePayload(
 	}
 }
 
-export async function encodeShareLink(timetable: Timetable, importUrl: string): Promise<string> {
+export async function encodeShareLink(
+	timetable: ReadonlyTimetable,
+	importUrl: string
+): Promise<string> {
 	const payload = await encodeSharePayload(timetable);
 	const url = new URL(importUrl);
 	url.hash = payload;
@@ -104,7 +107,7 @@ export function formatShareClipboardText(
 }
 
 export async function estimateShareLinkLength(
-	timetable: Timetable,
+	timetable: ReadonlyTimetable,
 	importUrl: string | null
 ): Promise<number> {
 	return importUrl === null

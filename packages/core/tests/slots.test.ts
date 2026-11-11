@@ -1,9 +1,34 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
+	ImportSlotError,
+	isImportSlotError,
 	resolveDefaultLaunchTab,
 	resolveHostPanelTab,
 	type BottomTabSlotContribution
 } from '../src/types/slots';
+import { ImportSlotError as PluginImportSlotError } from './fixtures/plugin-import-slot-error';
+
+describe('plugin import error contract', () => {
+	it.each(['no-data', 'invalid-data', 'network', 'unsupported', 'unknown'])(
+		'recognizes a separate bundle class with kind %s',
+		(kind) => {
+			const error = new PluginImportSlotError(kind, 'Known plugin import failure');
+			expect(error).not.toBeInstanceOf(ImportSlotError);
+			expect(isImportSlotError(error)).toBe(true);
+		}
+	);
+	it.each([
+		new Error('Unexpected failure'),
+		Object.assign(new Error('Unexpected failure'), { kind: 'network' }),
+		{ kind: 'network' },
+		{ kind: 'network', message: 'Missing name' },
+		{ name: 'ImportSlotError', kind: 'network', message: 42 },
+		new PluginImportSlotError('invalid-kind', 'Unknown failure'),
+		null
+	])('rejects incomplete or unrelated error metadata: %s', (value) => {
+		expect(isImportSlotError(value)).toBe(false);
+	});
+});
 
 function tab(
 	overrides: Partial<BottomTabSlotContribution> & Pick<BottomTabSlotContribution, 'id'>

@@ -37,7 +37,9 @@ export interface DistinctCourseSummary {
 	entryCount: number;
 }
 
-export function listDistinctCourses(courses: Course[]): DistinctCourseSummary[] {
+export function listDistinctCourses(
+	courses: readonly Pick<Course, 'name'>[]
+): DistinctCourseSummary[] {
 	const counts = new Map<string, number>();
 	for (const course of courses) {
 		const name = normalizedCourseName(course.name);
@@ -49,7 +51,7 @@ export function listDistinctCourses(courses: Course[]): DistinctCourseSummary[] 
 		.sort((left, right) => left.name.localeCompare(right.name, 'zh-CN'));
 }
 
-export function countDistinctCourseNames(courses: Course[]): number {
+export function countDistinctCourseNames(courses: readonly Pick<Course, 'name'>[]): number {
 	const names = new Set<string>();
 	for (const course of courses) {
 		const name = normalizedCourseName(course.name);
@@ -59,14 +61,17 @@ export function countDistinctCourseNames(courses: Course[]): number {
 }
 
 /** User-facing count of distinct courses hidden when period rows are trimmed. */
-export function countDistinctHiddenCourses(courses: Course[], periodCount: number): number {
+export function countDistinctHiddenCourses(
+	courses: readonly Pick<Course, 'name' | 'startPeriod' | 'endPeriod'>[],
+	periodCount: number
+): number {
 	const hidden = courses.filter((course) => !isCoursePeriodVisible(course, periodCount));
 	return countDistinctCourseNames(hidden);
 }
 
 /** User-facing count of distinct courses whose period pointers shift after deleting a period. */
 export function countDistinctCoursesAffectedByPeriodDelete(
-	courses: Course[],
+	courses: readonly Pick<Course, 'name' | 'endPeriod'>[],
 	deletedIndex: number
 ): number {
 	const affected = courses.filter((course) => course.endPeriod >= deletedIndex);

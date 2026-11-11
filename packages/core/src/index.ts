@@ -1,6 +1,7 @@
 // Domain
 export * from './domain/course';
 export * from './domain/course-conflicts';
+export { deleteCourseForWeek, type DeleteCourseForWeekOptions } from './domain/course-delete-week';
 export { mergeCompatibleOfferings, type AcademicWeekRange } from './domain/course-merge';
 export * from './domain/course-query';
 export * from './domain/timetable';
@@ -55,6 +56,7 @@ export type { PlatformType, ChronosEnv } from './types/env';
 export * from './types/context';
 export * from './types/actions';
 export * from './types/state';
+export type { DeepReadonly } from './types/readonly';
 export * from './types/plugin-server';
 export * from './types/official-plugins';
 export * from './types/result';

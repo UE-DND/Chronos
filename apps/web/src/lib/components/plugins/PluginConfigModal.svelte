@@ -30,13 +30,17 @@
 	let formValues = $state<Record<string, unknown>>({});
 	let loading = $state(true);
 	let saving = $state(false);
+	let loadFailed = $state(false);
+	let loadRequest = 0;
 
 	const invalidFields = $derived(findInvalidSchemaFields(schema, formValues));
 
 	$effect(() => {
 		const id = pluginId;
+		++loadRequest;
 		let active = true;
 		loading = true;
+		loadFailed = false;
 		if (open && id) {
 			void loadConfig(id, () => active && open && pluginId === id);
 		}
@@ -46,24 +50,35 @@
 	});
 
 	async function loadConfig(id: string, isCurrent: () => boolean) {
+		const request = ++loadRequest;
+		const current = () => request === loadRequest && isCurrent();
+		loading = true;
+		loadFailed = false;
 		try {
 			const saved = await officialPlugins.getPluginConfig(id);
-			if (!isCurrent()) return;
+			if (!current()) return;
 			if (saved) {
 				formValues = { ...saved };
 			} else {
 				const ctx = engine.getPluginContext(id);
 				formValues = { ...ctx.config };
 			}
-		} catch {
-			if (isCurrent()) formValues = {};
+		} catch (error) {
+			console.error('[PluginConfigModal] config load failed', error);
+			if (current()) loadFailed = true;
 		} finally {
-			if (isCurrent()) loading = false;
+			if (current()) loading = false;
 		}
 	}
 
 	async function handleSave() {
-		if (loading || saving || !open || findInvalidSchemaFields(schema, formValues).length > 0)
+		if (
+			loading ||
+			loadFailed ||
+			saving ||
+			!open ||
+			findInvalidSchemaFields(schema, formValues).length > 0
+		)
 			return;
 		saving = true;
 		try {
@@ -72,8 +87,8 @@
 			snackbarKey('plugins.config.saved', { name: pluginName || pluginId });
 			open = false;
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : String(err);
-			snackbarKey('plugins.config.saveFailed', { message: msg });
+			console.error('[PluginConfigModal] config save failed', err);
+			snackbarKey('plugins.config.saveUnavailable');
 		} finally {
 			saving = false;
 		}
@@ -82,7 +97,16 @@
 
 <Dialog bind:open title={hostT('plugins.config.title', { name: pluginName || pluginId })}>
 	<div class="py-2">
-		{#if Object.keys(schema).length > 0}
+		{#if loadFailed}
+			<p class="text-body-medium text-error" role="alert">{hostT('plugins.config.loadFailed')}</p>
+			<Button
+				variant="outlined"
+				onclick={() => {
+					const id = pluginId;
+					void loadConfig(id, () => open && pluginId === id);
+				}}>{hostT('common.retry')}</Button
+			>
+		{:else if Object.keys(schema).length > 0}
 			<SchemaForm
 				{schema}
 				bind:value={formValues}
@@ -102,7 +126,7 @@
 		</Button>
 		<Button
 			variant="filled"
-			disabled={loading || saving || invalidFields.length > 0}
+			disabled={loading || loadFailed || saving || invalidFields.length > 0}
 			onclick={handleSave}
 		>
 			{saving ? hostT('plugins.config.saving') : hostT('plugins.config.save')}

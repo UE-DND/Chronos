@@ -16,6 +16,7 @@ type LoadedPluginEntry = {
 /** Plugin load/unload lifecycle separate from profile orchestration. */
 export class PluginLifecycleManager {
 	private readonly loadedPlugins = new Map<string, LoadedPluginEntry>();
+	private readonly unloadingPlugins = new Map<string, Promise<void>>();
 
 	constructor(
 		private readonly host: EngineContextHost,
@@ -54,9 +55,7 @@ export class PluginLifecycleManager {
 	async loadPlugin<Config extends object = Record<string, unknown>>(
 		plugin: ChronosPlugin<Config>
 	): Promise<Disposable> {
-		if (this.loadedPlugins.has(plugin.id)) {
-			await this.unloadPlugin(plugin.id);
-		}
+		await this.unloadPlugin(plugin.id);
 
 		await this.activatePlugin(plugin as unknown as ChronosPlugin<Record<string, unknown>>);
 
@@ -68,18 +67,11 @@ export class PluginLifecycleManager {
 	}
 
 	private async activatePlugin(plugin: ChronosPlugin<Record<string, unknown>>): Promise<void> {
-		let initialConfig: Record<string, unknown> = { ...plugin.defaultConfig };
-		try {
-			const savedConfig = await this.storage.getPluginData<Record<string, unknown>>(
-				plugin.id,
-				PLUGIN_CONFIG_STORAGE_KEY
-			);
-			if (savedConfig) {
-				initialConfig = { ...initialConfig, ...savedConfig };
-			}
-		} catch (err) {
-			console.warn(`[ChronosEngine] Failed to load saved config for plugin "${plugin.id}":`, err);
-		}
+		const savedConfig = await this.storage.getPluginData<Record<string, unknown>>(
+			plugin.id,
+			PLUGIN_CONFIG_STORAGE_KEY
+		);
+		const initialConfig = { ...plugin.defaultConfig, ...savedConfig };
 
 		const context = new ScopedContext(plugin.id, this.host, initialConfig);
 		try {
@@ -87,6 +79,8 @@ export class PluginLifecycleManager {
 		} catch (error) {
 			// Failed activations never enter loadedPlugins, so unloadPlugin cannot clean them up.
 			context.dispose();
+			const pendingConfig = context.whenConfigWritesSettled();
+			if (pendingConfig) await pendingConfig;
 			try {
 				await plugin.dispose?.();
 			} catch (cleanupError) {
@@ -99,26 +93,40 @@ export class PluginLifecycleManager {
 	}
 
 	async unloadPlugin(pluginId: string): Promise<void> {
+		const pending = this.unloadingPlugins.get(pluginId);
+		if (pending) return pending;
 		const entry = this.loadedPlugins.get(pluginId);
 		if (!entry) return;
 
 		this.loadedPlugins.delete(pluginId);
 		this.i18nCatalog.disposePlugin(pluginId);
 		entry.context.dispose();
+		const unloading = (async () => {
+			// A new instance must read config only after the old instance's started writes settle.
+			const pendingConfig = entry.context.whenConfigWritesSettled();
+			if (pendingConfig) await pendingConfig;
+			try {
+				await entry.plugin.dispose?.();
+			} catch (error) {
+				console.error(`[ChronosEngine] Error in plugin "${pluginId}" dispose hook:`, error);
+			}
+			this.events.emit('plugin:unloaded', { pluginId });
+		})();
+		this.unloadingPlugins.set(pluginId, unloading);
 		try {
-			await entry.plugin.dispose?.();
-		} catch (error) {
-			console.error(`[ChronosEngine] Error in plugin "${pluginId}" dispose hook:`, error);
+			await unloading;
+		} finally {
+			this.unloadingPlugins.delete(pluginId);
 		}
-
-		this.events.emit('plugin:unloaded', { pluginId });
 	}
 
 	disposeAll(): void {
 		for (const [pluginId, entry] of this.loadedPlugins) {
 			try {
 				entry.context.dispose();
-				void entry.plugin.dispose?.();
+				void Promise.resolve(entry.plugin.dispose?.()).catch((error: unknown) => {
+					console.error(`[ChronosEngine] Error disposing plugin ${pluginId}:`, error);
+				});
 			} catch (error) {
 				console.error(`[ChronosEngine] Error disposing plugin ${pluginId}:`, error);
 			}

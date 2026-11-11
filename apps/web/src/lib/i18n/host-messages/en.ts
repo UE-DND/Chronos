@@ -158,7 +158,15 @@ export const en = {
 	'plugins.config.saving': 'Saving…',
 	'plugins.config.save': 'Save settings',
 	'plugins.config.saved': 'Settings saved for "{name}"',
+	'plugins.config.saveUnavailable': 'Could not save configuration. Try again.',
 	'plugins.config.saveFailed': 'Failed to save settings: {message}',
+	'pluginScreen.failed': 'Plugin screen failed to load',
+	'pluginScreen.retry': 'Reload',
+	'plugins.config.loadFailed': 'Could not load configuration. Try again',
+	'common.retry': 'Retry',
+	'about.storage.failed': 'Could not calculate storage usage. Try again later.',
+	'timetable.savedFollowUpFailed':
+		'Timetable saved, but refresh or selection failed. Reload to view it.',
 	'pluginScreen.notFound': 'Page not found or plugin was uninstalled',
 	'pluginScreen.notFoundDetail': 'Plugin: {pluginId} / View: {viewId}',
 

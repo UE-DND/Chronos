@@ -195,7 +195,7 @@ describe('TimetableScreenController', () => {
 					now: new Date(2026, 2, 2, hours, minutes),
 					todayIso: '2026-03-02'
 				}
-			} as AppShellController;
+			} as unknown as AppShellController;
 			screen.init(shell);
 			expect(screen.state.currentPeriodIndex).toBe(expectedPeriod);
 			expect(screen.state.scrollPeriodIndex).toBe(expectedScroll);

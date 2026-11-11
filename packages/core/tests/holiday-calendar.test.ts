@@ -54,6 +54,20 @@ describe('holiday-calendar engine', () => {
 		expect(inRange.map((holiday) => holiday.date)).toEqual(['2026-03-02']);
 	});
 
+	it('returns owned holiday records from lookups and term filters', () => {
+		const original = { date: '2026-03-02', label: 'Original' };
+		const lookup = buildHolidayLookup({ holidays: [original] });
+		const filtered = filterHolidaysInTermRange(
+			[original],
+			{ termStartDate: '2026-03-02', startWeek: 1, endWeek: 2, periodTimes: [] },
+			'2026-03-02'
+		);
+		lookup.get(original.date)!.label = 'Lookup edit';
+		filtered[0]!.label = 'Filter edit';
+		expect(original.label).toBe('Original');
+		expect(lookup.get(original.date)!.label).toBe('Lookup edit');
+	});
+
 	it('truncates holiday labels for column headers', () => {
 		expect(truncateHolidayLabel('国庆节')).toBe('国庆节');
 		expect(truncateHolidayLabel('中国人民抗日战争胜利纪念日')).toBe('中国人民');

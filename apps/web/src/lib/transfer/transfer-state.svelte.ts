@@ -5,6 +5,7 @@ import type { Timetable } from '#lib/models/timetable.ts';
 import { ImportMode } from '#lib/domain/import-mode.ts';
 import {
 	ImportSlotError,
+	isImportSlotError,
 	pickPrimary,
 	resolveLocalizedText,
 	type ChronosEngine,
@@ -21,6 +22,7 @@ export interface TransferPreviewState {
 	confirmInputs: Record<string, unknown>;
 	importMode: ImportMode;
 	errorMessage: string | null;
+	error: unknown;
 }
 
 function resolveInitialSlotId(): string | undefined {
@@ -28,13 +30,8 @@ function resolveInitialSlotId(): string | undefined {
 }
 
 function resolveConfirmDefaults(tabId: string): Record<string, unknown> {
-	try {
-		const controller = getAppController();
-		const tab = controller.getSlotItem('import.source.tab', tabId);
-		return tab?.confirmDefaultInput ? { ...tab.confirmDefaultInput } : {};
-	} catch {
-		return {};
-	}
+	const tab = getAppController().getSlotItem('import.source.tab', tabId);
+	return tab?.confirmDefaultInput ? { ...tab.confirmDefaultInput } : {};
 }
 
 export async function checkPrimaryExportWarning(engine: ChronosEngine): Promise<string | null> {
@@ -46,7 +43,8 @@ export async function checkPrimaryExportWarning(engine: ChronosEngine): Promise<
 		if (!primaryAction?.checkWarning) return null;
 		const ctx = controller.getPluginContextForSlot('export.action', primaryAction.id);
 		return (await primaryAction.checkWarning(current, ctx)) ?? null;
-	} catch {
+	} catch (error) {
+		console.error('[transfer] export warning failed', error);
 		return null;
 	}
 }
@@ -58,11 +56,21 @@ export function createTransferState(engine?: ChronosEngine) {
 	let confirmInputs = $state<Record<string, unknown>>({});
 	let importMode = $state<ImportMode>(ImportMode.AS_NEW);
 	let errorMessage = $state<string | null>(null);
+	let error = $state.raw<unknown>(null);
 
 	const persistence = createSessionPreviewPersistence();
 
 	function clearMessages() {
 		errorMessage = null;
+		error = null;
+	}
+	function reportFailure(caught: unknown, action: 'preview' | 'confirm', fallback: HostMessageKey) {
+		error = caught;
+		if (isImportSlotError(caught)) errorMessage = caught.message;
+		else {
+			console.error(`[transfer] ${action} failed`, caught);
+			errorMessage = hostT(fallback);
+		}
 	}
 
 	function setSelectedSlotId(slotId: string) {
@@ -118,36 +126,40 @@ export function createTransferState(engine?: ChronosEngine) {
 		return timetable;
 	}
 
-	async function previewWithSlot(tabId: string, inputs: Record<string, unknown>): Promise<boolean> {
+	async function previewSlot(
+		tabId: string,
+		inputs: Record<string, unknown>,
+		persist = false
+	): Promise<{ ok: true } | { ok: false; kind: ImportSlotErrorKind }> {
 		clearMessages();
 		try {
 			const timetable = await executeSlotImport(tabId, inputs);
+			const defaults = resolveConfirmDefaults(tabId);
+			if (persist)
+				persistence.save({
+					preview: timetable,
+					slotId: tabId,
+					importMode,
+					confirmInputs: defaults
+				});
 			preview = timetable;
 			previewSlotId = tabId;
-			confirmInputs = resolveConfirmDefaults(tabId);
-			return true;
+			confirmInputs = defaults;
+			return { ok: true };
 		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : hostT('transfer.error.fetchFailed');
-			return false;
+			reportFailure(err, 'preview', 'transfer.error.fetchFailed');
+			return { ok: false, kind: isImportSlotError(err) ? err.kind : 'unknown' };
 		}
+	}
+	async function previewWithSlot(tabId: string, inputs: Record<string, unknown>): Promise<boolean> {
+		return (await previewSlot(tabId, inputs)).ok;
 	}
 
 	async function previewAndPersist(
 		tabId: string,
 		inputs: Record<string, unknown>
 	): Promise<{ ok: true } | { ok: false; kind: ImportSlotErrorKind }> {
-		clearMessages();
-		try {
-			const timetable = await executeSlotImport(tabId, inputs);
-			preview = timetable;
-			previewSlotId = tabId;
-			confirmInputs = resolveConfirmDefaults(tabId);
-			persistPreview();
-			return { ok: true };
-		} catch (err) {
-			const kind = err instanceof ImportSlotError ? err.kind : 'unknown';
-			return { ok: false, kind };
-		}
+		return previewSlot(tabId, inputs, true);
 	}
 
 	async function previewDeepLinkImport(
@@ -230,7 +242,7 @@ export function createTransferState(engine?: ChronosEngine) {
 			clearPreview();
 			return true;
 		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : hostT('transfer.error.saveFailed');
+			reportFailure(err, 'confirm', 'transfer.error.saveFailed');
 			return false;
 		}
 	}
@@ -243,7 +255,8 @@ export function createTransferState(engine?: ChronosEngine) {
 				previewSlotId,
 				confirmInputs,
 				importMode,
-				errorMessage
+				errorMessage,
+				error
 			};
 		},
 		setSelectedSlotId,
@@ -264,16 +277,8 @@ export type TransferStateController = ReturnType<typeof createTransferState>;
 
 export function resolveSlotTitle(slotId: string | null): string {
 	if (!slotId) return hostT('transfer.slot.unknown');
-	try {
-		const controller = getAppController();
-		const slot = controller.getSlotItem('import.source.tab', slotId);
-		if (slot) {
-			return resolveLocalizedText(slot.title);
-		}
-	} catch {
-		// Engine not ready
-	}
-	return slotId;
+	const slot = getAppController().getSlotItem('import.source.tab', slotId);
+	return slot ? resolveLocalizedText(slot.title) : slotId;
 }
 
 export function shareImportErrorSnackbarKey(kind: ImportSlotErrorKind): HostMessageKey {

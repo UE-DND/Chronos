@@ -6,7 +6,8 @@ import {
 	normalizedCourseName,
 	normalizeTimetableName,
 	todayIsoDate,
-	type Timetable
+	type Timetable,
+	type ReadonlyTimetable
 } from '@chronos/core';
 import { consolidateCourses } from './import-course-utils';
 import {
@@ -92,7 +93,7 @@ function formatPeriodClock(minutes: number): string {
 	return `${String(hours).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
 }
 
-function writePeriodTimes(periodTimes: PeriodTime[], target: number[]): void {
+function writePeriodTimes(periodTimes: readonly PeriodTime[], target: number[]): void {
 	if (periodTimes.length > MAX_PERIOD_COUNT) {
 		throw new ShareBinaryDecodeError('too many period times');
 	}
@@ -227,7 +228,7 @@ function decodeLocation(strings: string[], buildingIdx: number, room: string): s
 
 const academicCalendarService = new AcademicCalendarService();
 
-function normalizeTimetable(timetable: Timetable): Timetable {
+function normalizeTimetable(timetable: ReadonlyTimetable): ReadonlyTimetable {
 	const rawTermStart = timetable.academicConfig?.termStartDate ?? '';
 	const termStartDate = academicCalendarService.normalizeTermStartDate(
 		rawTermStart,
@@ -246,6 +247,7 @@ function normalizeTimetable(timetable: Timetable): Timetable {
 		courses: consolidateCourses(
 			(timetable.courses ?? []).map((course) => ({
 				...course,
+				weeks: [...course.weeks],
 				name: normalizedCourseName(course.name),
 				teacher: (course.teacher ?? '').trim(),
 				location: (course.location ?? '').trim(),
@@ -255,7 +257,7 @@ function normalizeTimetable(timetable: Timetable): Timetable {
 	};
 }
 
-export function encodeTimetableToBinary(timetable: Timetable): Uint8Array {
+export function encodeTimetableToBinary(timetable: ReadonlyTimetable): Uint8Array {
 	const normalized = normalizeTimetable(timetable);
 	if (normalized.courses.length === 0) {
 		throw new ShareBinaryDecodeError('timetable has no courses');

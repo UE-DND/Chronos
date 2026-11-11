@@ -3,6 +3,7 @@ import fixture from '../../packages/core/tests/fixtures/timetable.json' with { t
 import { encodeSharePayload } from '../../packages/plugins/codec-share/src/share-link/chronos-share-link-codec.ts';
 import type { Timetable } from '../../packages/core/src/domain/timetable';
 import holidays from '../../packages/plugins/calendar-holidays/static/data/2026.json' with { type: 'json' };
+import nextYearHolidays from '../../packages/plugins/calendar-holidays/static/data/2027.json' with { type: 'json' };
 
 const timetable: Timetable = {
 	...fixture,
@@ -33,6 +34,10 @@ test('manual holiday sync clears Today courses and uninstall restores them', asy
 	await context.route(
 		'https://fastly.jsdelivr.net/gh/NateScarlet/holiday-cn@master/2026.json',
 		(route) => route.fulfill({ json: holidays })
+	);
+	await context.route(
+		'https://fastly.jsdelivr.net/gh/NateScarlet/holiday-cn@master/2027.json',
+		(route) => route.fulfill({ json: nextYearHolidays })
 	);
 	await page.goto(`/Chronos/s#${payload}`);
 	await expect(page.getByRole('heading', { name: timetable.name })).toBeVisible();

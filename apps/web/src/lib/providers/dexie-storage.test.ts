@@ -106,3 +106,58 @@ it('requests persistence only after a successful timetable save', async () => {
 		warn.mockRestore();
 	}
 });
+
+it('publishes and requests persistence only after an atomic mutation commits', async () => {
+	const committed = Promise.withResolvers<import('@chronos/core').Timetable>();
+	const mutate = vi
+		.spyOn(TimetableRepository.prototype, 'mutateTimetable')
+		.mockReturnValueOnce(committed.promise)
+		.mockRejectedValueOnce(new Error('transaction failed'));
+	const request = vi.fn(async () => {});
+	const storage = new DexieStorageProvider(undefined, null, null, undefined, request);
+	const changed = vi.fn();
+	storage.onChanged(changed);
+	const timetable = createTimetable({ id: 'atomic', name: 'Committed' });
+	try {
+		const pending = storage.mutateTimetable(timetable.id, (current) => current);
+		expect(changed).not.toHaveBeenCalled();
+		expect(request).not.toHaveBeenCalled();
+		committed.resolve(timetable);
+		await expect(pending).resolves.toBe(timetable);
+		expect(changed).toHaveBeenCalledWith({ type: 'timetable', key: timetable.id });
+		expect(request).toHaveBeenCalledOnce();
+		await expect(storage.mutateTimetable(timetable.id, (current) => current)).rejects.toThrow(
+			'transaction failed'
+		);
+		expect(changed).toHaveBeenCalledOnce();
+		expect(request).toHaveBeenCalledOnce();
+	} finally {
+		storage.dispose();
+		mutate.mockRestore();
+	}
+});
+
+it('isolates asynchronous change listeners without rejecting a committed write', async () => {
+	const save = vi.spyOn(TimetableRepository.prototype, 'saveTimetable').mockResolvedValue();
+	const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+	const storage = new DexieStorageProvider(undefined, null, null);
+	const failure = new Error('Async sync failed');
+	const next = vi.fn();
+	storage.onChanged(() => Promise.reject(failure));
+	storage.onChanged(next);
+	try {
+		await expect(
+			storage.saveTimetable(createTimetable({ id: 'committed', name: 'Committed' }))
+		).resolves.toBeUndefined();
+		await Promise.resolve();
+		expect(next).toHaveBeenCalledWith({ type: 'timetable', key: 'committed' });
+		expect(log).toHaveBeenCalledWith(
+			'[DexieStorageProvider] Error in onChanged listener:',
+			failure
+		);
+	} finally {
+		storage.dispose();
+		save.mockRestore();
+		log.mockRestore();
+	}
+});

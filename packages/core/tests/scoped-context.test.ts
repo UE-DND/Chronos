@@ -91,6 +91,8 @@ function createMockHost() {
 			saveCourse: vi.fn(),
 			updateCourse: vi.fn(),
 			deleteCourse: vi.fn(),
+			deleteCourseForWeek: vi.fn(),
+			rearrangeCourse: vi.fn(),
 			setTheme: vi.fn(),
 			updatePreferences: vi.fn(),
 			revertToDefaultThemes: vi.fn(),
@@ -150,6 +152,78 @@ describe('ScopedContext in @chronos/core', () => {
 			pluginId: 'plugin-a',
 			config: { campus: 'liangjiang' }
 		});
+		expect(await ctx.storage.get('__config__')).toEqual({ campus: 'liangjiang' });
+	});
+
+	it('keeps the committed config and emits no change when persistence fails', async () => {
+		const host = createMockHost();
+		const ctx = new ScopedContext('plugin-a', host, { campus: 'huaxi' });
+		const changed = vi.fn();
+		host.events.on('config:changed', changed);
+		const failure = new Error('Config write failed');
+		vi.spyOn(host.env.storage, 'setPluginData').mockRejectedValueOnce(failure);
+		await expect(ctx.updateConfig({ campus: 'liangjiang' })).rejects.toBe(failure);
+		expect(ctx.config).toEqual({ campus: 'huaxi' });
+		expect(changed).not.toHaveBeenCalled();
+		await ctx.updateConfig({ campus: 'liangjiang' });
+		expect(ctx.config).toEqual({ campus: 'liangjiang' });
+	});
+
+	it('serializes config patches and publishes only committed values', async () => {
+		const host = createMockHost();
+		const ctx = new ScopedContext('plugin-a', host, { campus: 'huaxi', enabled: false });
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const write = host.env.storage.setPluginData.bind(host.env.storage);
+		vi.spyOn(host.env.storage, 'setPluginData').mockImplementationOnce(async (...args) => {
+			await gate;
+			await write(...args);
+		});
+		const first = ctx.updateConfig({ campus: 'liangjiang' });
+		const second = ctx.updateConfig({ enabled: true });
+		expect(ctx.config).toEqual({ campus: 'huaxi', enabled: false });
+		release();
+		await Promise.all([first, second]);
+		expect(ctx.config).toEqual({ campus: 'liangjiang', enabled: true });
+		expect(await ctx.storage.get('__config__')).toEqual(ctx.config);
+	});
+
+	it('stops queued config writes on disposal and never publishes an old in-flight write', async () => {
+		const host = createMockHost();
+		const ctx = new ScopedContext('plugin-a', host, { campus: 'huaxi' });
+		let release!: () => void;
+		let started!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const writing = new Promise<void>((resolve) => {
+			started = resolve;
+		});
+		const write = host.env.storage.setPluginData.bind(host.env.storage);
+		const persistence = vi
+			.spyOn(host.env.storage, 'setPluginData')
+			.mockImplementationOnce(async (...args) => {
+				started();
+				await gate;
+				await write(...args);
+			});
+		const changed = vi.fn();
+		host.events.on('config:changed', changed);
+		const first = ctx.updateConfig({ campus: 'liangjiang' });
+		const second = ctx.updateConfig({ campus: 'queued' });
+		const stopped = expect(second).rejects.toThrow('disposed');
+		await writing;
+		ctx.dispose();
+		const late = expect(ctx.updateConfig({ campus: 'late' })).rejects.toThrow('disposed');
+		release();
+		await first;
+		await stopped;
+		await late;
+		expect(persistence).toHaveBeenCalledOnce();
+		expect(changed).not.toHaveBeenCalled();
+		expect(ctx.config).toEqual({ campus: 'huaxi' });
 		expect(await ctx.storage.get('__config__')).toEqual({ campus: 'liangjiang' });
 	});
 

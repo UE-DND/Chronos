@@ -1,11 +1,12 @@
 import type { Course } from './course';
+import type { DeepReadonly } from '../types/readonly';
 
 export interface AcademicWeekBounds {
 	startWeek: number;
 	endWeek: number;
 }
 
-function effectiveWeeks(course: Course, bounds: AcademicWeekBounds): number[] {
+function effectiveWeeks(course: DeepReadonly<Course>, bounds: AcademicWeekBounds): number[] {
 	if (course.weeks.length > 0) {
 		return course.weeks.filter((week) => week >= bounds.startWeek && week <= bounds.endWeek);
 	}
@@ -15,20 +16,24 @@ function effectiveWeeks(course: Course, bounds: AcademicWeekBounds): number[] {
 	);
 }
 
-function periodsOverlap(left: Course, right: Course): boolean {
+function periodsOverlap(left: DeepReadonly<Course>, right: DeepReadonly<Course>): boolean {
 	return left.startPeriod <= right.endPeriod && right.startPeriod <= left.endPeriod;
 }
 
-function weeksOverlap(left: Course, right: Course, bounds: AcademicWeekBounds): boolean {
+function weeksOverlap(
+	left: DeepReadonly<Course>,
+	right: DeepReadonly<Course>,
+	bounds: AcademicWeekBounds
+): boolean {
 	const rightWeeks = new Set(effectiveWeeks(right, bounds));
 	return effectiveWeeks(left, bounds).some((week) => rightWeeks.has(week));
 }
 
 export function findCourseScheduleConflicts(
-	candidate: Course,
-	courses: readonly Course[],
+	candidate: DeepReadonly<Course>,
+	courses: readonly DeepReadonly<Course>[],
 	bounds: AcademicWeekBounds
-): Course[] {
+): DeepReadonly<Course>[] {
 	return courses.filter(
 		(course) =>
 			course.id !== candidate.id &&

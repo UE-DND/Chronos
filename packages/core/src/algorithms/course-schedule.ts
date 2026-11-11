@@ -1,5 +1,7 @@
 import type { Course } from '../domain/course';
-import type { AcademicConfig, Timetable } from '../domain/timetable';
+import type { AcademicConfig } from '../domain/timetable';
+import type { ReadonlyTimetable } from '../types/state';
+import type { DeepReadonly } from '../types/readonly';
 import type { CourseQueryHit } from '../types/course-query';
 import { AcademicCalendarService } from './calendar';
 import { formatIsoDate, parseIsoDate, weeksBetween } from './date';
@@ -16,7 +18,7 @@ export interface CourseOccurrence extends CourseQueryHit {
 	academicWeek: number;
 }
 
-function isSchedulableCourse(course: Course, periodCount: number): boolean {
+function isSchedulableCourse(course: DeepReadonly<Course>, periodCount: number): boolean {
 	const day = course.dayOfWeek;
 	const start = course.startPeriod;
 	const end = course.endPeriod;
@@ -42,7 +44,7 @@ function isValidQueryRange(range: CourseDateRange): boolean {
 	);
 }
 
-function hasUsableAcademicConfig(config: AcademicConfig): boolean {
+function hasUsableAcademicConfig(config: DeepReadonly<AcademicConfig>): boolean {
 	return (
 		validDate(config.termStartDate) &&
 		Number.isInteger(config.startWeek) &&
@@ -59,7 +61,7 @@ function hasUsableAcademicConfig(config: AcademicConfig): boolean {
  * Course objects are borrowed from the supplied timetable.
  */
 export function queryTimetableCourseOccurrences(
-	timetable: Timetable,
+	timetable: ReadonlyTimetable,
 	range?: CourseDateRange
 ): CourseOccurrence[] {
 	if (range && !isValidQueryRange(range)) {
@@ -113,7 +115,7 @@ export function queryTimetableCourseOccurrences(
 
 /** Actual courses on one date, without UI sorting or notification timing. */
 export function queryTimetableCoursesForDate(
-	timetable: Timetable,
+	timetable: ReadonlyTimetable,
 	dateIso: string
 ): CourseQueryHit[] {
 	return queryTimetableCourseOccurrences(timetable, {

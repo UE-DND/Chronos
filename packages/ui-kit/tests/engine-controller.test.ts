@@ -5,6 +5,7 @@ import {
 	createTimetable,
 	type ChronosContext,
 	type ChronosEnv,
+	type CourseBadge,
 	type Timetable,
 	type UserPreferences
 } from '@chronos/core';
@@ -111,6 +112,29 @@ describe('ReactiveChronosController', () => {
 		controller.dispose();
 	});
 
+	it('keeps committed data visible and reports a failed write follow-up', async () => {
+		const controller = new ReactiveChronosController(engine);
+		const notify = vi.spyOn(controller, 'notify');
+		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const failure = new Error('List read failed');
+		vi.mocked(env.storage.listTimetables).mockRejectedValueOnce(failure);
+		try {
+			const saved = await controller.createTimetable('Committed');
+			expect(controller.timetables).toContainEqual(
+				expect.objectContaining({ id: saved.id, name: 'Committed' })
+			);
+			expect(notify).toHaveBeenCalledWith(expect.any(String), 'warn');
+			expect(log).toHaveBeenCalledWith(
+				'[timetable] Write committed but follow-up failed:',
+				{ operation: 'create', timetableId: saved.id },
+				failure
+			);
+		} finally {
+			controller.dispose();
+			log.mockRestore();
+		}
+	});
+
 	it('keeps shared state names and explicit timetable updates consistent with the engine', async () => {
 		const controller = new ReactiveChronosController(engine);
 		try {
@@ -126,6 +150,39 @@ describe('ReactiveChronosController', () => {
 			expect(get(controller.snapshot)).toMatchObject(engine.state);
 			await controller.updateTimetableDetails(a.id, { name: 'Updated A' });
 			expect(controller.currentTimetable?.name).toBe('Updated A');
+		} finally {
+			controller.dispose();
+			engine.dispose();
+		}
+	});
+	it('uses the accepted engine snapshots after lifecycle events', async () => {
+		const controller = new ReactiveChronosController(engine);
+		try {
+			const imported = await engine.importTimetable(
+				createTimetable({
+					id: 'imported',
+					name: 'Imported',
+					courses: [
+						createCourse({
+							id: 'course',
+							name: 'Original',
+							dayOfWeek: 1,
+							startPeriod: 1,
+							endPeriod: 2,
+							weeks: [1, 2]
+						})
+					]
+				})
+			);
+			expect(controller.currentTimetable).toBe(engine.state.currentTimetable);
+			expect(controller.timetables).toBe(engine.state.timetables);
+			expect(Object.isFrozen(controller.currentTimetable?.courses[0]?.weeks)).toBe(true);
+			imported.courses[0]!.name = 'Caller edit';
+			expect(controller.currentTimetable?.courses[0]?.name).toBe('Original');
+			await controller.updatePreferences({ themeMode: 'dark' });
+			expect(controller.userPreferences).toBe(engine.state.userPreferences);
+			await controller.updateTimetableDetails(imported.id, { name: 'Updated' });
+			expect(controller.currentTimetable).toBe(engine.state.currentTimetable);
 		} finally {
 			controller.dispose();
 			engine.dispose();
@@ -170,6 +227,110 @@ describe('ReactiveChronosController', () => {
 		expect(controller.currentTimetable?.courses.length).toBe(0);
 
 		controller.dispose();
+	});
+
+	it('keeps public timetable views immutable and snapshot subscriptions read-only', async () => {
+		const controller = new ReactiveChronosController(engine);
+		try {
+			const timetable = await controller.createTimetable('Immutable');
+			await controller.saveCourse(
+				createCourse({ id: 'first', name: 'First', dayOfWeek: 1, startPeriod: 1, endPeriod: 1 }),
+				timetable.id
+			);
+			const snapshot = get(controller.snapshot);
+			expect(Reflect.set(controller, 'currentTimetable', null)).toBe(false);
+			expect(Reflect.set(snapshot, 'currentTimetable', null)).toBe(false);
+			expect(Reflect.set(controller.currentTimetable!.courses[0]!, 'name', 'Changed')).toBe(false);
+			expect(Reflect.has(controller.snapshot, 'set')).toBe(false);
+			expect(engine.state.currentTimetable?.courses[0]?.name).toBe('First');
+			expect(get(controller.snapshot).currentTimetable?.courses[0]?.name).toBe('First');
+		} finally {
+			controller.dispose();
+			engine.dispose();
+		}
+	});
+
+	it('publishes immutable badge views through its getter and readable snapshots', async () => {
+		const controller = new ReactiveChronosController(engine);
+		const providerBadge: CourseBadge = { id: 'badge', text: 'Original' };
+		engine.badges.registerCourseBadge({ id: 'provider', getBadge: () => [providerBadge] });
+		try {
+			const timetable = await controller.createTimetable('Badges');
+			await controller.saveCourse(
+				createCourse({ id: 'course', name: 'Course', dayOfWeek: 1, startPeriod: 1, endPeriod: 1 }),
+				timetable.id
+			);
+			const snapshot = get(controller.snapshot);
+			providerBadge.text = 'Provider edit';
+			expect(Reflect.set(controller, 'courseBadges', {})).toBe(false);
+			expect(Reflect.set(snapshot.courseBadges.course![0]!, 'text', 'Consumer edit')).toBe(false);
+			expect(Reflect.set(controller.courseBadges, 'course', [])).toBe(false);
+			expect(controller.courseBadges).toBe(engine.badges.getAll());
+			expect(snapshot.courseBadges.course?.[0]?.text).toBe('Original');
+			expect(engine.badges.getAll().course?.[0]?.text).toBe('Original');
+		} finally {
+			controller.dispose();
+			engine.dispose();
+		}
+	});
+
+	it('uses the engine badge cache after badge events', () => {
+		const controller = new ReactiveChronosController(engine);
+		try {
+			const injected = { course: [{ id: 'injected', text: 'Injected' }] };
+			engine.events.emit('badges:updated', { badges: injected });
+			injected.course[0]!.text = 'Later edit';
+			expect(controller.courseBadges).toBe(engine.badges.getAll());
+			expect(get(controller.snapshot).courseBadges).toEqual({});
+		} finally {
+			controller.dispose();
+			engine.dispose();
+		}
+	});
+
+	it('updates UI badges immediately as badge plugins load and unload', async () => {
+		const controller = new ReactiveChronosController(engine);
+		try {
+			await controller.createTimetable('Badges');
+			await controller.saveCourse(
+				createCourse({ id: 'course', name: 'Course', dayOfWeek: 1, startPeriod: 1, endPeriod: 1 })
+			);
+			const plugin = await engine.loadPlugin({
+				id: 'badge-plugin',
+				name: 'Badge plugin',
+				version: '1.0.0',
+				apply(ctx) {
+					ctx.registerSlot('timetable.cell.badge', {
+						id: 'badge-provider',
+						getBadge: () => ({ id: 'badge', text: 'Original' })
+					});
+				}
+			});
+			expect(controller.courseBadges.course?.[0]?.text).toBe('Original');
+			const remainingPlugin = await engine.loadPlugin({
+				id: 'remaining-badge-plugin',
+				name: 'Remaining badge plugin',
+				version: '1.0.0',
+				apply(ctx) {
+					ctx.registerSlot('timetable.cell.badge', {
+						id: 'remaining-badge-provider',
+						getBadge: () => ({ id: 'remaining-badge', text: 'Remaining' })
+					});
+				}
+			});
+			expect(controller.courseBadges.course).toHaveLength(2);
+
+			plugin.dispose();
+			expect(controller.courseBadges.course).toEqual([
+				{ id: 'remaining-badge', text: 'Remaining' }
+			]);
+			remainingPlugin.dispose();
+			expect(controller.courseBadges).toEqual({});
+			expect(get(controller.snapshot).courseBadges).toBe(engine.badges.getAll());
+		} finally {
+			controller.dispose();
+			engine.dispose();
+		}
 	});
 
 	it('reactively updates preferences, themes, and time ticks', async () => {

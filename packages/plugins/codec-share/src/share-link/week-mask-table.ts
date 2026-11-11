@@ -3,7 +3,7 @@ import { bitmaskToWeeks, weeksToBitmask } from '@chronos/codec-kit';
 const WEEK_MASK_RANGE_FLAG = 0x80;
 const MAX_MASK_ENTRIES = 255;
 
-function encodeWeekMaskEntry(weeks: number[]): number[] {
+function encodeWeekMaskEntry(weeks: readonly number[]): number[] {
 	if (weeks.length === 0) return [];
 
 	const sorted = [...weeks].sort((left, right) => left - right);
@@ -41,7 +41,7 @@ export class WeekMaskTable {
 	readonly entries: number[][] = [];
 	private readonly indexOf = new Map<string, number>();
 
-	intern(weeks: number[]): number {
+	intern(weeks: readonly number[]): number {
 		const encoded = encodeWeekMaskEntry(weeks);
 		const key = encoded.join(',');
 		const existing = this.indexOf.get(key);

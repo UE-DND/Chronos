@@ -1,10 +1,16 @@
-import { AcademicCalendarService, todayIsoDate, type Course, type Timetable } from '@chronos/core';
+import {
+	AcademicCalendarService,
+	todayIsoDate,
+	type Course,
+	type DeepReadonly,
+	type ReadonlyTimetable
+} from '@chronos/core';
 import type { CourseDraft, PeriodTimeDraft, TimetableSettingsDraft } from '#lib/models/drafts.ts';
 import { courseScheduleFromCourse } from './course-schedule';
 
 const academicCalendarService = new AcademicCalendarService();
 
-export function courseToDraft(course: Course): CourseDraft {
+export function courseToDraft(course: DeepReadonly<Course>): CourseDraft {
 	return {
 		id: course.id,
 		name: course.name,
@@ -15,7 +21,7 @@ export function courseToDraft(course: Course): CourseDraft {
 	};
 }
 
-export function toSettingsDraft(timetable: Timetable): TimetableSettingsDraft {
+export function toSettingsDraft(timetable: ReadonlyTimetable): TimetableSettingsDraft {
 	return {
 		name: timetable.name,
 		academicConfig: {

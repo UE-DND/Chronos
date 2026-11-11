@@ -53,7 +53,8 @@
 		try {
 			await shell.switchTimetable(id);
 			trackEvent('timetable_switch');
-		} catch {
+		} catch (error) {
+			console.error('[ManageTimetablesScreen] Failed to switch timetable:', error);
 			snackbarKey('timetable.manage.switchFailed', undefined, undefined, 4000, 'assertive');
 		} finally {
 			switchingId = null;
@@ -73,7 +74,11 @@
 			const result = await shell.deleteTimetable(target.id);
 			trackEvent('timetable_delete');
 			deleteDialogOpen = false;
-			if (result.followUpFailed)
+			if (result.followUpFailed) {
+				console.error(
+					'[ManageTimetablesScreen] Deletion committed but follow-up failed:',
+					result.cause
+				);
 				snackbarKey(
 					'timetable.manage.deleteFollowUpFailed',
 					undefined,
@@ -81,7 +86,9 @@
 					4000,
 					'assertive'
 				);
-		} catch {
+			}
+		} catch (error) {
+			console.error('[ManageTimetablesScreen] Failed to delete timetable:', error);
 			snackbarKey('timetable.manage.deleteFailed', undefined, undefined, 4000, 'assertive');
 		} finally {
 			isDeleting = false;
