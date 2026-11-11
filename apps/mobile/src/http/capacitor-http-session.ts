@@ -38,6 +38,17 @@ function isPersistentCookie(value: string, segment: string): boolean {
 	return value.length > 0 && !/(?:^|;)\s*max-age=0(?:;|$)/i.test(segment);
 }
 
+const MAX_REDIRECTS = 20;
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const BODY_HEADERS = new Set([
+	'content-encoding',
+	'content-language',
+	'content-length',
+	'content-location',
+	'content-type'
+]);
+const CREDENTIAL_HEADERS = new Set(['authorization', 'proxy-authorization', 'cookie']);
+
 class CapacitorHttpSession implements IHostHttpSession {
 	private disposed = false;
 	private initialization: Promise<void> | null = null;
@@ -49,26 +60,97 @@ class CapacitorHttpSession implements IHostHttpSession {
 		url: string,
 		options: HttpSessionRequestOptions = {}
 	): Promise<HttpSessionResponse> {
-		if (this.disposed) throw new Error('HTTP session has been disposed');
+		this.assertActive(options.signal);
 		await this.ensureInitialized();
+		let currentUrl = new URL(url);
+		let method = (options.method ?? 'GET').toUpperCase();
+		let body = options.body;
+		let requestHeaders = options.headers ? { ...options.headers } : undefined;
+		const visited = new Set<string>();
+		for (let redirects = 0; ; redirects++) {
+			this.assertActive(options.signal);
+			this.assertAllowedUrl(currentUrl);
+			const key = `${method} ${currentUrl.href}`;
+			if (visited.has(key)) throw new Error('HTTP session redirect cycle');
+			visited.add(key);
+			const response = await this.requestOnce(currentUrl.href, {
+				...options,
+				method,
+				body,
+				headers: requestHeaders
+			});
+			this.assertActive(options.signal);
+			const responseUrl = new URL(response.url || currentUrl.href);
+			this.assertAllowedUrl(responseUrl);
+			const headers: Record<string, string | string[]> = {};
+			for (const [key, value] of Object.entries(response.headers ?? {})) {
+				headers[key.toLowerCase()] = value;
+				headers[key] = value;
+			}
+			this.storeResponseCookies(headers, responseUrl.href);
+			const location = headers.location;
+			if (options.disableRedirects || !REDIRECT_STATUSES.has(response.status) || !location) {
+				return {
+					status: response.status,
+					headers,
+					url: responseUrl.href,
+					async text() {
+						if (typeof response.data === 'string') return response.data;
+						if (response.data === null || response.data === undefined) return '';
+						return JSON.stringify(response.data);
+					},
+					async json<T = unknown>() {
+						if (typeof response.data === 'string') return JSON.parse(response.data) as T;
+						return response.data as T;
+					}
+				};
+			}
+			if (redirects >= MAX_REDIRECTS) throw new Error('HTTP session redirect limit exceeded');
+			const nextUrl = new URL(Array.isArray(location) ? location[0]! : location, responseUrl);
+			this.assertAllowedUrl(nextUrl);
+			const dropsBody =
+				((response.status === 301 || response.status === 302) && method === 'POST') ||
+				(response.status === 303 && method !== 'GET' && method !== 'HEAD');
+			if (dropsBody) {
+				method = 'GET';
+				body = undefined;
+			}
+			if (requestHeaders) {
+				const changesOrigin = nextUrl.origin !== responseUrl.origin;
+				requestHeaders = Object.fromEntries(
+					Object.entries(requestHeaders).filter(
+						([name]) =>
+							!(dropsBody && BODY_HEADERS.has(name.toLowerCase())) &&
+							!(changesOrigin && CREDENTIAL_HEADERS.has(name.toLowerCase()))
+					)
+				);
+			}
+			currentUrl = nextUrl;
+		}
+	}
 
-		const parsedUrl = new URL(url);
-		if (parsedUrl.protocol !== 'https:') {
+	private assertAllowedUrl(url: URL): void {
+		if (url.protocol !== 'https:') {
 			throw new Error('HTTP session requests must use HTTPS');
 		}
-		if (!belongsToDomain(parsedUrl.hostname, this.options.allowedDomains)) {
-			throw new Error(`HTTP session request host is not allowed: ${parsedUrl.hostname}`);
+		if (!belongsToDomain(url.hostname, this.options.allowedDomains)) {
+			throw new Error(`HTTP session request host is not allowed: ${url.hostname}`);
 		}
-		if (options.signal?.aborted) {
-			throw new DOMException('The operation was aborted', 'AbortError');
-		}
+	}
 
+	private assertActive(signal?: AbortSignal): void {
+		if (this.disposed) throw new Error('HTTP session has been disposed');
+		signal?.throwIfAborted();
+	}
+
+	private async requestOnce(url: string, options: HttpSessionRequestOptions) {
 		const requestPromise = CapacitorHttp.request({
 			url,
 			method: options.method ?? 'GET',
 			headers: options.headers,
 			data: options.body,
-			disableRedirects: options.disableRedirects ?? false,
+			// Native redirects cannot enforce the plugin domain boundary at each hop.
+			disableRedirects: true,
 			connectTimeout: options.connectTimeoutMs,
 			readTimeout: options.readTimeoutMs
 		});
@@ -85,38 +167,18 @@ class CapacitorHttpSession implements IHostHttpSession {
 		const abortPromise = new Promise<never>((_, reject) => {
 			if (!options.signal) return;
 			const onAbort = () =>
-				reject(new DOMException('The operation was aborted due to timeout', 'TimeoutError'));
+				reject(
+					options.signal?.reason ?? new DOMException('The operation was aborted', 'AbortError')
+				);
 			options.signal.addEventListener('abort', onAbort, { once: true });
 			cancelListener = () => options.signal?.removeEventListener('abort', onAbort);
+			if (options.signal.aborted) onAbort();
 		});
 
 		try {
-			const response = await Promise.race([requestPromise, abortPromise]);
+			return await Promise.race([requestPromise, abortPromise]);
+		} finally {
 			cancelListener?.();
-			const headers: Record<string, string | string[]> = {};
-			for (const [key, value] of Object.entries(response.headers ?? {})) {
-				headers[key.toLowerCase()] = String(value);
-				headers[key] = String(value);
-			}
-			this.storeResponseCookies(headers, response.url || url);
-
-			return {
-				status: response.status,
-				headers,
-				url: response.url || url,
-				async text() {
-					if (typeof response.data === 'string') return response.data;
-					if (response.data === null || response.data === undefined) return '';
-					return JSON.stringify(response.data);
-				},
-				async json<T = unknown>() {
-					if (typeof response.data === 'string') return JSON.parse(response.data) as T;
-					return response.data as T;
-				}
-			};
-		} catch (error) {
-			cancelListener?.();
-			throw error;
 		}
 	}
 

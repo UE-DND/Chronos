@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
 	share: vi.fn(),
 	prepare: vi.fn(),
 	cancel: vi.fn(),
+	remove: vi.fn(),
 	prepared: undefined as { token: string; target: { buildId: string } } | undefined,
 	host: { buildId: 'old' }
 }));
@@ -15,7 +16,7 @@ vi.mock('@capacitor/core', () => ({
 	registerPlugin: () => ({
 		download: mocks.download,
 		cancel: mocks.cancelPlugin,
-		addListener: async () => ({ remove: vi.fn() })
+		addListener: async () => ({ remove: mocks.remove })
 	})
 }));
 vi.mock('@capacitor/share', () => ({ Share: { share: mocks.share } }));
@@ -68,6 +69,7 @@ describe('iOS package update', () => {
 		mocks.prepare.mockResolvedValue('token');
 		mocks.cancel.mockResolvedValue(undefined);
 		mocks.cancelPlugin.mockResolvedValue(undefined);
+		mocks.remove.mockResolvedValue(undefined);
 		mocks.download.mockResolvedValue({ uri: 'file:///cache/Chronos.ipa', sha256: update.sha256 });
 		mocks.share.mockResolvedValue(undefined);
 	});
@@ -101,11 +103,32 @@ describe('iOS package update', () => {
 	});
 
 	it('reports plugin preparation failures separately from download failures', async () => {
-		mocks.prepare.mockRejectedValueOnce(new Error('offline'));
+		const error = new Error('offline');
+		mocks.prepare.mockRejectedValueOnce(error);
 		await expect(
 			(await action()).applyUpdate({ iosUpdate: update } as never)
-		).rejects.toMatchObject({ code: 'plugin_prepare_failed' });
+		).rejects.toMatchObject({ code: 'plugin_prepare_failed', cause: error });
 		expect(mocks.download).not.toHaveBeenCalled();
+	});
+
+	it('preserves the download failure when listener and preparation cleanup also fail', async () => {
+		const error = new Error('connection failed');
+		mocks.download.mockRejectedValueOnce(error);
+		mocks.remove.mockRejectedValueOnce(new Error('listener cleanup failed'));
+		mocks.cancel.mockRejectedValueOnce(new Error('snapshot cleanup failed'));
+		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			await expect(
+				(await action()).applyUpdate({ iosUpdate: update } as never)
+			).rejects.toMatchObject({
+				code: 'download_failed',
+				cause: error
+			});
+			expect(mocks.cancel).toHaveBeenCalledWith('token');
+			expect(log).toHaveBeenCalledTimes(2);
+		} finally {
+			log.mockRestore();
+		}
 	});
 
 	it('cancels while plugins are still being prepared', async () => {

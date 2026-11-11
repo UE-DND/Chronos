@@ -40,8 +40,8 @@ let lastProgress:
 	| { phase: Exclude<HostUpdatePhase, 'restarting'>; percent: number | null }
 	| undefined;
 
-function coded(code: string, message: string): Error {
-	return Object.assign(new Error(message), { code });
+function coded(code: string, message: string, cause?: unknown): Error {
+	return Object.assign(new Error(message, cause === undefined ? undefined : { cause }), { code });
 }
 
 function errorCode(error: unknown): string {
@@ -63,8 +63,8 @@ async function sharePackage(uri: string, filename: string): Promise<void> {
 	try {
 		await Share.share({ title: filename, url: uri, dialogTitle: filename });
 	} catch (error) {
-		if (isCancelMessage(error)) throw coded('share_canceled', 'Share canceled');
-		throw coded('share_failed', 'Could not share the iOS package');
+		if (isCancelMessage(error)) throw coded('share_canceled', 'Share canceled', error);
+		throw coded('share_failed', 'Could not share the iOS package', error);
 	}
 }
 
@@ -134,15 +134,17 @@ async function downloadPackage(
 				{ signal: current.controller.signal }
 			);
 			if (current.canceled) {
-				await service.cancelHostPreparation(current.token).catch(() => {});
+				await service.cancelHostPreparation(current.token).catch((error: unknown) => {
+					console.error('[iOS updater] Could not cancel plugin preparation:', error);
+				});
 				current.token = undefined;
 				throw coded('download_canceled', 'Update canceled');
 			}
 		} catch (error) {
 			if (errorCode(error) === 'download_canceled') throw error;
 			if (current.canceled || isCancelMessage(error))
-				throw coded('download_canceled', 'Update canceled');
-			throw coded('plugin_prepare_failed', 'Could not prepare installed plugins');
+				throw coded('download_canceled', 'Update canceled', error);
+			throw coded('plugin_prepare_failed', 'Could not prepare installed plugins', error);
 		} finally {
 			current.preparing = false;
 		}
@@ -156,7 +158,10 @@ async function downloadPackage(
 					event.percent
 				);
 			})
-			.catch(() => null);
+			.catch((error: unknown) => {
+				console.error('[iOS updater] Could not attach download progress listener:', error);
+				return null;
+			});
 		try {
 			if (current.canceled) throw coded('download_canceled', 'Update canceled');
 			reportProgress(onProgress, 'downloading', null);
@@ -167,16 +172,20 @@ async function downloadPackage(
 			verified = { sha256: result.sha256, uri: result.uri };
 		} catch (error) {
 			if (current.canceled || isCancelMessage(error))
-				throw coded('download_canceled', 'Update canceled');
+				throw coded('download_canceled', 'Update canceled', error);
 			if (errorCode(error) === 'integrity_mismatch') throw error;
 			const message =
 				error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
 			if (message.includes('integrity') || message.includes('digest') || message.includes('sha256'))
-				throw coded('integrity_mismatch', 'iOS package digest mismatch');
-			throw coded('download_failed', 'Could not download the iOS package');
+				throw coded('integrity_mismatch', 'iOS package digest mismatch', error);
+			throw coded('download_failed', 'Could not download the iOS package', error);
 		} finally {
 			current.downloading = false;
-			await handle?.remove();
+			try {
+				await handle?.remove();
+			} catch (error) {
+				console.error('[iOS updater] Could not remove download progress listener:', error);
+			}
 		}
 
 		const saved = verified;
@@ -187,10 +196,12 @@ async function downloadPackage(
 	} catch (error) {
 		const code = errorCode(error);
 		if (code !== 'share_canceled' && current.token)
-			await service.cancelHostPreparation(current.token).catch(() => {});
+			await service.cancelHostPreparation(current.token).catch((cleanupError: unknown) => {
+				console.error('[iOS updater] Could not cancel plugin preparation:', cleanupError);
+			});
 		if (code === 'share_failed') verified = undefined;
 		if (code) throw error;
-		throw coded('download_failed', 'Could not download the iOS package');
+		throw coded('download_failed', 'Could not download the iOS package', error);
 	} finally {
 		if (active === current) active = undefined;
 		lastProgress = undefined;
@@ -252,10 +263,14 @@ export function createIosUpdateAction(): PlatformUpdateAction {
 					current.controller.abort();
 					await iosPackage()
 						.cancel()
-						.catch(() => {});
+						.catch((error: unknown) => {
+							console.error('[iOS updater] Could not cancel the package download:', error);
+						});
 					if (current.token) {
 						const service = await pluginService();
-						await service.cancelHostPreparation(current.token).catch(() => {});
+						await service.cancelHostPreparation(current.token).catch((error: unknown) => {
+							console.error('[iOS updater] Could not cancel plugin preparation:', error);
+						});
 					}
 				}
 				return {

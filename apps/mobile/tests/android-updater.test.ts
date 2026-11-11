@@ -87,6 +87,55 @@ async function action() {
 }
 
 describe('Android plugin preparation', () => {
+	it('reports a broken progress listener while continuing preparation and notifying other listeners', async () => {
+		const error = new TypeError('progress UI failed');
+		const progress = vi.fn(() => {
+			throw error;
+		});
+		const healthy = vi.fn();
+		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const a = await action();
+		mocks.prepare.mockImplementationOnce(async (_update, onProgress) => {
+			onProgress(37);
+			return 'token';
+		});
+		const running = a.applyUpdate({ androidUpdate: update } as never, { onProgress: progress });
+		const remove = await a.native!.subscribe(healthy);
+		try {
+			await expect(running).resolves.toBeUndefined();
+			expect(mocks.start).toHaveBeenCalledOnce();
+			expect(healthy).toHaveBeenCalledWith(
+				expect.objectContaining({ phase: 'downloading', percent: 37 })
+			);
+			expect(log).toHaveBeenCalledWith(expect.any(String), error);
+		} finally {
+			remove();
+			log.mockRestore();
+		}
+	});
+
+	it('preserves the preparation error when a listener also fails while publishing the failed state', async () => {
+		const failure = new Error('plugin preparation failed');
+		const listenerError = new TypeError('failed-state UI failed');
+		mocks.prepare.mockRejectedValueOnce(failure);
+		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const a = await action();
+		const remove = await a.native!.subscribe((state) => {
+			if (state.phase === 'failed') throw listenerError;
+		});
+		try {
+			await expect(a.applyUpdate({ androidUpdate: update } as never)).rejects.toMatchObject({
+				code: 'plugin_prepare_failed',
+				cause: failure
+			});
+			expect(log).toHaveBeenCalledWith(expect.any(String), listenerError);
+			expect(mocks.start).not.toHaveBeenCalled();
+		} finally {
+			remove();
+			log.mockRestore();
+		}
+	});
+
 	it('prepares all optional plugins before starting the APK and merges repeated clicks', async () => {
 		const gate = deferred<string>();
 		mocks.prepare.mockReturnValueOnce(gate.promise);
@@ -123,6 +172,27 @@ describe('Android plugin preparation', () => {
 		await running;
 		expect(mocks.start).not.toHaveBeenCalled();
 		expect(mocks.release).toHaveBeenCalledWith('token');
+	});
+	it('keeps cancellation as the outcome when snapshot cleanup fails', async () => {
+		const gate = deferred<string>();
+		mocks.prepare.mockReturnValueOnce(gate.promise);
+		mocks.release.mockRejectedValueOnce(new Error('snapshot cleanup failed'));
+		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			const a = await action();
+			const running = a.applyUpdate({ androidUpdate: update } as never);
+			await vi.waitFor(() => expect(mocks.prepare).toHaveBeenCalledOnce());
+			await a.native!.cancelUpdate();
+			gate.resolve('token');
+			await expect(running).resolves.toBeUndefined();
+			expect(mocks.start).not.toHaveBeenCalled();
+			expect(log).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ message: 'snapshot cleanup failed' })
+			);
+		} finally {
+			log.mockRestore();
+		}
 	});
 	it.each(['downloading', 'awaiting-permission', 'awaiting-confirmation'] as const)(
 		'preserves the matching snapshot during %s after restart',

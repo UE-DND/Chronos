@@ -58,7 +58,13 @@ function isActive(state: NativeUpdateState): boolean {
 }
 function publish(state: NativeUpdateState): void {
 	preparationState = state;
-	for (const listener of listeners) listener(state);
+	for (const listener of listeners) {
+		try {
+			listener(state);
+		} catch (error) {
+			console.error('[Android updater] Update listener failed:', error);
+		}
+	}
 }
 async function reconcile(): Promise<NativeUpdateState> {
 	const run = recovery
@@ -155,12 +161,22 @@ function apply(plugin: UpdaterPlugin, update: SelectedAndroidUpdate): Promise<vo
 				startingNative = false;
 				try {
 					await reconcile();
-				} catch {
-					/* Unknown native ownership; retain the snapshot. */
+				} catch (recoveryError) {
+					// Unknown native ownership; retain the snapshot and original start failure.
+					console.error(
+						'[Android updater] Could not reconcile native update ownership:',
+						recoveryError
+					);
 				}
 				throw error;
 			}
-			if (token) await service.cancelHostPreparation(token);
+			if (token) {
+				try {
+					await service.cancelHostPreparation(token);
+				} catch (cleanupError) {
+					console.error('[Android updater] Could not cancel plugin preparation:', cleanupError);
+				}
+			}
 			if (controller.signal.aborted) {
 				publish({ phase: 'canceled', percent: null, canCancel: false });
 				return;

@@ -224,17 +224,14 @@ export function initMobilePlatform(callbacks?: HostPlatformInitCallbacks): () =>
 		if (callbacks?.onDeepLink) {
 			void App.getLaunchUrl()
 				.then((result) => {
-					if (!disposed && result?.url) callbacks.onDeepLink?.(new URL(result.url));
+					if (!disposed && result?.url) deliverDeepLink(result.url);
 				})
-				.catch(() => {});
+				.catch((error: unknown) => {
+					console.error('[Mobile platform] Could not handle launch URL:', error);
+				});
 			trackListener(
 				App.addListener('appUrlOpen', (event) => {
-					try {
-						const url = new URL(event.url);
-						callbacks.onDeepLink?.(url);
-					} catch {
-						// Ignore invalid deep link URLs
-					}
+					if (!disposed) deliverDeepLink(event.url);
 				})
 			);
 		}
@@ -251,6 +248,17 @@ export function initMobilePlatform(callbacks?: HostPlatformInitCallbacks): () =>
 				})
 			);
 		}
+	}
+
+	function deliverDeepLink(raw: string): void {
+		let url: URL;
+		try {
+			url = new URL(raw);
+		} catch (error) {
+			if (!(error instanceof TypeError)) throw error;
+			return;
+		}
+		callbacks?.onDeepLink?.(url);
 	}
 
 	return () => {

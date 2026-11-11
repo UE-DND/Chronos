@@ -385,6 +385,40 @@ describe('mobile-platform-adapter', () => {
 			handlers.appStateChange?.({ isActive: true });
 			expect(onAppResume).toHaveBeenCalled();
 		});
+
+		it('ignores invalid deep-link URLs but propagates callback failures for valid events', async () => {
+			capacitorState.isNative = true;
+			const handlers: Record<string, (ev: unknown) => void> = {};
+			mockApp.addListener.mockImplementation((event: string, handler: (ev: unknown) => void) => {
+				handlers[event] = handler;
+				return Promise.resolve({ remove: vi.fn() });
+			});
+			const error = new TypeError('navigation failed');
+			const onDeepLink = vi.fn(() => {
+				throw error;
+			});
+			teardown = initMobilePlatform({ onDeepLink });
+			expect(() => handlers.appUrlOpen?.({ url: 'invalid url' })).not.toThrow();
+			expect(onDeepLink).not.toHaveBeenCalled();
+			expect(() => handlers.appUrlOpen?.({ url: 'chronos://s#payload' })).toThrow(error);
+		});
+
+		it('reports a cold-start deep-link callback failure', async () => {
+			capacitorState.isNative = true;
+			mockApp.getLaunchUrl.mockResolvedValue({ url: 'chronos://s#payload' });
+			const error = new TypeError('navigation failed');
+			const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+			try {
+				teardown = initMobilePlatform({
+					onDeepLink: () => {
+						throw error;
+					}
+				});
+				await vi.waitFor(() => expect(log).toHaveBeenCalledWith(expect.any(String), error));
+			} finally {
+				log.mockRestore();
+			}
+		});
 	});
 
 	describe('status bar and splash screen', () => {
