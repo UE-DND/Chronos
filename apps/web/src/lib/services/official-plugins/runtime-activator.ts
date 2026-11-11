@@ -52,9 +52,9 @@ export class OfficialPluginRuntimeActivator {
 			: undefined;
 		let verifiedWallpaper: Blob | undefined;
 		if (record.wallpaperAssetId || wallpaper) {
-			const blob = record.wallpaperAssetId
-				? await this.images.get(record.wallpaperAssetId)
-				: undefined;
+			const blob =
+				record.wallpaperBlob ??
+				(record.wallpaperAssetId ? await this.images.get(record.wallpaperAssetId) : undefined);
 			if (
 				!blob ||
 				!wallpaper ||
@@ -71,7 +71,7 @@ export class OfficialPluginRuntimeActivator {
 
 		const disposables: Disposable[] = [];
 		try {
-			disposables.push(...(await this.activateThemeAssets(record)));
+			disposables.push(...(await this.activateThemeAssets(record, verifiedWallpaper)));
 			disposables.push(...(await this.activateBundledPlugin(record)));
 			if (record.code && record.colorsJson) {
 				const snapshot = createThemeFromColorJson(
@@ -125,7 +125,10 @@ export class OfficialPluginRuntimeActivator {
 		}
 	}
 
-	private async activateThemeAssets(record: InstalledOfficialPluginRecord): Promise<Disposable[]> {
+	private async activateThemeAssets(
+		record: InstalledOfficialPluginRecord,
+		wallpaper?: Blob
+	): Promise<Disposable[]> {
 		const manifest = record.manifest;
 		if (!record.colorsJson && !record.iconThemeJson) return [];
 
@@ -139,9 +142,6 @@ export class OfficialPluginRuntimeActivator {
 			: undefined;
 		const disposables: Disposable[] = [];
 		if (colorTheme && !record.code) {
-			const wallpaper = record.wallpaperAssetId
-				? await this.images.get(record.wallpaperAssetId)
-				: undefined;
 			if (record.wallpaperAssetId && !wallpaper) throw new Error('Missing cached theme wallpaper');
 			disposables.push(
 				this.engine.themes.registerTheme(

@@ -7,10 +7,11 @@ import type { InstalledOfficialPluginRecord } from '#lib/services/official-plugi
 function fixture() {
 	const metadata = new Map<string, { valueJson: string }>();
 	const resources = new Map<string, Record<string, unknown>>();
+	const images = new Map<string, { id: string; blob: Blob }>();
 	const database = {
 		pluginData: {
 			get: async (id: string) => metadata.get(id),
-			put: async (row: { id: string; valueJson: string }) => metadata.set(row.id, row)
+			put: vi.fn(async (row: { id: string; valueJson: string }) => metadata.set(row.id, row))
 		},
 		pluginResources: {
 			get: vi.fn(async (id: string) => resources.get(id)),
@@ -20,10 +21,28 @@ function fixture() {
 				for (const id of ids) resources.delete(id);
 			})
 		},
-		transaction: async (_mode: string, _tables: unknown, action: () => Promise<unknown>) => action()
+		images: {
+			put: vi.fn(async (row: { id: string; blob: Blob }) => images.set(row.id, row)),
+			toCollection: () => ({ primaryKeys: async () => [...images.keys()] }),
+			bulkDelete: vi.fn(async (ids: string[]) => {
+				for (const id of ids) images.delete(id);
+			})
+		},
+		transaction: vi.fn(async (_mode: string, _tables: unknown, action: () => Promise<unknown>) => {
+			const before = [new Map(metadata), new Map(resources), new Map(images)];
+			try {
+				return await action();
+			} catch (error) {
+				for (const [index, target] of [metadata, resources, images].entries()) {
+					target.clear();
+					for (const [key, value] of before[index]!) target.set(key, value as never);
+				}
+				throw error;
+			}
+		})
 	};
 	const repository = createPluginInstallationRepository(database as unknown as ChronosDB);
-	return { repository, database, metadata, resources };
+	return { repository, database, metadata, resources, images };
 }
 const record = (code: string): InstalledOfficialPluginRecord => ({
 	manifest: { id: 'plugin', version: '1' } as never,
@@ -31,6 +50,98 @@ const record = (code: string): InstalledOfficialPluginRecord => ({
 	installedAt: 1,
 	code,
 	cssCode: 'css'
+});
+
+describe('plugin image transactions', () => {
+	it('commits wallpaper bytes with metadata and retains current and prepared references', async () => {
+		const { repository, database, images, metadata } = fixture();
+		const wallpaper = new Blob(['current']);
+		await repository.transaction((state) => {
+			state.records = [
+				{ ...record('current'), wallpaperAssetId: 'theme:current', wallpaperBlob: wallpaper }
+			];
+			state.prepared = {
+				target: { buildId: 'next' } as never,
+				revision: 0,
+				token: 'token',
+				until: 100,
+				records: [
+					{
+						...record('future'),
+						wallpaperAssetId: 'theme:future',
+						wallpaperBlob: new Blob(['future'])
+					}
+				]
+			};
+		});
+		expect(database.transaction).toHaveBeenCalledWith(
+			'rw',
+			expect.arrayContaining([database.images]),
+			expect.any(Function)
+		);
+		expect(images.get('theme:current')?.blob).toBe(wallpaper);
+		expect(images.has('theme:future')).toBe(true);
+		expect([...metadata.values()][0]!.valueJson).not.toContain('wallpaperBlob');
+		await repository.transaction((state) => {
+			delete state.prepared;
+		});
+		expect([...images.keys()]).toEqual(['theme:current']);
+	});
+
+	it('rolls back wallpaper and executable bytes when metadata commit fails', async () => {
+		const { repository, database, images, resources } = fixture();
+		await repository.transaction((state) => {
+			state.records = [record('before')];
+		});
+		database.pluginData.put.mockRejectedValueOnce(new Error('commit failed'));
+		await expect(
+			repository.transaction((state) => {
+				state.records = [
+					{ ...record('after'), wallpaperAssetId: 'theme:new', wallpaperBlob: new Blob(['new']) }
+				];
+			})
+		).rejects.toThrow('commit failed');
+		expect(images.size).toBe(0);
+		expect(resources.size).toBe(1);
+		expect((await repository.read()).records[0]?.code).toBe('before');
+	});
+
+	it('collects crash leftovers while preserving user images and another repository preparation', async () => {
+		const { repository, database, images } = fixture();
+		images.set('custom-wallpaper', { id: 'custom-wallpaper', blob: new Blob(['user']) });
+		images.set('theme:orphan', { id: 'theme:orphan', blob: new Blob(['orphan']) });
+		await repository.transaction((state) => {
+			state.records = [
+				{
+					...record('current'),
+					wallpaperAssetId: 'theme:current',
+					wallpaperBlob: new Blob(['current'])
+				}
+			];
+			state.prepared = {
+				target: { buildId: 'next' } as never,
+				revision: 0,
+				token: 'token',
+				until: 100,
+				records: [
+					{
+						...record('future'),
+						wallpaperAssetId: 'theme:future',
+						wallpaperBlob: new Blob(['future'])
+					}
+				]
+			};
+		});
+		const other = createPluginInstallationRepository(database as unknown as ChronosDB);
+		await other.transaction((state) => {
+			state.seeded = true;
+		});
+		expect([...images.keys()].sort()).toEqual([
+			'custom-wallpaper',
+			'theme:current',
+			'theme:future'
+		]);
+	});
 });
 
 describe('plugin installation resources', () => {

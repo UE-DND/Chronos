@@ -46,6 +46,11 @@ export class PluginOperationCoordinator implements Disposable {
 		await Promise.allSettled(tails);
 	}
 
+	/** Waits for the operations currently queued for one plugin. */
+	async waitForSettled(pluginId: string): Promise<void> {
+		await this.chains.get(pluginId)?.tail;
+	}
+
 	async run<T>(
 		pluginId: string,
 		operation: (handle: PluginOperationHandle) => Promise<T>,

@@ -1,6 +1,5 @@
 import { dev } from '$app/env';
 import type { HostBuildIdentity } from '@chronos/core';
-import type { ImageRepository } from '#lib/storage/image-repository.ts';
 import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 import { mergeAbortSignals } from '#lib/utils/abort-signal.ts';
 import type { OfficialPluginAssetPipeline } from './asset-pipeline';
@@ -25,7 +24,6 @@ interface HostUpdateTransactionDeps {
 	installedStore: OfficialPluginInstalledStore;
 	catalogClient: OfficialPluginCatalogClient;
 	assetPipeline: OfficialPluginAssetPipeline;
-	images: ImageRepository;
 	waitForPluginChanges(): Promise<void>;
 }
 
@@ -73,18 +71,8 @@ export class HostUpdateTransactionService {
 				}
 			}
 
-			const previous = this.deps.installedStore
-				.getCache()
-				.flatMap((record) => (record.wallpaperAssetId ? [record.wallpaperAssetId] : []));
-
 			signal.throwIfAborted();
 			await this.deps.installedStore.startHost(this.hostBuild, generation);
-			const retained = new Set(
-				this.deps.installedStore.getCache().map((record) => record.wallpaperAssetId)
-			);
-			await Promise.all(
-				previous.filter((id) => !retained.has(id)).map((id) => this.deps.images.delete(id))
-			);
 		}
 		this.loaded = true;
 	}
@@ -122,7 +110,6 @@ export class HostUpdateTransactionService {
 					!update.requiredPluginIds.includes(record.manifest.id)
 			);
 		const prepared: InstalledOfficialPluginRecord[] = [];
-		const wallpaperIds: string[] = [];
 		try {
 			signal.throwIfAborted();
 			const catalog = installed.length
@@ -147,8 +134,6 @@ export class HostUpdateTransactionService {
 				let wallpaperAssetId: string | undefined;
 				if (assets.wallpaper) {
 					wallpaperAssetId = `theme:${manifest.id}:${crypto.randomUUID()}`;
-					await this.deps.images.put(wallpaperAssetId, assets.wallpaper);
-					wallpaperIds.push(wallpaperAssetId);
 				}
 				prepared.push({
 					...record,
@@ -159,6 +144,7 @@ export class HostUpdateTransactionService {
 					manifest,
 					manifestUrl: url,
 					wallpaperAssetId,
+					wallpaperBlob: assets.wallpaper,
 					acceptedHostVersion: update.host.version
 				});
 				progress?.(Math.round(((index + 1) / installed.length) * 100));
@@ -173,9 +159,6 @@ export class HostUpdateTransactionService {
 				until: update.host.target === 'mobile' ? null : Date.now() + 180_000
 			});
 			return token;
-		} catch (error) {
-			await Promise.all(wallpaperIds.map((id) => this.deps.images.delete(id)));
-			throw error;
 		} finally {
 			merged.dispose();
 		}
@@ -183,19 +166,7 @@ export class HostUpdateTransactionService {
 
 	async cancel(token: string): Promise<void> {
 		await this.deps.installedStore.load();
-		const prepared = await this.deps.installedStore.cancelPreparation(token);
-		if (prepared) {
-			const retained = new Set(
-				this.deps.installedStore.getCache().map((record) => record.wallpaperAssetId)
-			);
-			await Promise.all(
-				prepared.records.flatMap((record) =>
-					record.wallpaperAssetId && !retained.has(record.wallpaperAssetId)
-						? [this.deps.images.delete(record.wallpaperAssetId)]
-						: []
-				)
-			);
-		}
+		await this.deps.installedStore.cancelPreparation(token);
 	}
 
 	async assertResetAllowed(): Promise<void> {

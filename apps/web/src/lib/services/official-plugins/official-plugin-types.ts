@@ -11,6 +11,8 @@ export interface InstalledOfficialPluginRecord {
 	origin: { kind: 'user' } | { kind: 'profile'; profileId: string };
 	initialConfig?: Record<string, unknown>;
 	wallpaperAssetId?: string;
+	/** Downloaded bytes carried only until the image and installation commit together. */
+	wallpaperBlob?: Blob;
 	manifest: PluginManifest;
 	code?: string | null;
 	colorsJson?: string | null;

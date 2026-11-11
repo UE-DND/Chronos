@@ -1,4 +1,5 @@
 import { storageNamespace } from '#lib/storage/storage-namespace.ts';
+import { CUSTOM_WALLPAPER_KEY, type ImageRepository } from '#lib/storage/image-repository.ts';
 import type { ChronosEngine, Disposable, HostBuildIdentity } from '@chronos/core';
 import {
 	INSTALLED_STORAGE_KEY,
@@ -89,7 +90,10 @@ export function parseInstallationState(value: unknown): PluginInstallationState 
 
 // Non-browser hosts and tests share a queue per storage port. Browser production uses a Dexie transaction.
 const queues = new WeakMap<object, Promise<unknown>>();
-function storageRepository(engine: ChronosEngine): PluginInstallationRepository {
+function storageRepository(
+	engine: ChronosEngine,
+	images?: Pick<ImageRepository, 'put' | 'delete'>
+): PluginInstallationRepository {
 	const read = async () =>
 		structuredClone(
 			parseInstallationState(
@@ -103,12 +107,49 @@ function storageRepository(engine: ChronosEngine): PluginInstallationRepository 
 				.catch(() => {})
 				.then(async () => {
 					const state = await read();
-					change(state);
-					await engine.storage.setPluginData(
-						OFFICIAL_PLUGINS_PLUGIN_ID,
-						INSTALLED_STORAGE_KEY,
-						state
+					const records = (value: PluginInstallationState) => [
+						...value.records,
+						...(value.prepared?.records ?? [])
+					];
+					const previousImages = new Set(
+						records(state).flatMap((record) =>
+							record.wallpaperAssetId ? [record.wallpaperAssetId] : []
+						)
 					);
+					change(state);
+					state.records = state.records.map((record) => ({ ...record }));
+					if (state.prepared)
+						state.prepared = {
+							...state.prepared,
+							records: state.prepared.records.map((record) => ({ ...record }))
+						};
+					const staged: string[] = [];
+					try {
+						for (const record of records(state)) {
+							if (record.wallpaperBlob) {
+								if (!images || !record.wallpaperAssetId)
+									throw new Error('Host image storage is required for wallpaper installation');
+								await images.put(record.wallpaperAssetId, record.wallpaperBlob);
+								staged.push(record.wallpaperAssetId);
+							}
+							delete record.wallpaperBlob;
+						}
+						await engine.storage.setPluginData(
+							OFFICIAL_PLUGINS_PLUGIN_ID,
+							INSTALLED_STORAGE_KEY,
+							state
+						);
+					} catch (error) {
+						await Promise.all(staged.map((id) => images!.delete(id).catch(console.error)));
+						throw error;
+					}
+					const retained = new Set(records(state).map((record) => record.wallpaperAssetId));
+					if (images)
+						await Promise.all(
+							[...previousImages]
+								.filter((id) => id !== CUSTOM_WALLPAPER_KEY && !retained.has(id))
+								.map((id) => images.delete(id).catch(console.error))
+						);
 					return state;
 				});
 			queues.set(engine.storage, operation);
@@ -123,8 +164,12 @@ export class OfficialPluginInstalledStore {
 	private listeners = new Set<() => void>();
 	private repository: PluginInstallationRepository;
 	private channel?: BroadcastChannel;
-	constructor(engine: ChronosEngine, repository?: PluginInstallationRepository) {
-		this.repository = repository ?? storageRepository(engine);
+	constructor(
+		engine: ChronosEngine,
+		repository?: PluginInstallationRepository,
+		images?: Pick<ImageRepository, 'put' | 'delete'>
+	) {
+		this.repository = repository ?? storageRepository(engine, images);
 		if (repository && typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
 			this.channel = new BroadcastChannel(storageNamespace.key('plugin-installations'));
 			this.channel.onmessage = () => {

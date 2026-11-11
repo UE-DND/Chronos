@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 import type { ChronosEngine, PluginManifest } from '@chronos/core';
-import type { ImageRepository } from '#lib/storage/image-repository.ts';
 import { OfficialPluginService } from './official-plugin-service';
 import { OfficialPluginInstalledStore } from './installed-store';
 import type { OfficialPluginAssetPipeline } from './asset-pipeline';
 import type { OfficialPluginRuntimeActivator } from './runtime-activator';
 import type { OfficialPluginCatalogClient } from './catalog-client';
+import type { InstalledOfficialPluginRecord } from './official-plugin-types';
 
 const manifest = {
 	id: 'theme-image',
@@ -28,17 +28,15 @@ async function setup() {
 			clearPluginData: vi.fn()
 		},
 		notify: vi.fn(),
-		assertPluginRemovable: vi.fn()
+		assertPluginRemovable: vi.fn(),
+		clearDefaultTheme: vi.fn()
 	} as unknown as ChronosEngine;
-	const store = new OfficialPluginInstalledStore(engine);
 	const initial = {
 		manifest,
 		origin: { kind: 'user' as const },
 		installedAt: 1,
 		wallpaperAssetId: 'old-image'
 	};
-	await store.upsert(initial);
-	const previous = store.find(manifest.id)!;
 	const blobs = new Map<string, Blob>([
 		['old-image', new Blob(['old'])],
 		['custom-wallpaper', new Blob(['user'])]
@@ -51,21 +49,26 @@ async function setup() {
 			blobs.delete(id);
 		})
 	};
+	const store = new OfficialPluginInstalledStore(engine, undefined, images);
+	await store.upsert(initial);
+	const previous = store.find(manifest.id)!;
 	const nextBlob = new Blob(['new']);
 	const download = vi.fn().mockResolvedValue({ colorsJson: '{}', wallpaper: nextBlob });
 	let active = true;
 	const runtime = {
 		isActive: () => active,
-		activate: vi.fn(async () => {
+		activate: vi.fn(async (_record: InstalledOfficialPluginRecord) => {
 			active = true;
 		}),
 		deactivate: vi.fn(async () => {
 			active = false;
-		})
+		}),
+		disposeAll: () => {
+			active = false;
+		}
 	};
 	const service = new OfficialPluginService(engine, {
 		installedStore: store,
-		images: images as unknown as ImageRepository,
 		runtimeActivator: runtime as unknown as OfficialPluginRuntimeActivator,
 		assetPipeline: { download } as unknown as OfficialPluginAssetPipeline,
 		catalogClient: {} as OfficialPluginCatalogClient
@@ -73,6 +76,78 @@ async function setup() {
 	return { engine, service, store, previous, blobs, images, nextBlob, runtime, persist, download };
 }
 describe('theme image replacement lifecycle', () => {
+	it('does not revive a plugin removed by another window during asynchronous rollback', async () => {
+		const { engine, service, store, runtime } = await setup();
+		vi.spyOn(service, 'retryPendingUpdates').mockResolvedValue();
+		await service.install(manifest);
+		await service.init();
+		const other = new OfficialPluginInstalledStore(engine);
+		const started = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		const activate = runtime.activate.getMockImplementation()!;
+		runtime.activate.mockRejectedValueOnce(new Error('candidate failed'));
+		runtime.activate.mockImplementationOnce(async (record) => {
+			started.resolve();
+			await release.promise;
+			await activate(record);
+		});
+		const installing = service.install(manifest);
+		const rejected = expect(installing).rejects.toThrow('candidate failed');
+		try {
+			await started.promise;
+			await other.remove(manifest.id);
+			await store.load();
+			const loading = vi.spyOn(store, 'load');
+			store.notify();
+			await vi.waitFor(() => expect(loading).toHaveBeenCalled());
+			release.resolve();
+			await rejected;
+			await vi.waitFor(() => expect(service.isPluginActive(manifest.id)).toBe(false));
+			expect(service.getInstalled(manifest.id)).toBeUndefined();
+		} finally {
+			release.resolve();
+			service.dispose();
+			other.dispose();
+			vi.restoreAllMocks();
+		}
+	});
+
+	it('reconciles external replacement after a busy local installation fails', async () => {
+		const { engine, service, store, runtime } = await setup();
+		vi.spyOn(service, 'retryPendingUpdates').mockResolvedValue();
+		await service.install(manifest);
+		await service.init();
+		const other = new OfficialPluginInstalledStore(engine);
+		const started = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		runtime.activate.mockImplementationOnce(async () => {
+			started.resolve();
+			await release.promise;
+			throw new Error('candidate failed');
+		});
+		const installing = service.install(manifest);
+		const rejected = expect(installing).rejects.toThrow('candidate failed');
+		try {
+			await started.promise;
+			await other.upsert({ ...store.find(manifest.id)!, colorsJson: '{"replacement":true}' });
+			await store.load();
+			const loading = vi.spyOn(store, 'load');
+			store.notify();
+			await vi.waitFor(() => expect(loading).toHaveBeenCalled());
+			release.resolve();
+			await rejected;
+			await vi.waitFor(() => expect(service.isPluginActive(manifest.id)).toBe(true));
+			expect(runtime.activate).toHaveBeenLastCalledWith(
+				expect.objectContaining({ colorsJson: '{"replacement":true}' })
+			);
+		} finally {
+			release.resolve();
+			service.dispose();
+			other.dispose();
+			vi.restoreAllMocks();
+		}
+	});
+
 	it('keeps old resources until persistence succeeds, then retires only the old theme image', async () => {
 		const { service, store, blobs, nextBlob, runtime } = await setup();
 		await service.install(manifest);
@@ -87,32 +162,21 @@ describe('theme image replacement lifecycle', () => {
 		expect([...blobs.keys()]).toEqual(['custom-wallpaper']);
 	});
 	it.each([
-		{ stage: 'wallpaper', reinstall: false },
-		{ stage: 'wallpaper', reinstall: true },
 		{ stage: 'activation', reinstall: false },
 		{ stage: 'activation', reinstall: true }
 	])(
 		'rejects a stale install after another window removes it during $stage (reinstall=$reinstall)',
 		async ({ stage, reinstall }) => {
-			const { engine, service, store, previous, blobs, images, runtime } = await setup();
+			const { engine, service, store, previous, blobs, runtime } = await setup();
 			const other = new OfficialPluginInstalledStore(engine);
 			const started = Promise.withResolvers<void>();
 			const release = Promise.withResolvers<void>();
-			if (stage === 'wallpaper') {
-				const put = images.put.getMockImplementation()!;
-				images.put.mockImplementationOnce(async (id, blob) => {
-					started.resolve();
-					await release.promise;
-					await put(id, blob);
-				});
-			} else {
-				const activate = runtime.activate.getMockImplementation()!;
-				runtime.activate.mockImplementationOnce(async () => {
-					await activate();
-					started.resolve();
-					await release.promise;
-				});
-			}
+			const activate = runtime.activate.getMockImplementation()!;
+			runtime.activate.mockImplementationOnce(async (record) => {
+				await activate(record);
+				started.resolve();
+				await release.promise;
+			});
 			const installing = service.install(manifest);
 			const rejected = expect(installing).rejects.toThrow('Plugin changed');
 			await started.promise;

@@ -1,4 +1,5 @@
 import type { ChronosDB, PluginResourceRow } from './db';
+import { CUSTOM_WALLPAPER_KEY } from './image-repository';
 import {
 	isPreparationActive,
 	parseInstallationState,
@@ -56,7 +57,12 @@ export function createPluginInstallationRepository(
 	const readMetadata = async () => {
 		const row = await database.pluginData.get(id);
 		const state = parseInstallationState(row ? JSON.parse(row.valueJson) : null);
-		if (allRecords(state).some((record) => !record.resourceId || hasInlineResources(record))) {
+		if (
+			allRecords(state).some(
+				(record) =>
+					!record.resourceId || hasInlineResources(record) || Object.hasOwn(record, 'wallpaperBlob')
+			)
+		) {
 			throw new Error('Invalid plugin resource references; reset development data manually');
 		}
 		return state;
@@ -96,13 +102,26 @@ export function createPluginInstallationRepository(
 			const assets = new Map(cached);
 			const result = await database.transaction(
 				'rw',
-				[database.pluginData, database.pluginResources],
+				[database.pluginData, database.pluginResources, database.images],
 				async () => {
 					const state = await hydrate(await readMetadata(), assets);
 					const previous = new Set(allRecords(state).map((record) => record.resourceId!));
+					const previousImages = new Set(
+						allRecords(state).flatMap((record) =>
+							record.wallpaperAssetId ? [record.wallpaperAssetId] : []
+						)
+					);
 					change(state);
 					copyInstallationRecords(state);
 					for (const record of allRecords(state)) {
+						if (record.wallpaperBlob) {
+							if (!record.wallpaperAssetId) throw new Error('Missing wallpaper asset identity');
+							await database.images.put({
+								id: record.wallpaperAssetId,
+								blob: record.wallpaperBlob
+							});
+						}
+						delete record.wallpaperBlob;
 						if (hasInlineResources(record) || !record.resourceId) {
 							const existing = record.resourceId
 								? (assets.get(record.resourceId) ??
@@ -121,6 +140,19 @@ export function createPluginInstallationRepository(
 					const obsolete = [...previous].filter((key) => !retained.has(key));
 					await database.pluginResources.bulkDelete(obsolete);
 					for (const key of assets.keys()) if (!retained.has(key)) assets.delete(key);
+					const retainedImages = new Set(
+						allRecords(state).flatMap((record) =>
+							record.wallpaperAssetId ? [record.wallpaperAssetId] : []
+						)
+					);
+					const imageIds = await database.images.toCollection().primaryKeys();
+					const obsoleteImages = imageIds.filter(
+						(key) =>
+							key !== CUSTOM_WALLPAPER_KEY &&
+							!retainedImages.has(key) &&
+							(previousImages.has(key) || key.startsWith('theme:'))
+					);
+					if (obsoleteImages.length) await database.images.bulkDelete(obsoleteImages);
 					await database.pluginData.put({
 						id,
 						pluginId: OFFICIAL_PLUGINS_PLUGIN_ID,

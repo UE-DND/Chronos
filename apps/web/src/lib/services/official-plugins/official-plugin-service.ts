@@ -49,7 +49,6 @@ export interface OfficialPluginServiceDeps {
 	installQueue?: OfficialPluginInstallQueue;
 	hostVersion?: string;
 	hostBuild?: HostBuildIdentity;
-	images?: ImageRepository;
 }
 
 function createOfficialPluginServiceDeps(
@@ -67,7 +66,6 @@ function createOfficialPluginServiceDeps(
 	);
 	return {
 		hostBuild: HOST_BUILD,
-		images: new ImageRepository(database),
 		catalogClient: new OfficialPluginCatalogClient(engine),
 		assetPipeline: new OfficialPluginAssetPipeline(engine),
 		installedStore,
@@ -80,7 +78,6 @@ export function createOfficialPluginService(engine: ChronosEngine, database?: Ch
 }
 
 export class OfficialPluginService implements Disposable {
-	private readonly images: ImageRepository;
 	private profile?: ChronosProfile;
 	private failures = new Map<string, string>();
 	private initialized = false;
@@ -100,6 +97,8 @@ export class OfficialPluginService implements Disposable {
 	>();
 	private storeSubscription?: Disposable;
 	private reconciling?: Promise<void>;
+	private reconcileRequested = false;
+	private readonly deferredReconciles = new Map<string, Promise<void>>();
 
 	isPreinstalledPlugin(id: string): boolean {
 		return this.profile?.preinstall.some((entry) => entry.id === id) ?? false;
@@ -125,7 +124,8 @@ export class OfficialPluginService implements Disposable {
 		const cached = this.installedStore.find(id);
 		if (cached && this.isCompatible(cached)) {
 			try {
-				await this.runtimeActivator.activate(cached);
+				if (!(await this.activateCachedRecord(cached)))
+					throw new Error('Default theme changed during activation');
 				this.engine.validateDefaultTheme(profile.defaultTheme);
 				if (this.installedStore.getRemoved().includes(id)) await this.installedStore.upsert(cached);
 			} catch (error) {
@@ -178,7 +178,7 @@ export class OfficialPluginService implements Disposable {
 				const cached = this.installedStore.find(entry.id);
 				if (cached && this.isCompatible(cached)) {
 					try {
-						await this.runtimeActivator.activate(cached);
+						if (!(await this.activateCachedRecord(cached))) await this.installPreinstall(entry.id);
 					} catch {
 						await this.installPreinstall(entry.id);
 					}
@@ -208,7 +208,6 @@ export class OfficialPluginService implements Disposable {
 		deps?: OfficialPluginServiceDeps
 	) {
 		const resolved = deps ?? createOfficialPluginServiceDeps(engine);
-		this.images = resolved.images ?? new ImageRepository();
 		this.catalogClient = resolved.catalogClient;
 		this.assetPipeline = resolved.assetPipeline;
 		this.installedStore = resolved.installedStore;
@@ -218,7 +217,6 @@ export class OfficialPluginService implements Disposable {
 			installedStore: this.installedStore,
 			catalogClient: this.catalogClient,
 			assetPipeline: this.assetPipeline,
-			images: this.images,
 			waitForPluginChanges: async () => {
 				await this.operations.waitForAllSettled();
 				if (this.syncPromise) await this.syncPromise.catch(() => {});
@@ -261,14 +259,38 @@ export class OfficialPluginService implements Disposable {
 				if (typeof window !== 'undefined') window.location.reload();
 				return;
 			}
-			if (!this.reconciling)
-				this.reconciling = this.reconcileRuntime()
-					.catch((error) => console.error('[plugin-reconcile]', error))
-					.finally(() => {
-						this.reconciling = undefined;
-					});
+			this.requestRuntimeReconcile();
 		});
+		if (this.reconcileRequested) this.requestRuntimeReconcile();
 		this.setupDevHmr();
+	}
+	private requestRuntimeReconcile(): void {
+		if (this.disposed || this.factoryResetting) return;
+		this.reconcileRequested = true;
+		if (this.reconciling) return;
+		// Start in a microtask so notifications during the first pass see its promise.
+		this.reconciling = Promise.resolve()
+			.then(async () => {
+				while (this.reconcileRequested && !this.disposed && !this.factoryResetting) {
+					this.reconcileRequested = false;
+					await this.reconcileRuntime();
+				}
+			})
+			.catch((error) => console.error('[plugin-reconcile]', error))
+			.finally(() => {
+				this.reconciling = undefined;
+				if (this.reconcileRequested) this.requestRuntimeReconcile();
+			});
+	}
+	private reconcileAfterOperation(pluginId: string): void {
+		if (this.deferredReconciles.has(pluginId)) return;
+		const operations = this.operations;
+		const settled = operations.waitForSettled(pluginId).then(() => {
+			if (this.deferredReconciles.get(pluginId) !== settled) return;
+			this.deferredReconciles.delete(pluginId);
+			if (this.operations === operations) this.requestRuntimeReconcile();
+		});
+		this.deferredReconciles.set(pluginId, settled);
 	}
 
 	private async syncWithHostCatalog(): Promise<void> {
@@ -323,18 +345,29 @@ export class OfficialPluginService implements Disposable {
 		return operation;
 	}
 	private async reconcileRuntime(): Promise<void> {
-		if (this.factoryResetting) return;
+		if (this.factoryResetting || this.disposed) return;
+		await this.installedStore.load();
+		this.lifecycle.signal.throwIfAborted();
 		for (const id of this.activeVersions.keys()) {
-			if (this.operations.isBusy(id)) continue;
-			const record = this.installedStore.find(id);
-			if (
-				!record ||
-				!this.isCompatible(record) ||
-				this.activeVersions.get(id) !== record.revision
-			) {
-				await this.runtimeActivator.deactivate(id, { revertThemes: false });
-				this.activeVersions.delete(id);
+			if (this.operations.isBusy(id)) {
+				this.reconcileAfterOperation(id);
+				continue;
 			}
+			await this.operations.run(
+				id,
+				async () => {
+					const record = this.installedStore.find(id);
+					if (
+						!record ||
+						!this.isCompatible(record) ||
+						this.activeVersions.get(id) !== record.revision
+					) {
+						await this.runtimeActivator.deactivate(id, { revertThemes: false });
+						this.activeVersions.delete(id);
+					}
+				},
+				{ signal: this.lifecycle.signal }
+			);
 		}
 		if (!this.installedStore.isFrozen)
 			await this.activateInstalledFromCache({
@@ -342,6 +375,48 @@ export class OfficialPluginService implements Disposable {
 			});
 	}
 	private activeVersions = new Map<string, number | undefined>();
+	private async activateCachedRecord(record: InstalledOfficialPluginRecord): Promise<boolean> {
+		return this.operations.run(
+			record.manifest.id,
+			async ({ signal }) => {
+				await this.installedStore.load();
+				signal.throwIfAborted();
+				const current = this.installedStore.find(record.manifest.id);
+				if (!current || current.revision !== record.revision || !this.isCompatible(current)) {
+					this.reconcileRequested = true;
+					return false;
+				}
+				if (
+					this.runtimeActivator.isActive(record.manifest.id) &&
+					this.activeVersions.get(record.manifest.id) === record.revision
+				)
+					return true;
+				let activated = false;
+				try {
+					await this.runtimeActivator.activate(record);
+					activated = true;
+					await this.installedStore.load();
+					signal.throwIfAborted();
+					const retained = this.installedStore.find(record.manifest.id);
+					if (!retained || retained.revision !== record.revision || !this.isCompatible(retained)) {
+						await this.runtimeActivator.deactivate(record.manifest.id, { revertThemes: false });
+						this.activeVersions.delete(record.manifest.id);
+						this.reconcileRequested = true;
+						return false;
+					}
+					this.activeVersions.set(record.manifest.id, record.revision);
+					return true;
+				} catch (error) {
+					if (activated) {
+						await this.runtimeActivator.deactivate(record.manifest.id, { revertThemes: false });
+						this.activeVersions.delete(record.manifest.id);
+					}
+					throw error;
+				}
+			},
+			{ signal: this.lifecycle.signal }
+		);
+	}
 	async prepareHostUpdate(
 		update: HostPluginPreparation,
 		progress?: (percent: number) => void,
@@ -370,7 +445,15 @@ export class OfficialPluginService implements Disposable {
 	private async activateInstalledFromCache(options?: { skipIds?: Set<string> }): Promise<void> {
 		for (const record of this.installedStore.getCache()) {
 			this.lifecycle.signal.throwIfAborted();
-			if (options?.skipIds?.has(record.manifest.id)) continue;
+			if (options?.skipIds?.has(record.manifest.id) || this.operations.isBusy(record.manifest.id)) {
+				this.reconcileAfterOperation(record.manifest.id);
+				continue;
+			}
+			const current = this.installedStore.find(record.manifest.id);
+			if (!current || current.revision !== record.revision) {
+				this.reconcileRequested = true;
+				continue;
+			}
 			if (!this.isCompatible(record)) {
 				this.updateStatuses.set(record.manifest.id, {
 					status: isOfficialCatalogManifestUrl(record.manifestUrl, record.manifest.id)
@@ -381,10 +464,11 @@ export class OfficialPluginService implements Disposable {
 			}
 			if (!this.runtimeActivator.isActive(record.manifest.id)) {
 				try {
-					await this.runtimeActivator.activate(record);
+					if (!(await this.activateCachedRecord(record))) continue;
 					this.failures.delete(record.manifest.id);
-					this.activeVersions.set(record.manifest.id, record.revision);
 				} catch (err) {
+					this.lifecycle.signal.throwIfAborted();
+					if (isAbortError(err)) continue;
 					this.failures.set(record.manifest.id, String(err));
 					this.updateStatuses.set(record.manifest.id, { status: 'failed', error: String(err) });
 					console.error(
@@ -535,8 +619,7 @@ export class OfficialPluginService implements Disposable {
 		const id = options?.wallpaper
 			? `theme:${candidate.manifest.id}:${crypto.randomUUID()}`
 			: undefined;
-		if (id && options?.wallpaper) await this.images.put(id, options.wallpaper);
-		const next = { ...candidate, wallpaperAssetId: id };
+		const next = { ...candidate, wallpaperAssetId: id, wallpaperBlob: options?.wallpaper };
 		let result: InstalledOfficialPluginRecord;
 		const required =
 			this.profile?.defaultTheme.pluginId === candidate.manifest.id
@@ -557,15 +640,9 @@ export class OfficialPluginService implements Disposable {
 			result = required
 				? await this.engine.withPluginReplacement(candidate.manifest.id, replace)
 				: await replace();
-		} catch (error) {
-			if (id) await this.images.delete(id).catch(console.error);
-			throw error;
 		} finally {
 			if (!this.disposed && required && this.engine.themes.isSelectable(required.themeId))
 				this.engine.configureDefaultTheme(required);
-		}
-		if (previous?.wallpaperAssetId && previous.wallpaperAssetId !== id) {
-			await this.images.delete(previous.wallpaperAssetId).catch(console.error);
 		}
 		this.activeVersions.set(
 			result.manifest.id,
@@ -721,9 +798,8 @@ export class OfficialPluginService implements Disposable {
 					throw new Error('Application update in progress; reload before changing plugins');
 				signal.throwIfAborted();
 				await this.runtimeActivator.deactivate(pluginId, { revertThemes: true });
-				const record = this.installedStore.find(pluginId);
 				await this.installedStore.remove(pluginId);
-				if (record?.wallpaperAssetId) await this.images.delete(record.wallpaperAssetId);
+				this.activeVersions.delete(pluginId);
 				await this.engine.storage.clearPluginData?.(pluginId);
 				this.installQueue.clearFinished(pluginId);
 				this.engine.notify(hostT('plugins.notify.uninstalled', { pluginId }), 'info');
@@ -801,6 +877,7 @@ export class OfficialPluginService implements Disposable {
 		this.installedStore.clear();
 		this.failures.clear();
 		this.activeVersions.clear();
+		this.deferredReconciles.clear();
 		this.updateStatuses.clear();
 		this.initialized = false;
 		this.hostUpdates.reset();
@@ -820,6 +897,7 @@ export class OfficialPluginService implements Disposable {
 		this.lifecycle.abort();
 		this.engine.clearDefaultTheme();
 		this.operations.dispose();
+		this.deferredReconciles.clear();
 		this.storeSubscription?.dispose();
 		this.installedStore.dispose();
 		this.hmrDisposable?.dispose();

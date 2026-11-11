@@ -118,7 +118,7 @@ function createService(
 	hostBuild?: typeof HOST_BUILD,
 	images?: ImageRepository
 ): OfficialPluginService {
-	const installedStore = new OfficialPluginInstalledStore(engine);
+	const installedStore = new OfficialPluginInstalledStore(engine, undefined, images);
 	const runtimeActivator = new OfficialPluginRuntimeActivator(engine, (pluginId) =>
 		installedStore.find(pluginId)
 	);
@@ -128,8 +128,7 @@ function createService(
 		installedStore,
 		runtimeActivator,
 		hostVersion,
-		hostBuild,
-		images
+		hostBuild
 	});
 }
 

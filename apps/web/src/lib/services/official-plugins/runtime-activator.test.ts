@@ -147,50 +147,59 @@ describe('OfficialPluginRuntimeActivator', () => {
 			}
 		}
 	);
-	it('preserves cached wallpaper and ESM behavior until the hybrid theme is disabled', async () => {
-		const wallpaper = new Blob(['cached wallpaper']);
-		const hash = 'a'.repeat(64);
-		const env = createMockEnv();
-		env.runtime.sha256 = async () => hash;
-		const hybridEngine = new ChronosEngine({ env });
-		const images = { get: vi.fn().mockResolvedValue(wallpaper) } as unknown as ImageRepository;
-		const hybridActivator = new OfficialPluginRuntimeActivator(
-			hybridEngine,
-			() => undefined,
-			images
-		);
-		const colors = { light: { 'color.primary': '#123456' }, dark: { 'color.primary': '#abcdef' } };
-		try {
-			await hybridActivator.activate({
-				manifest: {
-					id: 'hybrid',
-					bundleUrl: '/hybrid.js',
-					sha256: hash,
-					colorsUrl: '/colors.json',
-					colorsSha256: hash
-				} as never,
-				colorsJson: JSON.stringify({
-					id: 'hybrid-theme',
-					wallpaper: { url: './wallpaper.jpg', sha256: hash },
-					variants: { light: { colors: colors.light }, dark: { colors: colors.dark } }
-				}),
-				code: `export default { id: 'hybrid', apply(ctx) { ctx.registerSlot('theme.definition', { id: 'hybrid-theme', name: 'Hybrid', className: 'hybrid-class', workbenchColors: ${JSON.stringify(colors)}, resolveWallpaperColors() { return { workbenchColors: {} }; } }); } };`,
-				wallpaperAssetId: 'cached-image',
-				origin: { kind: 'user' },
-				installedAt: 1
-			});
-			const theme = hybridEngine.themes.getTheme('hybrid-theme');
-			expect(theme?.wallpaper).toBe(wallpaper);
-			expect(theme?.className).toBe('hybrid-class');
-			expect(theme?.resolveWallpaperColors).toBeTypeOf('function');
-			expect(hybridEngine.slots.resolveOwner('theme.definition', 'hybrid-theme')).toBe('hybrid');
-			await hybridActivator.deactivate('hybrid');
-			expect(hybridEngine.themes.getTheme('hybrid-theme')).toBeUndefined();
-		} finally {
-			hybridActivator.disposeAll();
-			hybridEngine.dispose();
+	it.each(['cached', 'downloaded'])(
+		'preserves %s wallpaper and ESM behavior until the hybrid theme is disabled',
+		async (source) => {
+			const wallpaper = new Blob(['cached wallpaper']);
+			const hash = 'a'.repeat(64);
+			const env = createMockEnv();
+			env.runtime.sha256 = async () => hash;
+			const hybridEngine = new ChronosEngine({ env });
+			const getImage = vi.fn().mockResolvedValue(wallpaper);
+			const images = { get: getImage } as unknown as ImageRepository;
+			const hybridActivator = new OfficialPluginRuntimeActivator(
+				hybridEngine,
+				() => undefined,
+				images
+			);
+			const colors = {
+				light: { 'color.primary': '#123456' },
+				dark: { 'color.primary': '#abcdef' }
+			};
+			try {
+				await hybridActivator.activate({
+					manifest: {
+						id: 'hybrid',
+						bundleUrl: '/hybrid.js',
+						sha256: hash,
+						colorsUrl: '/colors.json',
+						colorsSha256: hash
+					} as never,
+					colorsJson: JSON.stringify({
+						id: 'hybrid-theme',
+						wallpaper: { url: './wallpaper.jpg', sha256: hash },
+						variants: { light: { colors: colors.light }, dark: { colors: colors.dark } }
+					}),
+					code: `export default { id: 'hybrid', apply(ctx) { ctx.registerSlot('theme.definition', { id: 'hybrid-theme', name: 'Hybrid', className: 'hybrid-class', workbenchColors: ${JSON.stringify(colors)}, resolveWallpaperColors() { return { workbenchColors: {} }; } }); } };`,
+					wallpaperAssetId: 'cached-image',
+					...(source === 'downloaded' ? { wallpaperBlob: wallpaper } : {}),
+					origin: { kind: 'user' },
+					installedAt: 1
+				});
+				const theme = hybridEngine.themes.getTheme('hybrid-theme');
+				expect(theme?.wallpaper).toBe(wallpaper);
+				expect(getImage).toHaveBeenCalledTimes(source === 'downloaded' ? 0 : 1);
+				expect(theme?.className).toBe('hybrid-class');
+				expect(theme?.resolveWallpaperColors).toBeTypeOf('function');
+				expect(hybridEngine.slots.resolveOwner('theme.definition', 'hybrid-theme')).toBe('hybrid');
+				await hybridActivator.deactivate('hybrid');
+				expect(hybridEngine.themes.getTheme('hybrid-theme')).toBeUndefined();
+			} finally {
+				hybridActivator.disposeAll();
+				hybridEngine.dispose();
+			}
 		}
-	});
+	);
 
 	it('registers JSON-only theme', async () => {
 		installed.add('theme-json');

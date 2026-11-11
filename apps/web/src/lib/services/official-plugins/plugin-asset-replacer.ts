@@ -54,8 +54,26 @@ export async function replacePluginAssets(
 				if (existing && hadActiveRuntime && !deps.isDisposed()) {
 					await deps.installedStore.load();
 					const retained = deps.installedStore.find(pluginId);
-					if (retained && retained.revision === existing.revision)
+					if (retained && retained.revision === existing.revision) {
 						await deps.runtimeActivator.activate(existing);
+						try {
+							await deps.installedStore.load();
+						} catch (error) {
+							try {
+								await deps.runtimeActivator.deactivate(pluginId, { revertThemes: false });
+							} catch (cleanupError) {
+								throw new AggregateError(
+									[error, cleanupError],
+									'Could not verify or release restored plugin'
+								);
+							}
+							throw error;
+						}
+						const restored = deps.installedStore.find(pluginId);
+						if (deps.isDisposed() || !restored || restored.revision !== existing.revision) {
+							await deps.runtimeActivator.deactivate(pluginId, { revertThemes: false });
+						}
+					}
 				}
 			} catch (rollbackErr) {
 				rollbackErrors.push(rollbackErr);
@@ -92,7 +110,7 @@ export async function replacePluginAssets(
 		deps.validate?.();
 		await deps.installedStore.upsert(record, expectedRevision);
 		runtimeTouched = false;
-		return record;
+		return deps.installedStore.find(pluginId)!;
 	} catch (err: unknown) {
 		return rollbackRuntime(err);
 	}
