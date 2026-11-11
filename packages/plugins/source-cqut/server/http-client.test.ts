@@ -50,6 +50,54 @@ afterEach(async () => {
 });
 
 describe('requestStep', () => {
+	it('never retries an application error merely because its cause is a transient socket error', async () => {
+		const cause = Object.assign(new Error('socket reset'), { code: 'ECONNRESET' });
+		const error = new TypeError('application implementation failed', { cause });
+		const request = vi.fn().mockRejectedValue(error);
+		await expect(
+			requestStep(
+				{ request } as never,
+				'https://example.test/',
+				{},
+				{ retryOnServerError: true },
+				'获取课表'
+			)
+		).rejects.toBe(error);
+		expect(request).toHaveBeenCalledOnce();
+	});
+
+	it('propagates a request bug without retrying it as a server failure', async () => {
+		const error = new TypeError('Cannot read properties of undefined');
+		const request = vi.fn().mockRejectedValue(error);
+		await expect(
+			requestStep(
+				{ request } as never,
+				'https://example.test/',
+				{},
+				{ retryOnServerError: true },
+				'获取课表'
+			)
+		).rejects.toBe(error);
+		expect(request).toHaveBeenCalledOnce();
+	});
+
+	it('does not classify an acceptStatus callback failure as a network error', async () => {
+		const error = new Error('status policy failed');
+		await expect(
+			requestStep(
+				{ request: vi.fn().mockResolvedValue({ status: 200 }) } as never,
+				'https://example.test/',
+				{},
+				{
+					acceptStatus: () => {
+						throw error;
+					}
+				},
+				'获取课表'
+			)
+		).rejects.toBe(error);
+	});
+
 	it('returns network error with step name when upstream hangs', async () => {
 		const url = `${await listen(() => {
 			// Never respond — triggers REQUEST_TIMEOUT_MS.

@@ -5,6 +5,25 @@ import { executeCqutPreview } from '../src/online/execute-preview';
 import type { FetchCqutScheduleResult } from '../src/online/fetch-schedule';
 
 describe('executeCqutPreview', () => {
+	it('contains an unexpected failure at the handler boundary without leaking credentials or losing cleanup', async () => {
+		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			const dispose = vi.fn().mockRejectedValue(new Error('cleanup failed: password=secret'));
+			const error = new TypeError('implementation failed: password=secret');
+			const result = await executeCqutPreview(
+				{ account: 'student', password: 'secret' },
+				() => ({ dispose }) as never,
+				vi.fn().mockRejectedValue(error)
+			);
+			expect(result).toMatchObject({ ok: false, error: { kind: 'Upstream' } });
+			expect(dispose).toHaveBeenCalledOnce();
+			expect(log).toHaveBeenCalledTimes(2);
+			expect(JSON.stringify(log.mock.calls)).not.toContain('password=secret');
+		} finally {
+			log.mockRestore();
+		}
+	});
+
 	it('returns DataFormat error when payload is not an object', async () => {
 		const sessionFactory = vi.fn();
 		const result = await executeCqutPreview('not-an-object', sessionFactory);

@@ -1,30 +1,30 @@
 export type AppError =
-	| { kind: 'Validation'; message: string }
-	| { kind: 'Auth'; message: string }
-	| { kind: 'Network'; message: string }
-	| { kind: 'DataFormat'; message: string }
-	| { kind: 'Security'; message: string }
-	| { kind: 'NotFound'; message: string }
+	| { kind: 'Validation'; message: string; cause?: unknown }
+	| { kind: 'Auth'; message: string; cause?: unknown }
+	| { kind: 'Network'; message: string; cause?: unknown }
+	| { kind: 'DataFormat'; message: string; cause?: unknown }
+	| { kind: 'Security'; message: string; cause?: unknown }
+	| { kind: 'NotFound'; message: string; cause?: unknown }
 	| { kind: 'Unknown'; message: string; cause?: unknown };
 
 export const AppError = {
-	validation(message: string): AppError {
-		return { kind: 'Validation', message };
+	validation(message: string, cause?: unknown): AppError {
+		return { kind: 'Validation', message, ...(cause === undefined ? {} : { cause }) };
 	},
-	auth(message: string): AppError {
-		return { kind: 'Auth', message };
+	auth(message: string, cause?: unknown): AppError {
+		return { kind: 'Auth', message, ...(cause === undefined ? {} : { cause }) };
 	},
-	network(message: string): AppError {
-		return { kind: 'Network', message };
+	network(message: string, cause?: unknown): AppError {
+		return { kind: 'Network', message, ...(cause === undefined ? {} : { cause }) };
 	},
-	dataFormat(message: string): AppError {
-		return { kind: 'DataFormat', message };
+	dataFormat(message: string, cause?: unknown): AppError {
+		return { kind: 'DataFormat', message, ...(cause === undefined ? {} : { cause }) };
 	},
-	security(message: string): AppError {
-		return { kind: 'Security', message };
+	security(message: string, cause?: unknown): AppError {
+		return { kind: 'Security', message, ...(cause === undefined ? {} : { cause }) };
 	},
-	notFound(message: string): AppError {
-		return { kind: 'NotFound', message };
+	notFound(message: string, cause?: unknown): AppError {
+		return { kind: 'NotFound', message, ...(cause === undefined ? {} : { cause }) };
 	},
 	unknown(message: string, cause?: unknown): AppError {
 		return { kind: 'Unknown', message, cause };

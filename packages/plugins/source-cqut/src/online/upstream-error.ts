@@ -1,4 +1,5 @@
 import { AppError } from '@chronos/core';
+import { isCasError } from '@cqut-openproject/cas-sdk';
 
 function getCause(error: unknown): unknown {
 	if (error && typeof error === 'object' && 'cause' in error) {
@@ -39,7 +40,38 @@ const TRANSIENT_NETWORK_CODES = new Set([
 	'EAI_AGAIN'
 ]);
 
+const NETWORK_CODES = new Set([
+	...TRANSIENT_NETWORK_CODES,
+	'ENOTFOUND',
+	'ERR_TLS_CERT_ALTNAME_INVALID',
+	'CERT_HAS_EXPIRED',
+	'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+	'DEPTH_ZERO_SELF_SIGNED_CERT'
+]);
+
+export function isKnownNetworkError(error: unknown): boolean {
+	if (isDomAbortOrTimeout(error)) return true;
+	const code = getErrorCode(error);
+	if (code && NETWORK_CODES.has(code)) return true;
+	if (error instanceof TypeError) {
+		if (
+			![
+				'fetch failed',
+				'Failed to fetch',
+				'Network request failed',
+				'Load failed',
+				'terminated'
+			].includes(error.message)
+		)
+			return false;
+		const cause = getCause(error);
+		return cause ? isKnownNetworkError(cause) : error.message !== 'terminated';
+	}
+	return false;
+}
+
 export function isTransientNetworkError(error: unknown): boolean {
+	if (!isKnownNetworkError(error)) return false;
 	if (isDomAbortOrTimeout(error)) {
 		const name = (error as { name?: unknown }).name;
 		return name === 'TimeoutError';
@@ -83,15 +115,23 @@ function isTimeoutError(error: unknown): boolean {
 	return false;
 }
 
-function logUpstreamError(step: string, error: unknown): void {
-	const cause = getCause(error);
+export function logUpstreamError(step: string, error: unknown): void {
 	const parts = [`step=${step}`];
-
-	for (const item of [error, cause]) {
-		if (!item || typeof item !== 'object') continue;
+	const seen = new Set<unknown>();
+	for (
+		let item = error;
+		item && typeof item === 'object' && !seen.has(item);
+		item = getCause(item)
+	) {
+		seen.add(item);
 		const record = item as Record<string, unknown>;
 		if (typeof record.name === 'string') parts.push(`name=${record.name}`);
 		if (typeof record.code === 'string') parts.push(`code=${record.code}`);
+		if (typeof record.stack === 'string') {
+			const frames = record.stack.split('\n').filter((line) => /^\s+at /.test(line));
+			if (frames.length)
+				parts.push(frames.join('\n').replace(/https?:\/\/[^\s)]+/g, '[upstream-url]'));
+		}
 	}
 
 	console.error('[source-cqut]', parts.join(' '));
@@ -102,15 +142,24 @@ export function toUpstreamNetworkError(
 	step: string,
 	parentSignal?: AbortSignal
 ): AppError {
+	if (isCasError(error)) {
+		// The SDK also wraps unknown fetcher exceptions as NETWORK_ERROR.
+		const cause = getCause(error);
+		if (error.kind === 'NETWORK_ERROR' && cause && !isKnownNetworkError(cause)) throw cause;
+		if (!['NETWORK_ERROR', 'TIMEOUT', 'ABORTED', 'UPSTREAM_ERROR'].includes(error.kind))
+			throw error;
+	} else if (!isKnownNetworkError(error)) {
+		throw error;
+	}
 	logUpstreamError(step, error);
 
 	if (parentSignal?.aborted) {
-		return AppError.network(`在线课表导入超时（${step}），请稍后重试`);
+		return AppError.network(`在线课表导入超时（${step}），请稍后重试`, error);
 	}
 
 	if (isTimeoutError(error)) {
-		return AppError.network(`${step}超时，请稍后重试`);
+		return AppError.network(`${step}超时，请稍后重试`, error);
 	}
 
-	return AppError.network(`${step}失败，请稍后重试`);
+	return AppError.network(`${step}失败，请稍后重试`, error);
 }

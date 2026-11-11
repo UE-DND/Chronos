@@ -1,5 +1,5 @@
 import { createServer, type Server } from 'node:http';
-import { afterEach, describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { fetchCampusTimeInfo, fetchUserCampusName } from '../src/online/fetch-campus-time';
 import { CookieJar } from './cookie-jar';
 import { NodeCqutSession } from './node-cqut-session';
@@ -56,6 +56,30 @@ afterEach(async () => {
 });
 
 describe('fetch-campus-time', () => {
+	it('distinguishes malformed JSON from a response reader bug', async () => {
+		const syntax = new SyntaxError('invalid JSON');
+		const session = {
+			request: vi.fn().mockResolvedValue({
+				status: 200,
+				json: async () => {
+					throw syntax;
+				}
+			})
+		};
+		expect(await fetchUserCampusName(session as never)).toMatchObject({
+			ok: false,
+			error: { kind: 'DataFormat', cause: syntax }
+		});
+		const bug = new TypeError('reader implementation failed');
+		session.request.mockResolvedValue({
+			status: 200,
+			json: async () => {
+				throw bug;
+			}
+		});
+		await expect(fetchUserCampusName(session as never)).rejects.toBe(bug);
+		await expect(fetchCampusTimeInfo(session as never, 'huaxi')).rejects.toBe(bug);
+	});
 	it('fetchUserCampusName reads campus from nested user info', async () => {
 		await startMockUpstream({
 			userInfoBody: {

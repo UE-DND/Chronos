@@ -108,6 +108,21 @@ afterEach(async () => {
 });
 
 describe('loginCas', () => {
+	it('propagates unknown request bugs even when the CAS SDK wraps them as network errors', async () => {
+		const error = new TypeError('request implementation failed');
+		const request = vi.fn().mockRejectedValue(error);
+		await expect(
+			loginCas(
+				{
+					request,
+					createCasCookieJar: () => new CookieJar()
+				} as never,
+				TEST_ACCOUNT,
+				TEST_PASSWORD
+			)
+		).rejects.toBe(error);
+		expect(request).toHaveBeenCalledOnce();
+	});
 	it('completes ticket exchange and stores timetable session cookie', async () => {
 		const upstream = await startMockUpstream();
 		const jar = new CookieJar();

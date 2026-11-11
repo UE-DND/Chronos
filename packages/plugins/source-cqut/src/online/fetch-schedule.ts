@@ -1,4 +1,5 @@
 import { AppError, failure, success, type AppResult, type PeriodTime } from '@chronos/core';
+import { ZodError } from 'zod';
 import { mergeWeekPayloads, resolveWeeksToFetch, type OnlineSchedulePayload } from '../week-merge';
 import type { CqutCampusId } from '../campus-period-times';
 import { onlineSchedulePayloadSchema } from './online-schedule-schema';
@@ -149,8 +150,9 @@ async function fetchWeekEvents(
 
 	try {
 		return success(onlineSchedulePayloadSchema.parse(jsonObject.value));
-	} catch {
-		return failure(AppError.dataFormat('在线课表响应格式错误'));
+	} catch (error) {
+		if (!(error instanceof ZodError)) throw error;
+		return failure(AppError.dataFormat('在线课表响应格式错误', error));
 	}
 }
 
@@ -169,8 +171,9 @@ function parsePayloadObject(raw: string): AppResult<Record<string, unknown>> {
 			return failure(AppError.dataFormat('在线课表响应格式错误'));
 		}
 		return success(parsed as Record<string, unknown>);
-	} catch {
-		return failure(AppError.dataFormat('在线课表响应格式错误'));
+	} catch (error) {
+		if (!(error instanceof SyntaxError)) throw error;
+		return failure(AppError.dataFormat('在线课表响应格式错误', error));
 	}
 }
 

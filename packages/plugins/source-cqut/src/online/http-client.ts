@@ -75,31 +75,21 @@ export async function requestStep(
 		return session.request(req);
 	};
 
+	let response: CqutResponse;
 	try {
-		let response: CqutResponse;
-		if (!options.retryOnServerError) {
+		response = await withNetworkRetry(signal, executeOnce);
+		if (options.retryOnServerError && response.status >= 500) {
+			await sleep(HTTP_RETRY_DELAY_MS);
 			response = await withNetworkRetry(signal, executeOnce);
-		} else {
-			try {
-				response = await withNetworkRetry(signal, executeOnce);
-				if (response.status >= 500) {
-					await sleep(HTTP_RETRY_DELAY_MS);
-					response = await withNetworkRetry(signal, executeOnce);
-				}
-			} catch (error) {
-				if (signal.aborted) throw error;
-				await sleep(HTTP_RETRY_DELAY_MS);
-				response = await withNetworkRetry(signal, executeOnce);
-			}
 		}
-
-		const acceptable =
-			options.acceptStatus?.(response.status) ?? (response.status >= 200 && response.status < 300);
-		if (!acceptable) {
-			return failure(AppError.network(`${step}失败：HTTP ${response.status}`));
-		}
-		return success(response);
 	} catch (error) {
 		return failure(toUpstreamNetworkError(error, step, options.signal));
 	}
+
+	const acceptable =
+		options.acceptStatus?.(response.status) ?? (response.status >= 200 && response.status < 300);
+	if (!acceptable) {
+		return failure(AppError.network(`${step}失败：HTTP ${response.status}`));
+	}
+	return success(response);
 }

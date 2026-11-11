@@ -8,6 +8,7 @@ import {
 import { GET_CAMPUS_TIME_INFO_URL, GET_USER_INFO_URL, JSON_MEDIA_TYPE } from './config';
 import type { CqutSession } from './cqut-session';
 import { requestStep } from './http-client';
+import { toUpstreamNetworkError } from './upstream-error';
 
 interface CampusTimeInfoRow {
 	campusName: string;
@@ -57,8 +58,12 @@ export async function fetchUserCampusName(
 	let parsed: unknown;
 	try {
 		parsed = await responseResult.value.json();
-	} catch {
-		return failure(AppError.dataFormat('用户信息响应格式错误'));
+	} catch (error) {
+		return failure(
+			error instanceof SyntaxError
+				? AppError.dataFormat('用户信息响应格式错误', error)
+				: toUpstreamNetworkError(error, '获取用户校区信息', signal)
+		);
 	}
 
 	const campusName = extractUserCampusName(parsed);
@@ -87,8 +92,12 @@ export async function fetchCampusTimeInfo(
 	let parsed: unknown;
 	try {
 		parsed = await responseResult.value.json();
-	} catch {
-		return failure(AppError.dataFormat('校区节次时间响应格式错误'));
+	} catch (error) {
+		return failure(
+			error instanceof SyntaxError
+				? AppError.dataFormat('校区节次时间响应格式错误', error)
+				: toUpstreamNetworkError(error, '获取校区节次时间', signal)
+		);
 	}
 
 	const rows = parseCampusTimeInfoRows(parsed);

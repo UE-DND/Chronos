@@ -1,6 +1,7 @@
 import { AppError, failure, success, type AppResult } from '@chronos/core';
 import {
 	createCasClient,
+	CasError,
 	isCasErrorOfKind,
 	type Fetcher,
 	type HttpRequest,
@@ -17,7 +18,7 @@ import {
 } from './config';
 import type { CqutSession } from './cqut-session';
 import { requestStep, withNetworkRetry } from './http-client';
-import { toUpstreamNetworkError } from './upstream-error';
+import { isKnownNetworkError, toUpstreamNetworkError } from './upstream-error';
 
 export interface CasLoginOverrides {
 	uisBaseUrl?: string;
@@ -26,8 +27,15 @@ export interface CasLoginOverrides {
 	applicationCode?: string;
 }
 
+/** Keeps the SDK from wrapping and retrying an unknown fetcher bug as NETWORK_ERROR. */
+class UnexpectedCasRequestError extends CasError {
+	constructor(cause: unknown) {
+		super('CONFIGURATION_ERROR', 'Unexpected HTTP implementation failure', { cause });
+	}
+}
+
 function createCasFetcher(session: CqutSession): Fetcher {
-	return async (req: HttpRequest): Promise<HttpResponse> => {
+	const fetcher = async (req: HttpRequest): Promise<HttpResponse> => {
 		const response = await withNetworkRetry(req.signal, () =>
 			session.request({
 				url: req.url,
@@ -75,6 +83,14 @@ function createCasFetcher(session: CqutSession): Fetcher {
 			json: async () => response.json()
 		} as unknown as HttpResponse;
 	};
+	return async (req) => {
+		try {
+			return await fetcher(req);
+		} catch (error) {
+			if (isKnownNetworkError(error)) throw error;
+			throw new UnexpectedCasRequestError(error);
+		}
+	};
 }
 
 function resolveEndpoints(overrides?: CasLoginOverrides) {
@@ -115,14 +131,15 @@ export async function loginCas(
 
 	if (!loginResult.ok) {
 		const err = loginResult.error;
+		if (err instanceof UnexpectedCasRequestError) throw err.cause;
 		if (isCasErrorOfKind(err, 'CAPTCHA_REQUIRED')) {
-			return failure(AppError.auth('需要验证码，当前版本暂不支持'));
+			return failure(AppError.auth('需要验证码，当前版本暂不支持', err));
 		}
 		if (isCasErrorOfKind(err, 'AUTH_FAILED')) {
-			return failure(AppError.auth(err.message || '统一身份认证登录失败'));
+			return failure(AppError.auth(err.message || '统一身份认证登录失败', err));
 		}
 		if (isCasErrorOfKind(err, 'PROTOCOL_ERROR')) {
-			return failure(AppError.auth('登录失败，请重新输入账号或密码'));
+			return failure(AppError.auth('登录失败，请重新输入账号或密码', err));
 		}
 		return failure(toUpstreamNetworkError(err, '统一身份认证登录', signal));
 	}

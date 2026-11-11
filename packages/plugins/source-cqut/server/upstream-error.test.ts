@@ -1,11 +1,37 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { toUpstreamNetworkError } from '../src/online/upstream-error';
+import { CasError } from '@cqut-openproject/cas-sdk';
 
 afterEach(() => {
 	vi.restoreAllMocks();
 });
 
 describe('toUpstreamNetworkError', () => {
+	it('preserves a known transport cause and propagates a program error wrapped by CAS', () => {
+		const networkError = Object.assign(new Error('socket closed'), { code: 'ECONNRESET' });
+		expect(toUpstreamNetworkError(networkError, '获取课表')).toMatchObject({
+			kind: 'Network',
+			cause: networkError
+		});
+		const bug = new TypeError('Cannot read properties of undefined');
+		expect(() =>
+			toUpstreamNetworkError(
+				new CasError('NETWORK_ERROR', 'request failed', { cause: bug }),
+				'获取课表'
+			)
+		).toThrow(bug);
+	});
+	it('keeps a known transport wrapper cause but rejects undici option bugs', () => {
+		const socket = Object.assign(new Error('socket closed'), { code: 'UND_ERR_SOCKET' });
+		const terminated = new TypeError('terminated', { cause: socket });
+		expect(toUpstreamNetworkError(terminated, '读取课表')).toMatchObject({
+			kind: 'Network',
+			cause: terminated
+		});
+		const invalid = new TypeError('fetch failed', { cause: new Error('invalid fetch option') });
+		expect(() => toUpstreamNetworkError(invalid, '获取课表')).toThrow(invalid);
+	});
+
 	it('maps DOMException TimeoutError to step timeout message', () => {
 		const error = new DOMException('The operation timed out', 'TimeoutError');
 		const result = toUpstreamNetworkError(error, '统一身份认证登录');
@@ -57,12 +83,15 @@ describe('toUpstreamNetworkError', () => {
 	it('does not log sensitive upstream error messages', () => {
 		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 		toUpstreamNetworkError(
-			new Error('request failed for ?ticket=ST-sensitive&password=secret'),
+			Object.assign(new Error('request failed for ?ticket=ST-sensitive&password=secret'), {
+				code: 'ECONNRESET'
+			}),
 			'建立课表系统会话'
 		);
 
 		const logText = consoleError.mock.calls.flat().join(' ');
 		expect(logText).not.toContain('ST-sensitive');
 		expect(logText).not.toContain('password=secret');
+		expect(logText).toContain('upstream-error.test.ts:');
 	});
 });

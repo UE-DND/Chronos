@@ -1,6 +1,7 @@
 import type { PluginServerResponse, PluginServerErrorKind, AppError } from '@chronos/core';
 import { pluginServerError, pluginServerSuccess } from '@chronos/core';
 import type { CqutSession } from './cqut-session';
+import { logUpstreamError } from './upstream-error';
 import {
 	fetchCqutSchedule,
 	type FetchCqutScheduleInput,
@@ -53,8 +54,9 @@ export async function executeCqutPreview(
 		return pluginServerError('Validation', '账号和密码不能为空');
 	}
 
-	const session = await sessionFactory();
+	let session: CqutSession | undefined;
 	try {
+		session = await sessionFactory();
 		const result = await fetchSchedule(session, {
 			account,
 			password,
@@ -65,7 +67,14 @@ export async function executeCqutPreview(
 			return pluginServerSuccess(result.value);
 		}
 		return pluginServerError(toWireErrorKind(result.error.kind), result.error.message);
+	} catch (error) {
+		logUpstreamError('在线课表导入处理', error);
+		return pluginServerError('Upstream', '在线课表导入失败，请稍后重试');
 	} finally {
-		await session.dispose().catch(() => {});
+		try {
+			await session?.dispose();
+		} catch (error) {
+			logUpstreamError('清理在线课表导入会话', error);
+		}
 	}
 }
