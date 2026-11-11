@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
+import { debounce } from 'node:util';
 import type { Logger, Plugin, ViteDevServer } from 'vite';
 import type { OfficialPluginDef } from '../../../../../scripts/official-plugins.config.ts';
 import { PluginBuildCoordinator } from '../../../../../scripts/official-plugin-build/coordinator.ts';
@@ -178,7 +179,7 @@ export function chronosPluginHmrPlugin(options: ChronosPluginHmrOptions): Plugin
 				`official plugin dev builds ready in ${(performance.now() - warmStart).toFixed(1)}ms`
 			);
 
-			const pendingTimers = new Map<string, NodeJS.Timeout>();
+			const debounceAbort = new AbortController();
 			const inFlightBuilds = new Set<string>();
 			const queuedRebuilds = new Set<string>();
 			const triggerFiles = new Map<string, string>();
@@ -237,20 +238,21 @@ export function chronosPluginHmrPlugin(options: ChronosPluginHmrOptions): Plugin
 				}
 			};
 
+			const scheduledBuilds = new Map(
+				plugins.map((pluginDef) => [
+					pluginDef.id,
+					debounce(() => executeBuild(pluginDef), 100, { signal: debounceAbort.signal })
+				])
+			);
 			const handleFileEvent = (filePath: string) => {
 				if (disposed) return;
 				for (const id of coordinator.affected(filePath)) {
-					const pluginDef = plugins.find((plugin) => plugin.id === id)!;
 					triggerFiles.set(id, filePath);
-					const timer = pendingTimers.get(id);
-					if (timer) clearTimeout(timer);
-					pendingTimers.set(
-						id,
-						setTimeout(() => {
-							pendingTimers.delete(id);
-							void executeBuild(pluginDef);
-						}, 100)
-					);
+					void scheduledBuilds.get(id)!().catch((err: unknown) => {
+						const error = err instanceof Error ? err : new Error(String(err));
+						if (disposed && error.name === 'AbortError') return;
+						logPluginHmrError(logger, `hmr scheduling error ${id}: ${error.message}`);
+					});
 				}
 			};
 			server.watcher.add([
@@ -258,10 +260,11 @@ export function chronosPluginHmrPlugin(options: ChronosPluginHmrOptions): Plugin
 				resolve(monorepoRoot, 'pnpm-lock.yaml')
 			]);
 			const dispose = () => {
+				if (disposed) return;
 				disposed = true;
+				debounceAbort.abort();
 				coordinator.dispose();
-				for (const timer of pendingTimers.values()) clearTimeout(timer);
-				pendingTimers.clear();
+				scheduledBuilds.clear();
 				queuedRebuilds.clear();
 				server.watcher.off('change', handleFileEvent);
 				server.watcher.off('add', handleFileEvent);
