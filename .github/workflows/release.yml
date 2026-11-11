@@ -94,7 +94,7 @@ jobs:
       - name: Setup Vite+
         uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
-          node-version: '24'
+          node-version-file: '.node-version'
           cache: true
           run-install: false
       - name: Setup Java 21
@@ -265,7 +265,7 @@ jobs:
       - name: Setup Vite+
         uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
-          node-version: '24'
+          node-version-file: '.node-version'
           cache: true
           run-install: false
       - name: Install dependencies
@@ -340,7 +340,7 @@ jobs:
       - name: Setup Vite+
         uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
-          node-version: '24'
+          node-version-file: '.node-version'
           cache: true
           run-install: false
       - name: Run plugin release smoke tests
@@ -371,7 +371,7 @@ jobs:
       - name: Setup Vite+
         uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
-          node-version: '24'
+          node-version-file: '.node-version'
           cache: true
           run-install: false
       - name: Download built APK artifacts
@@ -424,7 +424,7 @@ jobs:
       - name: Setup Vite+
         uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
-          node-version: '24'
+          node-version-file: '.node-version'
           cache: true
           run-install: false
       - name: Download published website
@@ -482,7 +482,7 @@ jobs:
       - name: Setup Vite+
         uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
-          node-version: '24'
+          node-version-file: '.node-version'
           cache: true
           run-install: false
       - name: Download original website for identity verification

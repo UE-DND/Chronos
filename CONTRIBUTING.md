@@ -4,7 +4,9 @@
 
 ## 开发工作流
 
-Chronos 是由 Web 宿主、共享包、插件包和 Capacitor 移动端组成的 workspace。项目使用 [Vite+](https://viteplus.dev) 管理依赖和开发工具；在仓库根目录运行命令，并使用 `vp` 或 `vpx`，不要直接调用 npm、pnpm、yarn、npx 等工具。尚未安装 Vite+ 时，请按[官方安装说明](https://viteplus.dev/guide/global-cli)安装全局 `vp` 命令。CI 使用 Node.js 24，本地使用相同主版本可避免运行时差异。SvelteKit 3 的最低运行时要求为 Node.js 22.17。
+Chronos 是由 Web 宿主、共享包、插件包和 Capacitor 移动端组成的 workspace。项目使用 [Vite+](https://viteplus.dev) 管理依赖和开发工具；在仓库根目录运行命令，并使用 `vp` 或 `vpx`，不要直接调用 npm、pnpm、yarn、npx 等工具。尚未安装 Vite+ 时，请按[官方安装说明](https://viteplus.dev/guide/global-cli)安装全局 `vp` 命令。本地开发和 CI 固定使用 Node.js 26.13.0 LTS，开发与构建不再支持 Node.js 24。Vercel 函数使用平台管理的 Node.js 26.x，补丁版本由平台更新。
+
+根目录和 Web 包的 `.node-version` 均固定为同一版本，CI 读取根文件；Web 包需要单独固定，避免其 `engines.node` 范围覆盖 Vite+ 从父目录继承的版本。升级 Node 时同步更新这两个文件、两处 `engines.node` 和 `@types/node`，再运行 `vp install`、完整检查及发行版构建。Vercel 预构建在已安装 Vite+ 的 GitHub Actions 中执行，安装依赖使用 `vp`，不依赖 Node.js 内置 Corepack。
 
 Web 宿主使用 SvelteKit 3 的原生 `#lib/*` 子路径导入，源码导入需带实际文件扩展名；环境变量在 `apps/web/src/env.ts` 显式声明，通过 `$app/env/public` 读取。PWA 插件使用官方发布的 `@vite-pwa/sveltekit` 2，通过 `withPwa` 接入 SvelteKit 3；由插件在预渲染完成后、适配器输出之前生成缓存清单与 Service Worker，无需 fork 或本地兼容补丁。使用 `generateSW` 配置缓存策略，通过 `additionalManifestEntriesGenerator` 在生成时读取预安装插件和许可证产物。`finalizeWorkerArtifacts` 在构建收尾时为 Worker 加载宿主更新门禁和课程通知脚本。移动端显式关闭 manifest，并在适配器输出后清理 PWA 产物。升级插件后运行浏览器离线更新回归。
 
