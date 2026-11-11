@@ -70,6 +70,8 @@ vp run test:browser
 
 CI 将检查、发行版构建和浏览器产物构建并行启动。浏览器产物只构建一次，通过 artifact 分发给四个独立 job，每个 job 安装 Chromium 并运行 `vp exec playwright test --shard=N/4`。各分片保持单 worker 和独立服务器，避免部署切换及下载失败模拟的共享状态互相干扰。`CI complete` 检查全部 job 的结果，任一失败、取消或跳过都不能通过。Android 发布构建与 Quality 并行准备 APK，插件历史写入、部署和 Release 发布仍等待 Quality 通过。
 
+Quality 每次运行 Android `:app:testDebugUnitTest :app:assembleDebug`。移动端原生或平台源码、依赖、Quality 及发布配置变化时，还运行 API 36 仪器回归和 iOS 无签名编译；默认分支与发版运行全部原生检查。只有路径选择明确不需要 iOS 验证时，完整门禁才接受该 job 跳过，其他必需 job 仍须成功。
+
 浏览器分片按文件历史耗时分配：先安排预计最慢的文件，再放到预计用时最少的分片。历史基准在 `scripts/e2e/durations.json`，最初取自 2026-11-09 的四个 CI 分片；用例数量变化时，按该文件每例平均耗时调整估计。新文件自动使用现有文件每例平均耗时的中位数，不需要手工加入清单。未指定 `--shard` 时仍运行全部用例。
 
 每次实际运行会生成 `dist/e2e/durations-N.json`（未分片时为 `durations-all.json`），CI 将其上传为独立的 `pwa-regression-timings-*` artifact。要更新基准，下载同一次成功运行的四个报告，然后执行 `vpx scripts/e2e/update-durations.ts <报告1> <报告2> <报告3> <报告4>` 并运行 `vp fmt scripts/e2e/durations.json`。更新命令拒绝失败运行、空报告、缺失分片和重复文件；CI 不会自动修改仓库中的基准。检查分片时可使用 `vpx playwright test --list --shard=N/4`；覆盖并集应与不分片的 `--list` 相同，各分片之间没有重复用例。需要机器可读清单时，使用 `PLAYWRIGHT_JSON_OUTPUT_FILE=/tmp/browser-list.json vpx playwright test --list --shard=N/4 --add-reporter=json`；不要使用 `--reporter=json` 覆盖配置中的分片 reporter，否则会退回 Playwright 默认的按用例数量分片。
@@ -81,6 +83,18 @@ Android 发布通过 `setup-java` 缓存 Gradle 依赖和 Wrapper，并使用 `-
 领域、HTML 解析、分享往返和浏览器导入共用[课表场景](packages/core/tests/fixtures/README.md)。新增场景时同步维护输入和预期结果，避免各层使用不同的示例。浏览器失败截图、跟踪文件和 HTML 报告写入 `dist/e2e`，不提交到仓库。
 
 文档遵循[中文技术文档写作规范](https://github.com/ruanyf/document-style-guide)。ADR 按编号记录决策演进，不使用状态标签。后续方案改变旧结论时，在旧记录中说明适用范围和后续记录，并同步更新[主题索引](.agents/docs/adr/README.md)。
+
+### 错误处理
+
+缺失数据、正常空结果和执行失败必须分别表达。存储查询仅在记录不存在时返回 `null`；数据库访问、反序列化和映射失败向上传播，不用空列表或默认配置替代。完整核心启动等待本地课表列表与活动课表读取成功。
+
+输入、认证、网络和格式错误使用已有业务结果或已知异常表达，在操作边界转换为用户提示，并保留原始 `cause`。内部契约违例和未知程序异常传播到页面、插件或启动边界，由边界报告失败并停止相关工作。自定义表单校验返回错误文案；校验器自身的异常不作为用户输入错误。
+
+插件界面失败时移除失败实例，显示失败与显式重载入口。普通异步任务和事件处理仍需所属控制器管理失败状态，不能假定 Svelte 渲染边界会捕获它们。可选外观、触觉和缓存可以按具体业务契约降级；降级不能改变课程数据的含义。
+
+修改插件渲染边界时，安装 Chromium 后运行 `vpx packages/ui-kit/tests/browser/verify-mountable.ts`，验证真实 Svelte 渲染和效果异常、停止失败子树、显式重载及卸载。
+
+写入成功后再发布配置与课表状态。已提交的课表写入遇到后续刷新或切换失败，通过 `timetable:followUpFailed` 单独报告；删除返回结果保留后续失败的 `cause`，避免将已提交操作提示成保存或删除失败。清理继续释放其他资源，并保留主错误。完整约定见 [ADR 0050](.agents/docs/adr/0050-error-contracts-and-failure-boundaries.md)。
 
 ### 构建问题排查
 
@@ -109,6 +123,8 @@ Android 发布通过 `setup-java` 缓存 Gradle 依赖和 Wrapper，并使用 `-
 `apps/web` 不直接依赖 `@capacitor/*`。移动能力由 `apps/mobile` 提供，并在 Mobile 静态 SPA 构建时通过配置和别名接入。插件与业务代码应面向 `HostPlatformAdapter` 或 `ChronosEnv` 编程，不要直接导入 Capacitor API。
 
 引擎管理课表等业务状态；`ReactiveChronosController` 将状态提供给界面。宿主通过 `ChronosEnv` 向引擎提供存储、网络等平台能力，插件通过 `ScopedContext` 使用这些能力。插件停用或卸载时，上下文会清理插件注册的资源。
+
+公开的引擎状态、课表事件和 UI 快照提供只读领域视图，内部接收数据时复制并冻结快照，不在每次读取时复制。编辑表单使用独立草稿；课程新增、修改、删除、按周删除和拖动通过语义动作提交。Dexie 的 `mutateTimetable` 在同库事务中读取最新课表、应用同步修改并保存，避免不同窗口用旧课程列表覆盖彼此。其他存储端口的回退队列只保证共享同一端口的实例；独立存储实现需要提供自己的原子修改能力。
 
 宿主翻译位于 `apps/web/messages/{locale}.json`；插件翻译与插件源码一起维护，通常位于各包的 `src/messages.ts`。宿主界面使用 `hostT`，插件文案使用插件提供的 `t` 或 `pluginText`；修改文案时同时检查 `zh-cn` 和 `en`。
 
@@ -241,7 +257,11 @@ UI 插件在 `bundle/entry.ts` 中导入 `bundle/styles.css`。样式文件需�
 
 服务端插件通过 `./server` 导出请求处理函数，通过 `./server/definition` 导出插件 ID、代理操作（action）和域名等定义。导入定义模块时不要执行其他操作。宿主需要将插件包加入构建依赖，并在部署配置中选择启用的插件 ID。域名声明用于校验和审查，不会限制服务端出站请求。
 
+宿主代理的内存限流按插件 ID 和客户端地址记录 15 分钟内最多 8 次请求，只在单个进程内有效。多实例或冷启动不共享配额；部署需要保护上游的统一配额时，应在网关或平台防火墙配置共享限流，不能将本地计数当作部署范围的保证。
+
 需要 Android 原生代理实现的官方插件还可导出 `./mobile` 与 `./mobile/definition`。移动端定义应声明相同的插件 ID 和服务端 action，以及需要在 session 结束时清理 Cookie 的 HTTPS 来源。handler 通过 `MobilePluginServerContext.createHttpSession()` 获取受限 session，返回 `PluginServerResponse`；不要在插件中导入 Capacitor API。构建会校验定义并生成静态注册表。无原生实现的插件无需添加移动端声明。详见 [ADR 0046](.agents/docs/adr/0046-mobile-plugin-server-execution.md)。
+
+原生 HTTP session 始终禁用底层自动重定向，由宿主逐跳检查 HTTPS 与声明域名，最多跟随 20 次并拒绝循环。显式 `disableRedirects` 返回原始响应；跨来源跳转移除认证和 Cookie 请求头。请求方法与请求体按 HTTP 跳转语义处理。
 
 打开宿主课程详情时使用可选的 `IHostNavigation.openCourseDetail(courseId, timetableId)`，传入课程所属课表 ID；打开课程编辑器时使用 `IHostNavigation.openCourseEditor`。获取公开导入链接时使用 `IHostLinks.getImportUrl`。不要自行拼接宿主内部路径。
 
@@ -284,6 +304,8 @@ Bundle、Manifest 和 Catalog 都由构建生成，不需要提交到版本库�
 插件 KV 支持 JSON 和二进制数据。二进制数据可以写入 `Blob` 或 `Uint8Array`，读取时统一返回 `Blob`。同一个键只能保存一种数据。写入 JSON 会替换原有二进制数据，反之亦然。详情见 [ADR 0036](.agents/docs/adr/0036-plugin-kv-binary-storage.md)。
 
 用户自定义图片和主题图片由宿主单独保存在 `images` 中。插件程序和静态 JSON、CSS 保存在 `pluginResources` 中；安装集合及更新准备快照只保存元数据和资源引用。资源与安装状态在同库事务内提交，卸载、更新采用或取消、重置时删除不再被引用的资源。插件配置和业务数据仍保存在 `pluginData`／`pluginBinary` 中。
+
+下载的主题图片在激活前只保存在内存中。图片、安装或更新准备引用及执行资源通过同库事务提交，并按事务内最新的安装集合和准备快照回收旧图片及无引用的 `theme:` 图片，用户自定义壁纸不参与该回收。跨窗口运行时协调会在变更期间记录待处理通知，激活完成后复核修订并继续协调，避免已卸载的旧插件复活。接口与验证范围见 [ADR 0051](.agents/docs/adr/0051-atomic-domain-and-plugin-boundaries.md)。
 
 ## 参考：槽位目录
 
