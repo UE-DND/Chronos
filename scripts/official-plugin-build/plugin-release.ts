@@ -4,7 +4,7 @@ import {
 	cpSync,
 	existsSync,
 	mkdirSync,
-	mkdtempSync,
+	mkdtempDisposableSync,
 	readFileSync,
 	readdirSync,
 	renameSync,
@@ -78,18 +78,17 @@ export function stagePluginRelease(
 		)
 			throw new Error(`Plugin release conflict: ${version}`);
 	} else {
-		const staging = mkdtempSync(resolve(history, '.release-'));
-		try {
-			for (const file of Object.keys(release.files)) {
-				mkdirSync(dirname(resolve(staging, file)), { recursive: true });
-				cpSync(resolve(market, file), resolve(staging, file));
-			}
-			writeFileSync(resolve(staging, 'release.json'), JSON.stringify(release, null, '\t') + '\n');
-			verifyPluginRelease(staging, version);
-			renameSync(staging, destination);
-		} finally {
-			rmSync(staging, { recursive: true, force: true });
+		using staging = mkdtempDisposableSync(resolve(history, '.release-'));
+		for (const file of Object.keys(release.files)) {
+			mkdirSync(dirname(resolve(staging.path, file)), { recursive: true });
+			cpSync(resolve(market, file), resolve(staging.path, file));
 		}
+		writeFileSync(
+			resolve(staging.path, 'release.json'),
+			JSON.stringify(release, null, '\t') + '\n'
+		);
+		verifyPluginRelease(staging.path, version);
+		renameSync(staging.path, destination);
 	}
 	const versions = readdirSync(releases).sort((a, b) =>
 		a.localeCompare(b, undefined, { numeric: true })

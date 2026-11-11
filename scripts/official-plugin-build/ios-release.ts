@@ -8,10 +8,9 @@ import {
 	cpSync,
 	existsSync,
 	mkdirSync,
-	mkdtempSync,
+	mkdtempDisposableSync,
 	readFileSync,
 	readdirSync,
-	rmSync,
 	statSync,
 	writeFileSync
 } from 'node:fs';
@@ -52,25 +51,21 @@ export function extractIpaInfo(ipa: string): IpaInfo {
 	const plist = execFileSync('unzip', ['-p', ipa, 'Payload/App.app/Info.plist'], {
 		maxBuffer: 16 * 1024 * 1024
 	});
-	const temporary = mkdtempSync(resolve(tmpdir(), 'chronos-ipa-info-'));
-	try {
-		const plistPath = resolve(temporary, 'Info.plist');
-		writeFileSync(plistPath, plist);
-		const parsed = JSON.parse(
-			execFileSync('plutil', ['-convert', 'json', '-o', '-', plistPath], {
-				encoding: 'utf8'
-			})
-		) as Record<string, unknown>;
-		const read = (key: string) => (typeof parsed[key] === 'string' ? parsed[key] : '');
-		return {
-			bundleId: read('CFBundleIdentifier'),
-			version: read('CFBundleShortVersionString'),
-			build: read('CFBundleVersion'),
-			minimumOsVersion: read('MinimumOSVersion')
-		};
-	} finally {
-		rmSync(temporary, { recursive: true, force: true });
-	}
+	using temporary = mkdtempDisposableSync(resolve(tmpdir(), 'chronos-ipa-info-'));
+	const plistPath = resolve(temporary.path, 'Info.plist');
+	writeFileSync(plistPath, plist);
+	const parsed = JSON.parse(
+		execFileSync('plutil', ['-convert', 'json', '-o', '-', plistPath], {
+			encoding: 'utf8'
+		})
+	) as Record<string, unknown>;
+	const read = (key: string) => (typeof parsed[key] === 'string' ? parsed[key] : '');
+	return {
+		bundleId: read('CFBundleIdentifier'),
+		version: read('CFBundleShortVersionString'),
+		build: read('CFBundleVersion'),
+		minimumOsVersion: read('MinimumOSVersion')
+	};
 }
 
 export function assertIpaIdentity(info: IpaInfo, descriptor: WebHostUpdate): void {
@@ -252,65 +247,61 @@ export function publishIosRelease(directory: string, repository: string): IosSta
 	} catch (error) {
 		if (!String((error as { stderr?: unknown }).stderr).includes('release not found')) throw error;
 	}
-	const temporary = mkdtempSync(resolve(tmpdir(), 'chronos-ios-release-'));
-	try {
-		if (!existing) {
-			const notesPath = resolve(temporary, 'notes.md');
-			const releases = JSON.parse(
-				gh(['release', 'list', '--limit', '100', '--json', 'tagName,isDraft,isPrerelease'])
-			) as { tagName: string; isDraft: boolean; isPrerelease: boolean }[];
-			const previous = previousReleaseTag(
-				releases.filter((r) => !r.isDraft && !r.isPrerelease).map((r) => r.tagName),
-				tag
-			);
-			writeFileSync(notesPath, renderGitHubReleaseNotes(release, repository, previous));
-			gh([
-				'release',
-				'create',
-				tag,
-				'--draft',
-				'--verify-tag',
-				'--title',
-				release.release.name,
-				'--notes-file',
-				notesPath
-			]);
-			existing = { isDraft: true, assets: [] };
-		}
-		const ipaFiles = readdirSync(directory)
-			.filter((file) => file.endsWith('.ipa'))
-			.sort();
-		if (ipaFiles.length !== MOBILE_PROFILES.length)
-			throw new Error('Expected one IPA for every profile');
-		const metadataFiles = ipaFiles.map((file) => iosMetadataFileName(file));
-		const recordPath = resolve(directory, 'ios-release.json');
-		writeFileSync(recordPath, JSON.stringify(release, null, '\t') + '\n');
-		const checksumEntries = [...ipaFiles, ...metadataFiles]
-			.map((file) => `${digest(resolve(directory, file))}  ${file}\n`)
-			.sort();
-		const checksumPath = resolve(directory, 'SHA256SUMS.ios');
-		writeFileSync(checksumPath, checksumEntries.join(''));
-		const uploadFiles = [...ipaFiles, ...metadataFiles, 'ios-release.json', 'SHA256SUMS.ios'];
-		for (const file of uploadFiles) {
-			if (existing.assets.some((asset) => asset.name === file)) {
-				gh(['release', 'download', tag, '--pattern', file, '--dir', temporary]);
-				if (digest(resolve(temporary, file)) !== digest(resolve(directory, file)))
-					throw new Error(`Published iOS artifact conflict: ${file}`);
-			} else {
-				gh(['release', 'upload', tag, resolve(directory, file)]);
-			}
-		}
-		const complete = JSON.parse(gh(['release', 'view', tag, '--json', 'isDraft,assets'])) as {
-			isDraft: boolean;
-			assets: { name: string }[];
-		};
-		if (uploadFiles.some((file) => !complete.assets.some((asset) => asset.name === file)))
-			throw new Error('iOS release upload incomplete');
-		if (complete.isDraft) gh(['release', 'edit', tag, '--draft=false', '--latest=false']);
-		return release;
-	} finally {
-		rmSync(temporary, { recursive: true, force: true });
+	using temporary = mkdtempDisposableSync(resolve(tmpdir(), 'chronos-ios-release-'));
+	if (!existing) {
+		const notesPath = resolve(temporary.path, 'notes.md');
+		const releases = JSON.parse(
+			gh(['release', 'list', '--limit', '100', '--json', 'tagName,isDraft,isPrerelease'])
+		) as { tagName: string; isDraft: boolean; isPrerelease: boolean }[];
+		const previous = previousReleaseTag(
+			releases.filter((r) => !r.isDraft && !r.isPrerelease).map((r) => r.tagName),
+			tag
+		);
+		writeFileSync(notesPath, renderGitHubReleaseNotes(release, repository, previous));
+		gh([
+			'release',
+			'create',
+			tag,
+			'--draft',
+			'--verify-tag',
+			'--title',
+			release.release.name,
+			'--notes-file',
+			notesPath
+		]);
+		existing = { isDraft: true, assets: [] };
 	}
+	const ipaFiles = readdirSync(directory)
+		.filter((file) => file.endsWith('.ipa'))
+		.sort();
+	if (ipaFiles.length !== MOBILE_PROFILES.length)
+		throw new Error('Expected one IPA for every profile');
+	const metadataFiles = ipaFiles.map((file) => iosMetadataFileName(file));
+	const recordPath = resolve(directory, 'ios-release.json');
+	writeFileSync(recordPath, JSON.stringify(release, null, '\t') + '\n');
+	const checksumEntries = [...ipaFiles, ...metadataFiles]
+		.map((file) => `${digest(resolve(directory, file))}  ${file}\n`)
+		.sort();
+	const checksumPath = resolve(directory, 'SHA256SUMS.ios');
+	writeFileSync(checksumPath, checksumEntries.join(''));
+	const uploadFiles = [...ipaFiles, ...metadataFiles, 'ios-release.json', 'SHA256SUMS.ios'];
+	for (const file of uploadFiles) {
+		if (existing.assets.some((asset) => asset.name === file)) {
+			gh(['release', 'download', tag, '--pattern', file, '--dir', temporary.path]);
+			if (digest(resolve(temporary.path, file)) !== digest(resolve(directory, file)))
+				throw new Error(`Published iOS artifact conflict: ${file}`);
+		} else {
+			gh(['release', 'upload', tag, resolve(directory, file)]);
+		}
+	}
+	const complete = JSON.parse(gh(['release', 'view', tag, '--json', 'isDraft,assets'])) as {
+		isDraft: boolean;
+		assets: { name: string }[];
+	};
+	if (uploadFiles.some((file) => !complete.assets.some((asset) => asset.name === file)))
+		throw new Error('iOS release upload incomplete');
+	if (complete.isDraft) gh(['release', 'edit', tag, '--draft=false', '--latest=false']);
+	return release;
 }
 
 /** Waits for Pages propagation, then verifies the published feed and IPA links. */

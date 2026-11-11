@@ -7,10 +7,9 @@ import {
 	cpSync,
 	existsSync,
 	mkdirSync,
-	mkdtempSync,
+	mkdtempDisposableSync,
 	readFileSync,
 	readdirSync,
-	rmSync,
 	writeFileSync
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -261,62 +260,58 @@ export function publishAndroidRelease(
 	} catch (error) {
 		if (!String((error as { stderr?: unknown }).stderr).includes('release not found')) throw error;
 	}
-	const temporary = mkdtempSync(resolve(tmpdir(), 'chronos-release-'));
-	try {
-		const notesPath = resolve(temporary, 'notes.md');
-		if (!existing || existing.isDraft) {
-			const releases = JSON.parse(
-				gh(['release', 'list', '--limit', '100', '--json', 'tagName,isDraft,isPrerelease'])
-			) as { tagName: string; isDraft: boolean; isPrerelease: boolean }[];
-			const previous = previousReleaseTag(
-				releases.filter((r) => !r.isDraft && !r.isPrerelease).map((r) => r.tagName),
-				tag
-			);
-			writeFileSync(notesPath, renderGitHubReleaseNotes(release, repository, previous, iosRelease));
-			if (!existing)
-				gh([
-					'release',
-					'create',
-					tag,
-					'--draft',
-					'--verify-tag',
-					'--title',
-					release.release.name,
-					'--notes-file',
-					notesPath
-				]);
-		}
-		const artifactFiles = readdirSync(directory).filter((file) => /\.(apk|json)$/.test(file));
-		const checksumEntries = artifactFiles
-			.slice()
-			.sort()
-			.map((file) => `${digest(resolve(directory, file))}  ${file}\n`);
-		writeFileSync(resolve(directory, 'SHA256SUMS'), checksumEntries.join(''));
-		const uploadFiles = [...artifactFiles, 'SHA256SUMS'];
-		for (const file of uploadFiles) {
-			if (existing?.assets.some((asset) => asset.name === file)) {
-				gh(['release', 'download', tag, '--pattern', file, '--dir', temporary]);
-				if (digest(resolve(temporary, file)) !== digest(resolve(directory, file)))
-					throw new Error(`Published artifact conflict: ${file}`);
-			} else {
-				if (existing && !existing.isDraft)
-					throw new Error('A published release cannot be repaired by replacing APK assets');
-				gh(['release', 'upload', tag, resolve(directory, file)]);
-			}
-		}
-		const complete = JSON.parse(gh(['release', 'view', tag, '--json', 'isDraft,assets']));
-		if (
-			uploadFiles.some(
-				(file) => !complete.assets.some((asset: { name: string }) => asset.name === file)
-			)
-		)
-			throw new Error('Release upload incomplete');
-		if (complete.isDraft)
-			gh(['release', 'edit', tag, '--notes-file', notesPath, '--draft=false', '--latest=false']);
-		return release;
-	} finally {
-		rmSync(temporary, { recursive: true, force: true });
+	using temporary = mkdtempDisposableSync(resolve(tmpdir(), 'chronos-release-'));
+	const notesPath = resolve(temporary.path, 'notes.md');
+	if (!existing || existing.isDraft) {
+		const releases = JSON.parse(
+			gh(['release', 'list', '--limit', '100', '--json', 'tagName,isDraft,isPrerelease'])
+		) as { tagName: string; isDraft: boolean; isPrerelease: boolean }[];
+		const previous = previousReleaseTag(
+			releases.filter((r) => !r.isDraft && !r.isPrerelease).map((r) => r.tagName),
+			tag
+		);
+		writeFileSync(notesPath, renderGitHubReleaseNotes(release, repository, previous, iosRelease));
+		if (!existing)
+			gh([
+				'release',
+				'create',
+				tag,
+				'--draft',
+				'--verify-tag',
+				'--title',
+				release.release.name,
+				'--notes-file',
+				notesPath
+			]);
 	}
+	const artifactFiles = readdirSync(directory).filter((file) => /\.(apk|json)$/.test(file));
+	const checksumEntries = artifactFiles
+		.slice()
+		.sort()
+		.map((file) => `${digest(resolve(directory, file))}  ${file}\n`);
+	writeFileSync(resolve(directory, 'SHA256SUMS'), checksumEntries.join(''));
+	const uploadFiles = [...artifactFiles, 'SHA256SUMS'];
+	for (const file of uploadFiles) {
+		if (existing?.assets.some((asset) => asset.name === file)) {
+			gh(['release', 'download', tag, '--pattern', file, '--dir', temporary.path]);
+			if (digest(resolve(temporary.path, file)) !== digest(resolve(directory, file)))
+				throw new Error(`Published artifact conflict: ${file}`);
+		} else {
+			if (existing && !existing.isDraft)
+				throw new Error('A published release cannot be repaired by replacing APK assets');
+			gh(['release', 'upload', tag, resolve(directory, file)]);
+		}
+	}
+	const complete = JSON.parse(gh(['release', 'view', tag, '--json', 'isDraft,assets']));
+	if (
+		uploadFiles.some(
+			(file) => !complete.assets.some((asset: { name: string }) => asset.name === file)
+		)
+	)
+		throw new Error('Release upload incomplete');
+	if (complete.isDraft)
+		gh(['release', 'edit', tag, '--notes-file', notesPath, '--draft=false', '--latest=false']);
+	return release;
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const [command, ...args] = process.argv.slice(2);

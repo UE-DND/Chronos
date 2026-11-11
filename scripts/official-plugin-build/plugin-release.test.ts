@@ -1,5 +1,5 @@
 import { afterEach, expect, it } from 'vite-plus/test';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { publishOfficialPluginMarket } from './publish-market.ts';
@@ -37,6 +37,8 @@ it('preserves history, permits identical retries and rejects commit or byte conf
 	publish('1.0.0');
 	stagePluginRelease(market, history, site, '1.0.0', 'a'.repeat(40));
 	const first = readFileSync(resolve(site, 'plugins/releases/1.0.0/release.json'), 'utf8');
+	expect(readFileSync(resolve(history, 'releases/1.0.0/release.json'), 'utf8')).toBe(first);
+	expect(readdirSync(history).filter((name) => name.startsWith('.release-'))).toEqual([]);
 	stagePluginRelease(market, history, site, '1.0.0', 'a'.repeat(40));
 	expect(() => stagePluginRelease(market, history, site, '1.0.0', 'b'.repeat(40))).toThrow(
 		'conflict'

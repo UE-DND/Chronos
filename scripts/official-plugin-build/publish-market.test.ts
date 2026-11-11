@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vite-plus/test';
-import { mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import * as cache from './cache.ts';
@@ -38,6 +38,9 @@ it('keeps the live catalog and its bytes readable across failed publication, the
 		plugin('fixture', 'old'),
 		plugin('removed', 'removed')
 	]);
+	expect(
+		readdirSync(resolve(root, 'dist')).filter((name) => name.startsWith('market-stage-'))
+	).toEqual([]);
 	const originalCatalog = readFileSync(catalogPath, 'utf8');
 	const originalAsset = resolve(
 		publicRoot,
@@ -61,6 +64,9 @@ it('keeps the live catalog and its bytes readable across failed publication, the
 	expect(() => publishOfficialPluginMarket(root, [plugin('fixture', 'new')])).toThrow(
 		'interrupted at commit'
 	);
+	expect(
+		readdirSync(resolve(root, 'dist')).filter((name) => name.startsWith('market-stage-'))
+	).toEqual([]);
 	expect(observed.length).toBeGreaterThan(0);
 	expect(observed.every(Boolean)).toBe(true);
 	expect(readFileSync(catalogPath, 'utf8')).toBe(originalCatalog);
@@ -98,5 +104,8 @@ it('never replaces a valid catalog when staged integrity verification fails', ()
 	const invalid = plugin('fixture', 'new');
 	invalid.code = 'corrupted';
 	expect(() => publishOfficialPluginMarket(root, [invalid])).toThrow('verification failed');
+	expect(
+		readdirSync(resolve(root, 'dist')).filter((name) => name.startsWith('market-stage-'))
+	).toEqual([]);
 	expect(readFileSync(path, 'utf8')).toBe(before);
 });

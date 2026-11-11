@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempDisposableSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import type { OfficialPluginDef } from '../official-plugins.config.ts';
 import type { BundledLicenseInfo } from '../../apps/web/src/lib/legal/third-party-license-generator.ts';
@@ -97,25 +97,21 @@ export async function buildOfficialPluginAssets(
 	if (plugin.entry) {
 		if (!existsSync(plugin.entry)) throw new Error(`${plugin.id}: missing entry ${plugin.entry}`);
 		mkdirSync(paths.compileDistDir, { recursive: true });
-		const temporary = mkdtempSync(resolve(paths.compileDistDir, `.${plugin.id}-`));
-		try {
-			const compiled = await compileOfficialPluginEntry(
-				plugin,
-				root,
-				createAliasRecord,
-				temporary,
-				releaseVersion,
-				{ mode, resourceAliases: prepared.aliases, environment: options.environment }
-			);
-			if (!compiled.code) throw new Error(`${plugin.id}: no bundle.js`);
-			assets.code = compiled.code;
-			assets.cssCode = compiled.cssCode;
-			assets.licenses = compiled.licenses;
-			assets.cacheStatus!.compile = compiled.cacheHit;
-			compileInputs = compiled.inputs;
-		} finally {
-			rmSync(temporary, { recursive: true, force: true });
-		}
+		using temporary = mkdtempDisposableSync(resolve(paths.compileDistDir, `.${plugin.id}-`));
+		const compiled = await compileOfficialPluginEntry(
+			plugin,
+			root,
+			createAliasRecord,
+			temporary.path,
+			releaseVersion,
+			{ mode, resourceAliases: prepared.aliases, environment: options.environment }
+		);
+		if (!compiled.code) throw new Error(`${plugin.id}: no bundle.js`);
+		assets.code = compiled.code;
+		assets.cssCode = compiled.cssCode;
+		assets.licenses = compiled.licenses;
+		assets.cacheStatus!.compile = compiled.cacheHit;
+		compileInputs = compiled.inputs;
 	}
 	const packageDir = resolve(root, 'packages/plugins', plugin.sourceDir);
 	resourceFiles.push(resolve(packageDir, 'package.json'));
