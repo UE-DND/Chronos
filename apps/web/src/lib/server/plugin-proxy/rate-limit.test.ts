@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vite-plus/test';
-import { PLUGIN_RATE_LIMIT_MAX } from './config';
+import { PLUGIN_RATE_LIMIT_MAX, PLUGIN_RATE_LIMIT_WINDOW_MS } from './config';
 import { PluginRateLimiter } from './rate-limit';
 
 describe('PluginRateLimiter', () => {
@@ -31,5 +31,40 @@ describe('PluginRateLimiter', () => {
 			limiter.check('source-cqut', '1.2.3.4');
 		}
 		expect(limiter.check('other-plugin', '1.2.3.4')).toEqual({ allowed: true });
+	});
+
+	it('isolates rate limits by client address', () => {
+		for (let i = 0; i < PLUGIN_RATE_LIMIT_MAX; i++) {
+			limiter.check('source-cqut', '1.2.3.4', 0);
+		}
+		expect(limiter.check('source-cqut', '1.2.3.5', 0)).toEqual({ allowed: true });
+		expect(limiter.check('source-cqut', '1.2.3.4', 0).allowed).toBe(false);
+	});
+
+	it('renews each client window at its original expiry', () => {
+		for (let i = 0; i < PLUGIN_RATE_LIMIT_MAX; i++) {
+			limiter.check('source-cqut', 'early', 0);
+			limiter.check('source-cqut', 'later', 1000);
+		}
+		expect(limiter.check('source-cqut', 'early', PLUGIN_RATE_LIMIT_WINDOW_MS)).toEqual({
+			allowed: true
+		});
+		expect(limiter.check('source-cqut', 'later', PLUGIN_RATE_LIMIT_WINDOW_MS)).toEqual({
+			allowed: false,
+			retryAfterSeconds: 1
+		});
+		expect(limiter.check('source-cqut', 'later', PLUGIN_RATE_LIMIT_WINDOW_MS + 1000)).toEqual({
+			allowed: true
+		});
+	});
+
+	it('still renews an expired client after the system clock moves backwards', () => {
+		limiter.check('source-cqut', 'first', 1000);
+		for (let i = 0; i < PLUGIN_RATE_LIMIT_MAX; i++) {
+			limiter.check('source-cqut', 'second', 0);
+		}
+		expect(limiter.check('source-cqut', 'second', PLUGIN_RATE_LIMIT_WINDOW_MS)).toEqual({
+			allowed: true
+		});
 	});
 });

@@ -11,14 +11,16 @@ function bucketKey(pluginId: string, ip: string): string {
 
 export type RateLimitResult = { allowed: true } | { allowed: false; retryAfterSeconds: number };
 
+/** Per-process protection. Deployments with multiple instances need an upstream rate limit. */
 export class PluginRateLimiter {
 	private readonly buckets = new Map<string, RateLimitBucket>();
 
 	private pruneExpiredBuckets(now: number): void {
 		for (const [key, bucket] of this.buckets) {
-			if (bucket.resetAt <= now) {
-				this.buckets.delete(key);
-			}
+			// New buckets have the same lifetime and follow insertion order. Stop at
+			// the first live bucket instead of scanning every client on every request.
+			if (bucket.resetAt > now) break;
+			this.buckets.delete(key);
 		}
 	}
 
@@ -28,6 +30,9 @@ export class PluginRateLimiter {
 		const key = bucketKey(pluginId, ip);
 		const bucket = this.buckets.get(key);
 		if (!bucket || bucket.resetAt <= now) {
+			// Reinsert expired entries so clock corrections cannot leave a renewed
+			// bucket ahead of entries that should be collected sooner.
+			this.buckets.delete(key);
 			this.buckets.set(key, { count: 1, resetAt: now + PLUGIN_RATE_LIMIT_WINDOW_MS });
 			return { allowed: true };
 		}
