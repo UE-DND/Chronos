@@ -1,7 +1,7 @@
 import { createStorageNamespace } from '../../../../packages/core/src/constants/storage-namespace.ts';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createHash } from 'node:crypto';
+import { hash } from 'node:crypto';
 import type { HostBuildIdentity } from '../../../../packages/core/src/types/host-update.ts';
 
 /** Finalize after SvelteKit has emitted its fallback and environment module. */
@@ -19,9 +19,7 @@ export function finalizeWorkerArtifacts(
 	writeFileSync(resolve(output, envPath), environment);
 	const assets = [shellPath, envPath].map((path) => ({
 		url: `${base}/${path}`,
-		hash: createHash('sha256')
-			.update(readFileSync(resolve(output, path)))
-			.digest('hex')
+		hash: hash('sha256', readFileSync(resolve(output, path)), 'hex')
 	}));
 	const namespace = createStorageNamespace(base);
 	const source = `/* Generated per host build. No plugin code is evaluated in this worker. */

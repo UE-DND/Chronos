@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { hash } from 'node:crypto';
 import { writeChanged } from './cache.ts';
 import { resolve } from 'node:path';
 import type { OfficialPluginDef } from '../official-plugins.config.ts';
@@ -66,7 +66,7 @@ function applyAssetManifestFields(
 
 	if (assets.colorsJson) {
 		manifest.colorsUrl = urlFor('colors.json');
-		manifest.colorsSha256 = createHash('sha256').update(assets.colorsJson).digest('hex');
+		manifest.colorsSha256 = hash('sha256', assets.colorsJson, 'hex');
 		const declaredId = (JSON.parse(assets.colorsJson) as { id?: unknown }).id;
 		if (typeof declaredId === 'string' && declaredId) {
 			manifest.themeId = declaredId;
@@ -75,17 +75,17 @@ function applyAssetManifestFields(
 
 	if (assets.iconThemeJson) {
 		manifest.iconThemeUrl = urlFor('icons.json');
-		manifest.iconThemeSha256 = createHash('sha256').update(assets.iconThemeJson).digest('hex');
+		manifest.iconThemeSha256 = hash('sha256', assets.iconThemeJson, 'hex');
 	}
 
 	if (assets.code) {
 		manifest.bundleUrl = urlFor('bundle.js');
-		manifest.sha256 = createHash('sha256').update(assets.code).digest('hex');
+		manifest.sha256 = hash('sha256', assets.code, 'hex');
 	}
 
 	if (assets.cssCode) {
 		manifest.cssUrl = urlFor('bundle.css');
-		manifest.cssSha256 = createHash('sha256').update(assets.cssCode).digest('hex');
+		manifest.cssSha256 = hash('sha256', assets.cssCode, 'hex');
 	}
 }
 

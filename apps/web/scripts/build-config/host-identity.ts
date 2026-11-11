@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { hash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -44,20 +44,20 @@ export function createHostIdentity(root: string, context?: HostIdentityContext):
 			.filter(([key]) => key.startsWith('PUBLIC_') || key === 'CHRONOS_PLUGIN_MARKET_BASE_URL')
 			.sort(([a], [b]) => a.localeCompare(b))
 	);
-	const buildId = createHash('sha256')
-		.update(
-			JSON.stringify({
-				sourceCommit,
-				version,
-				profile,
-				deployment,
-				deploymentId,
-				target,
-				basePath: getDeployTargetDefinition(target).basePath,
-				environment
-			})
-		)
-		.digest('hex');
+	const buildId = hash(
+		'sha256',
+		JSON.stringify({
+			sourceCommit,
+			version,
+			profile,
+			deployment,
+			deploymentId,
+			target,
+			basePath: getDeployTargetDefinition(target).basePath,
+			environment
+		}),
+		'hex'
+	);
 	return {
 		version,
 		buildId,

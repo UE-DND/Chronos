@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { hash, randomUUID } from 'node:crypto';
 import {
 	existsSync,
 	mkdirSync,
@@ -22,8 +22,7 @@ export interface BuildCache<T> {
 	value: T;
 	digest: string;
 }
-export const digest = (value: string | Uint8Array): string =>
-	createHash('sha256').update(value).digest('hex');
+export const digest = (value: string | Uint8Array): string => hash('sha256', value, 'hex');
 const relevant = (path: string) =>
 	/\.(?:[cm]?[jt]sx?|svelte|css|json|svg|png|webp|jpe?g|avif|woff2?)$/.test(path) &&
 	!/(?:^|\/)(?:tests|node_modules|dist)\/|\.(?:test|spec)\./.test(path);

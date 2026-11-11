@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { hash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -111,7 +111,7 @@ export async function resolveOfficialMobilePlugin(
 	const definitionFile = resolvePackageExport(packageDir, exports, './mobile/definition');
 	const serverPlugin = await resolveOfficialServerPlugin(plugin, root, true);
 	if (!serverPlugin) throw new Error(`${plugin.id}: mobile handlers require a server definition`);
-	const digest = createHash('sha256').update(readFileSync(definitionFile)).digest('hex');
+	const digest = hash('sha256', readFileSync(definitionFile), 'hex');
 	const module = await import(`${pathToFileURL(definitionFile).href}?rev=${digest}`);
 	return {
 		id: plugin.id,

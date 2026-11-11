@@ -22,6 +22,17 @@ function fixture() {
 	return { root, source, entry, cache: join(root, 'cache.json') };
 }
 describe('plugin build cache', () => {
+	it.each([
+		['empty input', '', 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'],
+		['UTF-8 text', '课表😀', '1f42637df7cc2bd38df786c6222b96e98c9314cd2a67f0b861dc69287da1f5e9'],
+		[
+			'binary view with an offset',
+			new Uint8Array([42, 0, 255, 128, 43]).subarray(1, 4),
+			'f742b965f156c10374bc23aea96e3a8aff8facd6fc079defeaa30219ad86f211'
+		]
+	] as const)('preserves the SHA-256 digest for %s', (_name, input, expected) => {
+		expect(digest(input)).toBe(expected);
+	});
 	it('reuses unchanged inputs and rejects changed, missing or corrupted data', () => {
 		const { entry, cache } = fixture();
 		writeBuildCache(cache, 'key', [entry], [], [], { code: 'output' });
