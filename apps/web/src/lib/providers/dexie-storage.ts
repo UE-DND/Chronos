@@ -52,7 +52,8 @@ export class DexieStorageProvider implements IStorageService {
 
 	constructor(
 		private database: ChronosDB = db,
-		private localStore: Storage | null = typeof localStorage !== 'undefined'
+		private localStore: Storage | null = typeof window !== 'undefined' &&
+		typeof localStorage !== 'undefined'
 			? appLocalStorage()
 			: null,
 		private cacheStore: CacheStorage | null = typeof caches !== 'undefined' ? caches : null,

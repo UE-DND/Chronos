@@ -65,7 +65,7 @@ export function createWebProviders(options?: WebProviderOptions) {
 				? createPersistentStorageRequest(
 						typeof navigator !== 'undefined' ? navigator.storage : undefined,
 						options?.localStorage === undefined
-							? typeof localStorage !== 'undefined'
+							? typeof window !== 'undefined' && typeof localStorage !== 'undefined'
 								? appLocalStorage()
 								: null
 							: options.localStorage
