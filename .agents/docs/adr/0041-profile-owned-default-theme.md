@@ -4,10 +4,10 @@
 
 ## 决策与原因
 
-默认主题属于 Profile 配置，不由宿主隐式回退到 M3。Profile 必须填写 `defaultTheme: { pluginId, themeId }`，并在当前预安装项中启用主题所属插件。构建时和运行时都会验证主题 ID、插件是否可选，以及注册归属。没有可用主题时，启动会明确失败。
+默认主题属于 Profile 的配置，宿主不会在缺少配置时悄悄退回 M3。Profile 必须填写 `defaultTheme: { pluginId, themeId }`，并且在当前预装项里启用这个主题所属的插件。构建时和运行时都会核对主题 ID、插件是不是可选的，以及注册归属。没有可用主题时，启动明确失败。
 
-引擎装配前不会激活主题。用户没有选择时，使用 Profile 默认主题。延迟恢复或临时加载失败时保留用户选择。只有确认主题已移除或禁用后，才保存默认回退值。用户不能通过界面停用默认主题所属插件；系统替换和销毁由生命周期流程处理。
+引擎还没装配好之前，不激活主题。用户没有选过主题时，用 Profile 的默认主题。延迟恢复，或者只是暂时加载失败，都保留用户原来的选择。只有确认主题已经被移除或禁用，才把选择写回默认主题。用户不能在界面上停用默认主题所属的插件。系统自己的替换和销毁，走生命周期流程。
 
 ## 取舍与演进
 
-Profile 可以选择非 M3 主题作为默认主题，但必须提供有效资源。统一预安装见 [ADR 0042](0042-unified-plugin-preinstallation.md)。M3 主题现在使用静态颜色和 ESM。算法、取色和图标行为见 [ADR 0043](0043-theme-owned-color-runtime-and-plugin-host-contracts.md)，宿主不再使用 M3 基础颜色回退。
+Profile 可以把不是 M3 的主题设为默认，但资源必须有效。统一的预装方式见 [ADR 0042](0042-unified-plugin-preinstallation.md)。M3 现在同时提供静态颜色和 ESM。算法、取色和图标行为见 [ADR 0043](0043-theme-owned-color-runtime-and-plugin-host-contracts.md)。宿主不再用一套 M3 基础颜色做退路。

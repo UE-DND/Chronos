@@ -3,15 +3,15 @@
 - 日期：2026-10-02
 - 修订：ADR 0047 的 APK 获取与安装流程
 
-应用启动时自动检查独立的 Android 就绪 feed，在线且处于前台时每 5 分钟检查一次；回前台检查已过期结果，联网恢复立即检查，离线和后台暂停轮询。失败后按 10 秒、30 秒、60 秒、5 分钟退避重试，发现更新后停止轮询。自动检测与软件更新页共享状态及进行中的检查请求，检测结果沿用“我的→关于→软件更新”入口的“有更新”标记，失败仅在软件更新页显示。
+Web、PWA 和移动端共用同一套自动检查。应用启动时检查；在线并且处于前台时，每 5 分钟检查一次；回到前台时检查已经过期的结果；网络恢复后立即检查；离线或在后台时暂停。失败后按 10 秒、30 秒、60 秒、5 分钟退避重试，发现更新后停止轮询。自动检查和软件更新页共用状态，也共用正在进行的那次请求。有更新时，沿用「我的 → 关于 → 软件更新」入口上的标记；失败只在软件更新页显示。Android 检查的是单独的就绪 feed。Android 和 iOS 都不注册或监听 Service Worker 更新。
 
-用户点击一次“下载并更新”即授权本次目标 APK 的下载和安装。自动检测不默认下载，也不增加第二次应用内确认。首次安装权限授权以及系统要求的确认由 Android 界面处理。
+用户点一次「下载并更新」，就是授权下载并安装这次的目标 APK。自动检查不会自己开始下载，也不会再要一次应用内确认。第一次的安装权限，以及系统要求的确认，由 Android 的界面处理。
 
 ## 原生任务
 
 更新检查沿用 `/android/stable.json` 和 `formatVersion: 1`，保留完整的选定 APK 描述。Android 使用 `native-apk` 平台动作，与 Service Worker 更新分开，不注册或监听 Service Worker 更新。只有匹配实际安装包名、签名与 Profile 的较新正式版本才触发 APK 更新标记。界面读取原生任务快照，退出页面不会取消任务。
 
-内部 Capacitor 插件 `ChronosUpdater` 提供启动、读取、继续、取消及状态通知。单一任务记录原子保存于 `noBackupFilesDir`，版本固定为 `1`，不参与备份或数据库迁移。记录保存目标宿主身份、准备 token、下载 ID、会话 ID、阶段和结果事件；已授权任务不会因 feed 更新而更换目标。
+内部的 Capacitor 插件 `ChronosUpdater` 负责启动、读取、继续、取消和状态通知。任务记录以单一文档原子写入 `noBackupFilesDir`，版本固定为 `1`，不参与备份，也不做数据库迁移。记录里有目标宿主身份、准备 token、下载 ID、会话 ID、阶段和结果事件。已经授权的任务不会因为 feed 更新就换成另一个目标。
 
 `DownloadManager` 负责后台下载、断网恢复和系统下载通知。允许 Wi-Fi 与移动网络，禁止漫游。下载完成广播只核对保存的 downloadId 和系统状态，再调度持久化 `JobService`。应用启动及前台状态查询补充核对，处理遗漏广播和进程中断。系统强制停止或厂商限制可能延迟执行。
 
@@ -19,7 +19,7 @@
 
 ## 安装
 
-使用 `PackageInstaller.Session` 的完整安装模式。写入并 fsync、关闭流后提交。Android 12 起声明 `UPDATE_PACKAGES_WITHOUT_USER_ACTION` 并设置 `USER_ACTION_NOT_REQUIRED`，通过更新自身的条件尝试免确认。必须仍处理 `STATUS_PENDING_USER_ACTION`，不保证所有 Android 或厂商策略都免确认。
+安装使用 `PackageInstaller.Session` 的完整安装模式。写入、fsync 并关闭流之后再提交。Android 12 起声明 `UPDATE_PACKAGES_WITHOUT_USER_ACTION`，并设置 `USER_ACTION_NOT_REQUIRED`，在系统允许自更新的条件下尝试免去确认。仍然要处理 `STATUS_PENDING_USER_ACTION`。不能假定每台 Android 设备或每个厂商策略都会免确认。
 
 安装回调使用显式、非导出的接收器及符合平台要求的 PendingIntent，按任务和 sessionId 核对。前台收到系统确认时打开其 Intent；后台只保存等待状态，用户回到页面继续。若确认 Intent 因进程重启丢失，继续操作放弃旧等待会话，用保留的 APK 重新校验并提交。取消或系统明确失败后不自动反复重试。
 
@@ -36,3 +36,17 @@
 启动、回前台及原生通知核对快照与任务 token，未知原生状态时保留快照；失败、取消及孤立快照按所有权清理。新宿主先采用匹配快照，必需插件从 APK 本地资源恢复。取消暂存资产清理与采用互斥，不删除已采用或其他 token 的资源。保留课表、配置、插件数据和 Profile，不提前执行新版插件，不自动后台补装可选插件。
 
 首次获得更新器必须手动安装含此功能的新版 APK。签名或安装身份不匹配的开发构建不能使用正式 feed。完整免确认安装必须在设备或模拟器上验证，桥接 mock 与 APK 编译不能证明这一行为。
+
+## 验证
+
+改了更新器之后，除 `vp run check`、`vp run test` 和 `vp run mobile:build` 以外，还要在装有 JDK 21 和 Android SDK 的环境里，于 `apps/mobile/android` 运行：
+
+```sh
+./gradlew :app:testDebugUnitTest :app:assembleDebug :app:connectedDebugAndroidTest
+```
+
+仪器测试覆盖任务恢复、广播核对和文件损坏。要验证完整的自更新，准备两份测试签名相同、versionCode 不同的 APK，并让每份 APK 里的 `public/version.json` 和实际版本一致。先安装旧的 APK，再把新的 APK 放到目标应用能够读取的目录，用 instrumentation 参数 `fixtureApk` 运行 `ChronosUpdateManagerTest#z_stageSignedUpgradeFixture`。这个测试由测试代码暂存 APK，然后走实际的原生校验和安装。生产更新器没有测试地址，也没有绕过校验的开关。
+
+覆盖安装可能让 instrumentation 中途结束。不能只看测试的返回码，还要另外核对系统里的安装版本、任务的最终结果，以及数据是否还在。测试用的版本、签名和宿主描述要和正式 feed 分开。
+
+验收至少覆盖 Android 11、12、14 和 16，包括第一次授权、权限被撤销、系统确认、在后台完成、进程中断、用户取消和空间不足。如果只有单元测试，或者只在一个系统版本上验证过，报告里要写明范围。桥接 mock 和 APK 能编译通过，不能代替设备上的免确认安装验证。

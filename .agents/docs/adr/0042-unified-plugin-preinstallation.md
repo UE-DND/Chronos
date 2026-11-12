@@ -4,21 +4,21 @@
 
 ## 决策与原因
 
-所有业务插件都通过 Manifest 和市场资源安装。Profile 必需资源随宿主提供，可选官方资源由 Pages 提供，两者共用安装流程。Profile 的 `preinstall` 声明必需插件和初始配置，并拒绝 `enabled: false`。预安装和手动安装共用 Manifest、校验、记录和激活流程。`core-shell` 是宿主导航注册函数，不进入市场。静态 `ProfileManager` 装配已移除。
+业务插件都通过 Manifest 和市场里的资源安装。Profile 必需的资源跟宿主走，可选的官方资源放在 Pages 上，两边用的是同一套安装流程。Profile 的 `preinstall` 声明必需插件和初始配置，并且拒绝 `enabled: false`。预装和用户手动安装共用 Manifest、校验、安装记录和激活流程。`core-shell` 只是宿主用来注册导航的函数，不进市场。静态的 `ProfileManager` 装配已经去掉。
 
 ## 安装不变量
 
-- 状态包含安装记录 `records`、主动卸载集合 `removed` 和初始偏好标记 `seeded`。ADR 0047 增加了集合修订号、宿主代次和更新准备快照。写操作在事务中读取最新记录。启动时会补装并启用当前 Profile 的全部预安装项，清除对应的卸载标记，并保留用户配置。Profile 移除某项时，只会解除保护，不会删除现有安装。插件身份由当前 Profile 决定，不由历史 origin 决定。
-- 用户不能禁用或卸载当前 Profile 的预安装项。界面和服务层使用同一判断规则。手动安装会清除卸载标记。恢复初始状态会清除安装状态，再重新装配。
-- 首屏先从缓存或市场目录激活默认主题，并验证主题 ID、插件是否可选和注册归属。其余插件在后台恢复。没有可用默认主题时，启动会明确失败。主题暂时缺席时，不覆盖可恢复的用户选择。
-- 更新时，系统先下载并校验候选资源，再替换运行时。验证默认主题后才提交安装记录。同宿主内替换失败时，恢复兼容的旧运行时和记录。宿主版本变化后，不恢复不兼容的插件代码。成功后才删除旧图片。`withPluginReplacement` 会临时允许卸载默认主题所属插件，结束后恢复保护。销毁和重置时会取消下载。
+- 状态包括安装记录 `records`、用户主动卸载的集合 `removed`，以及初始偏好是否已经写入的标记 `seeded`。[ADR 0047](0047-host-update-transactions.md) 又加上了集合修订号、宿主代次和更新准备快照。写操作在事务里读取最新记录。启动时会补装并启用当前 Profile 的全部预装项，清除对应的卸载标记，用户自己的配置保留。Profile 不再要求某一项时，只是解除保护，不会删掉已经装上的插件。插件身份由当前 Profile 决定，不由历史安装来源决定。
+- 用户不能禁用或卸载当前 Profile 的预装项。界面和服务用的是同一条判断。手动安装会清除卸载标记。恢复初始状态时，先清安装状态，再重新装配。
+- 首屏先从缓存或市场目录激活默认主题，并核对主题 ID、插件是否可选，以及注册归属。其余插件在后台恢复。没有可用的默认主题时，启动明确失败。主题暂时不可用时，不覆盖之后仍可恢复的用户选择。
+- 更新时先下载并校验候选资源，再替换正在运行的版本。默认主题验证通过之后，才提交安装记录。同一次宿主里替换失败时，恢复仍然兼容的旧运行时和记录。宿主版本变了之后，不恢复已经不兼容的插件代码。成功之后才删除旧图片。`withPluginReplacement` 会暂时允许卸掉默认主题所属的插件，结束时再把保护加回去。销毁和重置会取消还在进行的下载。
 
 ## 部署与离线
 
-`CHRONOS_PROFILE` 选择客户端预安装项。`CHRONOS_DEPLOYMENT` 单独选择服务端插件。客户端安装不会部署服务端代码。插件使用 `supportsPluginServer(pluginId, action)` 检查服务端能力。声明归属见 [ADR 0044](0044-server-plugin-definition-and-deployment-assembly.md)。
+`CHRONOS_PROFILE` 选择客户端要预装的内容。`CHRONOS_DEPLOYMENT` 单独选择服务端插件。客户端装上一个插件，并不等于把服务端代码也部署了。插件用 `supportsPluginServer(pluginId, action)` 检查服务端能力在不在。声明归谁，见 [ADR 0044](0044-server-plugin-definition-and-deployment-assembly.md)。
 
-PWA 会预缓存当前 Profile 的全部预安装资源，修订值来自最终产物摘要。URL 使用与下载器相同的完整性参数和部署 base。追加清单会保留 SvelteKit 默认的路径转换。页面壳和 `_app/env.js` 按构建身份独立保存，由 Worker 校验并缓存。导航始终使用控制该页面的 Worker 所属资源。当前缓存和更新事务见 [ADR 0047](0047-host-update-transactions.md)。其他市场插件从固定宿主版本的 Pages 目录按需下载，不进入宿主产物或预缓存。已安装插件从数据库恢复，远程目录失败不会影响内置插件补装。分发和发布约束见 [ADR 0045](0045-versioned-online-plugin-distribution.md)。
+PWA 会预缓存当前 Profile 的全部预装资源。修订值来自最终产物的摘要。URL 使用和下载器相同的完整性参数，以及部署的 base。追加进清单时，保留 SvelteKit 默认的路径转换。页面壳和 `_app/env.js` 按构建身份分开保存，由 Worker 校验后再缓存。导航始终使用正在控制该页面的 Worker 所属的资源。当前的缓存和更新事务见 [ADR 0047](0047-host-update-transactions.md)。其他市场插件按固定的宿主版本，从 Pages 目录按需下载，不放进宿主产物，也不预缓存。已经安装的插件从数据库恢复。远程目录失败，不影响内置插件的补装。分发和发布的约束见 [ADR 0045](0045-versioned-online-plugin-distribution.md)。
 
 ## 取舍
 
-发行必需插件也要经过安装流程，因此必须处理离线首次补装和失败重试。这样所有插件共用一套安装记录和生命周期。市场根据统一记录显示安装状态。默认主题分发和首屏资源见 [ADR 0043](0043-theme-owned-color-runtime-and-plugin-host-contracts.md)。
+发行里必需的插件也要走安装流程，所以要处理离线时的第一次补装，以及失败后的重试。这样所有插件才能共用一套安装记录和生命周期，市场也按这套记录显示装没装上。默认主题怎么分发、首屏资源从哪来，见 [ADR 0043](0043-theme-owned-color-runtime-and-plugin-host-contracts.md)。

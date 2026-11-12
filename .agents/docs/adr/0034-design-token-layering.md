@@ -8,7 +8,7 @@ Token 按颜色、排版、圆角、布局和组件模式分层。排版 Token �
 
 颜色键和 Tailwind 映射属于公共契约。颜色值和算法由主题管理。首屏 CSS 根据 Profile 默认主题生成。旧的 `CHRONOS_HOST_COLORS` 方案已由 [ADR 0043](0043-theme-owned-color-runtime-and-plugin-host-contracts.md) 取代。
 
-修改位置和样式规则见[设计 Token](../../../docs/design-tokens.md)。本记录不复制 Token 数值。
+样式落在公共 Token 上，数值和用法以 [packages/ui-kit/src/theme](../../../packages/ui-kit/src/theme) 为准。本记录不复制 Token 数值。
 
 ## 取舍
 
