@@ -128,8 +128,6 @@ jobs:
     name: Android native verification
     needs: native-changes
     runs-on: ubuntu-latest
-    env:
-      ANDROID_AVD_HOME: ${{ runner.temp }}/chronos-avd
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -166,6 +164,8 @@ jobs:
       - name: Install Android emulator
         if: needs.native-changes.outputs.instrumentation == 'true'
         run: |
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/chronos-avd"
+          echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
           sdkmanager "emulator" "system-images;android-36;google_apis;x86_64"
           mkdir -p "$ANDROID_AVD_HOME"
           echo no | avdmanager create avd --name chronos-ci --package "system-images;android-36;google_apis;x86_64" --force
