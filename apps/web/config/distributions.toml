@@ -1,5 +1,6 @@
 [defaults]
 vercel = "default"
+cloudflare = "default"
 pages = "pages"
 mobile = "mobile"
 

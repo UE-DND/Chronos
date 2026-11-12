@@ -66,3 +66,7 @@ export class NodeCqutSession implements CqutSession {
 		this.jar.clear();
 	}
 }
+
+export function createCqutSession(): CqutSession {
+	return new NodeCqutSession();
+}

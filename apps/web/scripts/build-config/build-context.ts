@@ -42,6 +42,7 @@ export function parseBuildCliArgs(argv: string[]): ParsedBuildCliArgs {
 
 	for (let i = 0; i < argv.length; i++) {
 		const arg = argv[i]!;
+		if (arg === '--') continue;
 		const equalsIndex = arg.indexOf('=');
 		const flag = equalsIndex >= 0 ? arg.slice(0, equalsIndex) : arg;
 		const option = flags.get(flag);

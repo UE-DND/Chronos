@@ -1,6 +1,7 @@
 import type { HostMessageKey } from '#lib/i18n/host-messages.ts';
 import { HOST_UI_PLUGIN_ID } from '#lib/i18n/host-messages.ts';
 import { getAppEngine } from '#lib/services/app-engine.ts';
+import { untrack } from 'svelte';
 
 let localeVersion = $state(0);
 let configured = false;
@@ -17,6 +18,6 @@ export function configureHostI18n(options: {
 
 export function hostT(key: HostMessageKey, params?: Record<string, unknown>): string {
 	void localeVersion;
-	const engine = getAppEngine();
+	const engine = untrack(getAppEngine);
 	return engine.translateForPlugin(HOST_UI_PLUGIN_ID, key, params);
 }

@@ -6,6 +6,7 @@ describe('distribution configuration', () => {
 		const config = parseDistributionsConfig(`
 [defaults]
 vercel = "default"
+cloudflare = "default"
 pages = "pages"
 mobile = "mobile"
 
@@ -34,6 +35,7 @@ deployment = "mobile"
 			parseDistributionsConfig(`
 [defaults]
 vercel = "incomplete"
+cloudflare = "incomplete"
 pages = "incomplete"
 mobile = "incomplete"
 
@@ -48,6 +50,7 @@ profile = "chronos-default"
 			parseDistributionsConfig(`
 [defaults]
 vercel = "missing"
+cloudflare = "pages"
 pages = "pages"
 mobile = "mobile"
 

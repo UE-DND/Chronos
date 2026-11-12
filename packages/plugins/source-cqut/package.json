@@ -5,6 +5,12 @@
 	"main": "./src/index.ts",
 	"module": "./src/index.ts",
 	"types": "./src/index.ts",
+	"imports": {
+		"#cqut-server-session": {
+			"workerd": "./server/fetch-cqut-session.ts",
+			"default": "./server/node-cqut-session.ts"
+		}
+	},
 	"exports": {
 		".": {
 			"types": "./src/index.ts",

@@ -6,11 +6,14 @@ export function analyticsEnabledForBuild(options: {
 	firebaseConfigured: boolean;
 	vercelEnvironment?: string;
 	mobileReleaseOptIn?: string;
+	cloudflareReleaseOptIn?: string;
 }): boolean {
 	// Analytics unit tests mock the SDK and need to exercise the enabled path.
 	if (options.mode === 'test') return true;
 	if (!options.firebaseConfigured) return false;
 	if (options.target === 'vercel') return options.vercelEnvironment === 'production';
+	if (options.target === 'cloudflare')
+		return options.mode === 'production' && options.cloudflareReleaseOptIn === 'true';
 	if (options.target === 'mobile') return options.mobileReleaseOptIn === 'true';
 	return false;
 }

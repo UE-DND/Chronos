@@ -89,12 +89,12 @@ async function prepareAndRunHost(command: 'build' | 'dev') {
 	await runCommand('vp', [command, resolve(webRoot), ...args], webRoot);
 	if (command === 'build') {
 		finalizeWorkerArtifacts(
-			resolve(webRoot, buildContext.target === 'vercel' ? '.vercel/output/static' : 'build'),
+			resolve(webRoot, buildContext.targetDef.staticOutputDir),
 			createHostIdentity(root, buildContext),
 			buildContext.targetDef.basePath
 		);
 		verifyHostPlugins(
-			resolve(webRoot, buildContext.target === 'vercel' ? '.vercel/output/static' : 'build'),
+			resolve(webRoot, buildContext.targetDef.staticOutputDir),
 			buildContext.profileId
 		);
 	}

@@ -29,6 +29,10 @@ import { chronosLicensePlugin } from './src/lib/legal/chronos-license-plugin';
 import { chronosProfilePlugin } from './src/lib/profile-codegen/chronos-profile-plugin';
 import { resolveProfile, resolveProfileId } from './src/lib/profile-codegen/profile-definitions';
 import { analyticsEnabledForBuild } from './scripts/build-config/analytics-build.ts';
+import {
+	cloudflareBuildGuard,
+	CLOUDFLARE_SERVER_CONDITIONS
+} from './scripts/build-config/cloudflare-build-guard.ts';
 import { chronosPluginHmrPlugin } from './src/lib/dev/chronos-plugin-hmr-vite.ts';
 import { createHostIdentity } from './scripts/build-config/host-identity';
 
@@ -88,7 +92,8 @@ export default defineConfig(({ mode }) => {
 		mode,
 		firebaseConfigured: targetDef.isMobile ? firebaseMobileConfigured : firebaseWebConfigured,
 		vercelEnvironment: process.env.VERCEL_ENV,
-		mobileReleaseOptIn: process.env.CHRONOS_ENABLE_ANALYTICS
+		mobileReleaseOptIn: process.env.CHRONOS_ENABLE_ANALYTICS,
+		cloudflareReleaseOptIn: process.env.CHRONOS_ENABLE_ANALYTICS
 	});
 	const bootColors = readHostBuildContext();
 	const host = createHostIdentity(monorepoRoot);
@@ -108,6 +113,10 @@ export default defineConfig(({ mode }) => {
 			],
 			dedupe: ['svelte']
 		},
+		ssr:
+			targetDef.target === 'cloudflare'
+				? { resolve: { conditions: CLOUDFLARE_SERVER_CONDITIONS } }
+				: undefined,
 		optimizeDeps: {
 			exclude: ['@material-symbols-svg/svelte']
 		},
@@ -174,6 +183,7 @@ export default defineConfig(({ mode }) => {
 		plugins: lazyPlugins(() => [
 			hostBuildContextPlugin(monorepoRoot),
 			nativeBuildGuard(targetDef.isMobile),
+			...(targetDef.target === 'cloudflare' ? [cloudflareBuildGuard()] : []),
 			chronosBundleAnalyzer(shouldAnalyze),
 			chronosLicensePlugin(webRoot),
 			materialSymbolsWeightPlugin(),
@@ -204,6 +214,9 @@ export default defineConfig(({ mode }) => {
 				},
 				{
 					disable: targetDef.disablePwa,
+					...(targetDef.target === 'cloudflare'
+						? { base: `${basePath}/`, scope: `${basePath}/` }
+						: {}),
 					registerType: 'prompt',
 					injectRegister: false,
 					additionalManifestEntriesGenerator: () =>

@@ -29,6 +29,30 @@ describe('build-context', () => {
 			expect(context.deploymentDef.serverPlugins).toEqual(['source-cqut']);
 		});
 
+		it('uses the same default distribution for Cloudflare and Vercel', async () => {
+			const context = await resolveAndValidateBuildContext({
+				root: repositoryRoot,
+				env: { CHRONOS_DEPLOY_TARGET: 'cloudflare' }
+			});
+			expect(context.distributionId).toBe('default');
+			expect(context.profileId).toBe('chronos-default');
+			expect(context.deploymentId).toBe('chronos-default');
+			expect(context.deploymentDef.serverPlugins).toEqual([]);
+			expect(context.targetDef.staticOutputDir).toBe('.svelte-kit/cloudflare');
+		});
+
+		it('selects Cloudflare CQUT online import through CLI distribution arguments', async () => {
+			const context = await resolveAndValidateBuildContext({
+				root: repositoryRoot,
+				cli: { target: 'cloudflare', distribution: 'cqut' },
+				env: {}
+			});
+			expect(context.distributionId).toBe('cqut');
+			expect(context.profileId).toBe('chronos-cqut');
+			expect(context.deploymentId).toBe('chronos-cqut');
+			expect(context.deploymentDef.serverPlugins).toEqual(['source-cqut']);
+		});
+
 		it('resolves valid pages defaults', async () => {
 			const context = await resolveAndValidateBuildContext({
 				env: { CHRONOS_DEPLOY_TARGET: 'pages' }
@@ -173,6 +197,13 @@ describe('build-context', () => {
 });
 
 describe('parseBuildCliArgs', () => {
+	it('accepts the task runner separator before distribution arguments', () => {
+		expect(parseBuildCliArgs(['--target', 'cloudflare', '--', '--distribution', 'cqut'])).toEqual({
+			options: { target: 'cloudflare', distribution: 'cqut' },
+			remainingArgs: []
+		});
+	});
+
 	it('extracts Chronos options and preserves arguments for Vite', () => {
 		expect(
 			parseBuildCliArgs([

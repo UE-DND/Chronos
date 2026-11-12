@@ -67,6 +67,7 @@ async function loadAsset(asset, fresh = false) {
  const bytes = await response.clone().arrayBuffer();
  const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('');
  if (hash !== asset.hash) throw new Error('Host shell integrity mismatch');
+ if (response.redirected) response = new Response(bytes, { status: response.status, statusText: response.statusText, headers: response.headers });
  await cache.put(asset.url, response.clone());
  return response;
 }

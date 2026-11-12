@@ -2,7 +2,7 @@ import type { PluginServerHandler, PluginServerManifest } from '@chronos/core';
 import { pluginServerError } from '@chronos/core';
 import { executeCqutPreview } from '../src/online';
 import { serverDefinition } from './definition';
-import { NodeCqutSession } from './node-cqut-session';
+import { createCqutSession } from '#cqut-server-session';
 
 export const handlePreview: PluginServerHandler = async ({ request }) => {
 	let body: unknown;
@@ -12,7 +12,7 @@ export const handlePreview: PluginServerHandler = async ({ request }) => {
 		return Response.json(pluginServerError('DataFormat', '请求格式错误'), { status: 400 });
 	}
 
-	const result = await executeCqutPreview(body, () => new NodeCqutSession(), undefined, {
+	const result = await executeCqutPreview(body, createCqutSession, undefined, {
 		signal: request.signal
 	});
 

@@ -25,21 +25,22 @@ vp run dev
 
 ### 常用命令
 
-| 命令                                                                     | 用途                                      |
-| ------------------------------------------------------------------------ | ----------------------------------------- |
-| `vp run dev`                                                             | 启动 Web 开发服务器和本地插件市场         |
-| `vp run dev -- --distribution cqut`                                      | 用 CQUT 发行配置启动开发服务器            |
-| `vp run check`                                                           | 检查格式、Lint 和类型                     |
-| `vp run test:browser`                                                    | 构建两个生产版本并运行 Chromium PWA 回归  |
-| `vp run test`                                                            | 构建测试所需的官方插件并运行测试套件      |
-| `vp run check:web`、`vp run test:web`                                    | 单独运行 Web 包检查或测试                 |
-| `vp run build`                                                           | 按默认 target 和发行配置构建应用及插件    |
-| `vp run build:cqut`、`vp run build:cqut-offline`、`vp run build:default` | 构建预设 Web 发行版                       |
-| `vp run build:pages`                                                     | 构建 GitHub Pages 静态站点                |
-| `vp run mobile:build`                                                    | 构建移动端资源并同步 Capacitor 工程       |
-| `vp run mobile:open:android`                                             | 在 Android Studio 中打开 Android 工程     |
-| `vp run --filter @chronos/mobile run:android`                            | 在已配置的设备或模拟器上运行 Android 应用 |
-| `vp run build:official-plugins`、`vp run verify:official-plugins`        | 单独构建或校验官方插件                    |
+| 命令                                                                     | 用途                                               |
+| ------------------------------------------------------------------------ | -------------------------------------------------- |
+| `vp run dev`                                                             | 启动 Web 开发服务器和本地插件市场                  |
+| `vp run dev -- --distribution cqut`                                      | 用 CQUT 发行配置启动开发服务器                     |
+| `vp run check`                                                           | 检查格式、Lint 和类型                              |
+| `vp run test:browser`                                                    | 构建两个生产版本并运行 Chromium PWA 回归           |
+| `vp run test`                                                            | 构建测试所需的官方插件并运行测试套件               |
+| `vp run check:web`、`vp run test:web`                                    | 单独运行 Web 包检查或测试                          |
+| `vp run build`                                                           | 按默认 target 和发行配置构建应用及插件             |
+| `vp run build:cqut`、`vp run build:cqut-offline`、`vp run build:default` | 构建预设 Web 发行版                                |
+| `vp run build:pages`                                                     | 构建 GitHub Pages 静态站点                         |
+| `vp run build:cloudflare`、`preview:cloudflare`、`deploy:cloudflare`     | 构建、本地运行或直接上传 Cloudflare Pages 全栈站点 |
+| `vp run mobile:build`                                                    | 构建移动端资源并同步 Capacitor 工程                |
+| `vp run mobile:open:android`                                             | 在 Android Studio 中打开 Android 工程              |
+| `vp run --filter @chronos/mobile run:android`                            | 在已配置的设备或模拟器上运行 Android 应用          |
+| `vp run build:official-plugins`、`vp run verify:official-plugins`        | 单独构建或校验官方插件                             |
 
 开发和构建任务应从仓库根目录通过 `vp run` 调用。额外参数放在 `--` 后，例如 `vp run build -- --profile chronos-default`；不要用 `vp dev` 或 `vp build` 代替项目任务。所有任务见 [vite.config.ts](vite.config.ts) 和各 workspace 的 `package.json`。
 
@@ -132,12 +133,12 @@ Android 发布通过 `setup-java` 缓存 Gradle 依赖和 Wrapper，并使用 `-
 
 Chronos 分别配置客户端预安装的插件、服务端启用的插件和部署平台。
 
-| 变量                    | 作用                                                                   | 默认值                                            |
-| ----------------------- | ---------------------------------------------------------------------- | ------------------------------------------------- |
-| `CHRONOS_DISTRIBUTION`  | 选择 `apps/web/config/distributions.toml` 中的 profile/deployment 组合 | 未指定时按 target 选择默认发行项                  |
-| `CHRONOS_PROFILE`       | 覆盖发行项的客户端 profile                                             | 发行项 profile                                    |
-| `CHRONOS_DEPLOYMENT`    | 覆盖发行项的服务端 deployment                                          | 发行项 deployment                                 |
-| `CHRONOS_DEPLOY_TARGET` | 选择部署平台、适配器和 PWA 构建行为                                    | 未设置时使用 Vercel；也可设为 `pages` 或 `mobile` |
+| 变量                    | 作用                                                                   | 默认值                                                          |
+| ----------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `CHRONOS_DISTRIBUTION`  | 选择 `apps/web/config/distributions.toml` 中的 profile/deployment 组合 | 未指定时按 target 选择默认发行项                                |
+| `CHRONOS_PROFILE`       | 覆盖发行项的客户端 profile                                             | 发行项 profile                                                  |
+| `CHRONOS_DEPLOYMENT`    | 覆盖发行项的服务端 deployment                                          | 发行项 deployment                                               |
+| `CHRONOS_DEPLOY_TARGET` | 选择部署平台、适配器和 PWA 构建行为                                    | 未设置时使用 Vercel；也可设为 `cloudflare`、`pages` 或 `mobile` |
 
 发行项把 profile 与 deployment 配成一组；deploy target 仍独立选择。Profile 选择客户端预装内容，deployment 选择服务端插件，target 选择平台适配器、SvelteKit 适配器和 PWA 行为。解析优先级为：target 决定默认发行项；`CHRONOS_DISTRIBUTION` / `--distribution` 选择发行项；profile/deployment 环境变量覆盖发行项；对应 CLI 参数优先级最高。常用 `build:*` 任务会显式选择发行项。
 
@@ -151,11 +152,12 @@ deployment = "chronos-default"
 
 然后使用 `CHRONOS_DISTRIBUTION=my-offline vp run build`。临时组合可直接覆盖字段，例如 `vp run build -- --profile chronos-default --deployment chronos-cqut`；也可以使用对应的 `CHRONOS_PROFILE`、`CHRONOS_DEPLOYMENT` 和 `CHRONOS_DEPLOY_TARGET` 环境变量。构建会检查所选 profile、deployment 和 target 的有效性与兼容性。
 
-| Deploy target | 构建形态                        | PWA  | 默认 deployment        |
-| ------------- | ------------------------------- | ---- | ---------------------- |
-| `vercel`      | Vercel Serverless 和静态资源    | 启用 | `chronos-default`      |
-| `pages`       | 静态站点，路径前缀为 `/Chronos` | 启用 | `pages`，无服务端插件  |
-| `mobile`      | Capacitor 使用的静态 SPA        | 禁用 | `mobile`，无服务端插件 |
+| Deploy target | 构建形态                                          | PWA  | 默认 deployment        |
+| ------------- | ------------------------------------------------- | ---- | ---------------------- |
+| `vercel`      | Vercel Serverless 和静态资源                      | 启用 | `chronos-default`      |
+| `cloudflare`  | Cloudflare Pages Functions 和静态资源，根路径为空 | 启用 | `chronos-default`      |
+| `pages`       | 静态站点，路径前缀为 `/Chronos`                   | 启用 | `pages`，无服务端插件  |
+| `mobile`      | Capacitor 使用的静态 SPA                          | 禁用 | `mobile`，无服务端插件 |
 
 `vp run mobile:build` 使用 `mobile` target 和 `mobile` 发行项，然后同步 Capacitor 工程。移动端不运行 Web 服务端处理器；带原生实现的动作通过静态注册表在 APK 内执行，Profile 策略可禁用对应动作。target 定义见 [deploy-targets.ts](apps/web/src/lib/config/deploy-targets.ts)，profile 和 deployment 组合见 [distributions.toml](apps/web/config/distributions.toml)。
 
@@ -183,15 +185,25 @@ Android Release 使用 `app/src/main/generated/baselineProfiles/` 中的 Baselin
 
 当前 Profile 于 2026-10-02 使用 Android 15 / API 35、ARM64 Pixel 6 模拟器和 WebView 124 采集，覆盖冷启动至欢迎页或课表可见的路径。未覆盖课表导入、页面切换等后续交互。
 
-| 构建任务                       | 客户端预安装插件                             | 服务端插件    |
-| ------------------------------ | -------------------------------------------- | ------------- |
-| `build:default`、`build:pages` | `theme-m3`、`codec-share`                    | 无            |
-| `build:cqut-offline`           | 上述插件和 `source-cqut`，默认使用 HTML 导入 | 无            |
-| `build:cqut`                   | 上述插件和 `source-cqut`，默认使用在线导入   | `source-cqut` |
+| 构建任务                                           | 客户端预安装插件                             | 服务端插件    |
+| -------------------------------------------------- | -------------------------------------------- | ------------- |
+| `build:default`、`build:pages`、`build:cloudflare` | `theme-m3`、`codec-share`                    | 无            |
+| `build:cqut-offline`                               | 上述插件和 `source-cqut`，默认使用 HTML 导入 | 无            |
+| `build:cqut`                                       | 上述插件和 `source-cqut`，默认使用在线导入   | `source-cqut` |
 
-Vercel 构建会生成 Serverless 函数和静态资源。Pages 的输出目录是 `apps/web/build`。你可以推送 `v*` 标签部署，也可以手动运行工作流。具体步骤见 [release.yml](.github/workflows/release.yml)。
+Vercel 构建会生成 Serverless 函数和静态资源。GitHub Pages 的输出目录是 `apps/web/build`。正式 Web 发布使用 Cloudflare Pages；`v*` 标签的发布流程在 Quality 通过后，通过 [cloudflare-production.yml](.github/workflows/cloudflare-production.yml) 显式选择 `cqut` 发行配置并部署到生产分支 `master`。也可以手动运行 [Release CI](.github/workflows/release.yml)，选择已有发行标签部署。
 
-Firebase Analytics Web 构建使用 `.env.example` 中的 `PUBLIC_FIREBASE_*` 客户端配置；Android 使用 `apps/mobile/android/app/google-services.json`。缺少平台配置时，构建不会启用统计。Firebase 配置是公开客户端配置，不要放入服务账号密钥。新增服务端插件见 [ADR 0044](.agents/docs/adr/0044-server-plugin-definition-and-deployment-assembly.md)。
+Cloudflare 使用 Direct Upload Pages 项目 `chronos-timetable`，站点地址为 `https://timetable.uednd.tech`。`vp run build:cloudflare` 与 Vercel 使用相同的 `default` 发行配置；使用 `vp run build:cloudflare -- --distribution cqut` 选择 CQUT 在线版。客户端、Functions 和离线资源写入 `apps/web/.svelte-kit/cloudflare`。`vp run preview:cloudflare` 通过 Wrangler 的本地 Pages 模式运行。
+
+`vp run deploy:cloudflare` 在同一 Web 工作目录先构建再上传。`--distribution`、`--profile` 和 `--deployment` 传给 Chronos 构建；`--branch`、`--commit-dirty`、`--commit-hash`、`--commit-message` 等参数传给 Wrangler。例如 `vp run deploy:cloudflare -- --distribution cqut --branch master --commit-dirty=true` 会发布未提交的 CQUT 在线版。任务不固定发行配置、分支或工作区标记；未指定时，分别使用发行配置默认值与 Wrangler 的 Git 检测结果。默认 `vp run build` 仍使用 Vercel target。
+
+上传前在 `apps/web` 运行 `vpx wrangler login`，Wrangler 登录独立于 `cf` CLI。首次创建项目时使用 `vpx wrangler pages project create chronos-timetable --production-branch master --compatibility-date 2026-11-12 --force`，确保新项目采用 Direct Upload Pages，避免 Wrangler 自动转交 Workers；项目创建后直接部署，无需再次使用 `--force`。
+
+GitHub Actions 使用 `CLOUDFLARE_API_TOKEN` repository secret 和 `CLOUDFLARE_ACCOUNT_ID` repository variable。Token 仅需项目所在账户的 Pages Write 权限；生产工作流复用七项 `PUBLIC_FIREBASE_*` repository variables。发布链路不再使用 Vercel 的 Token、组织或项目变量。
+
+Cloudflare 服务端构建通过 `workerd` 条件选择 CQUT 的原生 fetch session；Vercel 继续使用 Node/undici。`wrangler.jsonc` 配置 Pages 输出路径和兼容日期；Web 根目录的 `_headers` 与适配器生成的静态排除规则让 Service Worker、manifest、更新描述和版本化离线资源由静态服务返回。新站使用独立的 `cloudflare` 更新身份，首次安装、正常更新和离线启动保持可用。
+
+Firebase Analytics Web 构建使用 `.env.example` 中的 `PUBLIC_FIREBASE_*` 客户端配置；Android 使用 `apps/mobile/android/app/google-services.json`。缺少平台配置时，构建不会启用统计。Cloudflare 生产构建还要求 `CHRONOS_ENABLE_ANALYTICS=true` 显式启用；Vercel 的生产判断保持使用 `VERCEL_ENV=production`。Firebase 配置是公开客户端配置，不要放入服务账号密钥。新增服务端插件见 [ADR 0044](.agents/docs/adr/0044-server-plugin-definition-and-deployment-assembly.md)。
 
 ## 插件作者指南
 

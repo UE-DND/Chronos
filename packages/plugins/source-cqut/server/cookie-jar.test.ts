@@ -33,6 +33,21 @@ describe('CookieJar', () => {
 		);
 	});
 
+	it('stores separate Workers Set-Cookie headers without splitting the Expires date', () => {
+		const jar = new CookieJar();
+		const response = new Response(null);
+		Object.defineProperty(response.headers, 'getSetCookie', { value: undefined });
+		Object.defineProperty(response.headers, 'getAll', {
+			value: (name: string) =>
+				name === 'Set-Cookie'
+					? ['first=1; Path=/', 'second=2; Expires=Wed, 21 Oct 2037 07:28:00 GMT; Path=/']
+					: []
+		});
+		jar.storeFrom(response, 'https://uis.example.test/');
+
+		expect(jar.cookieHeader('https://uis.example.test/')).toBe('first=1; second=2');
+	});
+
 	it('sends host-scoped cookies only for matching requests', () => {
 		const jar = new CookieJar();
 		const response = new Response(null, {

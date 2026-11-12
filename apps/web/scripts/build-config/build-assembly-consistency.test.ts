@@ -136,6 +136,10 @@ describe('build assembly and host identity consistency', () => {
 
 			const registry = readFileSync(registryPath, 'utf8');
 			expect(registry).toContain('source-cqut');
+			const route = readFileSync(routePath, 'utf8');
+			expect(route).toContain('dispatchPluginRequest');
+			expect(route).not.toContain('maxDuration');
+			expect(route).not.toContain('regions');
 		});
 
 		it('removes catch-all route when deployment has no server plugins', async () => {

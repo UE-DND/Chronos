@@ -7,7 +7,7 @@ export interface HostBuildIdentity {
 	sourceCommit: string;
 	profileId: string;
 	deploymentId: string;
-	target: 'pages' | 'vercel' | 'mobile';
+	target: 'pages' | 'vercel' | 'cloudflare' | 'mobile';
 }
 
 export interface HostRelease {
@@ -82,7 +82,12 @@ export class IosUpdateRejected extends Error {
 	}
 }
 
-const HOST_TARGETS = new Set<HostBuildIdentity['target']>(['pages', 'vercel', 'mobile']);
+const HOST_TARGETS = new Set<HostBuildIdentity['target']>([
+	'pages',
+	'vercel',
+	'cloudflare',
+	'mobile'
+]);
 const HOST_VERSION = /^\d+\.\d+\.\d+$/;
 
 export function androidVersionCode(version: string): number {

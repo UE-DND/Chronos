@@ -349,10 +349,10 @@ jobs:
           PREVIOUS: ${{ needs.build.outputs.previous }}
         run: node --experimental-strip-types scripts/official-plugin-build/plugin-release.ts smoke https://ue-dnd.github.io/Chronos/plugins/releases/ "$VERSION" "$PREVIOUS"
 
-  vercel:
-    name: Deploy Vercel production
+  cloudflare:
+    name: Deploy Cloudflare production
     needs: [version, verify]
-    uses: ./.github/workflows/vercel-production.yml
+    uses: ./.github/workflows/cloudflare-production.yml
     with:
       tag: ${{ needs.version.outputs.tag }}
     secrets: inherit

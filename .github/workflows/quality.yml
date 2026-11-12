@@ -90,14 +90,14 @@ jobs:
       matrix:
         include:
           - name: CQUT
-            command: vp run build:cqut
-            license_path: apps/web/.vercel/output/static/licenses/third-party.json
+            command: vp run build:cloudflare -- --distribution cqut
+            license_path: apps/web/.svelte-kit/cloudflare/licenses/third-party.json
           - name: CQUT offline
-            command: vp run build:cqut-offline
-            license_path: apps/web/.vercel/output/static/licenses/third-party.json
+            command: vp run build:cloudflare -- --distribution cqut-offline
+            license_path: apps/web/.svelte-kit/cloudflare/licenses/third-party.json
           - name: Default
-            command: vp run build:default
-            license_path: apps/web/.vercel/output/static/licenses/third-party.json
+            command: vp run build:cloudflare
+            license_path: apps/web/.svelte-kit/cloudflare/licenses/third-party.json
           - name: Mobile
             command: vp run build:mobile
             license_path: apps/web/build/licenses/third-party.json

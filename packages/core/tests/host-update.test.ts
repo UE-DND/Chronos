@@ -126,6 +126,25 @@ describe('published host updates', () => {
 		expect(() => validateWebUpdate(update, { ...host, profileId: 'chronos-cqut' })).toThrow();
 		expect(() => validateWebUpdate(update, { ...host, target: 'mobile' })).toThrow();
 	});
+	it('accepts updates for a Cloudflare installation and keeps its target identity separate', () => {
+		const cloudflareHost = {
+			...host,
+			target: 'cloudflare' as const,
+			profileId: 'chronos-cqut',
+			deploymentId: 'chronos-cqut'
+		};
+		const update = {
+			formatVersion: 1,
+			host: cloudflareHost,
+			release,
+			requiredPluginIds: ['source-cqut', 'theme-m3'],
+			pluginCatalogUrl: feed.profiles['chronos-default'].pluginCatalogUrl
+		};
+		expect(validateWebUpdate(update, cloudflareHost).host.target).toBe('cloudflare');
+		expect(() => validateWebUpdate(update, { ...cloudflareHost, target: 'vercel' })).toThrow(
+			'Web update does not match this installation'
+		);
+	});
 	it.each([
 		'http://github.com/UE-DND/Chronos/releases/download/v1.0.3/Chronos-default-1.0.3.apk',
 		'https://github.com:444/UE-DND/Chronos/releases/download/v1.0.3/Chronos-default-1.0.3.apk',

@@ -41,7 +41,12 @@ export function createHostIdentity(root: string, context?: HostIdentityContext):
 	});
 	const environment = Object.fromEntries(
 		Object.entries(process.env)
-			.filter(([key]) => key.startsWith('PUBLIC_') || key === 'CHRONOS_PLUGIN_MARKET_BASE_URL')
+			.filter(
+				([key]) =>
+					key.startsWith('PUBLIC_') ||
+					key === 'CHRONOS_PLUGIN_MARKET_BASE_URL' ||
+					key === 'CHRONOS_ENABLE_ANALYTICS'
+			)
 			.sort(([a], [b]) => a.localeCompare(b))
 	);
 	const buildId = hash(

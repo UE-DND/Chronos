@@ -4,6 +4,7 @@ import { CAS_APPLICATION_CODE, TIMETABLE_SESSION_COOKIE } from '../src/online/co
 import { loginCas } from '../src/online/cas-auth';
 import { CookieJar } from './cookie-jar';
 import { NodeCqutSession } from './node-cqut-session';
+import { FetchCqutSession } from './fetch-cqut-session';
 
 vi.mock('./config', async (importOriginal) => {
 	const original = await importOriginal<typeof import('./config')>();
@@ -107,7 +108,7 @@ afterEach(async () => {
 	baseUrl = '';
 });
 
-describe('loginCas', () => {
+describe.each([NodeCqutSession, FetchCqutSession])('loginCas with %s', (Session) => {
 	it('propagates unknown request bugs even when the CAS SDK wraps them as network errors', async () => {
 		const error = new TypeError('request implementation failed');
 		const request = vi.fn().mockRejectedValue(error);
@@ -126,7 +127,7 @@ describe('loginCas', () => {
 	it('completes ticket exchange and stores timetable session cookie', async () => {
 		const upstream = await startMockUpstream();
 		const jar = new CookieJar();
-		const session = new NodeCqutSession(jar);
+		const session = new Session(jar);
 
 		const result = await loginCas(session, TEST_ACCOUNT, TEST_PASSWORD, undefined, overrides());
 		expect(result.ok).toBe(true);
@@ -162,7 +163,7 @@ describe('loginCas', () => {
 		baseUrl = `http://127.0.0.1:${address.port}`;
 
 		const jar = new CookieJar();
-		const session = new NodeCqutSession(jar);
+		const session = new Session(jar);
 		const result = await loginCas(session, TEST_ACCOUNT, TEST_PASSWORD, undefined, overrides());
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
@@ -196,7 +197,7 @@ describe('loginCas', () => {
 		baseUrl = `http://127.0.0.1:${address.port}`;
 
 		const jar = new CookieJar();
-		const session = new NodeCqutSession(jar);
+		const session = new Session(jar);
 		const result = await loginCas(session, TEST_ACCOUNT, TEST_PASSWORD, undefined, {
 			uisBaseUrl: baseUrl,
 			timetableBaseUrl: baseUrl,
@@ -261,7 +262,7 @@ describe('loginCas', () => {
 		baseUrl = `http://127.0.0.1:${address.port}`;
 
 		const jar = new CookieJar();
-		const session = new NodeCqutSession(jar);
+		const session = new Session(jar);
 		const result = await loginCas(session, TEST_ACCOUNT, TEST_PASSWORD, undefined, overrides());
 		expect(result.ok).toBe(true);
 		expect(casLoginAttempts).toBeGreaterThanOrEqual(2);

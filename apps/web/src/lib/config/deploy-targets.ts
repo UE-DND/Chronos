@@ -1,6 +1,6 @@
-export type DeployTarget = 'vercel' | 'pages' | 'mobile';
+export type DeployTarget = 'vercel' | 'cloudflare' | 'pages' | 'mobile';
 type DeployTargetBasePath = '' | `/${string}`;
-type AdapterKind = 'vercel' | 'static-pages' | 'static-spa';
+type AdapterKind = 'vercel' | 'cloudflare' | 'static-pages' | 'static-spa';
 
 export interface DeployTargetDefinition {
 	readonly target: DeployTarget;
@@ -10,6 +10,7 @@ export interface DeployTargetDefinition {
 	readonly defaultDeployment: string;
 	readonly defaultProfile: string;
 	readonly adapterKind: AdapterKind;
+	readonly staticOutputDir: string;
 	readonly supportsServerPlugins: boolean;
 }
 
@@ -22,6 +23,18 @@ export const DEPLOY_TARGET_DEFINITIONS: Record<DeployTarget, DeployTargetDefinit
 		defaultDeployment: 'chronos-default',
 		defaultProfile: 'chronos-default',
 		adapterKind: 'vercel',
+		staticOutputDir: '.vercel/output/static',
+		supportsServerPlugins: true
+	},
+	cloudflare: {
+		target: 'cloudflare',
+		basePath: '',
+		isMobile: false,
+		disablePwa: false,
+		defaultDeployment: 'chronos-default',
+		defaultProfile: 'chronos-default',
+		adapterKind: 'cloudflare',
+		staticOutputDir: '.svelte-kit/cloudflare',
 		supportsServerPlugins: true
 	},
 	pages: {
@@ -32,6 +45,7 @@ export const DEPLOY_TARGET_DEFINITIONS: Record<DeployTarget, DeployTargetDefinit
 		defaultDeployment: 'pages',
 		defaultProfile: 'chronos-default',
 		adapterKind: 'static-pages',
+		staticOutputDir: 'build',
 		supportsServerPlugins: false
 	},
 	mobile: {
@@ -42,6 +56,7 @@ export const DEPLOY_TARGET_DEFINITIONS: Record<DeployTarget, DeployTargetDefinit
 		defaultDeployment: 'mobile',
 		defaultProfile: 'chronos-default',
 		adapterKind: 'static-spa',
+		staticOutputDir: 'build',
 		supportsServerPlugins: false
 	}
 };
@@ -55,10 +70,13 @@ export function resolveDeployTarget(
 			: (targetOrEnv?.CHRONOS_DEPLOY_TARGET ?? process.env.CHRONOS_DEPLOY_TARGET);
 
 	if (!raw || raw === 'vercel') return 'vercel';
+	if (raw === 'cloudflare') return 'cloudflare';
 	if (raw === 'pages') return 'pages';
 	if (raw === 'mobile') return 'mobile';
 
-	throw new Error(`Unknown deploy target: "${raw}". Supported targets are: vercel, pages, mobile.`);
+	throw new Error(
+		`Unknown deploy target: "${raw}". Supported targets are: vercel, cloudflare, pages, mobile.`
+	);
 }
 
 export function getDeployTargetDefinition(
@@ -71,6 +89,9 @@ export function getDeployTargetDefinition(
 	}
 	if (basePath === undefined) return def;
 	if (def.isMobile && basePath !== '') throw new Error('Mobile deployment base must remain empty');
+	if (def.target === 'cloudflare' && basePath !== '') {
+		throw new Error('Cloudflare Pages deployment base must remain empty');
+	}
 	if (basePath !== '' && !/^\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]+$/.test(basePath)) {
 		throw new Error('CHRONOS_BASE_PATH must be empty or an absolute path without a trailing slash');
 	}

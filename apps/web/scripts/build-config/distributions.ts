@@ -16,7 +16,7 @@ export interface DistributionConfig {
 const DISTRIBUTION_CONFIG_PATH = fileURLToPath(
 	new URL('../../config/distributions.toml', import.meta.url)
 );
-const DEPLOY_TARGETS: DeployTarget[] = ['vercel', 'pages', 'mobile'];
+const DEPLOY_TARGETS: DeployTarget[] = ['vercel', 'cloudflare', 'pages', 'mobile'];
 
 function asTable(value: TomlValue | undefined, field: string): TomlTable {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) {

@@ -27,6 +27,22 @@ describe('analytics build gate', () => {
 		expect(analyticsEnabledForBuild({ ...base, mobileReleaseOptIn: 'true' })).toBe(true);
 	});
 
+	it('requires an explicit production opt-in and complete Firebase configuration for Cloudflare', () => {
+		const base = { target: 'cloudflare' as const, mode: 'production', firebaseConfigured: true };
+		expect(analyticsEnabledForBuild(base)).toBe(false);
+		expect(analyticsEnabledForBuild({ ...base, cloudflareReleaseOptIn: 'true' })).toBe(true);
+		expect(
+			analyticsEnabledForBuild({ ...base, cloudflareReleaseOptIn: 'true', mode: 'development' })
+		).toBe(false);
+		expect(
+			analyticsEnabledForBuild({
+				...base,
+				cloudflareReleaseOptIn: 'true',
+				firebaseConfigured: false
+			})
+		).toBe(false);
+	});
+
 	it('keeps unconfigured and static Pages builds disabled', () => {
 		expect(
 			analyticsEnabledForBuild({

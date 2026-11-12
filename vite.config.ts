@@ -123,6 +123,21 @@ export default defineConfig({
 					env: ['CHRONOS_*', 'PUBLIC_*', 'VITE_*', 'NODE_ENV', 'ANALYZE', 'SOURCE_DATE_EPOCH']
 				}
 			},
+			'build:cloudflare': {
+				command: 'node --experimental-strip-types scripts/run-host.ts build --target cloudflare',
+				cwd: 'apps/web',
+				cache: false
+			},
+			'preview:cloudflare': {
+				command: 'vpx wrangler pages dev .svelte-kit/cloudflare',
+				cwd: 'apps/web',
+				cache: false
+			},
+			'deploy:cloudflare': {
+				command: 'node --experimental-strip-types scripts/deploy-cloudflare.ts',
+				cwd: 'apps/web',
+				cache: false
+			},
 			'build:mobile': {
 				command:
 					'CHRONOS_DEPLOY_TARGET=mobile CHRONOS_DISTRIBUTION=mobile node --experimental-strip-types apps/web/scripts/run-host.ts build',

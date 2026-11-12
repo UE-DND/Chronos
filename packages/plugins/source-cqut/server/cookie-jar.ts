@@ -1,22 +1,23 @@
 import { MemoryCookieJar } from '@cqut-openproject/cas-sdk';
 import { TIMETABLE_HOST, TIMETABLE_SESSION_COOKIE } from './config';
 
+export function getResponseCookies(headers: Headers): string[] {
+	const cookieHeaders = headers as Headers & {
+		getSetCookie?: () => string[];
+		getAll?: (name: string) => string[];
+	};
+	if (typeof cookieHeaders.getSetCookie === 'function') return cookieHeaders.getSetCookie();
+	if (typeof cookieHeaders.getAll === 'function') return cookieHeaders.getAll('Set-Cookie');
+	const value = headers.get('set-cookie');
+	return value ? [value] : [];
+}
+
 export class CookieJar extends MemoryCookieJar {
 	storeFrom(response: Response, requestUrl?: string): void {
 		const resolvedUrl = response.url || requestUrl;
 		if (!resolvedUrl) return;
 
-		const headers = response.headers as Headers & {
-			getSetCookie?: () => string[];
-		};
-		const setCookieHeaders =
-			typeof headers.getSetCookie === 'function'
-				? headers.getSetCookie()
-				: response.headers.get('set-cookie')
-					? [response.headers.get('set-cookie')!]
-					: [];
-
-		this.setCookies(setCookieHeaders, resolvedUrl);
+		this.setCookies(getResponseCookies(response.headers), resolvedUrl);
 	}
 
 	cookieHeader(url: string): string | undefined {

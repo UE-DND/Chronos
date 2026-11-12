@@ -22,19 +22,33 @@ describe('deploy-targets configuration & isolation', () => {
 		expect(resolveDeployTarget({ CHRONOS_DEPLOY_TARGET: '' })).toBe('vercel');
 		expect(resolveDeployTarget({ CHRONOS_DEPLOY_TARGET: 'vercel' })).toBe('vercel');
 		expect(resolveDeployTarget({ CHRONOS_DEPLOY_TARGET: 'pages' })).toBe('pages');
+		expect(resolveDeployTarget({ CHRONOS_DEPLOY_TARGET: 'cloudflare' })).toBe('cloudflare');
 		expect(resolveDeployTarget({ CHRONOS_DEPLOY_TARGET: 'mobile' })).toBe('mobile');
 	});
 
 	it('throws clear descriptive error on unknown deploy target', () => {
 		expect(() => resolveDeployTarget({ CHRONOS_DEPLOY_TARGET: 'unknown' })).toThrow(
-			'Unknown deploy target: "unknown". Supported targets are: vercel, pages, mobile.'
+			'Unknown deploy target: "unknown". Supported targets are: vercel, cloudflare, pages, mobile.'
 		);
 		expect(() => resolveDeployTarget('electron')).toThrow(
-			'Unknown deploy target: "electron". Supported targets are: vercel, pages, mobile.'
+			'Unknown deploy target: "electron". Supported targets are: vercel, cloudflare, pages, mobile.'
 		);
 	});
 
 	it('returns correct centralized definitions for all targets', () => {
+		const cloudflare = getDeployTargetDefinition('cloudflare');
+		expect(cloudflare).toEqual({
+			target: 'cloudflare',
+			basePath: '',
+			isMobile: false,
+			disablePwa: false,
+			defaultDeployment: 'chronos-default',
+			defaultProfile: 'chronos-default',
+			adapterKind: 'cloudflare',
+			staticOutputDir: '.svelte-kit/cloudflare',
+			supportsServerPlugins: true
+		});
+
 		const mobile = getDeployTargetDefinition('mobile');
 		expect(mobile).toEqual({
 			target: 'mobile',
@@ -44,6 +58,7 @@ describe('deploy-targets configuration & isolation', () => {
 			defaultDeployment: 'mobile',
 			defaultProfile: 'chronos-default',
 			adapterKind: 'static-spa',
+			staticOutputDir: 'build',
 			supportsServerPlugins: false
 		});
 
@@ -56,6 +71,7 @@ describe('deploy-targets configuration & isolation', () => {
 			defaultDeployment: 'pages',
 			defaultProfile: 'chronos-default',
 			adapterKind: 'static-pages',
+			staticOutputDir: 'build',
 			supportsServerPlugins: false
 		});
 
@@ -68,6 +84,7 @@ describe('deploy-targets configuration & isolation', () => {
 			defaultDeployment: 'chronos-default',
 			defaultProfile: 'chronos-default',
 			adapterKind: 'vercel',
+			staticOutputDir: '.vercel/output/static',
 			supportsServerPlugins: true
 		});
 	});
@@ -82,7 +99,17 @@ describe('deploy-targets configuration & isolation', () => {
 		expect(() => getDeployTargetDefinition('mobile', '/Other')).toThrow('Mobile');
 	});
 
+	it('keeps Cloudflare Pages at the root so its adapter and offline artifacts share a directory', () => {
+		expect(getDeployTargetDefinition('cloudflare', '').basePath).toBe('');
+		expect(() => getDeployTargetDefinition('cloudflare', '/Other')).toThrow(
+			'Cloudflare Pages deployment base must remain empty'
+		);
+	});
+
 	it('creates correct adapters from definitions', () => {
+		const cloudflareAdapter = createDeployTargetAdapter(DEPLOY_TARGET_DEFINITIONS.cloudflare);
+		expect(cloudflareAdapter.name).toBe('@sveltejs/adapter-cloudflare');
+
 		const mobileAdapter = createDeployTargetAdapter(DEPLOY_TARGET_DEFINITIONS.mobile);
 		expect(mobileAdapter.name).toBe('@sveltejs/adapter-static');
 
@@ -94,6 +121,9 @@ describe('deploy-targets configuration & isolation', () => {
 	});
 
 	it('derives default deployment from deploy target without manual ternary', () => {
+		expect(resolveDeployment({ CHRONOS_DEPLOY_TARGET: 'cloudflare' })).toEqual({
+			serverPlugins: []
+		});
 		expect(resolveDeployment({ CHRONOS_DEPLOY_TARGET: 'mobile' })).toEqual({
 			serverPlugins: []
 		});
