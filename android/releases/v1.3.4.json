@@ -1,0 +1,56 @@
+{
+	"formatVersion": 1,
+	"release": {
+		"tagName": "v1.3.4",
+		"name": "Chronos 1.3.4",
+		"body": "## 新特性\n\n- Web 正式站点迁移至 [timetable.uednd.tech](https://timetable.uednd.tech)，保留教务在线导入、安装到主屏幕、应用更新和离线启动。\n\n## 修复\n\n- 修复新站离线页面因资源重定向而无法打开的问题，支持离线启动和页面深层链接。\n- 修复应用启动时语言读取触发状态修改错误，以及服务端探测本地存储产生警告的问题。\n\n## 兼容性与限制\n\n- 原 Vercel 站点继续保留。新站使用独立的本地课表和偏好设置，不会自动迁移旧站数据或更新旧站已安装的 PWA。\n- 官方插件市场和移动端更新地址保持不变。",
+		"publishedAt": "2026-11-12"
+	},
+	"packageId": "org.uednd.chronos",
+	"versionCode": 1003004,
+	"signingCertificateSha256": "22e59e404c8384fd31bb21c15e66960155350a7a82c8cdfe460e93c5423cb468",
+	"profiles": {
+		"chronos-default": {
+			"host": {
+				"version": "1.3.4",
+				"buildId": "3fd82196627804c85ba3ba423aab367decf212c9cca2e0ddf86c1aa8cd28efcb",
+				"sourceCommit": "a856b493c304a38b396232f79b32d90e6c21a633",
+				"profileId": "chronos-default",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.4/Chronos-default-1.3.4.apk",
+			"sha256": "6153858de0ddcc9242b8023bbdba68ca9c89f6584731b46bd450a2cf6184d7b3",
+			"sizeBytes": 2241304,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.4/catalog.json"
+		},
+		"chronos-cqut": {
+			"host": {
+				"version": "1.3.4",
+				"buildId": "1ac0cbdfeaf215d2c75b58c2e6c86abcf8720f43c7c164a76cb03b4f43a5341d",
+				"sourceCommit": "a856b493c304a38b396232f79b32d90e6c21a633",
+				"profileId": "chronos-cqut",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.4/Chronos-cqut-1.3.4.apk",
+			"sha256": "043502a11fe57c9da0f1066a31d55e558b594e2674a71a49d2329ece9aded65b",
+			"sizeBytes": 2273253,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.4/catalog.json"
+		},
+		"chronos-cqut-offline": {
+			"host": {
+				"version": "1.3.4",
+				"buildId": "d534a61f58dfb5d234e3c661dbd3f5659bd4b91b9e335ab4b911098da93a72cb",
+				"sourceCommit": "a856b493c304a38b396232f79b32d90e6c21a633",
+				"profileId": "chronos-cqut-offline",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.4/Chronos-cqut-offline-1.3.4.apk",
+			"sha256": "2688600885433a73231499926d4f926c980c2736850a0d47149ccf1e82530a58",
+			"sizeBytes": 2238289,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.4/catalog.json"
+		}
+	}
+}

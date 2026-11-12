@@ -1,56 +1,56 @@
 {
 	"formatVersion": 1,
 	"release": {
-		"tagName": "v1.3.3",
-		"name": "Chronos 1.3.3",
-		"body": "## 修复\n\n- 多个窗口同时修改同一课表时，课程编辑、按周删除和拖动会基于最新保存的课表执行，避免覆盖其他窗口的修改。删除课表或清空数据后，尚未完成的刷新不会恢复旧课表状态。\n- 课表已保存但后续刷新或切换失败时，明确提示保存已完成，并提供重新加载后的查看指引。读取本地课表失败不再被当作没有课表，启动也不会因此切换到其他课表。\n- Web 端预安装插件清单失效时，尝试从当前应用版本对应的已发布目录恢复，避免读取到其他版本的资源而导致默认主题加载失败。\n- 插件主题图片、执行资源和安装记录一并保存，失败时回滚；跨窗口安装、更新和卸载期间重新核对插件版本，避免已卸载或已替换的旧插件再次运行。\n- 插件配置仅在保存成功后更新。插件界面、配置或市场目录加载失败时显示错误并提供重试；离开插件页后，迟到的请求不会继续启动安装。\n- 今日课程和节假日界面随宿主课表与设置变化更新。今日课程查询失败时显示失败状态并提供重试，不再将读取失败显示为当天无课。\n- 修正知行理工在线导入及分享导入的错误识别，区分网络、认证和数据格式问题；仅对已识别的临时网络故障重试，并保留原始失败原因。\n- 修复底部弹层向上拖动后悬空，以及回滑时误关闭的问题；减少 iOS 主屏幕 PWA 横屏时侧栏多余的安全区留白。\n- 加固移动端网络与更新错误处理，避免资源清理失败覆盖原始更新错误。Android 原生教务请求逐次校验跳转地址，拒绝非 HTTPS、未声明域名及循环跳转，并在跨来源跳转时移除认证信息。\n\n## 优化\n\n- 优化插件代理限流清理和开发时的插件热更新调度。\n- 更新 Vite+ 至 1.6.0，并升级 Node.js 与部署工具链。浏览器回归按历史耗时分片，发布检查补充 Android 原生测试和 iOS 无签名编译。\n\n## 兼容性与限制\n\n- 现有课表、偏好设置、分享格式和插件市场格式无需迁移。\n- 插件读取的课表、偏好设置、事件中的领域数据及课程徽标改为深度只读，不能直接修改宿主状态；需使用课程与配置动作提交修改。UI 快照订阅接口仅提供读取能力，插件界面应通过 `controller.snapshot.subscribe` 接收更新。\n- `timetable:updated` 的课表参数可能为 `null`，插件需处理课表被删除或数据被清空的情况。创建、导入和更新课表后的刷新失败通过 `timetable:followUpFailed` 单独报告；删除结果在 `followUpFailed` 为 `true` 时包含原始 `cause`。\n- 开发与构建环境改用 Node.js 26.13.0 LTS，不再支持 Node.js 24。\n- iOS 仍需下载 IPA 后使用自签工具覆盖安装，并保持原 Bundle ID 和同一 Apple ID。教务在线导入、精确闹钟和桌面小组件仍不可用。",
+		"tagName": "v1.3.4",
+		"name": "Chronos 1.3.4",
+		"body": "## 新特性\n\n- Web 正式站点迁移至 [timetable.uednd.tech](https://timetable.uednd.tech)，保留教务在线导入、安装到主屏幕、应用更新和离线启动。\n\n## 修复\n\n- 修复新站离线页面因资源重定向而无法打开的问题，支持离线启动和页面深层链接。\n- 修复应用启动时语言读取触发状态修改错误，以及服务端探测本地存储产生警告的问题。\n\n## 兼容性与限制\n\n- 原 Vercel 站点继续保留。新站使用独立的本地课表和偏好设置，不会自动迁移旧站数据或更新旧站已安装的 PWA。\n- 官方插件市场和移动端更新地址保持不变。",
 		"publishedAt": "2026-11-12"
 	},
 	"packageId": "org.uednd.chronos",
-	"versionCode": 1003003,
+	"versionCode": 1003004,
 	"signingCertificateSha256": "22e59e404c8384fd31bb21c15e66960155350a7a82c8cdfe460e93c5423cb468",
 	"profiles": {
 		"chronos-default": {
 			"host": {
-				"version": "1.3.3",
-				"buildId": "9f7602216a943f2df1f2aeec6170b63690d340f5d86c36d10967caa30249fc24",
-				"sourceCommit": "2d2d1bdfa268b84f7d22e41f12882fec2dc121fb",
+				"version": "1.3.4",
+				"buildId": "3fd82196627804c85ba3ba423aab367decf212c9cca2e0ddf86c1aa8cd28efcb",
+				"sourceCommit": "a856b493c304a38b396232f79b32d90e6c21a633",
 				"profileId": "chronos-default",
 				"deploymentId": "mobile",
 				"target": "mobile"
 			},
-			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.3/Chronos-default-1.3.3.apk",
-			"sha256": "a66a0696ae3e5766bcd1108662b944d577385cfd6728b11492a822a664425887",
-			"sizeBytes": 2242220,
-			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.3/catalog.json"
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.4/Chronos-default-1.3.4.apk",
+			"sha256": "6153858de0ddcc9242b8023bbdba68ca9c89f6584731b46bd450a2cf6184d7b3",
+			"sizeBytes": 2241304,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.4/catalog.json"
 		},
 		"chronos-cqut": {
 			"host": {
-				"version": "1.3.3",
-				"buildId": "40b00f45ba261124be34d89222b81c063b9181aa9e28234ecfcfc35612fdd7cd",
-				"sourceCommit": "2d2d1bdfa268b84f7d22e41f12882fec2dc121fb",
+				"version": "1.3.4",
+				"buildId": "1ac0cbdfeaf215d2c75b58c2e6c86abcf8720f43c7c164a76cb03b4f43a5341d",
+				"sourceCommit": "a856b493c304a38b396232f79b32d90e6c21a633",
 				"profileId": "chronos-cqut",
 				"deploymentId": "mobile",
 				"target": "mobile"
 			},
-			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.3/Chronos-cqut-1.3.3.apk",
-			"sha256": "2abdbc387e65cf2af9784bdd28add6cffa0ed12ce63027b654fb7232ee5eb01c",
-			"sizeBytes": 2274153,
-			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.3/catalog.json"
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.4/Chronos-cqut-1.3.4.apk",
+			"sha256": "043502a11fe57c9da0f1066a31d55e558b594e2674a71a49d2329ece9aded65b",
+			"sizeBytes": 2273253,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.4/catalog.json"
 		},
 		"chronos-cqut-offline": {
 			"host": {
-				"version": "1.3.3",
-				"buildId": "ade18484417c86983e0b255993a84bae4f522153d3357ea241539267f51f4e55",
-				"sourceCommit": "2d2d1bdfa268b84f7d22e41f12882fec2dc121fb",
+				"version": "1.3.4",
+				"buildId": "d534a61f58dfb5d234e3c661dbd3f5659bd4b91b9e335ab4b911098da93a72cb",
+				"sourceCommit": "a856b493c304a38b396232f79b32d90e6c21a633",
 				"profileId": "chronos-cqut-offline",
 				"deploymentId": "mobile",
 				"target": "mobile"
 			},
-			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.3/Chronos-cqut-offline-1.3.3.apk",
-			"sha256": "d8418f02f04d67623695fd3fefce61f8771c9a62efbcf92fe277a309e76aa518",
-			"sizeBytes": 2239169,
-			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.3/catalog.json"
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.4/Chronos-cqut-offline-1.3.4.apk",
+			"sha256": "2688600885433a73231499926d4f926c980c2736850a0d47149ccf1e82530a58",
+			"sizeBytes": 2238289,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.4/catalog.json"
 		}
 	}
 }
