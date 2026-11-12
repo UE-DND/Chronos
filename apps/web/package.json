@@ -43,7 +43,7 @@
 		"magicast": "^0.5.5",
 		"rolldown-license-plugin": "^3.0.14",
 		"smol-toml": "^1.9.1",
-		"svelte": "^5.57.2",
+		"svelte": "^5.57.3",
 		"svelte-check": "^4.7.8",
 		"tailwindcss": "^4.3.3",
 		"typescript": "^6.0.3",
