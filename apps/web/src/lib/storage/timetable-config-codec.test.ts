@@ -62,28 +62,17 @@ describe('TimetableConfigJsonCodec', () => {
 		expect(emptyPeriods.academicConfig.periodTimes).toEqual([]);
 	});
 
-	it('decodes holiday calendar and custom metadata', () => {
+	it('decodes import and custom metadata', () => {
 		const decoded = decodeTimetableConfig(
 			JSON.stringify({
 				schemaVersion: 1,
 				viewPrefs,
-				academicConfig: {
-					...academicConfig,
-					holidayCalendar: {
-						holidays: [{ date: '2026-10-01', label: '国庆' }],
-						syncedAt: 1,
-						syncedYears: [2026]
-					}
-				},
+				academicConfig,
 				importMetadata: { source: '  FILE_HTML  ', campusId: '  a  ' },
 				customMetadata: { plugin: { on: true } }
 			})
 		);
-		expect(decoded.academicConfig.holidayCalendar).toEqual({
-			holidays: [{ date: '2026-10-01', label: '国庆' }],
-			syncedAt: 1,
-			syncedYears: [2026]
-		});
+		expect(decoded.academicConfig).toEqual(academicConfig);
 		expect(decoded.importMetadata).toEqual({ source: 'FILE_HTML', campusId: 'a' });
 		expect(decoded.customMetadata).toEqual({ plugin: { on: true } });
 	});

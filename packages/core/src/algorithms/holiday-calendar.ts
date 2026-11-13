@@ -1,14 +1,14 @@
-import type { AcademicConfig, CalendarHoliday, HolidayCalendarConfig } from '../domain/timetable';
+import type { AcademicConfig, CalendarHoliday } from '../domain/timetable';
 import type { DeepReadonly } from '../types/readonly';
 import { AcademicCalendarService } from './calendar';
 import { addDays, formatIsoDate, parseIsoDate, todayIsoDate } from './date';
 
 export function buildHolidayLookup(
-	config: DeepReadonly<HolidayCalendarConfig> | undefined | null
+	holidays: readonly CalendarHoliday[]
 ): Map<string, CalendarHoliday> {
 	const lookup = new Map<string, CalendarHoliday>();
-	if (!config?.holidays?.length) return lookup;
-	for (const holiday of config.holidays) {
+	if (!holidays.length) return lookup;
+	for (const holiday of holidays) {
 		lookup.set(holiday.date, { ...holiday });
 	}
 	return lookup;

@@ -1,4 +1,5 @@
-import type { CalendarHoliday, HolidayDataSource, IHttpService } from '@chronos/core';
+import type { CalendarHoliday, IPluginHttpService } from '@chronos/core';
+import type { HolidayDataSource } from './holiday-sync';
 import { HOLIDAY_CN_CDN_BASE } from './constants';
 import fallback2025 from '../static/data/2025.json';
 import fallback2026 from '../static/data/2026.json';
@@ -29,18 +30,20 @@ export function parseHolidayCnOffDays(payload: HolidayCnYearPayload): CalendarHo
 }
 
 async function fetchHolidayCnYear(
-	http: IHttpService,
-	year: number
+	http: IPluginHttpService,
+	year: number,
+	signal: AbortSignal
 ): Promise<{ holidays: CalendarHoliday[]; source: Exclude<HolidayDataSource, 'cached'> }> {
 	const url = `${HOLIDAY_CN_CDN_BASE}/${year}.json`;
 	try {
-		const response = await http.request(url, { method: 'GET', timeoutMs: 15_000 });
+		const response = await http.request(url, { method: 'GET', timeoutMs: 15_000, signal });
 		if (!response.ok) {
 			throw new Error(`HTTP ${response.status}`);
 		}
 		const payload = await response.json<HolidayCnYearPayload>();
 		return { holidays: parseHolidayCnOffDays(payload), source: 'remote' };
 	} catch (error) {
+		signal.throwIfAborted();
 		const fallback = FALLBACK_BY_YEAR[year];
 		if (fallback) {
 			return { holidays: parseHolidayCnOffDays(fallback), source: 'bundled' };
@@ -56,10 +59,11 @@ export interface HolidayCnFetchResult {
 }
 
 export async function fetchHolidayCnYears(
-	http: IHttpService,
-	years: readonly number[]
+	http: IPluginHttpService,
+	years: readonly number[],
+	signal: AbortSignal
 ): Promise<HolidayCnFetchResult> {
-	const results = await Promise.all(years.map((year) => fetchHolidayCnYear(http, year)));
+	const results = await Promise.all(years.map((year) => fetchHolidayCnYear(http, year, signal)));
 	const byYear: Record<number, CalendarHoliday[]> = {};
 	const sourceByYear: HolidayCnFetchResult['sourceByYear'] = {};
 	years.forEach((year, index) => {

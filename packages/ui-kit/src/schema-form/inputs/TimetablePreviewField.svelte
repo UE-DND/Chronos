@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import { fromStore } from 'svelte/store';
-	import type { ChronosUiController } from '../../reactivity/chronos-ui-controller';
+	import type { ChronosUiView } from '../../reactivity/chronos-ui-controller';
 	import { AcademicCalendarService, computeTimetableWeekLayout, todayIsoDate } from '@chronos/core';
 	import TimetablePreviewGrid from '../../timetable-preview/TimetablePreviewGrid.svelte';
 	import {
@@ -12,7 +12,7 @@
 	} from '../../timetable-preview/timetable-presentation';
 
 	interface Props {
-		controller?: ChronosUiController;
+		controller?: ChronosUiView;
 		label: string;
 		description?: string;
 	}
@@ -48,10 +48,16 @@
 		controller ? (key: string) => controller.translatePlugin('host-ui', key) : (key: string) => key
 	);
 
+	const holidays = $derived.by(() => {
+		void ui?.current.calendarRevision;
+		return timetable && controller ? controller.resolveHolidays(timetable) : [];
+	});
+
 	const preview = $derived(
 		timetable
 			? computeTimetableWeekLayout({
 					timetable,
+					holidays,
 					displayedWeek,
 					todayIso: today,
 					academicCalendarService: calendarService,

@@ -118,6 +118,7 @@ function createTimetableScreen() {
 		return buildWeekViewport(
 			{
 				timetable,
+				holidays: timetable && shellRef ? shellRef.controller.resolveHolidays(timetable) : [],
 				todayIso: today,
 				displayedWeek,
 				expandedSlotKeys: expandedSlots,

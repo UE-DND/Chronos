@@ -1,6 +1,5 @@
 import {
 	defineChronosPlugin,
-	registerImportTab,
 	createTimetable,
 	createCourse,
 	deriveWeekendViewPrefs,
@@ -187,7 +186,7 @@ export function createQrCodecPlugin(options: CreateQrCodecPluginOptions = {}) {
 		async apply(ctx, t) {
 			const qrCodeImportSchema = createQrCodeImportSchema(t);
 
-			registerImportTab<QrCodeImportForm>(ctx, {
+			ctx.registerSlot<QrCodeImportForm>('import.source.tab', {
 				id: 'qrcode',
 				title: () => t('import.tab.title'),
 				order: 25,

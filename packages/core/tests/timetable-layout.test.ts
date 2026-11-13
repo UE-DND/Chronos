@@ -68,6 +68,7 @@ describe('Timetable Layout Pipeline', () => {
 
 	it('computes full week layout pipeline with active and future courses', () => {
 		const layoutWeek1 = computeTimetableWeekLayout({
+			holidays: [],
 			timetable: sampleTimetable,
 			displayedWeek: 1,
 			todayIso: '2026-03-02',
@@ -95,6 +96,7 @@ describe('Timetable Layout Pipeline', () => {
 
 	it('shows non-current week future courses when slot is unoccupied', () => {
 		const layoutWeek4 = computeTimetableWeekLayout({
+			holidays: [],
 			timetable: sampleTimetable,
 			displayedWeek: 4,
 			todayIso: '2026-03-02',

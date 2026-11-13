@@ -22,6 +22,7 @@ async function setup() {
 		state = structuredClone(value);
 	});
 	const engine = {
+		state: { userPreferences: {} },
 		storage: {
 			getPluginData: async () => structuredClone(state),
 			setPluginData: persist,
@@ -57,6 +58,7 @@ async function setup() {
 	let active = true;
 	const runtime = {
 		isActive: () => active,
+		accept: vi.fn(),
 		activate: vi.fn(async (_record: InstalledOfficialPluginRecord) => {
 			active = true;
 		}),
@@ -76,6 +78,43 @@ async function setup() {
 	return { engine, service, store, previous, blobs, images, nextBlob, runtime, persist, download };
 }
 describe('theme image replacement lifecycle', () => {
+	it('waits through failed uninstall rollback before allowing external publication', async () => {
+		const { service, store, runtime, persist, previous, blobs } = await setup();
+		persist.mockRejectedValueOnce(new Error('transaction failed'));
+		const restoring = Promise.withResolvers<void>();
+		const restored = Promise.withResolvers<void>();
+		const activate = runtime.activate.getMockImplementation()!;
+		runtime.activate.mockImplementationOnce(async (record) => {
+			restoring.resolve();
+			await restored.promise;
+			await activate(record);
+		});
+		const uninstall = service.uninstall(manifest.id);
+		const rejected = expect(uninstall).rejects.toThrow('transaction failed');
+		await restoring.promise;
+		let settled = false;
+		const stable = service.waitForSettled().then(() => {
+			settled = true;
+		});
+		await Promise.resolve();
+		expect(settled).toBe(false);
+		restored.resolve();
+		await rejected;
+		await stable;
+		expect(runtime.isActive()).toBe(true);
+		expect(store.find(manifest.id)?.revision).toBe(previous.revision);
+		expect(blobs.has('old-image')).toBe(true);
+		service.dispose();
+	});
+
+	it('rejects external publication if uninstall rollback cannot restore the installed runtime', async () => {
+		const { service, runtime, persist } = await setup();
+		persist.mockRejectedValueOnce(new Error('transaction failed'));
+		runtime.activate.mockRejectedValueOnce(new Error('restore failed'));
+		await expect(service.uninstall(manifest.id)).rejects.toThrow('could not be restored');
+		await expect(service.waitForSettled()).rejects.toThrow('Plugin restoration failed');
+		service.dispose();
+	});
 	it('does not revive a plugin removed by another window during asynchronous rollback', async () => {
 		const { engine, service, store, runtime } = await setup();
 		vi.spyOn(service, 'retryPendingUpdates').mockResolvedValue();

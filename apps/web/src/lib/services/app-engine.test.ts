@@ -13,7 +13,8 @@ import {
 	ensureEngineReady,
 	ensureEngineFullyReady,
 	getOfficialPluginService,
-	resetAppToInitialState
+	resetAppToInitialState,
+	registerAppShutdownCleanup
 } from './app-engine';
 import type { ChronosDB } from '#lib/storage/db.ts';
 import type { InstalledOfficialPluginRecord } from './official-plugins/official-plugin-types';
@@ -132,6 +133,24 @@ function createMockDb(): ChronosDB {
 describe('app-engine bootstrap', () => {
 	beforeEach(() => {
 		disposeAppEngine();
+	});
+
+	it('stops external services before withdrawing plugins and scopes cleanup to one session', () => {
+		getAppEngine({ database: createMockDb(), localStorage: new MockLocalStorage() });
+		const order: string[] = [];
+		vi.spyOn(getOfficialPluginService(), 'dispose').mockImplementation(() => {
+			order.push('plugins');
+		});
+		const unregister = registerAppShutdownCleanup(() => {
+			order.push('external');
+		});
+		disposeAppEngine();
+		expect(order).toEqual(['external', 'plugins']);
+		const next = vi.fn();
+		registerAppShutdownCleanup(next);
+		unregister();
+		disposeAppEngine();
+		expect(next).toHaveBeenCalledOnce();
 	});
 
 	it('replaces the complete bootstrap lifetime while an old initialization is still pending', async () => {

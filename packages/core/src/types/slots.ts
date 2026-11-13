@@ -1,3 +1,4 @@
+import type { CalendarHoliday } from '../domain/timetable';
 import type { Course } from '../domain/course';
 import type { Timetable } from '../domain/timetable';
 import type { ReadonlyTimetable } from './state';
@@ -193,7 +194,14 @@ export interface BottomTabSlotContribution {
 }
 
 /** Standard slot contract map */
+export interface CalendarHolidaysContribution {
+	id: string;
+	order?: number;
+	getHolidays(timetable: ReadonlyTimetable): readonly CalendarHoliday[];
+}
+
 export interface StandardSlotMap {
+	'calendar.holidays': CalendarHolidaysContribution;
 	'import.source.tab': ImportTabSlotContribution<Record<string, unknown>>;
 	'export.action': ExportActionSlotContribution;
 	'mine.section': MineSectionSlotContribution;

@@ -1,3 +1,4 @@
+import type { CalendarHoliday } from '../domain/timetable';
 import type { Course } from '../domain/course';
 import { isPrepareReminderMinutes } from '../domain/preferences';
 import type { PeriodTime } from '../domain/timetable';
@@ -89,6 +90,7 @@ function projectCourse(
 export function buildTodayWidgetSnapshot(options: {
 	prepareReminderMinutes: number;
 	timetable: ReadonlyTimetable | null;
+	holidays: readonly CalendarHoliday[];
 	startDateIso: string;
 	generatedAt?: number;
 	locale?: string;
@@ -96,6 +98,7 @@ export function buildTodayWidgetSnapshot(options: {
 }): TodayWidgetSnapshot {
 	const {
 		timetable,
+		holidays,
 		startDateIso,
 		generatedAt = Date.now(),
 		prepareReminderMinutes,
@@ -111,7 +114,7 @@ export function buildTodayWidgetSnapshot(options: {
 	const validUntilIso = formatIsoDate(addDays(startDate, TODAY_WIDGET_SNAPSHOT_DAYS - 1));
 	const hitsByDate = new Map<string, CourseQueryHit[]>();
 	if (timetable) {
-		for (const hit of queryTimetableCourseOccurrences(timetable, {
+		for (const hit of queryTimetableCourseOccurrences(timetable, holidays, {
 			startDateIso,
 			endDateIso: validUntilIso
 		})) {

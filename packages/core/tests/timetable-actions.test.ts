@@ -55,7 +55,7 @@ describe('updateTimetableDetails', () => {
 		try {
 			await engine.actions.updateTimetableDetails('b', {
 				name: 'Updated B',
-				academicConfig: { holidayCalendar: { holidays: [{ date: '2026-10-01', label: '国庆' }] } }
+				academicConfig: { endWeek: 22 }
 			});
 			expect(timetables.get('b')?.name).toBe('Updated B');
 			expect(timetables.get('b')?.updatedAt).toBeGreaterThan(1);

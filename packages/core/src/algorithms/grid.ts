@@ -62,13 +62,14 @@ export function calculateTimetableGrid(
 	today: string,
 	displayedWeek: number,
 	timetable: ReadonlyTimetable,
+	holidays: readonly CalendarHoliday[],
 	options?: {
 		academicCalendarService?: AcademicCalendarService;
 		defaultPeriods?: PeriodTime[];
 	}
 ): TimetableGridModel {
 	const calendarService = options?.academicCalendarService ?? new AcademicCalendarService();
-	const holidayLookup = buildHolidayLookup(timetable.academicConfig.holidayCalendar);
+	const holidayLookup = buildHolidayLookup(holidays);
 	const startIso = calendarService.resolveWeekStart(timetable.academicConfig, displayedWeek, today);
 	const visibleDays = buildVisibleDayIndices({
 		viewPrefs: {

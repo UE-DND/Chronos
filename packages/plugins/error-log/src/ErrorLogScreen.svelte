@@ -22,7 +22,7 @@
 
 	let { controller, pluginId, edgeActions }: Props = $props();
 
-	const runtime = $derived(getErrorLogRuntime(pluginId));
+	const runtime = $derived(getErrorLogRuntime(controller.getPluginContext(pluginId)));
 	const entries = $derived.by(() => {
 		const seen = new Set<string>();
 		return [...runtime.entries]
@@ -48,7 +48,7 @@
 			userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined
 		});
 		const ok = await copyTextWithFallback(text);
-		trackPluginAnalytics(pluginContext, ERROR_LOG_PLUGIN_ID, ERROR_LOG_ANALYTICS.copy);
+		trackPluginAnalytics(pluginContext, ERROR_LOG_ANALYTICS.copy);
 		pluginContext.actions.notify(
 			ok ? pt('screen.notify.copySuccess') : pt('screen.notify.copyFailed'),
 			ok ? 'info' : 'error'
@@ -65,7 +65,7 @@
 
 	async function onClear() {
 		await runtime.clear();
-		trackPluginAnalytics(pluginContext, ERROR_LOG_PLUGIN_ID, ERROR_LOG_ANALYTICS.clear);
+		trackPluginAnalytics(pluginContext, ERROR_LOG_ANALYTICS.clear);
 		pluginContext.actions.notify(pt('screen.notify.cleared'), 'info');
 	}
 

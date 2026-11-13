@@ -1,12 +1,7 @@
 /** CQUT plugin import slot registration (online credentials + edu HTML file). */
 import type { ChronosContext, Timetable } from '@chronos/core';
-import {
-	callPluginServerJson,
-	registerImportTab,
-	ImportSlotError,
-	type ChronosMountable
-} from '@chronos/core';
-import { IHttpService } from '@chronos/core';
+import { callPluginServerJson, ImportSlotError, type ChronosMountable } from '@chronos/core';
+import { IPluginHttpService } from '@chronos/core';
 import { DEFAULT_CQUT_CAMPUS_ID } from './campus-period-times';
 import {
 	createCqutImportSchema,
@@ -47,14 +42,13 @@ async function executeCqutOnlineImport(
 
 	activeCtx.actions.notify(t('import.online.notify.connecting'), 'info');
 
-	const http = activeCtx.service(IHttpService);
+	const http = activeCtx.service(IPluginHttpService);
 	if (!http.proxy) {
 		throw new ImportSlotError('unsupported', t('import.online.error.proxyUnsupported'));
 	}
 
 	const { response, body } = await callPluginServerJson<CqutScheduleRawInput>(
 		http,
-		serverDefinition.pluginId,
 		serverDefinition.proxy.action,
 		{ account: username, password }
 	);
@@ -87,12 +81,8 @@ export function registerCqutImportTabs(options: RegisterCqutImportTabsOptions): 
 	const htmlImportSchema = createHtmlImportSchema(t);
 	const htmlConfirmSchema = createHtmlConfirmSchema(t);
 
-	if (
-		ctx
-			.service(IHttpService)
-			.supportsPluginServer?.(serverDefinition.pluginId, serverDefinition.proxy.action)
-	) {
-		registerImportTab<CqutImportForm>(ctx, {
+	if (ctx.service(IPluginHttpService).supportsServer(serverDefinition.proxy.action)) {
+		ctx.registerSlot<CqutImportForm>('import.source.tab', {
 			id: 'cqut-online',
 			title: () => t('import.online.tab.title'),
 			order: 10,
@@ -105,7 +95,7 @@ export function registerCqutImportTabs(options: RegisterCqutImportTabsOptions): 
 	}
 
 	{
-		registerImportTab<HtmlImportForm & HtmlConfirmForm>(ctx, {
+		ctx.registerSlot<HtmlImportForm & HtmlConfirmForm>('import.source.tab', {
 			id: 'edu-html',
 			title: () => t('import.html.tab.title'),
 			order: 30,

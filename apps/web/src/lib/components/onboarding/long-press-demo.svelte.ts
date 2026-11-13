@@ -53,6 +53,7 @@ export function createLongPressDemo(names: () => { primary: string; secondary: s
 	const layout = $derived(
 		computeTimetableWeekLayout({
 			timetable,
+			holidays: [],
 			displayedWeek: 1,
 			todayIso: '2026-09-07',
 			columnWidthPx: 60,

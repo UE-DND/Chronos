@@ -68,6 +68,7 @@
 		timetable
 			? computeTimetableWeekLayout({
 					timetable,
+					holidays: controller.resolveHolidays(timetable),
 					displayedWeek,
 					todayIso: today,
 					academicCalendarService: calendarService,

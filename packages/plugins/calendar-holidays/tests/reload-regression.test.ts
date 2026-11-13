@@ -1,66 +1,49 @@
-import { describe, it, expect, vi } from 'vite-plus/test';
-import { ChronosEngine, createTimetable, type IHttpService } from '@chronos/core';
+import { describe, expect, it, vi } from 'vite-plus/test';
+import { ChronosEngine, createTimetable } from '@chronos/core';
 import { createMockEnv } from '@chronos/core/test-utils';
-import { createHolidayPlugin } from '../src/index';
+import { createHolidayPlugin, HOLIDAY_PLUGIN_ID } from '../src/index';
 
-describe('calendar-holidays reload regression', () => {
-	it('bundle reload waits for manual sync after clearing holidays', async () => {
-		const timetable = createTimetable({
-			id: 't1',
-			name: '测试课表',
-			academicConfig: {
-				termStartDate: '2026-03-02',
-				startWeek: 1,
-				endWeek: 20,
-				periodTimes: [],
-				holidayCalendar: {
-					holidays: [{ date: '2026-10-01', label: '国庆节' }],
-					syncedAt: 1,
-					syncedYears: [2026]
-				}
-			}
-		});
-
-		const httpRequest = vi.fn(async () => ({
-			ok: true,
-			status: 200,
-			statusText: 'OK',
-			headers: {},
-			text: async () => '',
-			json: async () => ({
-				year: 2026,
-				papers: [],
-				days: [{ date: '2026-10-01', name: '国庆节', isOffDay: true }]
-			}),
-			bytes: async () => new Uint8Array()
-		}));
-
-		const notifications: Array<{ message: string; type: string }> = [];
-		const { env, timetables } = createMockEnv({
-			http: { request: httpRequest as IHttpService['request'] }
-		});
+describe('calendar cache restoration', () => {
+	it('restores persisted cache offline without networking, and rejects corrupt cache', async () => {
+		const request = vi.fn().mockRejectedValue(new Error('offline'));
+		const { env, timetables } = createMockEnv({ http: { request } });
+		const timetable = createTimetable({ id: 't1', name: 'T' });
 		timetables.set(timetable.id, timetable);
-
-		const engine = new ChronosEngine({
-			env,
-			onNotification: (message, type) => notifications.push({ message, type })
+		await env.storage.setPluginData(
+			HOLIDAY_PLUGIN_ID,
+			'calendars',
+			JSON.parse(
+				JSON.stringify({
+					t1: {
+						years: {
+							2026: {
+								source: 'remote',
+								holidays: [{ date: '2026-03-02', label: '缓存' }],
+								syncedAt: 1
+							}
+						}
+					}
+				})
+			)
+		);
+		const first = new ChronosEngine({ env });
+		await first.init();
+		await first.loadPlugin(createHolidayPlugin());
+		expect(first.resolveHolidays(timetable)[0]?.label).toBe('缓存');
+		first.dispose();
+		const second = new ChronosEngine({ env });
+		await second.init();
+		await second.loadPlugin(createHolidayPlugin());
+		expect(second.resolveHolidays(timetable)[0]?.label).toBe('缓存');
+		expect(request).not.toHaveBeenCalled();
+		second.dispose();
+		await env.storage.setPluginData(HOLIDAY_PLUGIN_ID, 'calendars', {
+			t1: { years: { 2026: { source: 'unknown', holidays: [] } } }
 		});
-		await engine.init();
-		await engine.switchTimetable(timetable.id);
-
-		const plugin = createHolidayPlugin();
-		await engine.loadPlugin(plugin);
-		expect(httpRequest).not.toHaveBeenCalled();
-		expect(notifications).toEqual([]);
-
-		await engine.unloadPlugin('tool-calendar-holidays');
-		expect(timetables.get('t1')?.academicConfig.holidayCalendar).toBeUndefined();
-
-		await engine.loadPlugin(plugin);
-		expect(httpRequest).not.toHaveBeenCalled();
-		expect(timetables.get('t1')?.academicConfig.holidayCalendar).toBeUndefined();
-		expect(notifications.filter((n) => n.type === 'warn')).toEqual([]);
-
-		engine.dispose();
+		const third = new ChronosEngine({ env });
+		await third.init();
+		await expect(third.loadPlugin(createHolidayPlugin())).rejects.toThrow('Invalid holiday year');
+		expect(third.resolveHolidays(timetable)).toEqual([]);
+		third.dispose();
 	});
 });

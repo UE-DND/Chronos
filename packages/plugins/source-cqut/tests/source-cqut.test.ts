@@ -149,7 +149,8 @@ describe('cqutPlugin', () => {
 			expect.objectContaining({
 				account: '123456',
 				password: 'password'
-			})
+			}),
+			{ signal: ctx.signal }
 		);
 		expect(timetable.name).toBe('123456的课表');
 		expect(timetable.courses.length).toBe(1);

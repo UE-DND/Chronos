@@ -10,7 +10,7 @@ import expected from './fixtures/timetable.expected.json';
 
 describe('shared timetable scenario', () => {
 	it('shows odd weeks, the early segment and Saturday at the fixed date', () => {
-		const grid = calculateTimetableGrid(expected.date, expected.week, timetable);
+		const grid = calculateTimetableGrid(expected.date, expected.week, timetable, []);
 		expect(grid.visibleDays.length).toBe(6);
 		const models = buildTimetableCourseDisplayModels(
 			timetable,

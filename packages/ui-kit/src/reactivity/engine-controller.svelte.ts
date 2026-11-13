@@ -53,6 +53,7 @@ export class ReactiveChronosController implements ChronosUiController {
 	slotVersion = $state<number>(0);
 	private _courseBadges = $state.raw<ReadonlyCourseBadges>(Object.freeze({}));
 	coursePaletteRevision = $state<number>(0);
+	calendarRevision = $state<number>(0);
 
 	get currentTimetable(): ReadonlyTimetable | null {
 		return this._currentTimetable;
@@ -162,6 +163,10 @@ export class ReactiveChronosController implements ChronosUiController {
 			this.engine.on('coursePalette:changed', () => {
 				this.coursePaletteRevision++;
 				this.pushSnapshot();
+			}),
+			this.engine.on('calendar:changed', () => {
+				this.calendarRevision = this.engine.state.calendarRevision;
+				this.pushSnapshot();
 			})
 		);
 	}
@@ -205,6 +210,11 @@ export class ReactiveChronosController implements ChronosUiController {
 		return this.engine.slots.resolveOwner(slotName, slotId);
 	}
 
+	resolveHolidays(timetable: ReadonlyTimetable) {
+		void this.calendarRevision;
+		return this.engine.resolveHolidays(timetable);
+	}
+
 	private pushSnapshot(): void {
 		this.snapshotStore.set(this.readSnapshot());
 	}
@@ -224,7 +234,8 @@ export class ReactiveChronosController implements ChronosUiController {
 			clockFrozen: this.clockFrozen,
 			slotVersion: this.slotVersion,
 			courseBadges: this.courseBadges,
-			coursePaletteRevision: this.coursePaletteRevision
+			coursePaletteRevision: this.coursePaletteRevision,
+			calendarRevision: this.calendarRevision
 		});
 	}
 
@@ -241,6 +252,7 @@ export class ReactiveChronosController implements ChronosUiController {
 		this.todayIso = todayIsoDate(this.now);
 		this.clockFrozen = this.engine.state.clockFrozen;
 		this._courseBadges = this.engine.badges.getAll();
+		this.calendarRevision = this.engine.state.calendarRevision;
 		this.slotVersion++;
 		this.pushSnapshot();
 	}

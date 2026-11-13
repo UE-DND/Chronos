@@ -1,3 +1,4 @@
+const holidays = [{ date: '2026-10-01', label: '国庆节' }];
 import { describe, it, expect } from 'vite-plus/test';
 import {
 	createTimetable,
@@ -55,7 +56,7 @@ describe('Grid & Display Models in @chronos/core', () => {
 			}
 		});
 
-		const grid = calculateTimetableGrid('2026-03-04', 1, timetable);
+		const grid = calculateTimetableGrid('2026-03-04', 1, timetable, holidays);
 		expect(grid.visibleDays.length).toBe(7);
 		expect(grid.visibleDays[0]?.date).toBe('2026-03-02');
 		expect(grid.visibleDays[2]?.isToday).toBe(true);
@@ -149,7 +150,7 @@ describe('Grid & Display Models in @chronos/core', () => {
 			academicConfig: { ...base, periodTimes: fullPeriods.slice(0, 8) }
 		});
 
-		const trimmedGrid = calculateTimetableGrid('2026-03-04', 1, trimmed);
+		const trimmedGrid = calculateTimetableGrid('2026-03-04', 1, trimmed, holidays);
 		expect(trimmedGrid.displayedPeriodCount).toBe(8);
 		expect(
 			buildTimetableCourseDisplayModels(trimmed, new Set([1, 2, 3, 4, 5, 6, 7]), 1)
@@ -163,7 +164,9 @@ describe('Grid & Display Models in @chronos/core', () => {
 			courses: [course],
 			academicConfig: { ...base, periodTimes: fullPeriods }
 		});
-		expect(calculateTimetableGrid('2026-03-04', 1, restored).displayedPeriodCount).toBe(10);
+		expect(calculateTimetableGrid('2026-03-04', 1, restored, holidays).displayedPeriodCount).toBe(
+			10
+		);
 		expect(
 			buildTimetableCourseDisplayModels(restored, new Set([1, 2, 3, 4, 5, 6, 7]), 1)
 		).toHaveLength(1);
@@ -183,7 +186,7 @@ describe('Grid & Display Models in @chronos/core', () => {
 		const timetable = createTimetable({ id: 't1', name: '测试课表', courses: [course] });
 		expect(timetable.academicConfig.periodTimes).toHaveLength(0);
 
-		const grid = calculateTimetableGrid('2026-03-04', 1, timetable);
+		const grid = calculateTimetableGrid('2026-03-04', 1, timetable, holidays);
 		expect(grid.displayedPeriodCount).toBe(0);
 		expect(
 			buildTimetableCourseDisplayModels(timetable, new Set([1, 2, 3, 4, 5, 6, 7]), 1)
@@ -263,14 +266,11 @@ describe('Grid & Display Models in @chronos/core', () => {
 				termStartDate: '2026-09-28',
 				startWeek: 1,
 				endWeek: 20,
-				periodTimes: [{ index: 1, startTime: '08:00', endTime: '08:45' }],
-				holidayCalendar: {
-					holidays: [{ date: '2026-10-01', label: '国庆节' }]
-				}
+				periodTimes: [{ index: 1, startTime: '08:00', endTime: '08:45' }]
 			}
 		});
 
-		const grid = calculateTimetableGrid('2026-10-01', 1, timetable);
+		const grid = calculateTimetableGrid('2026-10-01', 1, timetable, holidays);
 		const mutedDays = new Set(
 			grid.visibleDays.filter((day) => day.holiday).map((day) => day.dayOfWeek)
 		);

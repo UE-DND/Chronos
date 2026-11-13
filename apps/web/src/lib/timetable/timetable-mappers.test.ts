@@ -9,25 +9,6 @@ import {
 } from './timetable-mappers';
 
 describe('timetable-mappers', () => {
-	it('toSettingsDraft omits plugin-managed holidayCalendar', () => {
-		const draft = toSettingsDraft(
-			sampleTimetable({
-				academicConfig: {
-					termStartDate: '2026-03-02',
-					startWeek: 1,
-					endWeek: 20,
-					periodTimes: [],
-					holidayCalendar: {
-						holidays: [{ date: '2026-10-01', label: '国庆节' }],
-						syncedAt: 1,
-						syncedYears: [2026]
-					}
-				}
-			})
-		);
-		expect(draft.academicConfig.holidayCalendar).toBeUndefined();
-	});
-
 	it('toSettingsDraft normalizes non monday term start date', () => {
 		const draft = toSettingsDraft(
 			sampleTimetable({

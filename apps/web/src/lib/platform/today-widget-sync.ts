@@ -16,6 +16,7 @@ export interface TodayWidgetSyncOptions {
 	todayIso?: () => string;
 	now?: () => number;
 	visibilityTarget?: VisibilityTarget;
+	waitForPlugins?: () => Promise<void>;
 }
 
 export interface TodayWidgetSyncService {
@@ -25,7 +26,7 @@ export interface TodayWidgetSyncService {
 }
 
 export function createTodayWidgetSyncService(
-	engine: Pick<ChronosEngine, 'events' | 'state' | 'coursePresentation'>,
+	engine: Pick<ChronosEngine, 'events' | 'state' | 'coursePresentation' | 'resolveHolidays'>,
 	platform: Pick<HostPlatformAdapter, 'updateTodayWidgetSnapshot'>,
 	options: TodayWidgetSyncOptions = {}
 ): TodayWidgetSyncService {
@@ -39,9 +40,13 @@ export function createTodayWidgetSyncService(
 	let completed = 0;
 	let pending: Promise<void> | undefined;
 
-	async function publishSnapshot(): Promise<void> {
+	async function publishSnapshot(generation: number): Promise<void> {
 		if (disposed || !platform.updateTodayWidgetSnapshot) return;
+		await options.waitForPlugins?.();
+		if (disposed || generation !== requested) return;
+		const calendarRevision = engine.state.calendarRevision;
 		const timetable = engine.state.currentTimetable;
+		const holidays = timetable ? engine.resolveHolidays(timetable) : [];
 		let colorsByCourseName: Map<string, string> | undefined;
 		if (timetable && engine.coursePresentation) {
 			try {
@@ -55,9 +60,12 @@ export function createTodayWidgetSyncService(
 				console.warn('[today-widget] Failed to resolve course colors', error);
 			}
 		}
-		if (disposed) return;
+		await options.waitForPlugins?.();
+		if (disposed || generation !== requested || calendarRevision !== engine.state.calendarRevision)
+			return;
 		const snapshot = buildTodayWidgetSnapshot({
 			timetable,
+			holidays,
 			prepareReminderMinutes: engine.state.userPreferences.prepareReminderMinutes,
 			startDateIso: getTodayIso(),
 			generatedAt: getNow(),
@@ -71,7 +79,7 @@ export function createTodayWidgetSyncService(
 		while (!disposed && completed < requested) {
 			const generation = requested;
 			try {
-				await publishSnapshot();
+				await publishSnapshot(generation);
 			} catch (error) {
 				console.error('[today-widget] Failed to sync widget snapshot', error);
 			}
@@ -99,7 +107,8 @@ export function createTodayWidgetSyncService(
 			'timetable:switched',
 			'timetables:updated',
 			'preferences:updated',
-			'coursePalette:changed'
+			'coursePalette:changed',
+			'calendar:changed'
 		] as const) {
 			subscriptions.push(engine.events.on(event, update));
 		}

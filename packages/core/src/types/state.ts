@@ -14,6 +14,7 @@ export interface TimetableSummary {
 
 /** Shared read-only state; reactive subscription belongs to the UI adapter. */
 export interface ChronosState {
+	readonly calendarRevision: number;
 	readonly currentTimetable: ReadonlyTimetable | null;
 	readonly activeWeek: number;
 	/** First period from midnight, then active or next period during breaks; null after the last end. */

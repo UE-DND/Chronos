@@ -7,8 +7,9 @@ import type {
 } from './host-platform';
 
 export function createClassNotificationsController(
-	engine: Pick<ChronosEngine, 'state' | 'events' | 'updatePreferences'>,
-	adapter?: ClassNotificationAdapter
+	engine: Pick<ChronosEngine, 'state' | 'events' | 'updatePreferences' | 'resolveHolidays'>,
+	adapter?: ClassNotificationAdapter,
+	waitForPlugins?: () => Promise<void>
 ) {
 	let permission = $state<ClassNotificationStatus>({
 		supported: false,
@@ -32,6 +33,9 @@ export function createClassNotificationsController(
 	function messages(): ClassNotificationMessage[] {
 		return buildClassNotificationPlan({
 			timetable: engine.state.currentTimetable,
+			holidays: engine.state.currentTimetable
+				? engine.resolveHolidays(engine.state.currentTimetable)
+				: [],
 			prepareReminderMinutes: engine.state.userPreferences.prepareReminderMinutes,
 			graceMs: adapter?.background ? 0 : 60_000
 		}).map((batch) => {
@@ -60,11 +64,16 @@ export function createClassNotificationsController(
 			const forced = forceApply;
 			forceApply = false;
 			try {
+				await waitForPlugins?.();
+				if (disposed) return;
+				if (requested !== revision) continue;
+				const calendarRevision = engine.state.calendarRevision;
 				permission = adapter
 					? await adapter.getStatus()
 					: { supported: false, permission: 'denied', exact: false };
+				await waitForPlugins?.();
 				if (disposed) return;
-				if (requested !== revision) continue;
+				if (requested !== revision || calendarRevision !== engine.state.calendarRevision) continue;
 				const desired = engine.state.userPreferences.classNotificationsEnabled;
 				const allowed =
 					permission.supported && permission.permission === 'granted' && permission.exact;
@@ -184,7 +193,8 @@ export function createClassNotificationsController(
 			'timetable:switched',
 			'timetables:updated',
 			'preferences:updated',
-			'i18n:localeChanged'
+			'i18n:localeChanged',
+			'calendar:changed'
 		] as const) {
 			subscriptions.push(engine.events.on(event, () => void sync()));
 		}

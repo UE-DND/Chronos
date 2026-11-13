@@ -2,7 +2,6 @@ import {
 	defineChronosPlugin,
 	IHostLinks,
 	ImportSlotError,
-	registerImportTab,
 	type ChronosMountable,
 	type ExportResult,
 	type Timetable,
@@ -57,7 +56,7 @@ export function createShareCodecPlugin(options: CreateShareCodecPluginOptions = 
 				'share.clipboard.template': t('share.clipboard.template')
 			};
 
-			registerImportTab<ShareLinkImportForm>(ctx, {
+			ctx.registerSlot<ShareLinkImportForm>('import.source.tab', {
 				id: 'share-link',
 				title: () => t('import.tab.title'),
 				order: 15,

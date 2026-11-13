@@ -1,5 +1,5 @@
 import type { Course } from '../domain/course';
-import type { AcademicConfig } from '../domain/timetable';
+import type { AcademicConfig, CalendarHoliday } from '../domain/timetable';
 import type { ReadonlyTimetable } from '../types/state';
 import type { DeepReadonly } from '../types/readonly';
 import type { CourseQueryHit } from '../types/course-query';
@@ -62,6 +62,7 @@ function hasUsableAcademicConfig(config: DeepReadonly<AcademicConfig>): boolean 
  */
 export function queryTimetableCourseOccurrences(
 	timetable: ReadonlyTimetable,
+	holidayCalendar: readonly CalendarHoliday[],
 	range?: CourseDateRange
 ): CourseOccurrence[] {
 	if (range && !isValidQueryRange(range)) {
@@ -85,7 +86,7 @@ export function queryTimetableCourseOccurrences(
 				config.startWeek + weeksBetween(termStart, parseIsoDate(range.endDateIso))
 			)
 		: config.endWeek;
-	const holidays = buildHolidayLookup(config.holidayCalendar);
+	const holidays = buildHolidayLookup(holidayCalendar);
 	const courses = timetable.courses.filter((course) =>
 		isSchedulableCourse(course, config.periodTimes.length)
 	);
@@ -116,9 +117,10 @@ export function queryTimetableCourseOccurrences(
 /** Actual courses on one date, without UI sorting or notification timing. */
 export function queryTimetableCoursesForDate(
 	timetable: ReadonlyTimetable,
-	dateIso: string
+	dateIso: string,
+	holidays: readonly CalendarHoliday[]
 ): CourseQueryHit[] {
-	return queryTimetableCourseOccurrences(timetable, {
+	return queryTimetableCourseOccurrences(timetable, holidays, {
 		startDateIso: dateIso,
 		endDateIso: dateIso
 	}).map(({ timetableId, timetableName, course }) => ({ timetableId, timetableName, course }));

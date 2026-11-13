@@ -1,4 +1,6 @@
 import type { ChronosActions } from '../types/actions';
+import type { CalendarHoliday } from '../domain/timetable';
+import type { ReadonlyTimetable } from '../types/state';
 import type { ChronosState } from '../types/state';
 import type { ChronosEnv } from '../types/env';
 import type { EventPipeline } from './event-pipeline';
@@ -21,4 +23,5 @@ export interface EngineContextHost {
 	translateForPlugin(pluginId: string, key: string, params?: Record<string, unknown>): string;
 	readonly state: ChronosState;
 	readonly actions: ChronosActions;
+	resolveHolidays(timetable: ReadonlyTimetable): readonly CalendarHoliday[];
 }

@@ -14,7 +14,7 @@ const cleanups: Array<() => void> = [];
 afterEach(() => {
 	cleanups.splice(0).forEach((fn) => fn());
 });
-async function harness() {
+async function harness(waitForPlugins?: () => Promise<void>) {
 	const { env, timetables } = createMockEnv();
 	const engine = new ChronosEngine({ env });
 	await engine.init();
@@ -29,7 +29,7 @@ async function harness() {
 		clearData: vi.fn(async () => {}),
 		dispose: vi.fn()
 	};
-	const controller = createClassNotificationsController(engine, adapter);
+	const controller = createClassNotificationsController(engine, adapter, waitForPlugins);
 	cleanups.push(() => {
 		controller.dispose();
 		engine.dispose();
@@ -93,16 +93,12 @@ describe('class notification controller', () => {
 		);
 		h.controller.start();
 		const dateIso = vi.mocked(h.adapter.replacePlan).mock.calls.at(-1)![0][0]!.dateIso;
-		await h.engine.updateTimetableDetails(other.id, {
-			academicConfig: {
-				...other.academicConfig,
-				holidayCalendar: { holidays: [{ date: dateIso, label: '休息日' }] }
-			}
+		const calendar = h.engine.slots.register('calendar.holidays', {
+			id: 'test-holiday',
+			getHolidays: () => [{ date: dateIso, label: '休息日' }]
 		});
 		await vi.waitFor(() => expect(h.adapter.replacePlan).toHaveBeenLastCalledWith([]));
-		await h.engine.updateTimetableDetails(other.id, {
-			academicConfig: { ...other.academicConfig, holidayCalendar: { holidays: [] } }
-		});
+		calendar.dispose();
 		await vi.waitFor(() =>
 			expect(vi.mocked(h.adapter.replacePlan).mock.calls.at(-1)![0]).toHaveLength(1)
 		);
@@ -159,6 +155,67 @@ describe('class notification controller', () => {
 		expect(h.adapter.replacePlan).toHaveBeenLastCalledWith([]);
 		expect(h.engine.state.userPreferences.classNotificationsEnabled).toBe(false);
 	});
+	it('holds a plan while restoration or replacement is pending and retains it on resolution failure', async () => {
+		const restored = Promise.withResolvers<void>();
+		let gate = restored.promise;
+		const h = await harness(() => gate);
+		const timetable = createTimetable({
+			id: 't',
+			name: 'T',
+			academicConfig: {
+				termStartDate: '2099-03-02',
+				startWeek: 1,
+				endWeek: 1,
+				periodTimes: [{ index: 1, startTime: '08:00', endTime: '08:45' }]
+			},
+			courses: [
+				createCourse({ id: 'c', name: 'Course', dayOfWeek: 1, startPeriod: 1, endPeriod: 1 })
+			]
+		});
+		h.timetables.set(timetable.id, timetable);
+		await h.engine.switchTimetable(timetable.id);
+		await h.engine.updatePreferences({ classNotificationsEnabled: true });
+		h.controller.start();
+		await Promise.resolve();
+		expect(h.adapter.replacePlan).not.toHaveBeenCalled();
+		restored.resolve();
+		await h.controller.sync();
+		expect(h.adapter.replacePlan).toHaveBeenCalledTimes(1);
+		const date = vi.mocked(h.adapter.replacePlan).mock.calls[0]![0][0]!.dateIso;
+		const permission = Promise.withResolvers<ClassNotificationStatus>();
+		vi.mocked(h.adapter.getStatus).mockReturnValueOnce(permission.promise);
+		const refreshing = h.controller.sync(true);
+		await vi.waitFor(() => expect(h.adapter.getStatus).toHaveBeenCalledTimes(2));
+		const replacement = Promise.withResolvers<void>();
+		gate = replacement.promise;
+		permission.resolve({ supported: true, permission: 'granted', exact: true });
+		for (let i = 0; i < 10; i++) await Promise.resolve();
+		expect(h.adapter.replacePlan).toHaveBeenCalledTimes(1);
+		const provider = h.engine.slots.register('calendar.holidays', {
+			id: 'holidays',
+			getHolidays: () => [{ date, label: 'Holiday' }]
+		});
+		replacement.resolve();
+		await refreshing;
+		expect(h.adapter.replacePlan).toHaveBeenLastCalledWith([]);
+		provider.dispose();
+		await h.controller.sync();
+		const calls = vi.mocked(h.adapter.replacePlan).mock.calls.length;
+		const error = new Error('Broken calendar');
+		const report = vi.spyOn(console, 'error').mockImplementation(() => {});
+		h.engine.slots.register('calendar.holidays', {
+			id: 'broken',
+			getHolidays: () => {
+				throw error;
+			}
+		});
+		await h.controller.sync();
+		expect(h.adapter.replacePlan).toHaveBeenCalledTimes(calls);
+		expect(h.controller.state.status).toBe('error');
+		expect(report).toHaveBeenCalledWith('[class-notifications] Failed to sync reminders', error);
+		report.mockRestore();
+	});
+
 	it('handles unsupported platforms and tests only with effective permission', async () => {
 		const h = await harness();
 		h.status({ supported: false, permission: 'denied', exact: false });

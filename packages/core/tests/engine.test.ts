@@ -7,7 +7,7 @@ import { DEFAULT_USER_PREFERENCES } from '../src/domain/preferences';
 import type { ChronosEnv, StorageChangeEvent } from '../src/types/env';
 import type { ChronosContext, ChronosPlugin } from '../src/types/context';
 import { defineSchema } from '../src/schema/schema';
-import { IHttpService, StorageClearError } from '../src/types/services';
+import { IPluginHttpService, StorageClearError } from '../src/types/services';
 
 function deferred<T>() {
 	let resolve!: (value: T) => void;
@@ -401,10 +401,10 @@ describe('ChronosEngine in @chronos/core', () => {
 				dispose: () => Promise.reject(failure)
 			});
 			engine.dispose();
-			await Promise.resolve();
+			await engine.unloadPlugin('async-dispose');
 			expect(engine.slots.get('mine.item')).toEqual([]);
 			expect(logged).toHaveBeenCalledWith(
-				'[ChronosEngine] Error disposing plugin async-dispose:',
+				'[ChronosEngine] Error in plugin "async-dispose" dispose hook:',
 				failure
 			);
 		} finally {
@@ -579,7 +579,7 @@ describe('ChronosEngine in @chronos/core', () => {
 				applyFn(ctx);
 
 				// Capability service is accessible
-				const http = ctx.service(IHttpService);
+				const http = ctx.service(IPluginHttpService);
 				expect(http).toBeDefined();
 
 				// Register hierarchical slot
@@ -728,7 +728,9 @@ describe('ChronosEngine in @chronos/core', () => {
 		});
 
 		engine.dispose();
-		expect(pluginDispose).toHaveBeenCalled();
+		await Promise.resolve();
+		await Promise.resolve();
+		await vi.waitFor(() => expect(pluginDispose).toHaveBeenCalled());
 	});
 
 	it('derives the active icon theme from the active color scheme', async () => {
@@ -802,16 +804,13 @@ describe('ChronosEngine in @chronos/core', () => {
 		expect(await env.storage.getActiveTimetableId()).toBe('active-1');
 	});
 
-	it('updateTimetableDetails deep-merges academicConfig and preserves holidayCalendar', async () => {
+	it('updateTimetableDetails updates academicConfig without changing calendar contributions', async () => {
 		const { env } = createMockEnv();
 		const engine = new ChronosEngine({ env });
 		await engine.init();
 
-		const holidayCalendar = {
-			holidays: [{ date: '2026-10-01', label: '国庆节' }],
-			syncedAt: 1,
-			syncedYears: [2026]
-		};
+		const holidays = [{ date: '2026-10-01', label: '国庆节' }];
+		engine.slots.register('calendar.holidays', { id: 'holidays', getHolidays: () => holidays });
 		const timetable = createTimetable({
 			id: 't1',
 			name: '课表',
@@ -820,8 +819,7 @@ describe('ChronosEngine in @chronos/core', () => {
 				termStartDate: '2026-03-02',
 				startWeek: 1,
 				endWeek: 20,
-				periodTimes: [],
-				holidayCalendar
+				periodTimes: []
 			}
 		});
 		await env.storage.saveTimetable(timetable);
@@ -841,7 +839,10 @@ describe('ChronosEngine in @chronos/core', () => {
 			}
 		});
 
-		expect(engine.state.currentTimetable?.academicConfig.holidayCalendar).toEqual(holidayCalendar);
+		expect(engine.state.currentTimetable?.academicConfig.periodTimes).toEqual([
+			{ index: 1, startTime: '08:00', endTime: '08:45' }
+		]);
+		expect(engine.resolveHolidays(timetable)).toEqual(holidays);
 		engine.dispose();
 	});
 

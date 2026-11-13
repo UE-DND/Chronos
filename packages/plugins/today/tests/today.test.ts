@@ -4,7 +4,8 @@ import {
 	createCourse,
 	createTimetable,
 	type CourseQueryHit,
-	IStorageService,
+	type ChronosContext,
+	type CalendarHoliday,
 	assignCourseDisplayColors,
 	COURSE_PALETTE_ENTRIES
 } from '@chronos/core';
@@ -80,7 +81,7 @@ describe('today plugin', () => {
 		} as unknown as ReactiveChronosController;
 
 		const screen = createTodayScreenController();
-		const initPromise = screen.init(mockController, 'tool-today');
+		const initPromise = screen.init(mockController, engine.getPluginContext('tool-today'));
 		screen.dispose();
 		await initPromise;
 
@@ -157,7 +158,7 @@ describe('today plugin', () => {
 		} as unknown as ReactiveChronosController;
 
 		const screen = createTodayScreenController();
-		await screen.init(mockController, 'tool-today');
+		await screen.init(mockController, engine.getPluginContext('tool-today'));
 
 		expect(screen.paintByCourseKey.get(coursePaintKey(timetable.id, courseA.name))).toEqual(
 			lookup.get('Course A')
@@ -175,26 +176,32 @@ describe('today-courses', () => {
 				termStartDate: '2026-03-02',
 				startWeek: 1,
 				endWeek: 20,
-				periodTimes: [{ index: 1, startTime: '08:00', endTime: '08:45' }],
-				holidayCalendar: { holidays: [{ date: '2026-03-02', label: '休息日' }] }
+				periodTimes: [{ index: 1, startTime: '08:00', endTime: '08:45' }]
 			}
 		});
 		main.courses = [
 			createCourse({ id: 'main', name: 'Main', dayOfWeek: 1, startPeriod: 1, endPeriod: 1 })
 		];
 		const other = createTimetable({ ...main, id: 'other' });
-		delete other.academicConfig.holidayCalendar;
+		const calendar = new Map<string, CalendarHoliday[]>([
+			['main', [{ date: '2026-03-02', label: '休息日' }]]
+		]);
 		const storage = {
 			listTimetables: async () => [main, other],
 			getTimetable: async (id: string) => (id === main.id ? main : other)
-		} as unknown as IStorageService;
+		} as unknown as ChronosContext['query'];
 		const query = (scope: 'active' | 'all') =>
-			queryTodayCourses(storage, { todayIso: '2026-03-02', scope, timetable: main });
+			queryTodayCourses(storage, {
+				todayIso: '2026-03-02',
+				scope,
+				timetable: main,
+				getHolidays: (entry) => calendar.get(entry.id) ?? []
+			});
 		expect(await query('active')).toEqual([]);
 		expect((await query('all')).map((hit) => hit.timetableId)).toEqual(['other']);
-		other.academicConfig.holidayCalendar = main.academicConfig.holidayCalendar;
+		calendar.set('other', calendar.get('main')!);
 		expect(await query('all')).toEqual([]);
-		main.academicConfig.holidayCalendar = { holidays: [] };
+		calendar.delete('main');
 		expect((await query('active')).map((hit) => hit.timetableId)).toEqual(['main']);
 	});
 	const periodTimes = [
@@ -372,9 +379,10 @@ describe('today-courses', () => {
 			]
 		});
 
-		const storage = {} as IStorageService;
+		const storage = {} as ChronosContext['query'];
 
 		const hits = await queryTodayCourses(storage, {
+			getHolidays: () => [],
 			todayIso: '2026-03-02',
 			scope: 'active',
 			timetable
@@ -404,8 +412,9 @@ describe('today-courses', () => {
 		const storage = {
 			listTimetables: async () => entries,
 			getTimetable: async (id: string) => entries.find((entry) => entry.id === id) ?? null
-		} as unknown as IStorageService;
+		} as unknown as ChronosContext['query'];
 		const hits = await queryTodayCourses(storage, {
+			getHolidays: () => [],
 			todayIso: '2026-03-02',
 			scope: 'all',
 			timetable: entries[0]!
@@ -414,9 +423,10 @@ describe('today-courses', () => {
 	});
 
 	it('queryTodayCourses returns empty array without timetable', async () => {
-		const storage = {} as IStorageService;
+		const storage = {} as ChronosContext['query'];
 
 		const hits = await queryTodayCourses(storage, {
+			getHolidays: () => [],
 			todayIso: '2026-03-02',
 			scope: 'active',
 			timetable: null

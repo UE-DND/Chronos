@@ -1,13 +1,6 @@
-import { PLUGIN_CONFIG_STORAGE_KEY } from '../constants/plugin-storage';
-import type { IStorageService } from '../types/services';
+import type { IStorageService, PluginStorageScope } from '../types/services';
 import type { EngineContextHost } from './engine-context-host';
 import type { Disposable } from '../types/services';
-
-export interface PluginStorageApi {
-	get<T = unknown>(key: string): Promise<T | null>;
-	set<T = unknown>(key: string, value: T): Promise<void>;
-	delete(key: string): Promise<void>;
-}
 
 export interface PluginI18nApi {
 	readonly locale: string;
@@ -15,22 +8,41 @@ export interface PluginI18nApi {
 	registerMessages(messages: Record<string, Record<string, string>>): Disposable;
 }
 
-/** Creates per-plugin storage scoped to pluginId. */
+// Lightweight non-database hosts serialize atomic updates on their shared storage port.
+const storageQueues = new WeakMap<IStorageService, Promise<unknown>>();
+
 export function createPluginStorage(
 	pluginId: string,
-	getStorage: () => IStorageService
-): PluginStorageApi {
+	storage: IStorageService,
+	revision?: number
+): PluginStorageScope {
+	if (storage.createPluginScope) return storage.createPluginScope(pluginId, revision);
 	return {
-		get: <T = unknown>(key: string) => getStorage().getPluginData<T>(pluginId, key),
-		set: <T = unknown>(key: string, value: T) =>
-			getStorage().setPluginData<T>(pluginId, key, value),
-		delete: (key: string) => {
-			if (key === PLUGIN_CONFIG_STORAGE_KEY) {
-				console.warn(`[ScopedContext:${pluginId}] 拒绝删除保留键 __config__，请使用 updateConfig`);
-				return Promise.resolve();
-			}
-			return getStorage().deletePluginData(pluginId, key);
-		}
+		get: <T = unknown>(key: string) => storage.getPluginData<T>(pluginId, key),
+		set: <T = unknown>(key: string, value: T) => storage.setPluginData(pluginId, key, value),
+		delete: (key: string) => storage.deletePluginData(pluginId, key),
+		updateJson<T>(key: string, change: (current: T | null) => T): Promise<T> {
+			const operation = (storageQueues.get(storage) ?? Promise.resolve())
+				.catch(() => {})
+				.then(async () => {
+					const current = await storage.getPluginData<T>(pluginId, key);
+					const next = change(current === null ? null : structuredClone(current));
+					if (next instanceof Promise)
+						throw new TypeError('Plugin JSON change must be synchronous');
+					await storage.setPluginData(pluginId, key, next);
+					return structuredClone(next);
+				});
+			storageQueues.set(storage, operation);
+			return operation;
+		},
+		onKeyChanged: (key, listener) =>
+			storage.onChanged?.((event) => {
+				if (
+					event.type === 'pluginData' &&
+					(event.key === `${pluginId}:${key}` || event.key === pluginId)
+				)
+					return listener();
+			}) ?? { dispose() {} }
 	};
 }
 
@@ -38,7 +50,8 @@ export function createPluginStorage(
 export function createPluginI18n(
 	pluginId: string,
 	host: EngineContextHost,
-	onRegister: (disposable: Disposable) => void
+	onRegister: (disposable: Disposable) => void,
+	beforeRegister: () => void
 ): PluginI18nApi {
 	return {
 		get locale() {
@@ -47,6 +60,7 @@ export function createPluginI18n(
 		t: (key: string, params?: Record<string, unknown>) =>
 			host.translateForPlugin(pluginId, key, params),
 		registerMessages: (messages: Record<string, Record<string, string>>) => {
+			beforeRegister();
 			const handle = host.i18nCatalog.register(pluginId, messages);
 			onRegister(handle);
 			return handle;

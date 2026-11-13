@@ -112,18 +112,18 @@
 			return;
 		}
 		await pluginContext.storage.set(CLOCK_STORAGE_KEY, next.getTime());
-		pluginContext.actions.setVirtualNow(next);
-		trackPluginAnalytics(pluginContext, CLOCK_PLUGIN_ID, CLOCK_ANALYTICS.apply);
+		pluginContext.clock.set(next);
+		trackPluginAnalytics(pluginContext, CLOCK_ANALYTICS.apply);
 		pluginContext.actions.notify(pt('screen.notify.applied'), 'info');
 	}
 
 	async function onReset() {
 		await pluginContext.storage.delete(CLOCK_STORAGE_KEY);
-		pluginContext.actions.setVirtualNow(null);
+		pluginContext.clock.set(null);
 		const parts = partsFromDate(pluginContext.state.now);
 		draftIso = parts.isoDate;
 		draftTime = parts.time;
-		trackPluginAnalytics(pluginContext, CLOCK_PLUGIN_ID, CLOCK_ANALYTICS.reset);
+		trackPluginAnalytics(pluginContext, CLOCK_ANALYTICS.reset);
 		pluginContext.actions.notify(pt('screen.notify.reset'), 'info');
 	}
 </script>

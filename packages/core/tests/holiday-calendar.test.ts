@@ -18,9 +18,9 @@ describe('holiday-calendar engine', () => {
 	];
 
 	it('builds lookup when holidays are present', () => {
-		expect(buildHolidayLookup(undefined).size).toBe(0);
-		expect(buildHolidayLookup({ holidays: [] }).size).toBe(0);
-		expect(buildHolidayLookup({ holidays }).get('2026-10-01')?.label).toBe('国庆节');
+		expect(buildHolidayLookup([]).size).toBe(0);
+		expect(buildHolidayLookup([]).size).toBe(0);
+		expect(buildHolidayLookup(holidays).get('2026-10-01')?.label).toBe('国庆节');
 	});
 
 	it('infers years spanning term range', () => {
@@ -56,7 +56,7 @@ describe('holiday-calendar engine', () => {
 
 	it('returns owned holiday records from lookups and term filters', () => {
 		const original = { date: '2026-03-02', label: 'Original' };
-		const lookup = buildHolidayLookup({ holidays: [original] });
+		const lookup = buildHolidayLookup([original]);
 		const filtered = filterHolidaysInTermRange(
 			[original],
 			{ termStartDate: '2026-03-02', startWeek: 1, endWeek: 2, periodTimes: [] },
@@ -91,15 +91,14 @@ describe('grid holiday integration', () => {
 				termStartDate: '2026-09-28',
 				startWeek: 1,
 				endWeek: 20,
-				periodTimes: [{ index: 1, startTime: '08:00', endTime: '08:45' }],
-				holidayCalendar: {
-					holidays: [{ date: '2026-10-01', label: '国庆节' }]
-				}
+				periodTimes: [{ index: 1, startTime: '08:00', endTime: '08:45' }]
 			},
 			viewPrefs: { showSaturday: true, showSunday: true, showNonCurrentWeekCourses: false }
 		});
 
-		const grid = calculateTimetableGrid('2026-10-01', 1, timetable);
+		const grid = calculateTimetableGrid('2026-10-01', 1, timetable, [
+			{ date: '2026-10-01', label: '国庆节' }
+		]);
 		const nationalDay = grid.visibleDays.find((day) => day.date === '2026-10-01');
 		expect(nationalDay?.holiday?.label).toBe('国庆节');
 

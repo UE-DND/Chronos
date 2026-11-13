@@ -1,5 +1,5 @@
 import { defineChronosPlugin } from '@chronos/core';
-import type { ChronosContext, ChronosMountable } from '@chronos/core';
+import type { ChronosMountable } from '@chronos/core';
 import { parseStoredFrozenEpoch } from './clock';
 import { CLOCK_PLUGIN_ID, CLOCK_STORAGE_KEY } from './constants';
 import { CLOCK_MESSAGES } from './messages';
@@ -10,7 +10,6 @@ export interface CreateClockPluginOptions {
 
 export function createClockPlugin(options: CreateClockPluginOptions = {}) {
 	const { screenComponent } = options;
-	let activeCtx: ChronosContext | undefined;
 
 	return defineChronosPlugin({
 		id: CLOCK_PLUGIN_ID,
@@ -22,10 +21,9 @@ export function createClockPlugin(options: CreateClockPluginOptions = {}) {
 		author: 'Chronos',
 		homepage: 'https://github.com/UE-DND/Chronos',
 		async apply(ctx, t) {
-			activeCtx = ctx;
 			const stored = parseStoredFrozenEpoch(await ctx.storage.get(CLOCK_STORAGE_KEY));
 			if (stored != null) {
-				ctx.actions.setVirtualNow(new Date(stored));
+				ctx.clock.set(new Date(stored));
 			}
 
 			ctx.registerSlot('mine.item', {
@@ -43,11 +41,6 @@ export function createClockPlugin(options: CreateClockPluginOptions = {}) {
 				title: () => t('screen.title'),
 				...(screenComponent ? { component: screenComponent } : {})
 			});
-		},
-		dispose() {
-			const ctx = activeCtx;
-			activeCtx = undefined;
-			ctx?.actions.setVirtualNow(null);
 		}
 	});
 }

@@ -39,13 +39,11 @@ function decodeParsedConfig(raw: unknown): TimetableConfig {
 
 function decodeAcademicConfig(raw: unknown): AcademicConfig {
 	const record = asRecord(raw);
-	const holidayCalendar = decodeHolidayCalendar(record.holidayCalendar);
 	return {
 		termStartDate: asString(record.termStartDate),
 		startWeek: asInt(record.startWeek),
 		endWeek: asInt(record.endWeek),
-		periodTimes: asArray(record.periodTimes).map(decodePeriodTime),
-		...(holidayCalendar ? { holidayCalendar } : {})
+		periodTimes: asArray(record.periodTimes).map(decodePeriodTime)
 	};
 }
 
@@ -55,25 +53,6 @@ function decodePeriodTime(raw: unknown): PeriodTime {
 		index: asInt(record.index),
 		startTime: asString(record.startTime),
 		endTime: asString(record.endTime)
-	};
-}
-
-function decodeHolidayCalendar(raw: unknown): AcademicConfig['holidayCalendar'] {
-	if (raw === undefined) return undefined;
-	const record = asRecord(raw);
-	const holidays = asArray(record.holidays).map((item) => {
-		const holiday = asRecord(item);
-		return { date: asString(holiday.date), label: asString(holiday.label) };
-	});
-	const syncedAt = optionalNumber(record.syncedAt);
-	const syncedYears =
-		record.syncedYears === undefined
-			? undefined
-			: asArray(record.syncedYears).map((year) => asInt(year));
-	return {
-		holidays,
-		...(syncedAt === undefined ? {} : { syncedAt }),
-		...(syncedYears === undefined ? {} : { syncedYears })
 	};
 }
 
@@ -137,10 +116,4 @@ function optionalString(value: unknown): string | undefined {
 	if (value === undefined) return undefined;
 	if (typeof value === 'string') return value;
 	throw new Error('expected string');
-}
-
-function optionalNumber(value: unknown): number | undefined {
-	if (value === undefined) return undefined;
-	if (typeof value === 'number' && !Number.isNaN(value)) return value;
-	throw new Error('expected number');
 }

@@ -102,13 +102,14 @@ export async function replacePluginAssets(
 		options?.signal?.throwIfAborted?.();
 
 		runtimeTouched = true;
-		await deps.runtimeActivator.activate(record);
+		await deps.runtimeActivator.activate(record, { deferAcceptance: true });
 
 		options?.signal?.throwIfAborted?.();
 
 		if (deps.isDisposed()) throw new DOMException('Aborted', 'AbortError');
 		deps.validate?.();
 		await deps.installedStore.upsert(record, expectedRevision);
+		deps.runtimeActivator.accept(deps.installedStore.find(pluginId)!);
 		runtimeTouched = false;
 		return deps.installedStore.find(pluginId)!;
 	} catch (err: unknown) {

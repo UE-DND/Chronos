@@ -22,17 +22,20 @@ export function createErrorLogPlugin(options: CreateErrorLogPluginOptions = {}) 
 		homepage: 'https://github.com/UE-DND/Chronos',
 		async apply(ctx, t) {
 			const runtime = createErrorLogRuntime(ctx);
+			ctx.addDisposable({ dispose: () => runtime.dispose() });
 			await runtime.load();
 
 			const errorCapture = ctx.tryService(IErrorCaptureService);
-			if (errorCapture) {
-				ctx.addDisposable(
+			ctx.on('plugin:loaded', ({ pluginId }) => {
+				if (pluginId === ctx.pluginId && errorCapture) {
 					errorCapture.onCaptured((entry) => {
-						void runtime.append(entry);
-					})
-				);
-			}
-			ctx.addDisposable({ dispose: () => runtime.dispose() });
+						void runtime.append(entry).catch((error) => {
+							if (!ctx.signal.aborted)
+								console.warn('[error-log] Failed to save captured error', error);
+						});
+					});
+				}
+			});
 
 			ctx.registerSlot('mine.item', {
 				id: 'error-log',

@@ -71,6 +71,7 @@ class HostBootstrapSession {
 	private pluginsReady?: Promise<void>;
 	private resetting?: Promise<ResetAppResult>;
 	private disposed = false;
+	private readonly shutdownCleanups = new Set<() => void>();
 
 	private assertActive(): void {
 		if (this.disposed) throw new Error('Startup session disposed');
@@ -169,7 +170,23 @@ class HostBootstrapSession {
 		}));
 	}
 
+	addShutdownCleanup(cleanup: () => void): () => void {
+		this.assertActive();
+		this.shutdownCleanups.add(cleanup);
+		return () => this.shutdownCleanups.delete(cleanup);
+	}
+
 	dispose(): void {
+		this.disposed = true;
+		const cleanups = [...this.shutdownCleanups];
+		this.shutdownCleanups.clear();
+		for (const cleanup of cleanups) {
+			try {
+				cleanup();
+			} catch (error) {
+				console.error('[app-engine] Failed to stop external services', error);
+			}
+		}
 		this.plugins?.dispose();
 		this.controller?.dispose();
 		this.engine?.dispose();
@@ -308,6 +325,11 @@ async function performAppReset(
 		return { status: 'recovery-failed' };
 	}
 	return { status: 'complete' };
+}
+
+/** External plans must stop before plugin teardown withdraws their calendar providers. */
+export function registerAppShutdownCleanup(cleanup: () => void): () => void {
+	return session.addShutdownCleanup(cleanup);
 }
 
 /** Disposes the shared host engine and all resources owned by its bootstrap session. */

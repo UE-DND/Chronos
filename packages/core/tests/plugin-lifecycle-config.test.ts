@@ -17,38 +17,23 @@ describe('plugin configuration ownership', () => {
 			});
 			await engine.getPluginContext('drained-config-owner').updateConfig({ value: 'committed' });
 			handle.dispose();
+			await engine.unloadPlugin('drained-config-owner');
 			expect(dispose).toHaveBeenCalledOnce();
 		} finally {
 			engine.dispose();
 		}
 	});
 
-	it('settles started config writes before a failed activation returns its original error and can retry', async () => {
+	it('rejects persistence from a failed candidate and retries from the last committed config', async () => {
 		const { env } = createMockEnv();
+		await env.storage.setPluginData('failed-config-owner', '__config__', { value: 'committed' });
 		const engine = new ChronosEngine({ env });
 		const failure = new Error('Activation failed');
-		const cleanupError = new Error('Plugin cleanup failed');
-		let release!: () => void;
-		let started!: () => void;
-		const gate = new Promise<void>((resolve) => {
-			release = resolve;
-		});
-		const writing = new Promise<void>((resolve) => {
-			started = resolve;
-		});
-		const originalWrite = env.storage.setPluginData.bind(env.storage);
-		vi.spyOn(env.storage, 'setPluginData').mockImplementationOnce(async (...args) => {
-			started();
-			await gate;
-			await originalWrite(...args);
-		});
-		let pending: Promise<void> | undefined;
-		const dispose = vi.fn().mockResolvedValue(undefined).mockRejectedValueOnce(cleanupError);
 		const apply = vi.fn().mockImplementationOnce(async (ctx) => {
-			pending = ctx.updateConfig({ value: 'failed instance committed' });
-			await writing;
+			await expect(ctx.updateConfig({ value: 'candidate' })).rejects.toThrow('accepted');
 			throw failure;
 		});
+		const dispose = vi.fn();
 		const plugin = {
 			id: 'failed-config-owner',
 			name: 'Config owner',
@@ -57,35 +42,16 @@ describe('plugin configuration ownership', () => {
 			apply,
 			dispose
 		};
-		const changed = vi.fn();
-		engine.on('config:changed', changed);
-		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
 		try {
-			let settled = false;
-			const loading = engine.loadPlugin(plugin);
-			const rejected = loading.catch((error: unknown) => {
-				settled = true;
-				return error;
-			});
-			await writing;
-			await Promise.resolve();
-			await Promise.resolve();
-			expect(settled).toBe(false);
-			expect(dispose).not.toHaveBeenCalled();
-			release();
-			expect(await rejected).toBe(failure);
-			await pending;
-			expect(changed).not.toHaveBeenCalled();
-			expect(log).toHaveBeenCalledWith(expect.any(String), cleanupError);
+			await expect(engine.loadPlugin(plugin)).rejects.toBe(failure);
+			expect(dispose).toHaveBeenCalledOnce();
 			await engine.loadPlugin(plugin);
 			const next = engine.getPluginContext(plugin.id);
-			expect(next.config).toEqual({ value: 'failed instance committed' });
-			await next.updateConfig({ value: 'retry committed' });
-			expect(await next.storage.get('__config__')).toEqual({ value: 'retry committed' });
+			expect(next.config).toEqual({ value: 'committed' });
+			await next.updateConfig({ value: 'retry' });
+			expect(await next.storage.get('__config__')).toEqual({ value: 'retry' });
 		} finally {
-			release();
 			engine.dispose();
-			log.mockRestore();
 		}
 	});
 

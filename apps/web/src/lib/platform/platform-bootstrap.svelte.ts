@@ -10,7 +10,8 @@ import {
 	ensureEngineFullyReady,
 	ensureEngineReady,
 	getAppController,
-	getOfficialPluginService
+	getOfficialPluginService,
+	registerAppShutdownCleanup
 } from '#lib/services/app-engine.ts';
 import { configureHostI18n } from '#lib/i18n/host-i18n.svelte.ts';
 import { getHostPlatform } from '#lib/platform/host-platform.ts';
@@ -79,6 +80,7 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 			window.__chronosShowBootFailure?.();
 		}
 		try {
+			own(registerAppShutdownCleanup(teardown));
 			if (!platform.isNative) own(installWebViewportLayout());
 			if (!platform.isNative && pwaInstallController.isIOS && isPwaStandalone()) {
 				own(installIosPwaRailLayout());
@@ -183,10 +185,22 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 					resolveAnalyticsStartup();
 
 					todayWidgetSync = createTodayWidgetSyncService(engine, platform, {
-						visibilityTarget: document
+						visibilityTarget: document,
+						waitForPlugins: async () => {
+							await ensureEngineFullyReady();
+							await getOfficialPluginService().waitForSettled();
+						}
 					});
 					own(() => todayWidgetSync?.dispose());
-					todayWidgetSync.start();
+					void ensureEngineFullyReady()
+						.then(() => {
+							if (!session.alive) return;
+							deps.shell.classNotifications.start();
+							todayWidgetSync?.start();
+						})
+						.catch((error) =>
+							console.error('[bootstrap] Failed to restore calendar providers', error)
+						);
 					// Gate first so the async install init cannot auto-popup behind onboarding.
 					if (!platform.supportsPwaInstall) {
 						pwaInstallController.setInstallPromptGate(() => true);

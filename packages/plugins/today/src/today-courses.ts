@@ -1,7 +1,8 @@
 import {
 	type Course,
 	type CourseQueryHit,
-	type IStorageService,
+	type ChronosContext,
+	type CalendarHoliday,
 	type PeriodTime,
 	type ReadonlyTimetable,
 	type DeepReadonly,
@@ -114,18 +115,19 @@ export function attachCourseStatuses(
 }
 
 export async function queryTodayCourses(
-	storage: IStorageService,
+	storage: ChronosContext['query'],
 	options: {
 		todayIso: string;
 		scope: TodayScope;
 		timetable: ReadonlyTimetable | null;
+		getHolidays: (timetable: ReadonlyTimetable) => readonly CalendarHoliday[];
 	}
 ): Promise<TodayCourseHit[]> {
-	const { todayIso, scope, timetable } = options;
+	const { todayIso, scope, timetable, getHolidays } = options;
 	if (!timetable) return [];
 
 	const query = (entry: ReadonlyTimetable): TodayCourseHit[] =>
-		queryTimetableCoursesForDate(entry, todayIso).map((hit) => ({
+		queryTimetableCoursesForDate(entry, todayIso, getHolidays(entry)).map((hit) => ({
 			...hit,
 			periodTimes: entry.academicConfig.periodTimes
 		}));

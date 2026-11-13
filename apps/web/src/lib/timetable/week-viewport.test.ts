@@ -55,6 +55,7 @@ describe('buildWeekViewport', () => {
 		const result = buildWeekViewport(
 			{
 				timetable: null,
+				holidays: [],
 				todayIso: '2026-03-02',
 				displayedWeek: 2,
 				expandedSlotKeys: new Set()
@@ -71,6 +72,7 @@ describe('buildWeekViewport', () => {
 		const result = buildWeekViewport(
 			{
 				timetable: sampleTimetable,
+				holidays: [],
 				todayIso: '2026-03-02',
 				displayedWeek: 2,
 				expandedSlotKeys: new Set()
@@ -86,6 +88,7 @@ describe('buildWeekViewport', () => {
 		const cache = createWeekLayoutCache();
 		const input = {
 			timetable: sampleTimetable,
+			holidays: [],
 			todayIso: '2026-03-02',
 			displayedWeek: 2,
 			expandedSlotKeys: new Set<string>()
@@ -101,6 +104,7 @@ describe('buildWeekViewport', () => {
 		const cache = createWeekLayoutCache();
 		const baseInput = {
 			timetable: sampleTimetable,
+			holidays: [],
 			todayIso: '2026-03-02',
 			displayedWeek: 2,
 			expandedSlotKeys: new Set<string>()
@@ -112,10 +116,33 @@ describe('buildWeekViewport', () => {
 		expect(computeTimetableWeekLayout).toHaveBeenCalledTimes(6);
 	});
 
+	it('invalidates cached weeks when calendar contributions change without timetable writes', () => {
+		const cache = createWeekLayoutCache();
+		const input = {
+			timetable: sampleTimetable,
+			holidays: [],
+			todayIso: '2026-03-02',
+			displayedWeek: 2,
+			expandedSlotKeys: new Set<string>()
+		};
+		buildWeekViewport(input, cache);
+		const holidays = [{ date: '2026-03-02', label: 'Holiday' }];
+		buildWeekViewport({ ...input, holidays }, cache);
+		expect(computeTimetableWeekLayout).toHaveBeenCalledTimes(6);
+		expect(computeTimetableWeekLayout).toHaveBeenLastCalledWith(
+			expect.objectContaining({ holidays })
+		);
+		buildWeekViewport({ ...input, holidays: [...holidays] }, cache);
+		expect(computeTimetableWeekLayout).toHaveBeenCalledTimes(6);
+		buildWeekViewport(input, cache);
+		expect(computeTimetableWeekLayout).toHaveBeenCalledTimes(9);
+	});
+
 	it('invalidateAll clears cached layouts', () => {
 		const cache = createWeekLayoutCache();
 		const input = {
 			timetable: sampleTimetable,
+			holidays: [],
 			todayIso: '2026-03-02',
 			displayedWeek: 2,
 			expandedSlotKeys: new Set<string>()

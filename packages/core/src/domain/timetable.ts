@@ -13,22 +13,11 @@ export interface CalendarHoliday {
 	label: string;
 }
 
-export type HolidayDataSource = 'remote' | 'bundled' | 'cached' | 'unavailable';
-
-export interface HolidayCalendarConfig {
-	holidays: CalendarHoliday[];
-	syncedAt?: number;
-	syncedYears?: number[];
-	sourceByYear?: Record<number, HolidayDataSource>;
-	lastAttemptedAt?: number;
-}
-
 export interface AcademicConfig {
 	termStartDate: string; // YYYY-MM-DD
 	startWeek: number; // default: 1
 	endWeek: number; // default: 20
 	periodTimes: PeriodTime[]; // Active period timetable schedule
-	holidayCalendar?: HolidayCalendarConfig;
 }
 
 export interface TimetableViewPrefs {
@@ -109,18 +98,7 @@ export function createTimetable(
 			termStartDate: partial.academicConfig?.termStartDate ?? '',
 			startWeek: partial.academicConfig?.startWeek ?? 1,
 			endWeek: partial.academicConfig?.endWeek ?? 20,
-			periodTimes: partial.academicConfig?.periodTimes ?? [],
-			...(partial.academicConfig?.holidayCalendar
-				? {
-						holidayCalendar: {
-							...partial.academicConfig.holidayCalendar,
-							holidays: [...partial.academicConfig.holidayCalendar.holidays],
-							sourceByYear: partial.academicConfig.holidayCalendar.sourceByYear
-								? { ...partial.academicConfig.holidayCalendar.sourceByYear }
-								: undefined
-						}
-					}
-				: {})
+			periodTimes: partial.academicConfig?.periodTimes ?? []
 		},
 		viewPrefs: {
 			showSaturday: partial.viewPrefs?.showSaturday ?? true,

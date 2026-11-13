@@ -1,6 +1,6 @@
 /// <reference types="svelte" />
 import type { ChronosContext } from '@chronos/core';
-import { ERROR_LOG_PLUGIN_ID, ERROR_LOG_STORAGE_KEY } from './constants';
+import { ERROR_LOG_STORAGE_KEY } from './constants';
 import { appendRingBuffer, parseStoredEntries, type ErrorLogEntry } from './error-log';
 
 export interface ErrorLogRuntime {
@@ -11,20 +11,17 @@ export interface ErrorLogRuntime {
 	dispose(): void;
 }
 
-const runtimeRegistry = new Map<string, ErrorLogRuntime>();
+const runtimeRegistry = new WeakMap<ChronosContext, ErrorLogRuntime>();
 
-export function getErrorLogRuntime(pluginId: string = ERROR_LOG_PLUGIN_ID): ErrorLogRuntime {
-	const runtime = runtimeRegistry.get(pluginId);
+export function getErrorLogRuntime(ctx: ChronosContext): ErrorLogRuntime {
+	const runtime = runtimeRegistry.get(ctx);
 	if (!runtime) {
-		throw new Error(`[ErrorLogRuntime] not initialized for plugin "${pluginId}"`);
+		throw new Error(`[ErrorLogRuntime] not initialized for plugin "${ctx.pluginId}"`);
 	}
 	return runtime;
 }
 
-export function createErrorLogRuntime(
-	ctx: ChronosContext,
-	pluginId: string = ERROR_LOG_PLUGIN_ID
-): ErrorLogRuntime {
+export function createErrorLogRuntime(ctx: ChronosContext): ErrorLogRuntime {
 	let entries = $state.raw<ErrorLogEntry[]>([]);
 	let persistChain = Promise.resolve();
 
@@ -51,12 +48,12 @@ export function createErrorLogRuntime(
 			await schedulePersist(() => ctx.storage.delete(ERROR_LOG_STORAGE_KEY));
 		},
 		dispose() {
-			if (runtimeRegistry.get(pluginId) === runtime) {
-				runtimeRegistry.delete(pluginId);
+			if (runtimeRegistry.get(ctx) === runtime) {
+				runtimeRegistry.delete(ctx);
 			}
 		}
 	};
 
-	runtimeRegistry.set(pluginId, runtime);
+	runtimeRegistry.set(ctx, runtime);
 	return runtime;
 }

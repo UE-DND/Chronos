@@ -1,5 +1,5 @@
 import type { Course } from '../domain/course';
-import { type AcademicConfig, type Timetable } from '../domain/timetable';
+import { type AcademicConfig, type CalendarHoliday, type Timetable } from '../domain/timetable';
 import {
 	type UserPreferences,
 	DEFAULT_USER_PREFERENCES,
@@ -29,14 +29,18 @@ import type {
 	DeleteTimetableResult,
 	TimetableDetailsPatch
 } from '../types/actions';
-import type { ChronosEngineState, TimetableSummary } from '../types/state';
+import type { ChronosEngineState, ReadonlyTimetable, TimetableSummary } from '../types/state';
 import { planRevertToDefaultThemes } from './engine/revert-default-themes';
 import { EngineTimeKeeper } from './engine/engine-time-keeper';
 import { TimetableSelection } from './engine/timetable-selection';
 import { TimetableActions } from './engine/timetable-actions';
 import { CourseActions } from './engine/course-actions';
 import { StorageSyncHandler } from './engine/storage-sync-handler';
-import { PluginLifecycleManager } from './engine/plugin-lifecycle-manager';
+import {
+	PluginLifecycleManager,
+	type PluginLoadHandle,
+	type PluginLoadOptions
+} from './engine/plugin-lifecycle-manager';
 import { immutableSnapshot } from './immutable-snapshot';
 
 export interface ChronosEngineOptions {
@@ -65,6 +69,8 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 	private _currentTimetable: Timetable | null = null;
 	private _timetables: TimetableSummary[] = [];
 	private listRevision = 0;
+	private calendarRevision = 0;
+	private holidayContributions: unknown[] = [];
 	private _activeWeek = 1;
 	private _currentPeriodIndex: number | null = null;
 	private _activeThemeId: string | null = null;
@@ -92,6 +98,15 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 		this.events = new EventPipeline();
 		this.slots = new HierarchicalSlotRegistry(() => {
 			this.events.emit('slots:updated', undefined);
+			const providers = this.slots.get('calendar.holidays');
+			if (
+				providers.length !== this.holidayContributions.length ||
+				providers.some((provider, i) => provider !== this.holidayContributions[i])
+			) {
+				this.holidayContributions = providers;
+				this.calendarRevision++;
+				this.events.emit('calendar:changed', { revision: this.calendarRevision });
+			}
 		});
 		this.themes = new ThemeRegistry(this.slots, () => {
 			this.events.emit('theme:changed', { themeId: this._activeThemeId });
@@ -233,6 +248,7 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 		const now = this.timeKeeper.now();
 		return {
 			currentTimetable: this._currentTimetable,
+			calendarRevision: this.calendarRevision,
 			timetables: this._timetables,
 			activeWeek: this._activeWeek,
 			currentPeriodIndex: this._currentPeriodIndex,
@@ -244,6 +260,16 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 			clockFrozen: this.timeKeeper.isFrozen(),
 			locale: this._locale
 		};
+	}
+
+	resolveHolidays(timetable: ReadonlyTimetable): readonly CalendarHoliday[] {
+		const holidays = new Map<string, CalendarHoliday>();
+		for (const provider of this.slots.get('calendar.holidays')) {
+			for (const holiday of provider.getHolidays(timetable)) {
+				if (!holidays.has(holiday.date)) holidays.set(holiday.date, { ...holiday });
+			}
+		}
+		return immutableSnapshot([...holidays.values()].sort((a, b) => a.date.localeCompare(b.date)));
 	}
 
 	get actions(): ChronosActions {
@@ -481,11 +507,13 @@ export class ChronosEngine implements EngineContextHost, ChronosActions, Disposa
 	}
 
 	async loadPlugin<Config extends object = Record<string, unknown>>(
-		plugin: ChronosPlugin<Config>
-	): Promise<Disposable> {
+		plugin: ChronosPlugin<Config>,
+		options?: PluginLoadOptions
+	): Promise<PluginLoadHandle> {
 		this.assertPluginRemovable(plugin.id);
-		const handle = await this.pluginLifecycle.loadPlugin(plugin);
+		const handle = await this.pluginLifecycle.loadPlugin(plugin, options);
 		return {
+			accept: (revision) => handle.accept(revision),
 			dispose: () => {
 				this.assertPluginRemovable(plugin.id);
 				handle.dispose();

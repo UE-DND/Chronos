@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { callPluginServerJson } from '../src/plugin/call-plugin-server';
-import type { HttpResponse, IHttpService } from '../src/types/services';
+import type { HttpResponse, IPluginHttpService } from '../src/types/services';
 
 function mockHttpResponse(
 	overrides: Pick<HttpResponse, 'status' | 'statusText' | 'ok'> & {
@@ -25,7 +25,8 @@ describe('callPluginServerJson', () => {
 			campusId: 'huaxi',
 			campusPeriodTimes: { huaxi: [] }
 		};
-		const http: IHttpService = {
+		const http: IPluginHttpService = {
+			supportsServer: () => true,
 			request: async () =>
 				mockHttpResponse({ status: 404, statusText: 'Not Found', ok: false, jsonValue: null }),
 			proxy: async () =>
@@ -37,7 +38,7 @@ describe('callPluginServerJson', () => {
 				})
 		};
 
-		const { response, body } = await callPluginServerJson(http, 'source-cqut', 'preview', {
+		const { response, body } = await callPluginServerJson(http, 'preview', {
 			account: 'stu001',
 			password: 'pass'
 		});
@@ -51,7 +52,8 @@ describe('callPluginServerJson', () => {
 			ok: false,
 			error: { kind: 'Auth', message: '认证失败' }
 		};
-		const http: IHttpService = {
+		const http: IPluginHttpService = {
+			supportsServer: () => true,
 			request: async () =>
 				mockHttpResponse({ status: 404, statusText: 'Not Found', ok: false, jsonValue: null }),
 			proxy: async () =>
@@ -63,7 +65,7 @@ describe('callPluginServerJson', () => {
 				})
 		};
 
-		const { response, body } = await callPluginServerJson(http, 'source-cqut', 'preview', {
+		const { response, body } = await callPluginServerJson(http, 'preview', {
 			account: 'stu001',
 			password: 'bad'
 		});

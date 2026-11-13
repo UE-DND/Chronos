@@ -1,11 +1,15 @@
 import { describe, it, expect, vi } from 'vite-plus/test';
-import { ScopedContext } from '../src/runtime/scoped-context';
+import { ScopedContext, type EngineContextHost } from '../src/runtime/scoped-context';
 import { EventPipeline } from '../src/runtime/event-pipeline';
 import { HierarchicalSlotRegistry } from '../src/runtime/hierarchical-slot-registry';
 import { ThemeRegistry } from '../src/runtime/theme-registry';
 import { BadgeManager } from '../src/runtime/badge-manager';
 import { I18nCatalog } from '../src/i18n/i18n-catalog';
-import { IErrorCaptureService, IHttpService, createServiceIdentifier } from '../src/types/services';
+import {
+	IErrorCaptureService,
+	IPluginHttpService,
+	createServiceIdentifier
+} from '../src/types/services';
 import { createMockErrorCapture } from '../src/test-utils/create-mock-error-capture';
 import type { ChronosEnv } from '../src/types/env';
 import { DEFAULT_USER_PREFERENCES } from '../src/domain/preferences';
@@ -70,7 +74,9 @@ function createMockHost() {
 		t: (key: string) => key,
 		translateForPlugin: (pluginId: string, key: string) =>
 			i18nCatalog.t(pluginId, key, 'zh-cn') ?? key,
+		resolveHolidays: () => [],
 		state: {
+			calendarRevision: 0,
 			currentTimetable: null,
 			activeWeek: 1,
 			currentPeriodIndex: null,
@@ -102,11 +108,32 @@ function createMockHost() {
 	};
 }
 
+function createAcceptedContext<Config extends object = Record<string, unknown>>(
+	id: string,
+	host: EngineContextHost,
+	config?: Config
+) {
+	const context = new ScopedContext<Config>(id, host, config);
+	context.accept();
+	return context;
+}
+
 describe('ScopedContext in @chronos/core', () => {
+	it('accepts reactive configuration objects and owns their values before scheduling the write', async () => {
+		const host = createMockHost();
+		const ctx = createAcceptedContext('proxy-config', host, { nested: { value: 0 } });
+		const fields = { nested: new Proxy({ value: 1 }, {}) };
+		const patch = new Proxy(fields, {});
+		const save = ctx.updateConfig(patch);
+		fields.nested.value = 2;
+		await save;
+		expect(ctx.config.nested.value).toBe(1);
+		expect(await ctx.storage.get('__config__')).toEqual({ nested: { value: 1 } });
+	});
 	it('isolates storage namespace by pluginId', async () => {
 		const host = createMockHost();
-		const ctxA = new ScopedContext('plugin-a', host);
-		const ctxB = new ScopedContext('plugin-b', host);
+		const ctxA = createAcceptedContext('plugin-a', host);
+		const ctxB = createAcceptedContext('plugin-b', host);
 
 		await ctxA.storage.set('config', { enabled: true });
 		await ctxB.storage.set('config', { enabled: false });
@@ -121,9 +148,9 @@ describe('ScopedContext in @chronos/core', () => {
 
 	it('resolves capability services from ChronosEnv', () => {
 		const host = createMockHost();
-		const ctx = new ScopedContext('plugin-a', host);
+		const ctx = createAcceptedContext('plugin-a', host);
 
-		const http = ctx.service(IHttpService);
+		const http = ctx.service(IPluginHttpService);
 		expect(http).toBeDefined();
 		expect(typeof http.request).toBe('function');
 
@@ -137,7 +164,7 @@ describe('ScopedContext in @chronos/core', () => {
 
 	it('updates config, persists to storage and fires event', async () => {
 		const host = createMockHost();
-		const ctx = new ScopedContext<{ campus: string }>('plugin-a', host, {
+		const ctx = createAcceptedContext<{ campus: string }>('plugin-a', host, {
 			campus: 'huaxi'
 		});
 
@@ -157,7 +184,7 @@ describe('ScopedContext in @chronos/core', () => {
 
 	it('keeps the committed config and emits no change when persistence fails', async () => {
 		const host = createMockHost();
-		const ctx = new ScopedContext('plugin-a', host, { campus: 'huaxi' });
+		const ctx = createAcceptedContext('plugin-a', host, { campus: 'huaxi' });
 		const changed = vi.fn();
 		host.events.on('config:changed', changed);
 		const failure = new Error('Config write failed');
@@ -171,7 +198,7 @@ describe('ScopedContext in @chronos/core', () => {
 
 	it('serializes config patches and publishes only committed values', async () => {
 		const host = createMockHost();
-		const ctx = new ScopedContext('plugin-a', host, { campus: 'huaxi', enabled: false });
+		const ctx = createAcceptedContext('plugin-a', host, { campus: 'huaxi', enabled: false });
 		let release!: () => void;
 		const gate = new Promise<void>((resolve) => {
 			release = resolve;
@@ -190,9 +217,9 @@ describe('ScopedContext in @chronos/core', () => {
 		expect(await ctx.storage.get('__config__')).toEqual(ctx.config);
 	});
 
-	it('stops queued config writes on disposal and never publishes an old in-flight write', async () => {
+	it('finishes accepted config writes on disposal without publishing stale events', async () => {
 		const host = createMockHost();
-		const ctx = new ScopedContext('plugin-a', host, { campus: 'huaxi' });
+		const ctx = createAcceptedContext('plugin-a', host, { campus: 'huaxi' });
 		let release!: () => void;
 		let started!: () => void;
 		const gate = new Promise<void>((resolve) => {
@@ -213,23 +240,22 @@ describe('ScopedContext in @chronos/core', () => {
 		host.events.on('config:changed', changed);
 		const first = ctx.updateConfig({ campus: 'liangjiang' });
 		const second = ctx.updateConfig({ campus: 'queued' });
-		const stopped = expect(second).rejects.toThrow('disposed');
 		await writing;
 		ctx.dispose();
 		const late = expect(ctx.updateConfig({ campus: 'late' })).rejects.toThrow('disposed');
 		release();
 		await first;
-		await stopped;
+		await second;
 		await late;
-		expect(persistence).toHaveBeenCalledOnce();
+		expect(persistence).toHaveBeenCalledTimes(2);
 		expect(changed).not.toHaveBeenCalled();
-		expect(ctx.config).toEqual({ campus: 'huaxi' });
-		expect(await ctx.storage.get('__config__')).toEqual({ campus: 'liangjiang' });
+		expect(ctx.config).toEqual({ campus: 'queued' });
+		expect(await ctx.storage.get('__config__')).toEqual({ campus: 'queued' });
 	});
 
 	it('tracks subscriptions and disposes all in LIFO order upon ctx.dispose()', () => {
 		const host = createMockHost();
-		const ctx = new ScopedContext('plugin-a', host);
+		const ctx = createAcceptedContext('plugin-a', host);
 		const callOrder: string[] = [];
 
 		ctx.addDisposable({
@@ -262,7 +288,7 @@ describe('ScopedContext in @chronos/core', () => {
 
 	it('routes timetable.cell.badge slot registration to BadgeManager and unregisters upon disposal', () => {
 		const host = createMockHost();
-		const ctx = new ScopedContext('plugin-a', host);
+		const ctx = createAcceptedContext('plugin-a', host);
 
 		const handle = ctx.registerSlot('timetable.cell.badge', {
 			id: 'badge-test',

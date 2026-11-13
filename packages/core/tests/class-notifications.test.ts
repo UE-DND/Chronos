@@ -31,12 +31,18 @@ const now = new Date('2026-03-01T00:00:00');
 describe('class notification plan', () => {
 	it('skips holiday course dates including reminders on the preceding evening', () => {
 		const t = timetable();
-		t.academicConfig.holidayCalendar = { holidays: [{ date: '2026-03-02', label: '休息日' }] };
-		const plan = buildClassNotificationPlan({ timetable: t, prepareReminderMinutes: 30, now });
+		const holidays = [{ date: '2026-03-02', label: '休息日' }];
+		const plan = buildClassNotificationPlan({
+			holidays,
+			timetable: t,
+			prepareReminderMinutes: 30,
+			now
+		});
 		expect(plan.map((batch) => batch.dateIso)).toEqual(['2026-03-09']);
 	});
 	it('expands actual semester dates, reminds a continuous class once, and crosses midnight', () => {
 		const plan = buildClassNotificationPlan({
+			holidays: [],
 			timetable: timetable(),
 			prepareReminderMinutes: 30,
 			now
@@ -53,14 +59,25 @@ describe('class notification plan', () => {
 	it('groups simultaneous courses and keeps occurrence keys independent of lead time', () => {
 		const t = timetable();
 		t.courses.push(createCourse({ ...t.courses[0]!, id: 'b', name: 'Physics', weeks: [2] }));
-		const early = buildClassNotificationPlan({ timetable: t, prepareReminderMinutes: 30, now });
-		const late = buildClassNotificationPlan({ timetable: t, prepareReminderMinutes: 5, now });
+		const early = buildClassNotificationPlan({
+			holidays: [],
+			timetable: t,
+			prepareReminderMinutes: 30,
+			now
+		});
+		const late = buildClassNotificationPlan({
+			holidays: [],
+			timetable: t,
+			prepareReminderMinutes: 5,
+			now
+		});
 		expect(early[1]?.courses).toHaveLength(2);
 		expect(early[1]?.courses.map((c) => c.key)).toEqual(late[1]?.courses.map((c) => c.key));
 	});
 	it('does not extend clamped weeks beyond semester or include expired reminders', () => {
 		expect(
 			buildClassNotificationPlan({
+				holidays: [],
 				timetable: timetable(),
 				prepareReminderMinutes: 30,
 				now: new Date('2026-03-16T00:00:00')
@@ -68,6 +85,7 @@ describe('class notification plan', () => {
 		).toEqual([]);
 		expect(
 			buildClassNotificationPlan({
+				holidays: [],
 				timetable: timetable(),
 				prepareReminderMinutes: 30,
 				now: new Date('2026-03-02T00:00:00')
@@ -77,36 +95,36 @@ describe('class notification plan', () => {
 	it('skips invalid or hidden period references and missing academic dates', () => {
 		const t = timetable();
 		t.courses[0]!.startPeriod = 3;
-		expect(buildClassNotificationPlan({ timetable: t, prepareReminderMinutes: 30, now })).toEqual(
-			[]
-		);
+		expect(
+			buildClassNotificationPlan({ holidays: [], timetable: t, prepareReminderMinutes: 30, now })
+		).toEqual([]);
 		t.courses[0]!.startPeriod = 2;
 		t.courses[0]!.endPeriod = 1;
-		expect(buildClassNotificationPlan({ timetable: t, prepareReminderMinutes: 30, now })).toEqual(
-			[]
-		);
+		expect(
+			buildClassNotificationPlan({ holidays: [], timetable: t, prepareReminderMinutes: 30, now })
+		).toEqual([]);
 		t.courses[0]!.endPeriod = 2;
 		t.courses[0]!.startPeriod = 1;
 		t.academicConfig.periodTimes[0]!.startTime = '25:30';
-		expect(buildClassNotificationPlan({ timetable: t, prepareReminderMinutes: 30, now })).toEqual(
-			[]
-		);
+		expect(
+			buildClassNotificationPlan({ holidays: [], timetable: t, prepareReminderMinutes: 30, now })
+		).toEqual([]);
 		t.academicConfig.termStartDate = '';
-		expect(buildClassNotificationPlan({ timetable: t, prepareReminderMinutes: 30, now })).toEqual(
-			[]
-		);
+		expect(
+			buildClassNotificationPlan({ holidays: [], timetable: t, prepareReminderMinutes: 30, now })
+		).toEqual([]);
 	});
 	it('expands empty weeks only inside the semester and validates lead time', () => {
 		const t = timetable();
 		t.courses[0]!.weeks = [];
 		expect(
-			buildClassNotificationPlan({ timetable: t, prepareReminderMinutes: 30, now })
+			buildClassNotificationPlan({ holidays: [], timetable: t, prepareReminderMinutes: 30, now })
 		).toHaveLength(2);
 		expect(() =>
-			buildClassNotificationPlan({ timetable: t, prepareReminderMinutes: 6, now })
+			buildClassNotificationPlan({ holidays: [], timetable: t, prepareReminderMinutes: 6, now })
 		).toThrow(RangeError);
 		expect(
-			buildClassNotificationPlan({ timetable: null, prepareReminderMinutes: 30, now })
+			buildClassNotificationPlan({ holidays: [], timetable: null, prepareReminderMinutes: 30, now })
 		).toEqual([]);
 	});
 });

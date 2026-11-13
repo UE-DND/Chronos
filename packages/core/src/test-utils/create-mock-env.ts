@@ -55,12 +55,16 @@ export function createMockEnv(options: MockEnvOptions = {}) {
 				prefs = { ...prefs, ...patch };
 			},
 			getPluginData: async <T>(pluginId: string, key: string): Promise<T | null> =>
-				(kv.get(`${pluginId}:${key}`) as T) ?? null,
+				structuredClone((kv.get(`${pluginId}:${key}`) as T) ?? null),
 			setPluginData: async <T>(pluginId: string, key: string, val: T): Promise<void> => {
-				kv.set(`${pluginId}:${key}`, val);
+				kv.set(`${pluginId}:${key}`, structuredClone(val));
+				for (const listener of listeners)
+					listener({ type: 'pluginData', key: `${pluginId}:${key}` });
 			},
 			deletePluginData: async (pluginId: string, key: string): Promise<void> => {
 				kv.delete(`${pluginId}:${key}`);
+				for (const listener of listeners)
+					listener({ type: 'pluginData', key: `${pluginId}:${key}` });
 			},
 			onChanged: (l: (e: StorageChangeEvent) => void) => {
 				listeners.add(l);

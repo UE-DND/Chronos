@@ -2,7 +2,11 @@
 export { createHorizontalGesture } from './gesture/horizontal-gesture';
 export { createSinglePointerSession } from './gesture/single-pointer-session.svelte';
 export * from './reactivity/engine-controller.svelte';
-export type { ChronosUiController, ChronosUiSnapshot } from './reactivity/chronos-ui-controller';
+export type {
+	ChronosUiController,
+	ChronosUiView,
+	ChronosUiSnapshot
+} from './reactivity/chronos-ui-controller';
 export { default as SchemaForm } from './schema-form/SchemaForm.svelte';
 export { default as SegmentedControl } from './components/SegmentedControl.svelte';
 export type { Segment as SegmentedControlSegment } from './components/segmented-control';

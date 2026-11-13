@@ -135,7 +135,7 @@ describe('Native Host Baseline (iOS JSCore / Android QuickJS)', () => {
 		const currentWeek = calendar.calculateAcademicWeek('2026-03-02', timetable.academicConfig);
 		expect(currentWeek).toBe(1);
 
-		const grid = calculateTimetableGrid('2026-03-02', 1, engine.state.currentTimetable!);
+		const grid = calculateTimetableGrid('2026-03-02', 1, engine.state.currentTimetable!, []);
 		expect(grid.visibleDays.length).toBeGreaterThan(0);
 
 		const capsules = placeCapsules({

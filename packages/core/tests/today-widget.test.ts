@@ -74,9 +74,10 @@ function timetable() {
 describe('today widget projection', () => {
 	it('keeps holiday days empty while preserving academic weeks and ordinary dates', () => {
 		const active = timetable();
-		active.academicConfig.holidayCalendar = { holidays: [{ date: '2026-03-02', label: '休息日' }] };
-		expect(queryTimetableCoursesForDate(active, '2026-03-02')).toEqual([]);
+		const holidays = [{ date: '2026-03-02', label: '休息日' }];
+		expect(queryTimetableCoursesForDate(active, '2026-03-02', holidays)).toEqual([]);
 		const snapshot = buildTodayWidgetSnapshot({
+			holidays,
 			timetable: active,
 			startDateIso: '2026-03-02',
 			prepareReminderMinutes: 30
@@ -87,24 +88,25 @@ describe('today widget projection', () => {
 	it('projects the active timetable using Today scope day, week, visibility, and sort rules', () => {
 		const active = timetable();
 		expect(
-			queryTimetableCoursesForDate(active, '2026-03-02').map(({ course }) => course.id)
+			queryTimetableCoursesForDate(active, '2026-03-02', []).map(({ course }) => course.id)
 		).toEqual(['monday', 'monday-late']);
 		expect(
-			queryTimetableCoursesForDate(active, '2026-03-03').map(({ course }) => course.id)
+			queryTimetableCoursesForDate(active, '2026-03-03', []).map(({ course }) => course.id)
 		).toEqual(['tuesday']);
 		expect(
-			queryTimetableCoursesForDate(active, '2026-03-09').map(({ course }) => course.id)
+			queryTimetableCoursesForDate(active, '2026-03-09', []).map(({ course }) => course.id)
 		).toEqual([]);
 		expect(
-			queryTimetableCoursesForDate(active, '2026-03-16').map(({ course }) => course.id)
+			queryTimetableCoursesForDate(active, '2026-03-16', []).map(({ course }) => course.id)
 		).toEqual(['monday', 'monday-late']);
 		expect(
-			queryTimetableCoursesForDate(active, '2026-03-23').map(({ course }) => course.id)
+			queryTimetableCoursesForDate(active, '2026-03-23', []).map(({ course }) => course.id)
 		).toEqual(['future']);
 	});
 
 	it('builds an inclusive 14-day date-indexed snapshot with per-day academic weeks and times', () => {
 		const snapshot = buildTodayWidgetSnapshot({
+			holidays: [],
 			prepareReminderMinutes: 15,
 			timetable: timetable(),
 			startDateIso: '2026-03-02',
@@ -131,6 +133,7 @@ describe('today widget projection', () => {
 
 	it('keeps a valid date range and empty days when there is no active timetable', () => {
 		const snapshot = buildTodayWidgetSnapshot({
+			holidays: [],
 			prepareReminderMinutes: 15,
 			timetable: null,
 			startDateIso: '2026-12-28'
@@ -144,6 +147,7 @@ describe('today widget projection', () => {
 
 	it('keeps the 14-day window inclusive across a month boundary', () => {
 		const snapshot = buildTodayWidgetSnapshot({
+			holidays: [],
 			prepareReminderMinutes: 15,
 			timetable: null,
 			startDateIso: '2026-01-28'
@@ -156,6 +160,7 @@ describe('today widget projection', () => {
 	it('sorts projected entries by periods and carries resolved colors when supplied', () => {
 		const active = timetable();
 		const snapshot = buildTodayWidgetSnapshot({
+			holidays: [],
 			prepareReminderMinutes: 15,
 			timetable: active,
 			startDateIso: '2026-03-02',
@@ -166,6 +171,7 @@ describe('today widget projection', () => {
 	it.each([0, 4, 6, 61, 10.5, NaN, Infinity])('rejects invalid preparation time %s', (minutes) => {
 		expect(() =>
 			buildTodayWidgetSnapshot({
+				holidays: [],
 				timetable: null,
 				startDateIso: '2026-03-02',
 				prepareReminderMinutes: minutes

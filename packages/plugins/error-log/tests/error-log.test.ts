@@ -9,7 +9,7 @@ import {
 	truncateErrorLogEntry
 } from '../src/error-log';
 import { createErrorLogPlugin } from '../src/index';
-import { createErrorLogRuntime } from '../src/runtime.svelte';
+import { createErrorLogRuntime, getErrorLogRuntime } from '../src/runtime.svelte';
 
 describe('error-log domain', () => {
 	it('appendRingBuffer keeps newest entries within max size', () => {
@@ -62,6 +62,26 @@ describe('error-log domain', () => {
 });
 
 describe('error-log plugin', () => {
+	it('owns runtime lookup by activation and subscribes only after acceptance', async () => {
+		const first = createMockEnv();
+		const one = new ChronosEngine({ env: first.env });
+		const two = new ChronosEngine({ env: createMockEnv().env });
+		const handle = await one.loadPlugin(createErrorLogPlugin(), { deferAcceptance: true });
+		first.errorCapture.emitCaptured(createCapturedError('console', { message: 'candidate' }));
+		expect(
+			await first.env.storage.getPluginData(ERROR_LOG_PLUGIN_ID, ERROR_LOG_STORAGE_KEY)
+		).toBeNull();
+		handle.accept();
+		await two.loadPlugin(createErrorLogPlugin());
+		const firstContext = one.getPluginContext(ERROR_LOG_PLUGIN_ID);
+		const secondContext = two.getPluginContext(ERROR_LOG_PLUGIN_ID);
+		expect(getErrorLogRuntime(firstContext)).not.toBe(getErrorLogRuntime(secondContext));
+		await one.unloadPlugin(ERROR_LOG_PLUGIN_ID);
+		expect(() => getErrorLogRuntime(firstContext)).toThrow('not initialized');
+		expect(getErrorLogRuntime(secondContext).entries).toEqual([]);
+		one.dispose();
+		two.dispose();
+	});
 	it('registers mine.item and screen slots when loaded', async () => {
 		const { env } = createMockEnv();
 		const engine = new ChronosEngine({ env });

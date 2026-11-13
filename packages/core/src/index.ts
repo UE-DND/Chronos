@@ -62,6 +62,7 @@ export * from './types/official-plugins';
 export * from './types/result';
 
 // Runtime
+export { immutableSnapshot } from './runtime/immutable-snapshot';
 export * from './runtime/hierarchical-slot-registry';
 export * from './runtime/event-pipeline';
 export * from './runtime/theme-registry';
@@ -84,7 +85,6 @@ export * from './error-capture';
 // Plugin authoring
 export * from './plugin/define-chronos-plugin';
 export * from './plugin/call-plugin-server';
-export * from './plugin/register-import-tab';
 
 // Validation
 export * from './validation/hash';
@@ -114,3 +114,8 @@ export * from './algorithms/class-notifications';
 export { rearrangeCourseSchedule, type RearrangeCourseOptions } from './domain/course-reorder';
 
 export { createStorageNamespace } from './constants/storage-namespace';
+
+export type {
+	PluginLoadHandle,
+	PluginLoadOptions
+} from './runtime/engine/plugin-lifecycle-manager';

@@ -1,3 +1,4 @@
+import type { CalendarHoliday } from '../domain/timetable';
 import type { ReadonlyTimetable } from '../types/state';
 import { isPrepareReminderMinutes } from '../domain/preferences';
 import { queryTimetableCourseOccurrences } from './course-schedule';
@@ -24,17 +25,18 @@ export interface ClassNotificationBatch {
 /** Actual occurrences within the semester; display-clock clamping is intentionally not used. */
 export function buildClassNotificationPlan(options: {
 	timetable: ReadonlyTimetable | null;
+	holidays: readonly CalendarHoliday[];
 	prepareReminderMinutes: number;
 	now?: Date;
 	graceMs?: number;
 }): ClassNotificationBatch[] {
-	const { timetable, prepareReminderMinutes, now = new Date(), graceMs = 0 } = options;
+	const { timetable, holidays, prepareReminderMinutes, now = new Date(), graceMs = 0 } = options;
 	if (!isPrepareReminderMinutes(prepareReminderMinutes))
 		throw new RangeError('Invalid preparation time');
 	if (!timetable) return [];
 	const config = timetable.academicConfig;
 	const groups = new Map<number, ClassNotificationBatch>();
-	for (const { course, dateIso } of queryTimetableCourseOccurrences(timetable)) {
+	for (const { course, dateIso } of queryTimetableCourseOccurrences(timetable, holidays)) {
 		const startTime = config.periodTimes.find((p) => p.index === course.startPeriod)?.startTime;
 		const endTime = config.periodTimes.find((p) => p.index === course.endPeriod)?.endTime;
 		if (

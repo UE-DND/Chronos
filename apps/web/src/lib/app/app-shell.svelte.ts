@@ -9,8 +9,10 @@ import { createWallpaperController } from '#lib/wallpaper/wallpaper-controller.s
 import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 import { pwaInstallController } from '#lib/client/pwa-install.svelte.ts';
 import {
+	ensureEngineFullyReady,
 	getAppController,
 	getAppEngine,
+	getOfficialPluginService,
 	getSharedCoursePaletteRef,
 	notifyCoursePaletteChanged,
 	resetAppToInitialState
@@ -46,9 +48,17 @@ export function createAppShell() {
 	const appearance = createAppearance(getSharedCoursePaletteRef(), notifyCoursePaletteChanged);
 	const controller = getAppController();
 	const engine = getAppEngine();
+	async function waitForCalendarProviders() {
+		await ensureEngineFullyReady();
+		await getOfficialPluginService().waitForSettled();
+	}
 	let notificationsDisposed = false;
 	let classNotifications = $state.raw(
-		createClassNotificationsController(engine, getHostPlatform().classNotifications)
+		createClassNotificationsController(
+			engine,
+			getHostPlatform().classNotifications,
+			waitForCalendarProviders
+		)
 	);
 
 	const themeMode = $derived(controller.userPreferences?.themeMode ?? 'auto');
@@ -81,11 +91,11 @@ export function createAppShell() {
 		if (notificationsDisposed) {
 			classNotifications = createClassNotificationsController(
 				engine,
-				getHostPlatform().classNotifications
+				getHostPlatform().classNotifications,
+				waitForCalendarProviders
 			);
 			notificationsDisposed = false;
 		}
-		classNotifications.start();
 		if (typeof window !== 'undefined' && !mediaQueryCleanup) {
 			const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 			systemPrefersDark = mediaQuery.matches;

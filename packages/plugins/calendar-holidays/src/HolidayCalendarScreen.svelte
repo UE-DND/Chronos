@@ -5,12 +5,16 @@
 	import {
 		filterHolidaysInTermRange,
 		formatCompactDate,
-		type CalendarHoliday,
-		type HolidayDataSource
+		type CalendarHoliday
 	} from '@chronos/core';
 	import { HOLIDAY_MESSAGES } from './messages';
 	import { HOLIDAY_PLUGIN_ID } from './constants';
-	import { syncHolidayCalendarFromHolidayCn } from './holiday-sync';
+	import type { HolidayDataSource } from './holiday-sync';
+	import {
+		getHolidayCalendar,
+		isHolidaySyncCancelled,
+		syncHolidayCalendarFromHolidayCn
+	} from './holiday-sync';
 
 	interface Props {
 		controller: ChronosUiController;
@@ -18,13 +22,17 @@
 	}
 
 	let { controller, pluginId }: Props = $props();
+	const context = $derived(controller.getPluginContext(pluginId));
 
 	let syncing = $state(false);
 	let errorMessage = $state<string | null>(null);
 
 	const ui = $derived(fromStore(controller.snapshot));
 	const timetable = $derived(ui.current.currentTimetable);
-	const holidayCalendar = $derived(timetable?.academicConfig.holidayCalendar);
+	const holidayCalendar = $derived.by(() => {
+		void ui.current.calendarRevision;
+		return timetable ? getHolidayCalendar(context, timetable.id) : undefined;
+	});
 	const termHolidays = $derived(
 		timetable && holidayCalendar
 			? filterHolidaysInTermRange(holidayCalendar.holidays, timetable.academicConfig)
@@ -104,10 +112,11 @@
 		syncing = true;
 		errorMessage = null;
 		try {
-			const ctx = controller.getPluginContext(pluginId);
-			await syncHolidayCalendarFromHolidayCn(ctx, { force: true });
-			ctx.actions.notify(pt('screen.notify.synced'), 'info');
+			const synced = await syncHolidayCalendarFromHolidayCn(context, { force: true });
+			if (!synced || context.signal.aborted) return;
+			context.actions.notify(pt('screen.notify.synced'), 'info');
 		} catch (error) {
+			if (isHolidaySyncCancelled(error) || context.signal.aborted) return;
 			errorMessage = error instanceof Error ? error.message : pt('screen.error.syncFailed');
 		} finally {
 			syncing = false;

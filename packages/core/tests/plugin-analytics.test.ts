@@ -1,54 +1,37 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
-import { pluginAnalyticsEventName, trackPluginAnalytics } from '../src/analytics/plugin-analytics';
-import { IAnalyticsService, type ServiceIdentifier } from '../src/types/services';
-import type { ChronosContext } from '../src/types/context';
+import {
+	ChronosEngine,
+	IAnalyticsService,
+	pluginAnalyticsEventName,
+	trackPluginAnalytics
+} from '../src';
+import { createMockEnv } from '../src/test-utils';
 
-describe('pluginAnalyticsEventName', () => {
-	it('formats plugin-scoped event names', () => {
-		expect(pluginAnalyticsEventName('tool-wallpaper', 'pick')).toBe('plugin.tool-wallpaper.pick');
+describe('plugin analytics ownership', () => {
+	it('formats names and tolerates a missing analytics capability', () => {
+		expect(pluginAnalyticsEventName('tool', 'pick')).toBe('plugin.tool.pick');
+		expect(() => trackPluginAnalytics({ tryService: () => undefined }, 'pick')).not.toThrow();
 	});
-});
-
-describe('trackPluginAnalytics', () => {
-	it('no-ops when analytics port is not injected', () => {
-		const ctx: Pick<ChronosContext, 'tryService'> = {
-			tryService: () => undefined
-		};
-
-		expect(() => trackPluginAnalytics(ctx, 'tool-wallpaper', 'pick')).not.toThrow();
-	});
-
-	it('tracks namespaced events with default plugin properties', () => {
+	it('binds attribution at the capability and rejects stopped instances', async () => {
+		const { env } = createMockEnv();
 		const track = vi.fn();
-		const ctx: Pick<ChronosContext, 'tryService'> = {
-			tryService: <T>(identifier: ServiceIdentifier<T>) =>
-				identifier === IAnalyticsService ? ({ track } as T) : undefined
-		};
-
-		trackPluginAnalytics(ctx, 'tool-wallpaper', 'crop_confirm', { success: true });
-
-		expect(track).toHaveBeenCalledWith('plugin.tool-wallpaper.crop_confirm', {
-			source: 'plugin',
-			plugin_id: 'tool-wallpaper',
-			success: true
-		});
-	});
-
-	it('does not let caller properties override plugin defaults', () => {
-		const track = vi.fn();
-		const ctx: Pick<ChronosContext, 'tryService'> = {
-			tryService: <T>(identifier: ServiceIdentifier<T>) =>
-				identifier === IAnalyticsService ? ({ track } as T) : undefined
-		};
-
-		trackPluginAnalytics(ctx, 'tool-wallpaper', 'clear', {
-			source: 'override',
-			plugin_id: 'other-plugin'
-		});
-
-		expect(track).toHaveBeenCalledWith('plugin.tool-wallpaper.clear', {
-			source: 'plugin',
-			plugin_id: 'tool-wallpaper'
-		});
+		env.analytics = { track };
+		const engine = new ChronosEngine({ env });
+		try {
+			await engine.loadPlugin({ id: 'tool', name: 'Tool', version: '1', apply() {} });
+			const ctx = engine.getPluginContext('tool');
+			trackPluginAnalytics(ctx, 'pick', { plugin_id: 'other', source: 'other', success: true });
+			expect(track).toHaveBeenCalledWith('plugin.tool.pick', {
+				plugin_id: 'tool',
+				source: 'plugin',
+				success: true
+			});
+			const analytics = ctx.service(IAnalyticsService);
+			await engine.unloadPlugin('tool');
+			expect(() => analytics.track('late')).toThrow('disposed');
+			expect(track).toHaveBeenCalledOnce();
+		} finally {
+			engine.dispose();
+		}
 	});
 });

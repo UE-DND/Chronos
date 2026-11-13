@@ -83,13 +83,12 @@
 		hasTrackedPreparingStatus = true;
 		trackPluginAnalytics(
 			controller.getPluginContext(pluginId),
-			TODAY_PLUGIN_ID,
 			TODAY_ANALYTICS.preparingStatusShown
 		);
 	});
 
 	onMount(() => {
-		void screen.init(controller, pluginId);
+		void screen.init(controller, controller.getPluginContext(pluginId));
 		return () => screen.dispose();
 	});
 </script>

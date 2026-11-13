@@ -2,6 +2,7 @@ import {
 	AcademicCalendarService,
 	computeTimetableWeekLayout,
 	type ReadonlyTimetable,
+	type CalendarHoliday,
 	type TimetableCourseDisplayModel,
 	type TimetableGridModel,
 	type TimetableWeekLayoutResult
@@ -9,6 +10,7 @@ import {
 
 export interface WeekViewportInput {
 	timetable: ReadonlyTimetable | null;
+	holidays: readonly CalendarHoliday[];
 	todayIso: string;
 	displayedWeek: number;
 	expandedSlotKeys: ReadonlySet<string>;
@@ -30,21 +32,30 @@ class WeekLayoutCacheImpl implements WeekLayoutCache {
 	private cachedTimetable: ReadonlyTimetable | null = null;
 	private cachedToday = '';
 	private cachedExpandedKey = '';
+	private cachedHolidaysKey = '';
 	private readonly weekLayouts = new Map<number, TimetableWeekLayoutResult>();
 
 	invalidateAll(): void {
 		this.cachedTimetable = null;
 		this.cachedToday = '';
 		this.cachedExpandedKey = '';
+		this.cachedHolidaysKey = '';
 		this.weekLayouts.clear();
 	}
 
-	syncScope(timetable: ReadonlyTimetable | null, todayIso: string, expandedKey: string): void {
+	syncScope(
+		timetable: ReadonlyTimetable | null,
+		todayIso: string,
+		expandedKey: string,
+		holidays: readonly CalendarHoliday[]
+	): void {
+		const holidaysKey = JSON.stringify(holidays);
 		const canReuse =
 			timetable != null &&
 			timetable === this.cachedTimetable &&
 			todayIso === this.cachedToday &&
-			expandedKey === this.cachedExpandedKey;
+			expandedKey === this.cachedExpandedKey &&
+			holidaysKey === this.cachedHolidaysKey;
 
 		if (canReuse) return;
 
@@ -52,6 +63,7 @@ class WeekLayoutCacheImpl implements WeekLayoutCache {
 		this.cachedTimetable = timetable;
 		this.cachedToday = todayIso;
 		this.cachedExpandedKey = expandedKey;
+		this.cachedHolidaysKey = holidaysKey;
 	}
 
 	getWeekLayout(week: number): TimetableWeekLayoutResult | undefined {
@@ -77,6 +89,7 @@ export function buildWeekViewport(
 ): WeekViewportMaps {
 	const {
 		timetable,
+		holidays,
 		todayIso,
 		displayedWeek,
 		expandedSlotKeys,
@@ -85,7 +98,7 @@ export function buildWeekViewport(
 	} = input;
 
 	const cacheImpl = cache as WeekLayoutCacheImpl;
-	cacheImpl.syncScope(timetable, todayIso, expandedSlotKey(expandedSlotKeys));
+	cacheImpl.syncScope(timetable, todayIso, expandedSlotKey(expandedSlotKeys), holidays);
 
 	const weekLayouts = new Map<number, TimetableWeekLayoutResult>();
 	const weekGridModels = new Map<number, TimetableGridModel>();
@@ -104,6 +117,7 @@ export function buildWeekViewport(
 		if (!layout) {
 			layout = computeTimetableWeekLayout({
 				timetable,
+				holidays,
 				displayedWeek: week,
 				todayIso,
 				expandedSlotKeys,

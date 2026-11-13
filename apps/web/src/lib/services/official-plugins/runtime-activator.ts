@@ -1,5 +1,5 @@
 import { ImageRepository } from '#lib/storage/image-repository.ts';
-import type { ChronosEngine, Disposable } from '@chronos/core';
+import type { ChronosEngine, Disposable, PluginLoadHandle } from '@chronos/core';
 import {
 	createIconThemeFromJson,
 	createThemeFromColorJson,
@@ -16,6 +16,7 @@ import type { InstalledOfficialPluginRecord } from './official-plugin-types';
  */
 export class OfficialPluginRuntimeActivator {
 	private activeHandles = new Map<string, Disposable>();
+	private pendingAcceptance = new Map<string, PluginLoadHandle>();
 	private readonly cssInjector = new PluginCssInjector();
 
 	constructor(
@@ -30,7 +31,10 @@ export class OfficialPluginRuntimeActivator {
 		return this.activeHandles.has(pluginId);
 	}
 
-	async activate(record: InstalledOfficialPluginRecord): Promise<Disposable> {
+	async activate(
+		record: InstalledOfficialPluginRecord,
+		options?: { deferAcceptance?: boolean }
+	): Promise<Disposable> {
 		const manifest = record.manifest;
 		for (const [url, expected, content] of [
 			[manifest.bundleUrl, manifest.sha256, record.code],
@@ -72,7 +76,9 @@ export class OfficialPluginRuntimeActivator {
 		const disposables: Disposable[] = [];
 		try {
 			disposables.push(...(await this.activateThemeAssets(record, verifiedWallpaper)));
-			disposables.push(...(await this.activateBundledPlugin(record)));
+			const instance = await this.activateBundledPlugin(record);
+			disposables.push(instance);
+			this.pendingAcceptance.set(manifest.id, instance);
 			if (record.code && record.colorsJson) {
 				const snapshot = createThemeFromColorJson(
 					parseColorThemeJson(JSON.parse(record.colorsJson))
@@ -115,14 +121,23 @@ export class OfficialPluginRuntimeActivator {
 				}
 			};
 			this.activeHandles.set(manifest.id, composite);
+			if (!options?.deferAcceptance) this.accept(record);
 			return composite;
 		} catch (error) {
 			for (const disposable of disposables) {
 				disposable.dispose();
 			}
 			this.cssInjector.remove(manifest.id);
+			this.pendingAcceptance.delete(manifest.id);
+			this.activeHandles.delete(manifest.id);
+			await this.engine.unloadPlugin(manifest.id);
 			throw error;
 		}
+	}
+
+	accept(record: InstalledOfficialPluginRecord): void {
+		this.pendingAcceptance.get(record.manifest.id)?.accept(record.revision);
+		this.pendingAcceptance.delete(record.manifest.id);
 	}
 
 	private async activateThemeAssets(
@@ -162,23 +177,31 @@ export class OfficialPluginRuntimeActivator {
 
 	private async activateBundledPlugin(
 		record: InstalledOfficialPluginRecord
-	): Promise<Disposable[]> {
-		if (!record.code) return [];
+	): Promise<PluginLoadHandle> {
 		const manifest = record.manifest;
-		const plugin = await loadEsmPluginFromCode(record.code);
+		const plugin = record.code
+			? await loadEsmPluginFromCode(record.code)
+			: {
+					id: manifest.id,
+					name: manifest.name,
+					version: manifest.version,
+					apply() {}
+				};
 		if (plugin.id !== manifest.id) {
 			throw new Error(`Plugin id mismatch: manifest "${manifest.id}" vs bundle "${plugin.id}"`);
 		}
-		const handle = await this.engine.loadPlugin({
-			...plugin,
-			defaultConfig: { ...plugin.defaultConfig, ...record.initialConfig },
-			configSchema: manifest.configSchema ?? plugin.configSchema,
-			allowedDomains: manifest.allowedDomains ?? plugin.allowedDomains
-		});
-		return [handle];
+		return this.engine.loadPlugin(
+			{
+				...plugin,
+				defaultConfig: { ...plugin.defaultConfig, ...record.initialConfig },
+				configSchema: manifest.configSchema ?? plugin.configSchema,
+				allowedDomains: manifest.allowedDomains ?? plugin.allowedDomains
+			},
+			{ deferAcceptance: true }
+		);
 	}
 
-	private providesTheme(pluginId: string, themeId: string): boolean {
+	providesTheme(pluginId: string, themeId: string): boolean {
 		const owner = this.engine.slots.resolveOwner('theme.definition', themeId);
 		if (owner !== undefined) return owner === pluginId;
 		const record = this.getInstalledRecord(pluginId);
@@ -197,9 +220,8 @@ export class OfficialPluginRuntimeActivator {
 			? this.engine.state.userPreferences.visualThemeId
 			: undefined;
 		const ownsPreferred = preferred !== undefined && this.providesTheme(pluginId, preferred);
-		if (this.engine.isPluginLoaded(pluginId)) {
-			await this.engine.unloadPlugin(pluginId);
-		}
+		await this.engine.unloadPlugin(pluginId);
+		this.pendingAcceptance.delete(pluginId);
 		const handle = this.activeHandles.get(pluginId);
 		if (handle) {
 			handle.dispose();
@@ -225,6 +247,7 @@ export class OfficialPluginRuntimeActivator {
 			handle.dispose();
 		}
 		this.activeHandles.clear();
+		this.pendingAcceptance.clear();
 		this.cssInjector.disposeAll();
 	}
 }

@@ -23,7 +23,7 @@ export class I18nCatalog {
 		this.catalogs.set(pluginId, merged);
 		return {
 			dispose: () => {
-				this.catalogs.delete(pluginId);
+				if (this.catalogs.get(pluginId) === merged) this.catalogs.delete(pluginId);
 			}
 		};
 	}

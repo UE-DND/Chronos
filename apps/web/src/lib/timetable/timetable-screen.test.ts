@@ -45,6 +45,7 @@ describe('TimetableScreenController', () => {
 		appearance: {} as any,
 		controller: {
 			currentTimetable: sampleTimetable,
+			resolveHolidays: () => [],
 			timetables: [sampleTimetable],
 			userPreferences: {
 				themeMode: 'auto',
@@ -192,6 +193,7 @@ describe('TimetableScreenController', () => {
 				...mockShell,
 				controller: {
 					currentTimetable: sampleTimetable,
+					resolveHolidays: () => [],
 					now: new Date(2026, 2, 2, hours, minutes),
 					todayIso: '2026-03-02'
 				}

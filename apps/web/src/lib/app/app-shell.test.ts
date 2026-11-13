@@ -106,7 +106,7 @@ describe('app shell timetable layout in compact landscape', () => {
 
 	afterEach(() => vi.unstubAllGlobals());
 
-	it('recreates notification lifetime after a complete shell release', () => {
+	it('recreates notification lifetime and leaves startup to restored plugins', () => {
 		const shell = createAppShell();
 		shell.init();
 		const first = shell.classNotifications;
@@ -114,7 +114,7 @@ describe('app shell timetable layout in compact landscape', () => {
 		shell.init();
 		expect(shell.classNotifications).not.toBe(first);
 		expect(first.dispose).toHaveBeenCalledOnce();
-		expect(shell.classNotifications.start).toHaveBeenCalledOnce();
+		expect(shell.classNotifications.start).not.toHaveBeenCalled();
 		shell.destroy();
 	});
 	it('uses scrolling in compact landscape and restores the saved fit mode in portrait', async () => {

@@ -62,6 +62,7 @@ vi.mock('#lib/client/analytics.ts', () => ({
 }));
 
 vi.mock('#lib/services/app-engine.ts', () => ({
+	registerAppShutdownCleanup: vi.fn(() => vi.fn()),
 	ensureEngineFullyReady: vi.fn().mockResolvedValue(undefined),
 	ensureEngineReady: vi.fn().mockResolvedValue({
 		events: { on: vi.fn(() => ({ dispose: vi.fn() })) },

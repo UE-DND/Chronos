@@ -46,13 +46,16 @@ async function harness(initialQueryError?: Error) {
 		todayIso: '2026-03-02',
 		coursePaletteRevision: 0
 	} as unknown as ChronosUiSnapshot);
+	engine.on('calendar:changed', ({ revision }) =>
+		snapshot.update((s) => ({ ...s, calendarRevision: revision }))
+	);
 	engine.on('preferences:updated', ({ preferences }) => {
 		snapshot.update((s) => ({ ...s, userPreferences: preferences }));
 	});
 	const screen = createTodayScreenController();
 	await screen.init(
 		{ snapshot, getPluginContext: () => ctx } as unknown as ChronosUiController,
-		'tool-today'
+		ctx
 	);
 	return {
 		engine,
@@ -134,28 +137,16 @@ describe('Today relevant input refresh', () => {
 		engine.dispose();
 	});
 	it('refreshes holiday additions and removal without remounting the active screen', async () => {
-		const { engine, screen, snapshot, query } = await harness();
+		const { engine, screen, query } = await harness();
 		expect(screen.courseEntries).toHaveLength(1);
-		snapshot.update((s) => ({
-			...s,
-			currentTimetable: {
-				...s.currentTimetable!,
-				academicConfig: {
-					...s.currentTimetable!.academicConfig,
-					holidayCalendar: { holidays: [{ date: '2026-03-02', label: '休息日' }] }
-				}
-			}
-		}));
+		const calendar = engine.slots.register('calendar.holidays', {
+			id: 'test-calendar',
+			getHolidays: () => [{ date: '2026-03-02', label: '休息日' }]
+		});
 		await settle();
 		expect(screen.courseEntries).toEqual([]);
 		expect(query).toHaveBeenCalledTimes(2);
-		snapshot.update((s) => ({
-			...s,
-			currentTimetable: {
-				...s.currentTimetable!,
-				academicConfig: { ...s.currentTimetable!.academicConfig, holidayCalendar: undefined }
-			}
-		}));
+		calendar.dispose();
 		await settle();
 		expect(screen.courseEntries).toHaveLength(1);
 		expect(query).toHaveBeenCalledTimes(3);
@@ -176,7 +167,11 @@ describe('Today relevant input refresh', () => {
 			'other',
 			't'
 		]);
-		other.academicConfig.holidayCalendar = { holidays: [{ date: '2026-03-02', label: '休息日' }] };
+		engine.slots.register('calendar.holidays', {
+			id: 'other-calendar',
+			getHolidays: (timetable) =>
+				timetable.id === other.id ? [{ date: '2026-03-02', label: '休息日' }] : []
+		});
 		snapshot.update((s) => ({
 			...s,
 			timetables: [{ id: other.id, name: other.name, updatedAt: other.updatedAt + 1 }]

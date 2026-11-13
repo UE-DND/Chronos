@@ -6,7 +6,9 @@ import type {
 	ReadonlyUserPreferences
 } from './state';
 import type { DeepReadonly } from './readonly';
-import type { Disposable, ServiceIdentifier } from './services';
+import type { Disposable, ServiceIdentifier, PluginStorageScope } from './services';
+import type { CalendarHoliday } from '../domain/timetable';
+import type { CourseQueryFilter, CourseQueryHit } from './course-query';
 import type {
 	ChronosSlotMap,
 	LocalizedText,
@@ -50,6 +52,8 @@ export interface ChronosPlugin<Config extends object = Record<string, unknown>> 
 
 export interface ChronosContext<Config extends object = Record<string, unknown>> {
 	readonly pluginId: string;
+	readonly instanceToken: symbol;
+	readonly signal: AbortSignal;
 
 	/** Access an injected capability service (Capability Seam) */
 	service<T>(identifier: ServiceIdentifier<T>): T;
@@ -62,11 +66,15 @@ export interface ChronosContext<Config extends object = Record<string, unknown>>
 	updateConfig(patch: Partial<Config>): Promise<void>;
 
 	/** Plugin-private isolated storage (namespaced automatically by pluginId) */
-	readonly storage: {
-		get<T = unknown>(key: string): Promise<T | null>;
-		set<T = unknown>(key: string, value: T): Promise<void>;
-		delete(key: string): Promise<void>;
+	readonly storage: PluginStorageScope;
+	readonly query: {
+		listTimetables(): Promise<readonly DeepReadonly<TimetableSummary>[]>;
+		getTimetable(id: string): Promise<ReadonlyTimetable | null>;
+		queryCourses(filter?: CourseQueryFilter): Promise<readonly DeepReadonly<CourseQueryHit>[]>;
 	};
+	readonly calendar: { getHolidays(timetable: ReadonlyTimetable): readonly CalendarHoliday[] };
+	/** This activation owns its override; null releases only its own lease. */
+	readonly clock: { set(now: Date | null): void };
 
 	/** Internationalization runtime */
 	readonly i18n: {
@@ -79,7 +87,7 @@ export interface ChronosContext<Config extends object = Record<string, unknown>>
 	readonly state: ChronosState;
 
 	/** Domain action dispatcher */
-	readonly actions: ChronosActions;
+	readonly actions: Omit<ChronosActions, 'setVirtualNow'>;
 
 	/** Declarative hierarchical slot registration (auto-tracked and revoked on unload) */
 	registerSlot<K extends Exclude<keyof ChronosSlotMap, 'import.source.tab'>>(
@@ -96,9 +104,6 @@ export interface ChronosContext<Config extends object = Record<string, unknown>>
 		event: E,
 		handler: (payload: ChronosEvents[E]) => void | Promise<void>
 	): Disposable;
-
-	/** Emit an event on the shared engine bus */
-	emit<E extends keyof ChronosEvents>(event: E, payload: ChronosEvents[E]): void;
 
 	/** Manually register disposable resources to be cleaned up on unload */
 	addDisposable(disposable: Disposable): void;
@@ -137,5 +142,6 @@ export interface ChronosEvents {
 	'badges:updated': { badges: ReadonlyCourseBadges };
 	'plugin:loaded': { pluginId: string };
 	'plugin:unloaded': { pluginId: string };
+	'calendar:changed': { revision: number };
 	'coursePalette:changed': void;
 }

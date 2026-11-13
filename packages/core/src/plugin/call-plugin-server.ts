@@ -1,25 +1,23 @@
-import type { IHttpService, HttpResponse } from '../types/services';
+import type { IPluginHttpService, HttpResponse } from '../types/services';
 import { parsePluginServerResponse, type PluginServerResponse } from '../types/plugin-server';
 
 export async function callPluginServer(
-	http: IHttpService,
-	pluginId: string,
+	http: IPluginHttpService,
 	action: string,
 	payload: unknown
 ): Promise<HttpResponse> {
 	if (!http.proxy) {
 		throw new Error('HTTP proxy is not supported in this environment');
 	}
-	return http.proxy(pluginId, action, payload);
+	return http.proxy(action, payload);
 }
 
 export async function callPluginServerJson<T>(
-	http: IHttpService,
-	pluginId: string,
+	http: IPluginHttpService,
 	action: string,
 	payload: unknown
 ): Promise<{ response: HttpResponse; body: PluginServerResponse<T> }> {
-	const response = await callPluginServer(http, pluginId, action, payload);
+	const response = await callPluginServer(http, action, payload);
 	const jsonBody = await response.json();
 	const body: PluginServerResponse<T> = response.ok
 		? { ok: true, payload: jsonBody as T }

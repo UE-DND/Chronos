@@ -42,7 +42,12 @@ describe('temporary weekend display', () => {
 					const days = [1, 2, 3, 4, 5];
 					if (showSaturday || weekday >= 6) days.push(6);
 					if (showSunday || weekday === 7) days.push(7);
-					const layout = computeTimetableWeekLayout({ timetable, displayedWeek: 1, todayIso });
+					const layout = computeTimetableWeekLayout({
+						holidays: [],
+						timetable,
+						displayedWeek: 1,
+						todayIso
+					});
 
 					expect(layout.gridModel.visibleDays.map((day) => day.dayOfWeek)).toEqual(days);
 					expect(layout.gridModel.visibleDays.find((day) => day.isToday)?.date).toBe(todayIso);
@@ -75,6 +80,7 @@ describe('temporary weekend display', () => {
 			const timetable = timetableWithPrefs(false, showSunday);
 			for (const displayedWeek of [1, 3]) {
 				const layout = computeTimetableWeekLayout({
+					holidays: [],
 					timetable,
 					displayedWeek,
 					todayIso: '2026-03-15'
@@ -95,7 +101,12 @@ describe('temporary weekend display', () => {
 				todayIso,
 				timetable.academicConfig
 			);
-			const layout = computeTimetableWeekLayout({ timetable, displayedWeek, todayIso });
+			const layout = computeTimetableWeekLayout({
+				holidays: [],
+				timetable,
+				displayedWeek,
+				todayIso
+			});
 			expect(layout.gridModel.visibleDays.map((day) => day.dayOfWeek)).toEqual([1, 2, 3, 4, 5]);
 		}
 	);
@@ -109,7 +120,12 @@ describe('temporary weekend display', () => {
 			['2026-02-01', 7, '1/2', '01/26 - 02/01'],
 			['2026-02-02', 5, '1', '01/26 - 01/30']
 		] as const) {
-			const layout = computeTimetableWeekLayout({ timetable, displayedWeek: 1, todayIso });
+			const layout = computeTimetableWeekLayout({
+				holidays: [],
+				timetable,
+				displayedWeek: 1,
+				todayIso
+			});
 			expect(layout.gridModel.visibleDays).toHaveLength(count);
 			expect(layout.gridModel.monthLabel).toBe(month);
 			expect(layout.weekRangeText).toBe(range);

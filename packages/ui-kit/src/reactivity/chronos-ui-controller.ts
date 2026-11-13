@@ -7,7 +7,9 @@ import type {
 	ChronosActions,
 	ChronosState,
 	TimetableSummary,
-	DeepReadonly
+	DeepReadonly,
+	ReadonlyTimetable,
+	CalendarHoliday
 } from '@chronos/core';
 import type { Readable } from 'svelte/store';
 import type { OverlayHistoryPort } from '../overlay/history-overlay';
@@ -19,10 +21,18 @@ export type ChronosUiSnapshot = ChronosState & {
 	readonly coursePaletteRevision: number;
 };
 
+/** Public presentation data shared with plugin UIs. Domain writes belong to their context. */
+export interface ChronosUiView extends Readonly<ChronosUiSnapshot> {
+	readonly snapshot: Readable<ChronosUiSnapshot>;
+	readonly overlayHistoryPort?: OverlayHistoryPort;
+	translatePlugin(pluginId: string, key: string, params?: Record<string, unknown>): string;
+	resolveHolidays(timetable: ReadonlyTimetable): readonly CalendarHoliday[];
+}
+
 export interface ChronosUiController
 	extends
 		Disposable,
-		Readonly<ChronosUiSnapshot>,
+		ChronosUiView,
 		Pick<
 			ChronosActions,
 			| 'createTimetable'
@@ -38,8 +48,6 @@ export interface ChronosUiController
 			| 'updatePreferences'
 			| 'notify'
 		> {
-	readonly snapshot: Readable<ChronosUiSnapshot>;
-	readonly overlayHistoryPort?: OverlayHistoryPort;
 	getPluginContext(pluginId: string): ChronosContext;
 	getPluginContextForSlot<K extends keyof StandardSlotMap>(
 		slotName: K,
@@ -55,7 +63,6 @@ export interface ChronosUiController
 		slotId: string
 	): string | undefined;
 	clearAllData(): Promise<void>;
-	translatePlugin(pluginId: string, key: string, params?: Record<string, unknown>): string;
 }
 
 export type ChronosUiControllerEngine = ChronosEngine;

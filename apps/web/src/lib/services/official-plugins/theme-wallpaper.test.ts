@@ -152,6 +152,8 @@ describe('theme wallpaper assets', () => {
 		const engine = {
 			runtime: { sha256: vi.fn().mockResolvedValue(hash) },
 			isPluginLoaded: () => false,
+			unloadPlugin: vi.fn().mockResolvedValue(undefined),
+			loadPlugin: vi.fn().mockResolvedValue({ accept: vi.fn(), dispose: vi.fn() }),
 			themes: { registerTheme }
 		} as unknown as ChronosEngine;
 		const images = { get: vi.fn().mockResolvedValue(wallpaper) } as unknown as ImageRepository;

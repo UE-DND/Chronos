@@ -797,10 +797,32 @@ export class OfficialPluginService implements Disposable {
 				if (this.installedStore.isFrozen || this.installedStore.hostChanged)
 					throw new Error('Application update in progress; reload before changing plugins');
 				signal.throwIfAborted();
-				await this.runtimeActivator.deactivate(pluginId, { revertThemes: true });
-				await this.installedStore.remove(pluginId);
+				const previous = this.installedStore.find(pluginId);
+				const wasActive = this.runtimeActivator.isActive(pluginId);
+				const preferred = this.engine.state.userPreferences.visualThemeId;
+				const ownedTheme =
+					preferred !== undefined && this.runtimeActivator.providesTheme(pluginId, preferred);
+				await this.runtimeActivator.deactivate(pluginId, { revertThemes: false });
+				try {
+					await this.installedStore.remove(pluginId, previous?.revision);
+				} catch (error) {
+					await this.installedStore.load();
+					const retained = this.installedStore.find(pluginId);
+					if (previous && wasActive && retained && retained.revision === previous.revision) {
+						try {
+							await this.runtimeActivator.activate(retained);
+						} catch (restoreError) {
+							throw new AggregateError(
+								[error, restoreError],
+								'Plugin uninstall failed and runtime could not be restored'
+							);
+						}
+					}
+					throw error;
+				}
 				this.activeVersions.delete(pluginId);
-				await this.engine.storage.clearPluginData?.(pluginId);
+				if (ownedTheme && this.engine.state.userPreferences.visualThemeId === preferred)
+					await this.engine.revertToDefaultThemes();
 				this.installQueue.clearFinished(pluginId);
 				this.engine.notify(hostT('plugins.notify.uninstalled', { pluginId }), 'info');
 			},
@@ -822,7 +844,7 @@ export class OfficialPluginService implements Disposable {
 			if (isOfficialCatalogManifestUrl(record.manifestUrl, pluginId))
 				throw new Error('Official plugins do not require compatibility confirmation');
 			if (record.acceptedHostVersion === this.hostVersion) return;
-			await this.runtimeActivator.activate(record);
+			await this.runtimeActivator.activate(record, { deferAcceptance: true });
 			try {
 				this.lifecycle.signal.throwIfAborted();
 				signal.throwIfAborted();
@@ -831,6 +853,7 @@ export class OfficialPluginService implements Disposable {
 					this.hostVersion,
 					record.revision ?? -1
 				);
+				this.runtimeActivator.accept(this.installedStore.find(pluginId)!);
 				this.activeVersions.set(pluginId, this.installedStore.find(pluginId)?.revision);
 				this.updateStatuses.set(pluginId, { status: 'ready' });
 				this.installedStore.notify();
@@ -848,6 +871,35 @@ export class OfficialPluginService implements Disposable {
 
 	listInstalled(): ReadonlyArray<InstalledOfficialPluginRecord> {
 		return this.installedStore.getCache();
+	}
+
+	/** External plans publish only after replacements, rollback and reconciliation settle. */
+	async waitForSettled(): Promise<void> {
+		for (;;) {
+			await this.operations.waitForAllSettled();
+			await this.reconciling;
+			await this.syncPromise;
+			await Promise.all(this.deferredReconciles.values());
+			if (
+				!this.operations.getBusyIds().length &&
+				!this.reconciling &&
+				!this.deferredReconciles.size &&
+				!this.syncPromise
+			)
+				break;
+		}
+		if (this.disposed) throw new Error('Plugin service is disposed');
+		const failed = this.installedStore
+			.getCache()
+			.filter(
+				(record) =>
+					this.failures.has(record.manifest.id) ||
+					!this.runtimeActivator.isActive(record.manifest.id)
+			);
+		if (failed.length)
+			throw new Error(
+				`Plugin restoration failed: ${failed.map((record) => record.manifest.id).join(', ')}`
+			);
 	}
 
 	getInstalled(pluginId: string): InstalledOfficialPluginRecord | undefined {

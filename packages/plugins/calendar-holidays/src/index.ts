@@ -1,8 +1,8 @@
 import { defineChronosPlugin } from '@chronos/core';
-import type { ChronosContext, ChronosMountable } from '@chronos/core';
+import type { ChronosMountable } from '@chronos/core';
 import { HOLIDAY_MESSAGES } from './messages';
 import { HOLIDAY_PLUGIN_ID } from './constants';
-import { clearHolidayCalendarFromAllTimetables } from './holiday-sync';
+import { activateHolidayCalendar } from './holiday-sync';
 
 export interface CreateHolidayPluginOptions {
 	screenComponent?: ChronosMountable;
@@ -10,7 +10,6 @@ export interface CreateHolidayPluginOptions {
 
 export function createHolidayPlugin(options: CreateHolidayPluginOptions = {}) {
 	const { screenComponent } = options;
-	let activeCtx: ChronosContext | undefined;
 
 	return defineChronosPlugin({
 		id: HOLIDAY_PLUGIN_ID,
@@ -23,8 +22,8 @@ export function createHolidayPlugin(options: CreateHolidayPluginOptions = {}) {
 		author: 'Chronos',
 		homepage: 'https://github.com/NateScarlet/holiday-cn',
 		allowedDomains: ['fastly.jsdelivr.net', 'raw.githubusercontent.com'],
-		apply(ctx, t) {
-			activeCtx = ctx;
+		async apply(ctx, t) {
+			await activateHolidayCalendar(ctx);
 			ctx.registerSlot('mine.item', {
 				id: 'holiday-calendar',
 				sectionId: 'data-sync',
@@ -40,12 +39,6 @@ export function createHolidayPlugin(options: CreateHolidayPluginOptions = {}) {
 				title: () => t('screen.title'),
 				...(screenComponent ? { component: screenComponent } : {})
 			});
-		},
-		async dispose() {
-			const ctx = activeCtx;
-			activeCtx = undefined;
-			if (!ctx) return;
-			await clearHolidayCalendarFromAllTimetables(ctx);
 		}
 	});
 }

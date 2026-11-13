@@ -1,10 +1,10 @@
-import type { ChronosUiController, ChronosUiSnapshot } from '@chronos/ui-kit';
+import type { ChronosUiView, ChronosUiSnapshot } from '@chronos/ui-kit';
 import { appLocaleToBcp47, haptic } from '@chronos/ui-kit';
 import {
 	currentTimeMinutes,
 	DEFAULT_USER_PREFERENCES,
 	ICoursePresentationService,
-	IStorageService,
+	type ChronosContext,
 	normalizedCourseName,
 	todayIsoDate,
 	type CoursePaletteEntry
@@ -33,14 +33,14 @@ export interface TodayScreenController {
 	readonly prepareReminderMinutes: number;
 	readonly courseEntries: TodayCourseEntry[];
 	readonly paintByCourseKey: ReadonlyMap<string, CoursePaletteEntry>;
-	init(controller: ChronosUiController, pluginId: string): Promise<void>;
+	init(controller: ChronosUiView, context: ChronosContext): Promise<void>;
 	dispose(): void;
 	persistScope(nextScope: TodayScope): Promise<void>;
 	retry(): Promise<void>;
 }
 export function createTodayScreenController(): TodayScreenController {
-	let controller: ChronosUiController | undefined;
-	let pluginId = '';
+	let controller: ChronosUiView | undefined;
+	let context: ChronosContext | undefined;
 	let snapshot = $state.raw<ChronosUiSnapshot | null>(null);
 	let scope = $state<TodayScope>('active');
 	let courseEntries = $state.raw<TodayCourseEntry[]>([]);
@@ -87,9 +87,7 @@ export function createTodayScreenController(): TodayScreenController {
 		const request = ++paintRequest;
 		const entries = courseEntries;
 		try {
-			const presentation = controller
-				?.getPluginContext(pluginId)
-				.tryService(ICoursePresentationService);
+			const presentation = context?.tryService(ICoursePresentationService);
 			const paints = new Map<string, CoursePaletteEntry>();
 			if (presentation)
 				await Promise.all(
@@ -121,10 +119,12 @@ export function createTodayScreenController(): TodayScreenController {
 			return;
 		}
 		try {
-			const result = await queryTodayCourses(
-				controller.getPluginContext(pluginId).service(IStorageService),
-				{ todayIso: today(), scope, timetable }
-			);
+			const result = await queryTodayCourses(context!.query, {
+				todayIso: today(),
+				scope,
+				timetable,
+				getHolidays: (entry) => context!.calendar.getHolidays(entry)
+			});
 			if (disposed || request !== courseRequest) return;
 			const entries = attachCourseStatuses(
 				result,
@@ -149,6 +149,7 @@ export function createTodayScreenController(): TodayScreenController {
 		const key = JSON.stringify([
 			today(),
 			scope,
+			snapshot.calendarRevision,
 			timetable?.id,
 			timetable?.academicConfig,
 			timetable?.courses,
@@ -187,17 +188,16 @@ export function createTodayScreenController(): TodayScreenController {
 	function readConfig(config: Record<string, unknown>) {
 		scope = config.scope === 'all' ? 'all' : 'active';
 	}
-	async function init(next: ChronosUiController, id: string) {
+	async function init(next: ChronosUiView, ctx: ChronosContext) {
 		if (disposed || controller) return;
 		controller = next;
-		pluginId = id;
-		const ctx = next.getPluginContext(id);
+		context = ctx;
 		readConfig(ctx.config);
 		// Let immediate teardown win before creating subscriptions.
 		await Promise.resolve();
 		if (disposed) return;
 		const subscription = ctx.on('config:changed', (event) => {
-			if (disposed || event.pluginId !== pluginId) return;
+			if (disposed || event.pluginId !== context?.pluginId) return;
 			readConfig(event.config);
 			void schedule();
 		});
@@ -216,7 +216,7 @@ export function createTodayScreenController(): TodayScreenController {
 		state = { ...state, saveError: null };
 		const refresh = schedule();
 		try {
-			await controller.getPluginContext(pluginId).updateConfig({ scope: next });
+			await context!.updateConfig({ scope: next });
 		} catch (error) {
 			if (!disposed && request === saveRequest) {
 				console.error('[today] scope save failed', error);

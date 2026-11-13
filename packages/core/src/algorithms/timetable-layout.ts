@@ -1,3 +1,4 @@
+import type { CalendarHoliday } from '../domain/timetable';
 import type { ReadonlyTimetable } from '../types/state';
 import {
 	DEFAULT_USER_PREFERENCES,
@@ -15,6 +16,7 @@ import { COURSE_PALETTE_ENTRIES, type CoursePaletteEntry } from './palette';
 
 export interface TimetableWeekLayoutInput {
 	timetable: ReadonlyTimetable;
+	holidays: readonly CalendarHoliday[];
 	displayedWeek: number;
 	todayIso: string;
 	columnWidthPx?: number;
@@ -44,6 +46,7 @@ export function computeTimetableWeekLayout(
 ): TimetableWeekLayoutResult {
 	const {
 		timetable,
+		holidays,
 		displayedWeek,
 		todayIso,
 		columnWidthPx = 0,
@@ -61,7 +64,7 @@ export function computeTimetableWeekLayout(
 	);
 	const isCurrentWeek = displayedWeek === academicWeek;
 
-	const gridModel = calculateTimetableGrid(todayIso, displayedWeek, timetable, {
+	const gridModel = calculateTimetableGrid(todayIso, displayedWeek, timetable, holidays, {
 		academicCalendarService
 	});
 
