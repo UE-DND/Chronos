@@ -224,6 +224,10 @@
 		padding-inline-end: var(--shell-tab-bar-inline-size);
 	}
 
+	.shell-plugin-tab-panel {
+		padding-block-start: var(--topbar-safe);
+	}
+
 	.shell-wallpaper {
 		pointer-events: none;
 		position: absolute;

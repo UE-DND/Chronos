@@ -4,6 +4,7 @@
 	import { resolvePluginScreenSlot } from './resolve-plugin-screen-slot';
 	import MountableSlotOutlet from './MountableSlotOutlet.svelte';
 	import { getEdgeBarActions } from './edge-bar-actions.svelte';
+	import { appShellScroll } from '../actions/app-scroll';
 
 	interface Props {
 		controller: ChronosUiController;
@@ -48,40 +49,52 @@
 	}
 </script>
 
-{#if screenSlot?.component}
-	<MountableSlotOutlet
-		component={screenSlot.component}
-		props={{ controller, pluginId, active, edgeActions }}
-		class="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden"
-	/>
-{:else if screenSlot?.schema}
-	<div class="flex w-full flex-col p-4">
-		<div class="ui-section-surface ui-section-surface--comfortable">
-			<div class="ui-section-stack">
-				<SchemaForm schema={screenSlot.schema} bind:value={formValues} {controller} />
-				{#if saveError}
-					<p class="text-body-small text-error">{saveError}</p>
-				{/if}
-				<button
-					type="button"
-					class="ui-btn ui-btn-filled ui-btn-block"
-					disabled={saving}
-					onclick={saveSchemaConfig}
-				>
-					{saving ? hostT('plugins.config.saving') : hostT('plugins.config.save')}
-				</button>
+<div
+	class="plugin-screen-container flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden"
+>
+	{#if screenSlot?.component}
+		<MountableSlotOutlet
+			component={screenSlot.component}
+			props={{ controller, pluginId, active, edgeActions }}
+			class="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden"
+		/>
+	{:else if screenSlot?.schema}
+		<div use:appShellScroll class="secondary-scroll min-h-0 w-full flex-1 overflow-y-auto p-4">
+			<div class="ui-section-surface ui-section-surface--comfortable">
+				<div class="ui-section-stack">
+					<SchemaForm schema={screenSlot.schema} bind:value={formValues} {controller} />
+					{#if saveError}
+						<p class="text-body-small text-error">{saveError}</p>
+					{/if}
+					<button
+						type="button"
+						class="ui-btn ui-btn-filled ui-btn-block"
+						disabled={saving}
+						onclick={saveSchemaConfig}
+					>
+						{saving ? hostT('plugins.config.saving') : hostT('plugins.config.save')}
+					</button>
+				</div>
 			</div>
 		</div>
-	</div>
-{:else}
-	<div class="flex w-full flex-col p-4">
-		<div
-			class="flex flex-col items-center justify-center py-16 text-center text-on-surface-variant"
-		>
-			<p class="text-body-large font-medium">{hostT('pluginScreen.notFound')}</p>
-			<p class="text-body-small mt-1 opacity-75">
-				{hostT('pluginScreen.notFoundDetail', { pluginId, viewId })}
-			</p>
+	{:else}
+		<div use:appShellScroll class="secondary-scroll min-h-0 w-full flex-1 overflow-y-auto p-4">
+			<div
+				class="flex flex-col items-center justify-center py-16 text-center text-on-surface-variant"
+			>
+				<p class="text-body-large font-medium">{hostT('pluginScreen.notFound')}</p>
+				<p class="text-body-small mt-1 opacity-75">
+					{hostT('pluginScreen.notFoundDetail', { pluginId, viewId })}
+				</p>
+			</div>
 		</div>
-	</div>
-{/if}
+	{/if}
+</div>
+
+<style>
+	.plugin-screen-container {
+		/* The shell tab or secondary toolbar has already consumed the top safe area. */
+		--topbar-safe: 0px;
+		--top-bar-height: var(--spacing-topbar);
+	}
+</style>

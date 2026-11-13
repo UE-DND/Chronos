@@ -154,7 +154,7 @@
 			{@const pluginActive = !frozen && pluginSelected}
 			<div
 				class={[
-					'shell-tab-panel absolute inset-0 overflow-hidden',
+					'shell-tab-panel shell-plugin-tab-panel absolute inset-0 overflow-hidden',
 					pluginSelected ? 'z-10' : 'pointer-events-none z-0'
 				]}
 				hidden={!pluginSelected}
