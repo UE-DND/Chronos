@@ -29,9 +29,7 @@ function files(directory: string): string[] {
 	return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
 		const path = join(directory, entry.name);
 		if (entry.isDirectory()) return ignored.has(entry.name) ? [] : files(path);
-		return /\.(?:ts|js|svelte)$/.test(path) && !/\.(?:test|spec|generated)\.ts$/.test(path)
-			? [path]
-			: [];
+		return /\.(?:ts|js|svelte)$/.test(path) && !/\.(?:test|spec)\.[jt]s$/.test(path) ? [path] : [];
 	});
 }
 function scripts(path: string): string[] {
@@ -114,6 +112,9 @@ export function checkBoundaries(
 			);
 		const from = category(workspace),
 			to = category(destination);
+		const sourcePath = relative(root, source).replaceAll('\\', '/');
+		const generatedMobileRegistry =
+			sourcePath === 'apps/web/src/lib/boot/mobile-plugin-server-registry.generated.ts';
 		let rule = '';
 		if (
 			from === 'packages/core' &&
@@ -136,9 +137,28 @@ export function checkBoundaries(
 		if (
 			from === 'apps/web' &&
 			target === 'web' &&
-			(to === 'apps/mobile' || specifier.startsWith('@capacitor'))
+			(to === 'apps/mobile' || specifier.startsWith('@capacitor')) &&
+			!(
+				generatedMobileRegistry &&
+				specifier === '../../../../mobile/src/http/mobile-plugin-server-registry'
+			)
 		)
 			rule = '纯 Web 不依赖原生适配器';
+		if (
+			from.startsWith('apps/') &&
+			(to.startsWith('packages/plugins/') || specifier.startsWith('@chronos/plugin-'))
+		) {
+			const path = sourcePath;
+			const buildAssembly =
+				path.endsWith('/package.json') || /^apps\/(?:web|mobile)\/(?:scripts|config)\//.test(path);
+			const generatedEntry =
+				(path === 'apps/web/src/lib/server/plugin-server-loader.generated.ts' &&
+					specifier === `${destination?.name}/server`) ||
+				(path === 'apps/web/src/lib/boot/mobile-plugin-server-registry.generated.ts' &&
+					specifier === `${destination?.name}/mobile`);
+			if (!buildAssembly && !generatedEntry)
+				rule = '宿主运行时不直接依赖业务插件；生成注册表只导入对应声明入口';
+		}
 		if (rule) violations.push({ source: relative(root, source), target: specifier, rule });
 	};
 	for (const workspace of workspaces) {

@@ -59,6 +59,29 @@ describe('workspace boundaries', () => {
 			expect.arrayContaining(['window', 'style', 'appendChild'])
 		);
 	});
+	it('rejects host runtime plugin imports and limits generated registries to their declared entry', () => {
+		const root = project({
+			'apps/web/package.json':
+				'{"name":"@chronos/web","dependencies":{"@chronos/plugin-a":"workspace:*"}}',
+			'apps/mobile/package.json': '{"name":"@chronos/mobile"}',
+			'packages/plugins/a/package.json': '{"name":"@chronos/plugin-a"}',
+			'apps/web/src/runtime.ts': 'import "@chronos/plugin-a";',
+			'apps/mobile/src/runtime.ts': 'import "../../../packages/plugins/a/src/main";',
+			'apps/web/src/lib/server/plugin-server-loader.generated.ts':
+				'import "@chronos/plugin-a/server"; import "@chronos/plugin-a/mobile";',
+			'apps/web/src/lib/boot/mobile-plugin-server-registry.generated.ts':
+				'import "@chronos/plugin-a/mobile"; import "@chronos/plugin-a"; import "../../../../mobile/src/http/mobile-plugin-server-registry";',
+			'apps/web/scripts/assemble.ts': 'import "@chronos/plugin-a/server/definition";',
+			'apps/web/src/runtime.test.ts': 'import "@chronos/plugin-a";'
+		});
+		expect(checkBoundaries(root).map(({ source, target }) => [source, target])).toEqual([
+			['apps/web/src/lib/boot/mobile-plugin-server-registry.generated.ts', '@chronos/plugin-a'],
+			['apps/web/src/lib/server/plugin-server-loader.generated.ts', '@chronos/plugin-a/mobile'],
+			['apps/web/src/runtime.ts', '@chronos/plugin-a'],
+			['apps/mobile/src/runtime.ts', '../../../packages/plugins/a/src/main']
+		]);
+	});
+
 	it('resolves platform aliases separately for Web and Mobile', () => {
 		const root = project({
 			'apps/web/package.json': '{"name":"@chronos/web"}',
