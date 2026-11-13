@@ -47,7 +47,6 @@
 		/>
 		<meta name="theme-color" content="" />
 		<meta name="mobile-web-app-capable" content="yes" />
-		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 		<meta name="apple-mobile-web-app-title" content="Chronos" />
 		<link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
 
@@ -81,14 +80,6 @@
 							},
 							{ once: true }
 						);
-					}
-					// Immersive status bar under viewport-fit=cover: white icons on dark,
-					// system default (dark icons) on light. Android ignores this meta.
-					var statusBar = document.querySelector(
-						'meta[name="apple-mobile-web-app-status-bar-style"]'
-					);
-					if (statusBar) {
-						statusBar.setAttribute('content', dark ? 'black-translucent' : 'default');
 					}
 					var reduceMotion = localStorage.getItem(
 						'chronos:' +
@@ -203,6 +194,7 @@
 	</head>
 
 	<body data-sveltekit-preload-data="tap">
+		<div id="chronos-status-bar-background" aria-hidden="true"></div>
 		<div id="chronos-boot-fallback">
 			<div id="chronos-boot-splash" class="chronos-boot-splash" aria-hidden="true">
 				<img
@@ -225,6 +217,22 @@
 		</div>
 		<div style="display: contents">%sveltekit.body%</div>
 		<style>
+			/* WebKit samples a real fixed element to suppress the iOS PWA scroll-edge blur.
+			   It must exceed 10px; clip the empty background so no page content is covered.
+			   https://github.com/WebKit/WebKit/blob/main/Source/WebCore/page/LocalFrameView.cpp
+			   See LocalFrameView::fixedContainerEdges. */
+			#chronos-status-bar-background {
+				position: fixed;
+				top: var(--app-viewport-top, 0px);
+				inset-inline: 0;
+				height: 12px;
+				z-index: 10000;
+				pointer-events: none;
+				background-color: var(--color-surface, Canvas);
+				-webkit-background-clip: text;
+				background-clip: text;
+			}
+
 			#chronos-boot-fallback {
 				position: fixed;
 				inset: var(--app-viewport-top, 0px) 0 var(--app-viewport-bottom, 0px);

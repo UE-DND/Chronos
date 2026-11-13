@@ -25,6 +25,62 @@ async function setNativeInsets(
 	);
 }
 
+for (const mode of ['light', 'dark']) {
+	test(`status bar has a fixed theme background before startup and across navigation in ${mode} mode`, async ({
+		page,
+		request
+	}) => {
+		await request.post('/__e2e/deploy?build=old');
+		await page.addInitScript((mode) => {
+			localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1');
+			localStorage.setItem('chronos:/Chronos:chronos_preferences:theme_mode', mode);
+		}, mode);
+		// The workaround must be present before hydration, including offline launches.
+		const html = await (await request.get('/Chronos/')).text();
+		expect(html).toContain('id="chronos-status-bar-background"');
+		await page.goto('/Chronos/');
+		await setNativeInsets(page, 59, 0, 34, 0);
+		await page.getByRole('tab', { name: '我的', exact: true }).click();
+		await page.getByText('显示设置', { exact: true }).click();
+		const background = page.locator('#chronos-status-bar-background');
+		const color = await background.evaluate((node) => getComputedStyle(node).backgroundColor);
+		expect(color).not.toBe('rgba(0, 0, 0, 0)');
+		await expect(page.locator('body')).toHaveCSS('background-color', color);
+		await expect(background).toHaveCSS('position', 'fixed');
+		await expect(background).toHaveCSS('pointer-events', 'none');
+		await expect(background).toHaveCSS('background-clip', 'text');
+		await expect(page.locator('html')).toHaveCSS('color-scheme', mode);
+		await page.setViewportSize({ width: 430, height: 500 });
+		const scroll = page.locator('.secondary-page .secondary-scroll');
+		await scroll.hover();
+		await page.mouse.wheel(0, 1000);
+		await expect.poll(() => scroll.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+		await expect(page.getByRole('button', { name: '返回', exact: true })).toBeInViewport();
+		for (const viewport of [
+			{ width: 430, height: 932 },
+			{ width: 932, height: 430 }
+		]) {
+			await page.setViewportSize(viewport);
+			const bounds = (await background.boundingBox())!;
+			expect(bounds.y).toBe(0);
+			expect(bounds.width).toBe(viewport.width);
+			// WebKit ignores fixed containers no taller than 10px when sampling chrome.
+			expect(bounds.height).toBeGreaterThan(10);
+			expect(await page.evaluate(() => window.scrollY)).toBe(0);
+			expect(
+				await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)
+			).toBe(true);
+		}
+		await page.goto('/Chronos/wallpaper');
+		await page.getByText(mode === 'light' ? '暗色主题' : '亮色主题', { exact: true }).click();
+		await expect(background).not.toHaveCSS('background-color', color);
+		await expect(page.locator('body')).toHaveCSS(
+			'background-color',
+			await background.evaluate((node) => getComputedStyle(node).backgroundColor)
+		);
+	});
+}
+
 test.describe('iOS landscape rail', () => {
 	test.use({
 		userAgent:

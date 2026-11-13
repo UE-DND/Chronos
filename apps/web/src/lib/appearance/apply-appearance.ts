@@ -11,13 +11,10 @@ export type ApplyAppearanceInput = {
 	themePaletteEntries?: readonly CoursePaletteEntry[] | null;
 };
 
-function syncThemeChrome(target: HTMLElement, isDark: boolean) {
+function syncThemeChrome(target: HTMLElement) {
 	if (typeof document === 'undefined' || target !== document.documentElement) return;
 	const color = getComputedStyle(target).getPropertyValue('--color-surface').trim();
 	if (color) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color);
-	document
-		.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
-		?.setAttribute('content', isDark ? 'black-translucent' : 'default');
 }
 
 export async function applyAppearance(
@@ -51,7 +48,7 @@ export async function applyAppearance(
 		if (target) {
 			target.classList.toggle('dark', input.isDark);
 			target.style.colorScheme = input.isDark ? 'dark' : 'light';
-			syncThemeChrome(target, input.isDark);
+			syncThemeChrome(target);
 		}
 	};
 	const shouldSampleWallpaper =
@@ -95,7 +92,7 @@ export async function applyAppearance(
 			throw new Error('Invalid wallpaper course palette');
 		commitBase();
 		applyWorkbenchColors(target, validated.colors);
-		syncThemeChrome(target, input.isDark);
+		syncThemeChrome(target);
 		return { coursePalette: result.coursePalette?.length ? result.coursePalette : basePalette };
 	} catch (error) {
 		check();
