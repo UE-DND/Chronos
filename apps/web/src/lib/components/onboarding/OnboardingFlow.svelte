@@ -404,7 +404,7 @@
 
 			<div
 				class="flex flex-col gap-4 px-6 pt-2"
-				style:padding-bottom="calc(var(--tabbar-block-safe) + 1.25rem)"
+				style:padding-bottom={'calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 1.25rem)'}
 			>
 				<ol
 					class="flex list-none justify-center gap-1.5"

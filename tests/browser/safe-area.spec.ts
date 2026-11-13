@@ -383,3 +383,19 @@ test('landscape timetable and secondary pages avoid the status bar, cutout and g
 	await expect(page.locator('.timetable-week-top-bar')).toBeVisible();
 	await expect(page.locator('.timetable-week-top-bar')).toHaveCSS('padding-top', '32px');
 });
+
+test('onboarding footer avoids the system gesture area in landscape', async ({ page, request }) => {
+	await request.post('/__e2e/deploy?build=old');
+	await page.setViewportSize({ width: 568, height: 320 });
+	await page.goto('/Chronos/');
+	await setNativeInsets(page, 24, 32, 32, 59);
+	const onboarding = page.getByRole('dialog');
+	const next = onboarding.getByRole('button', { name: '下一步', exact: true });
+	await expect(next).toBeVisible();
+	const bounds = (await next.boundingBox())!;
+	expect(bounds.x).toBeGreaterThanOrEqual(59);
+	expect(bounds.x + bounds.width).toBeLessThanOrEqual(568 - 32);
+	expect(bounds.y + bounds.height).toBeLessThanOrEqual(320 - 32);
+	await next.click();
+	await expect(onboarding.getByRole('checkbox')).toBeVisible();
+});
