@@ -384,6 +384,36 @@ test('landscape timetable and secondary pages avoid the status bar, cutout and g
 	await expect(page.locator('.timetable-week-top-bar')).toHaveCSS('padding-top', '32px');
 });
 
+test('empty timetable keeps its content and import action reachable in a short landscape viewport', async ({
+	page,
+	request
+}) => {
+	await request.post('/__e2e/deploy?build=old');
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
+	await page.setViewportSize({ width: 932, height: 280 });
+	await page.goto('/Chronos/');
+	await setNativeInsets(page, 24, 0, 16, 32);
+	await page.getByRole('tab', { name: '课表', exact: true }).click();
+	const panel = page.locator('.shell-tab-panel:not([hidden])');
+	await expect(panel.getByRole('heading', { name: '还没有课程表', exact: true })).toBeVisible();
+	const image = panel.locator('img');
+	const imageBounds = (await image.boundingBox())!;
+	expect(imageBounds.y).toBeGreaterThanOrEqual(24);
+	expect(imageBounds.x).toBeGreaterThanOrEqual(32);
+	const guide = panel.getByRole('button', { name: '查看导入方式说明', exact: true });
+	await panel.hover();
+	await page.mouse.wheel(0, 1000);
+	await expect(guide).toBeInViewport({ ratio: 1 });
+	const guideBounds = (await guide.boundingBox())!;
+	expect(guideBounds.y + guideBounds.height).toBeLessThanOrEqual(264);
+	const importLink = panel.getByRole('link', { name: '导入课程表', exact: true });
+	await expect(importLink).toBeInViewport({ ratio: 1 });
+	await importLink.click();
+	await expect(page).toHaveURL(/\/Chronos\/transfer\/import$/);
+});
+
 test('onboarding footer avoids the system gesture area in landscape', async ({ page, request }) => {
 	await request.post('/__e2e/deploy?build=old');
 	await page.setViewportSize({ width: 568, height: 320 });

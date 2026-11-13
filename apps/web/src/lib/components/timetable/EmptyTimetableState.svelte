@@ -19,26 +19,26 @@
 	}
 </script>
 
-<div
-	class="flex min-h-[calc(100dvh-var(--bottom-bar-height))] flex-col items-center justify-center gap-3 px-6 py-8 text-center"
->
-	<img src={favicon} alt="" class="h-32 w-32" aria-hidden="true" />
+<div class="ui-safe-area-top app-scroll-y native-overscroll-y h-full overflow-y-auto">
+	<div class="flex min-h-full flex-col items-center justify-center gap-3 px-6 py-8 text-center">
+		<img src={favicon} alt="" class="h-32 w-32 shrink-0" aria-hidden="true" />
 
-	<p class="text-label-large text-brand">{hostT('timetable.empty.brand')}</p>
-	<h2 class="text-headline-medium font-bold text-on-surface">
-		{hostT('timetable.empty.title')}
-	</h2>
+		<p class="text-label-large text-brand">{hostT('timetable.empty.brand')}</p>
+		<h2 class="text-headline-medium font-bold text-on-surface">
+			{hostT('timetable.empty.title')}
+		</h2>
 
-	<div class="mt-4 flex flex-col items-center gap-3">
-		<Button variant="outlined" href={resolve('transfer/import')} onclick={handleImportClick}>
-			{hostT('timetable.empty.import')}
-		</Button>
-		<button
-			type="button"
-			class="cursor-pointer text-sm font-medium text-on-surface-variant underline-offset-2 hover:text-on-surface hover:underline"
-			onclick={showImportGuide}
-		>
-			{hostT('timetable.empty.guide')}
-		</button>
+		<div class="mt-4 flex flex-col items-center gap-3">
+			<Button variant="outlined" href={resolve('transfer/import')} onclick={handleImportClick}>
+				{hostT('timetable.empty.import')}
+			</Button>
+			<button
+				type="button"
+				class="cursor-pointer text-sm font-medium text-on-surface-variant underline-offset-2 hover:text-on-surface hover:underline"
+				onclick={showImportGuide}
+			>
+				{hostT('timetable.empty.guide')}
+			</button>
+		</div>
 	</div>
 </div>
