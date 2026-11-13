@@ -271,6 +271,7 @@ describe('OfficialPluginInstalledStore', () => {
 			origin: { kind: 'user' },
 			installedAt: 1
 		});
+		const previousRevision = store.find('optional')!.revision;
 		const target = { ...host, version: '1.2.3', buildId: 'next' };
 		await store.prepare({
 			target,
@@ -294,6 +295,7 @@ describe('OfficialPluginInstalledStore', () => {
 		expect(later.prepared?.token).toBe('owner');
 		await later.startHost(target);
 		expect(later.find('optional')?.code).toBe('new');
+		expect(later.find('optional')?.revision).toBeGreaterThan(previousRevision!);
 		expect(later.prepared).toBeUndefined();
 		const revision = later.revision;
 		await later.startHost(target);

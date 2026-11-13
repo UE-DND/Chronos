@@ -17,24 +17,32 @@ import type {
 	Timetable,
 	UserPreferences,
 	CourseQueryFilter,
-	CourseQueryHit
+	CourseQueryHit,
+	PluginStorageScope
 } from '@chronos/core';
 import { db, type ChronosDB } from '#lib/storage/db.ts';
 import { clearAppCaches } from '#lib/storage/cache-storage.ts';
 import { PreferencesStore } from '#lib/storage/preferences-store.ts';
 import { TimetableRepository } from '#lib/storage/timetable-repository.ts';
 import { PluginKvRepository } from '#lib/storage/plugin-kv-repository.ts';
+import {
+	INSTALLED_STORAGE_KEY,
+	OFFICIAL_PLUGINS_PLUGIN_ID
+} from '#lib/services/official-plugins/official-plugin-types.ts';
 import { clearKeysWithPrefix } from '#lib/storage/storage-key-utils.ts';
 
 interface TimetableChangeMessage {
-	type: 'timetable';
+	type: 'timetable' | 'pluginData';
 	key: string;
 }
 
 function isTimetableChangeMessage(value: unknown): value is TimetableChangeMessage {
 	if (!value || typeof value !== 'object') return false;
 	const message = value as { type?: unknown; key?: unknown };
-	return message.type === 'timetable' && typeof message.key === 'string';
+	return (
+		(message.type === 'timetable' || message.type === 'pluginData') &&
+		typeof message.key === 'string'
+	);
 }
 
 /**
@@ -80,7 +88,7 @@ export class DexieStorageProvider implements IStorageService {
 							window.location.reload();
 							return;
 						}
-						this.notifyChange({ type: 'timetable', key: data.key });
+						this.notifyChange({ type: data.type, key: data.key });
 					}
 				};
 			}
@@ -113,7 +121,7 @@ export class DexieStorageProvider implements IStorageService {
 	private async withStorageNotify<T>(event: StorageChangeEvent, fn: () => Promise<T>): Promise<T> {
 		const result = await fn();
 		this.notifyChange(event);
-		if (event.type === 'timetable') this.broadcastChange(event);
+		if (event.type === 'timetable' || event.type === 'pluginData') this.broadcastChange(event);
 		return result;
 	}
 
@@ -196,6 +204,52 @@ export class DexieStorageProvider implements IStorageService {
 
 	async getPluginData<T>(pluginId: string, key: string): Promise<T | null> {
 		return this.pluginKv.get<T>(pluginId, key);
+	}
+
+	createPluginScope(pluginId: string, revision?: number): PluginStorageScope {
+		const assertRevision = async () => {
+			if (revision === undefined) return;
+			const row = await this.database.pluginData.get(
+				`${OFFICIAL_PLUGINS_PLUGIN_ID}:${INSTALLED_STORAGE_KEY}`
+			);
+			const state = row
+				? (JSON.parse(row.valueJson) as {
+						records: { manifest: { id: string }; revision?: number }[];
+					})
+				: null;
+			const installed = state?.records.find((record) => record.manifest.id === pluginId);
+			if (!installed || installed.revision !== revision)
+				throw new Error(`Plugin installation revision changed: ${pluginId}`);
+		};
+		const commit = <T>(key: string, operation: () => Promise<T>) =>
+			this.withStorageNotify({ type: 'pluginData', key: `${pluginId}:${key}` }, () =>
+				this.database.transaction(
+					'rw',
+					[this.database.pluginData, this.database.pluginBinary],
+					async () => {
+						await assertRevision();
+						return operation();
+					}
+				)
+			);
+		return {
+			get: <T>(key: string) => this.pluginKv.get<T>(pluginId, key),
+			set: <T>(key: string, value: T) =>
+				this.withStorageNotify({ type: 'pluginData', key: `${pluginId}:${key}` }, () =>
+					this.pluginKv.set(pluginId, key, value, assertRevision)
+				),
+			delete: (key) => commit(key, () => this.pluginKv.delete(pluginId, key)),
+			updateJson: <T>(key: string, change: (current: T | null) => T) =>
+				commit(key, () => this.pluginKv.updateJson(pluginId, key, change)),
+			onKeyChanged: (key, listener) =>
+				this.onChanged((event) => {
+					if (
+						event.type === 'pluginData' &&
+						(event.key === `${pluginId}:${key}` || event.key === pluginId)
+					)
+						return listener();
+				})
+		};
 	}
 
 	async setPluginData<T>(pluginId: string, key: string, value: T): Promise<void> {

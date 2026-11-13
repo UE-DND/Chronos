@@ -32,6 +32,7 @@ type ChronosEnvStorage = Pick<
 	| 'setPluginData'
 	| 'deletePluginData'
 	| 'clearPluginData'
+	| 'createPluginScope'
 	| 'onChanged'
 >;
 

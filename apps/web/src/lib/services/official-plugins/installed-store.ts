@@ -25,7 +25,10 @@ export interface PluginInstallationState {
 }
 export interface PluginInstallationRepository {
 	read(): Promise<PluginInstallationState>;
-	transaction(change: (state: PluginInstallationState) => void): Promise<PluginInstallationState>;
+	transaction(
+		change: (state: PluginInstallationState) => void,
+		options?: { deletePluginData?: readonly string[] }
+	): Promise<PluginInstallationState>;
 }
 export function emptyInstallationState(): PluginInstallationState {
 	return { records: [], removed: [], seeded: false, revision: 0, generation: '' };
@@ -102,7 +105,7 @@ function storageRepository(
 		);
 	return {
 		read,
-		transaction(change) {
+		transaction(change, options) {
 			const operation = (queues.get(engine.storage) ?? Promise.resolve())
 				.catch(() => {})
 				.then(async () => {
@@ -139,6 +142,8 @@ function storageRepository(
 							INSTALLED_STORAGE_KEY,
 							state
 						);
+						for (const pluginId of options?.deletePluginData ?? [])
+							await engine.storage.clearPluginData?.(pluginId);
 					} catch (error) {
 						await Promise.all(staged.map((id) => images!.delete(id).catch(console.error)));
 						throw error;
@@ -249,7 +254,7 @@ export class OfficialPluginInstalledStore {
 			) {
 				for (const record of state.prepared.records) {
 					const index = state.records.findIndex((old) => old.manifest.id === record.manifest.id);
-					if (index >= 0) state.records[index] = record;
+					if (index >= 0) state.records[index] = { ...record, revision: state.revision + 1 };
 				}
 				state.revision++;
 				delete state.prepared;
@@ -262,7 +267,10 @@ export class OfficialPluginInstalledStore {
 		this.generation = host.buildId;
 		this.broadcast({ generation: host.buildId });
 	}
-	private async mutate(change: (state: PluginInstallationState) => void): Promise<void> {
+	private async mutate(
+		change: (state: PluginInstallationState) => void,
+		options?: { deletePluginData?: readonly string[] }
+	): Promise<void> {
 		this.state = await this.repository.transaction((state) => {
 			if (
 				state.generation !== this.generation ||
@@ -272,7 +280,7 @@ export class OfficialPluginInstalledStore {
 			change(state);
 			state.revision++;
 			delete state.prepared;
-		});
+		}, options);
 		this.broadcast({ revision: this.state.revision });
 		this.notify();
 	}
@@ -294,11 +302,17 @@ export class OfficialPluginInstalledStore {
 			state.removed = state.removed.filter((id) => id !== record.manifest.id);
 		});
 	}
-	async remove(id: string) {
-		await this.mutate((state) => {
-			state.records = state.records.filter((record) => record.manifest.id !== id);
-			state.removed = [...new Set([...state.removed, id])];
-		});
+	async remove(id: string, expectedRevision?: number) {
+		await this.mutate(
+			(state) => {
+				const record = state.records.find((record) => record.manifest.id === id);
+				if (expectedRevision !== undefined && record?.revision !== expectedRevision)
+					throw new Error('Plugin changed during uninstall; retry');
+				state.records = state.records.filter((record) => record.manifest.id !== id);
+				state.removed = [...new Set([...state.removed, id])];
+			},
+			{ deletePluginData: [id] }
+		);
 	}
 	async acceptHostVersion(id: string, hostVersion: string, expectedRevision: number) {
 		await this.mutate((state) => {

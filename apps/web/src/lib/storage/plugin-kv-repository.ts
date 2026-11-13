@@ -31,7 +31,12 @@ export class PluginKvRepository {
 		);
 	}
 
-	async set<T>(pluginId: string, key: string, value: T): Promise<void> {
+	async set<T>(
+		pluginId: string,
+		key: string,
+		value: T,
+		guard?: () => Promise<void>
+	): Promise<void> {
 		const row = isPluginBinaryValue(value)
 			? await preparePluginBinaryRow(pluginId, key, value)
 			: null;
@@ -39,6 +44,7 @@ export class PluginKvRepository {
 			'rw',
 			[this.database.pluginData, this.database.pluginBinary],
 			async () => {
+				await guard?.();
 				if (row) {
 					await this.json.delete(pluginId, key);
 					await this.database.pluginBinary.put(row);
@@ -63,6 +69,22 @@ export class PluginKvRepository {
 			'rw',
 			[this.database.pluginData, this.database.pluginBinary],
 			() => Promise.all([this.json.clear(pluginId), this.binary.clear(pluginId)])
+		);
+	}
+
+	async updateJson<T>(pluginId: string, key: string, change: (current: T | null) => T): Promise<T> {
+		return this.database.transaction(
+			'rw',
+			[this.database.pluginData, this.database.pluginBinary],
+			async () => {
+				if (await this.database.pluginBinary.get(`${pluginId}:${key}`))
+					throw new TypeError('Cannot update binary plugin data as JSON');
+				const next = change(await this.json.get<T>(pluginId, key));
+				if (next instanceof Promise || isPluginBinaryValue(next))
+					throw new TypeError('Plugin JSON change must return synchronous JSON');
+				await this.json.set(pluginId, key, next);
+				return JSON.parse(JSON.stringify(next)) as T;
+			}
 		);
 	}
 

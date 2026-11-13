@@ -98,11 +98,11 @@ export function createPluginInstallationRepository(
 			database.transaction('r', [database.pluginData, database.pluginResources], async () =>
 				hydrate(await readMetadata(), cached, true)
 			),
-		async transaction(change) {
+		async transaction(change, options) {
 			const assets = new Map(cached);
 			const result = await database.transaction(
 				'rw',
-				[database.pluginData, database.pluginResources, database.images],
+				[database.pluginData, database.pluginBinary, database.pluginResources, database.images],
 				async () => {
 					const state = await hydrate(await readMetadata(), assets);
 					const previous = new Set(allRecords(state).map((record) => record.resourceId!));
@@ -160,6 +160,10 @@ export function createPluginInstallationRepository(
 						valueJson: JSON.stringify(state),
 						updatedAt: Date.now()
 					});
+					for (const pluginId of options?.deletePluginData ?? []) {
+						await database.pluginData.where('pluginId').equals(pluginId).delete();
+						await database.pluginBinary.where('pluginId').equals(pluginId).delete();
+					}
 					return hydrate(state, assets);
 				}
 			);

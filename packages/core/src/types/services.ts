@@ -92,6 +92,27 @@ export interface IHttpService {
 }
 export const IHttpService = createServiceIdentifier<IHttpService>('http');
 
+/** Network capability bound to one plugin activation. */
+export interface IPluginHttpService {
+	request(url: string, options?: HttpRequestOptions): Promise<HttpResponse>;
+	supportsServer(action: string): boolean;
+	proxy(
+		action: string,
+		payload: unknown,
+		options?: { timeoutMs?: number; signal?: AbortSignal }
+	): Promise<HttpResponse>;
+}
+export const IPluginHttpService = createServiceIdentifier<IPluginHttpService>('pluginHttp');
+
+export interface PluginStorageScope {
+	get<T = unknown>(key: string): Promise<T | null>;
+	set<T = unknown>(key: string, value: T): Promise<void>;
+	delete(key: string): Promise<void>;
+	/** The change must be synchronous; reads and writes share one transaction. */
+	updateJson<T>(key: string, change: (current: T | null) => T): Promise<T>;
+	onKeyChanged(key: string, listener: () => void | Promise<void>): Disposable;
+}
+
 // 2. Structured persistence storage service definition
 export interface StorageChangeEvent {
 	type: 'timetable' | 'preferences' | 'pluginData';
@@ -131,6 +152,8 @@ export interface IStorageService {
 	setPluginData<T>(pluginId: string, key: string, value: T): Promise<void>;
 	deletePluginData(pluginId: string, key: string): Promise<void>;
 	clearPluginData?(pluginId: string): Promise<void>;
+	/** Host-created scope: each write checks the installed revision in its own transaction. */
+	createPluginScope?(pluginId: string, revision?: number): PluginStorageScope;
 
 	onChanged?(listener: (event: StorageChangeEvent) => void | Promise<void>): Disposable;
 }
