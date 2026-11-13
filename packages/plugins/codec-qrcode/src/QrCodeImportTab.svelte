@@ -5,7 +5,7 @@
 
 	const QR_CODEC_PLUGIN_ID = 'tool-qrcode';
 
-	let { controller, transfer, onContinue }: ImportTabComponentProps = $props();
+	let { controller, context, transfer, onContinue }: ImportTabComponentProps = $props();
 
 	let loading = $state(false);
 	let fileInputRef = $state<HTMLInputElement | null>(null);
@@ -27,11 +27,11 @@
 		loading = true;
 		try {
 			const text = await decodeQrFromBlob(blob, (key) => pt(key));
-			const ok = await previewAndNotify(transfer, 'qrcode', { content: text }, controller);
+			const ok = await previewAndNotify(transfer, 'qrcode', { content: text }, context);
 			if (ok) onContinue();
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : pt('import.error.decodeFailed');
-			controller?.notify(msg, 'error');
+			context.actions.notify(msg, 'error');
 		} finally {
 			loading = false;
 		}

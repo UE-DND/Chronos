@@ -1,14 +1,18 @@
 /** Marker for plugin-bundle UI that must mount with its own Svelte runtime. */
 export const CHRONOS_MOUNTABLE = Symbol.for('chronos.mountable');
 
-export type ChronosMountHandle<P extends Record<string, unknown> = Record<string, unknown>> = {
+export type ChronosMountHandle<P extends object = object> = {
 	update?(props: P): void;
 	unmount(): void;
 };
 
-export interface ChronosMountable<Props extends Record<string, unknown> = Record<string, unknown>> {
+export interface ChronosMountable<Props extends object = object> {
 	readonly [CHRONOS_MOUNTABLE]: true;
-	mount(target: HTMLElement, props: Props, context?: Map<any, any>): ChronosMountHandle<Props>;
+	mount(
+		target: HTMLElement,
+		props: Props,
+		lifecycle?: { onError(error: unknown): void }
+	): ChronosMountHandle<Props>;
 }
 
 export function isChronosMountable(value: unknown): value is ChronosMountable {

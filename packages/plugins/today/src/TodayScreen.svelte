@@ -6,7 +6,7 @@
 		pluginText,
 		appShellScroll,
 		SegmentedControl,
-		type ChronosUiController
+		type ChronosUiView
 	} from '@chronos/ui-kit';
 	import { fromStore } from 'svelte/store';
 	import {
@@ -22,12 +22,13 @@
 	import { coursePaintKey, createTodayScreenController } from './today-screen.svelte';
 
 	interface Props {
-		controller: ChronosUiController;
+		controller: ChronosUiView;
+		context: import('@chronos/core').ChronosContext;
 		pluginId: string;
 		active?: boolean;
 	}
 
-	let { controller, pluginId, active = true }: Props = $props();
+	let { controller, context, pluginId, active = true }: Props = $props();
 
 	const ui = $derived(fromStore(controller.snapshot));
 	const compactLandscape = new MediaQuery('(orientation: landscape) and (max-height: 500px)');
@@ -64,9 +65,7 @@
 		return screen.paintByCourseKey.get(key) ?? COURSE_PALETTE_ENTRIES[0]!;
 	}
 
-	const courseNavigation = $derived(
-		controller.getPluginContext(pluginId).tryService(IHostNavigation)
-	);
+	const courseNavigation = $derived(context.tryService(IHostNavigation));
 
 	function openCourseDetail(courseId: string, timetableId: string) {
 		courseNavigation?.openCourseDetail?.(courseId, timetableId);
@@ -81,14 +80,11 @@
 			return;
 
 		hasTrackedPreparingStatus = true;
-		trackPluginAnalytics(
-			controller.getPluginContext(pluginId),
-			TODAY_ANALYTICS.preparingStatusShown
-		);
+		trackPluginAnalytics(context, TODAY_ANALYTICS.preparingStatusShown);
 	});
 
 	onMount(() => {
-		void screen.init(controller, controller.getPluginContext(pluginId));
+		void screen.init(controller, context);
 		return () => screen.dispose();
 	});
 </script>

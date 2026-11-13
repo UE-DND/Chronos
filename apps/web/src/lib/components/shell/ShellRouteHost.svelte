@@ -15,6 +15,7 @@
 	import TimetableWeekBadge from '#lib/components/timetable/TimetableWeekBadge.svelte';
 	import {
 		MountableSlotOutlet,
+		createPluginUiProps,
 		resolvePluginScreenSlot,
 		createEdgeBarActions,
 		setEdgeBarActions
@@ -52,6 +53,15 @@
 			: undefined
 	);
 	const pluginRail = $derived(pluginScreenSlot?.landscapeRail);
+	const railProps = $derived(
+		activePluginId
+			? createPluginUiProps(controller, activePluginId, {
+					viewId: 'index',
+					active: !presentation.state.frozen,
+					edgeActions
+				})
+			: undefined
+	);
 	const pluginTitle = $derived(
 		resolveLocalizedText(pluginScreenSlot?.title, '', controller.locale)
 	);
@@ -139,18 +149,9 @@
 					{/if}
 				{/snippet}
 				{#snippet content()}
-					{#if compactLandscape.current && activePluginId && pluginRail}
+					{#if compactLandscape.current && activePluginId && pluginRail && railProps}
 						{#key activePluginId}
-							<MountableSlotOutlet
-								component={pluginRail}
-								props={{
-									controller,
-									pluginId: activePluginId,
-									viewId: 'index',
-									active: !presentation.state.frozen
-								}}
-								class="w-full"
-							/>
+							<MountableSlotOutlet component={pluginRail} props={railProps} class="w-full" />
 						{/key}
 					{/if}
 				{/snippet}

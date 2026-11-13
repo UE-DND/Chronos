@@ -24,6 +24,8 @@
 		findInvalidSchemaFields,
 		TIMETABLE_PRESENTATION_CONTEXT,
 		resolveCoursePalette,
+		createPluginUiProps,
+		createImportConfirmTransfer,
 		type TimetablePresentationSource
 	} from '@chronos/ui-kit';
 	import { fromStore } from 'svelte/store';
@@ -54,6 +56,16 @@
 	const hasConfirmPhase = $derived(
 		Boolean(activeSlot?.confirmComponent || activeSlot?.confirmSchema)
 	);
+	const pluginProps = $derived.by(() => {
+		if (!activeSlot) return undefined;
+		const owner = controller.resolveSlotOwner('import.source.tab', activeSlot.id);
+		const ui = owner && createPluginUiProps(controller, owner);
+		if (!ui) return undefined;
+		return {
+			...ui,
+			transfer: createImportConfirmTransfer(transfer, ui.context)
+		};
+	});
 	const confirmValidationError = $derived.by(() => {
 		if (!activeSlot?.validateConfirmInputs) return null;
 		return activeSlot.validateConfirmInputs(transferState.confirmInputs);
@@ -180,10 +192,10 @@
 
 			{#if hasConfirmPhase}
 				<div class="flex flex-col gap-3">
-					{#if activeSlot?.confirmComponent}
+					{#if activeSlot?.confirmComponent && pluginProps}
 						<MountableSlotOutlet
 							component={activeSlot.confirmComponent}
-							props={{ controller, transfer }}
+							props={pluginProps}
 							class="w-full"
 						/>
 					{:else if activeSlot?.confirmSchema}

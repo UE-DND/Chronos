@@ -7,6 +7,7 @@ export type {
 	ChronosUiView,
 	ChronosUiSnapshot
 } from './reactivity/chronos-ui-controller';
+export { createChronosUiView } from './reactivity/chronos-ui-view';
 export { default as SchemaForm } from './schema-form/SchemaForm.svelte';
 export { default as SegmentedControl } from './components/SegmentedControl.svelte';
 export type { Segment as SegmentedControlSegment } from './components/segmented-control';
@@ -42,6 +43,7 @@ export {
 	createHistoryOverlaySync,
 	OVERLAY_LIFECYCLE_CONTEXT,
 	type HistoryOverlaySync,
+	type OverlayParent,
 	type OverlayHistoryPort
 } from './overlay/history-overlay';
 export { default as Radio } from './form/Radio.svelte';
@@ -63,6 +65,11 @@ export { default as PluginScreenContainer } from './plugin-screen/PluginScreenCo
 export { default as MountableSlotOutlet } from './plugin-screen/MountableSlotOutlet.svelte';
 export { resolvePluginScreenSlot } from './plugin-screen/resolve-plugin-screen-slot';
 export {
+	createPluginUiProps,
+	type PluginUiProps,
+	type PluginEdgeActions
+} from './plugin-screen/plugin-ui-props';
+export {
 	createEdgeBarActions,
 	getEdgeBarActions,
 	setEdgeBarActions,
@@ -80,6 +87,8 @@ export {
 export { CHRONOS_MOUNTABLE } from '@chronos/core';
 export {
 	previewAndNotify,
+	createImportTabTransfer,
+	createImportConfirmTransfer,
 	type ImportTabComponentProps,
 	type ImportTabTransferController
 } from './plugin-screen/import-tab-props';

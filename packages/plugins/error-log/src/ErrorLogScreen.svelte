@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { readBundledPluginVersion, trackPluginAnalytics } from '@chronos/core';
-	import type { ChronosUiController } from '@chronos/ui-kit';
+	import type { ChronosUiView } from '@chronos/ui-kit';
 	import {
 		appShellScroll,
 		pluginText,
 		type EdgeBarAction,
-		type EdgeBarActionsController
+		type PluginEdgeActions
 	} from '@chronos/ui-kit';
 	import { ERROR_LOG_ANALYTICS } from './analytics';
 	import { copyTextWithFallback } from './copy-text';
@@ -13,16 +13,18 @@
 	import { ERROR_LOG_MESSAGES } from './messages';
 	import { ERROR_LOG_PLUGIN_ID } from './constants';
 	import { getErrorLogRuntime } from './runtime.svelte';
+	import { fromStore } from 'svelte/store';
 
 	interface Props {
-		controller: ChronosUiController;
-		pluginId: string;
-		edgeActions?: EdgeBarActionsController;
+		controller: ChronosUiView;
+		context: import('@chronos/core').ChronosContext;
+		edgeActions?: PluginEdgeActions;
 	}
 
-	let { controller, pluginId, edgeActions }: Props = $props();
+	let { controller, context, edgeActions }: Props = $props();
+	const ui = $derived(fromStore(controller.snapshot));
 
-	const runtime = $derived(getErrorLogRuntime(controller.getPluginContext(pluginId)));
+	const runtime = $derived(getErrorLogRuntime(context));
 	const entries = $derived.by(() => {
 		const seen = new Set<string>();
 		return [...runtime.entries]
@@ -33,13 +35,14 @@
 				return true;
 			});
 	});
-	const pluginContext = $derived(controller.getPluginContext(pluginId));
+	const pluginContext = $derived(context);
 	function pt(key: keyof (typeof ERROR_LOG_MESSAGES)['zh-cn']) {
+		void ui.current.slotVersion;
 		return pluginText(controller, ERROR_LOG_PLUGIN_ID, ERROR_LOG_MESSAGES, key);
 	}
 
 	function formatTimestamp(ts: number): string {
-		return new Date(ts).toLocaleString(controller.locale);
+		return new Date(ts).toLocaleString(ui.current.locale);
 	}
 
 	async function copyEntries(targetEntries: readonly ErrorLogEntry[]) {
@@ -87,7 +90,7 @@
 			onClick: onClear
 		}
 	]);
-	$effect(() => edgeActions?.register(pluginId, actions));
+	$effect(() => edgeActions?.register(actions));
 </script>
 
 <div class="flex h-full min-h-0 flex-1 flex-col overflow-hidden">

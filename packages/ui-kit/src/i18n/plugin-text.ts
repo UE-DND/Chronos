@@ -1,8 +1,8 @@
 import { interpolateMessage, type PluginMessageCatalog } from '@chronos/core';
-import type { ChronosUiController } from '../reactivity/chronos-ui-controller';
+import type { ChronosUiView } from '../reactivity/chronos-ui-controller';
 
 export function pluginText<M extends PluginMessageCatalog>(
-	controller: ChronosUiController | undefined,
+	controller: ChronosUiView | undefined,
 	pluginId: string,
 	messages: M,
 	key: keyof M['zh-cn'] & string,

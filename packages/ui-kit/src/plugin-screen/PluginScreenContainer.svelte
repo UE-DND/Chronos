@@ -5,6 +5,7 @@
 	import MountableSlotOutlet from './MountableSlotOutlet.svelte';
 	import { getEdgeBarActions } from './edge-bar-actions.svelte';
 	import { appShellScroll } from '../actions/app-scroll';
+	import { createPluginUiProps } from './plugin-ui-props';
 
 	interface Props {
 		controller: ChronosUiController;
@@ -24,10 +25,19 @@
 			controller.resolveSlotOwner('shell.route.screen', slotId)
 		)
 	);
+	const pluginProps = $derived(
+		screenSlot
+			? createPluginUiProps(controller, pluginId, {
+					active,
+					viewId,
+					edgeActions
+				})
+			: undefined
+	);
 
 	let formValues = $derived<Record<string, unknown>>(
-		screenSlot?.schema && !screenSlot.component
-			? { ...controller.getPluginContext(pluginId).config }
+		screenSlot?.schema && !screenSlot.component && pluginProps
+			? { ...pluginProps.context.config }
 			: {}
 	);
 	let saving = $state(false);
@@ -52,13 +62,13 @@
 <div
 	class="plugin-screen-container flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden"
 >
-	{#if screenSlot?.component}
+	{#if screenSlot?.component && pluginProps}
 		<MountableSlotOutlet
 			component={screenSlot.component}
-			props={{ controller, pluginId, active, edgeActions }}
+			props={pluginProps}
 			class="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden"
 		/>
-	{:else if screenSlot?.schema}
+	{:else if screenSlot?.schema && pluginProps}
 		<div use:appShellScroll class="secondary-scroll min-h-0 w-full flex-1 overflow-y-auto p-4">
 			<div class="ui-section-surface ui-section-surface--comfortable">
 				<div class="ui-section-stack">

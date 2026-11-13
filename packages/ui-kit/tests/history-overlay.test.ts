@@ -57,4 +57,25 @@ describe('overlay lifecycle', () => {
 		expect(close).not.toHaveBeenCalled();
 		expect(dispose).not.toHaveBeenCalled();
 	});
+	it('cancels nested overlays across a public parent port from another runtime', async () => {
+		vi.resetModules();
+		const otherRuntime = await import('../src/overlay/history-overlay');
+		const closed = vi.fn();
+		const release = vi.fn();
+		const parent = createHistoryOverlaySync({ overlayId: 'host', setOpen: vi.fn() });
+		parent.syncOpenState(true);
+		const child = otherRuntime.createHistoryOverlaySync({
+			overlayId: 'plugin',
+			parent: { attachChild: parent.attachChild.bind(parent) },
+			setOpen: closed,
+			port: { openOverlay: () => ({ close: vi.fn(), dispose: release }) }
+		});
+		child.syncOpenState(true);
+		parent.syncOpenState(false);
+		expect(closed).toHaveBeenCalledWith(false);
+		expect(release).toHaveBeenCalledOnce();
+		child.dispose();
+		parent.dispose();
+		expect(release).toHaveBeenCalledOnce();
+	});
 });

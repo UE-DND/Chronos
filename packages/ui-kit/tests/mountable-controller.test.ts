@@ -7,6 +7,27 @@ function target() {
 }
 
 describe('plugin screen failure boundary', () => {
+	it('releases asynchronous failures and ignores callbacks from a previous mount', () => {
+		const failures: ((error: unknown) => void)[] = [];
+		const unmount = vi.fn();
+		const component = {
+			[CHRONOS_MOUNTABLE]: true,
+			mount(_target: HTMLElement, _props: object, lifecycle: { onError(error: unknown): void }) {
+				failures.push((error) => lifecycle.onError(error));
+				return { unmount };
+			}
+		};
+		const screen = createMountableController(vi.fn());
+		screen.mount(component, target(), {});
+		failures[0]!(new Error('render failed'));
+		expect(screen.state.phase).toBe('failed');
+		expect(unmount).toHaveBeenCalledOnce();
+		screen.retry({});
+		failures[0]!(new Error('late'));
+		expect(screen.state.phase).toBe('mounted');
+		expect(unmount).toHaveBeenCalledOnce();
+		screen.dispose();
+	});
 	it('rejects an invalid mount handle and cleans up the instance it returned', () => {
 		const report = vi.fn();
 		const unmount = vi.fn();
@@ -41,7 +62,11 @@ describe('plugin screen failure boundary', () => {
 		screen.update({ value: 2 });
 		expect(mount).toHaveBeenCalledTimes(1);
 		screen.retry({ value: 3 });
-		expect(mount).toHaveBeenLastCalledWith(element, { value: 3 }, undefined);
+		expect(mount).toHaveBeenLastCalledWith(
+			element,
+			{ value: 3 },
+			expect.objectContaining({ onError: expect.any(Function) })
+		);
 		expect(screen.state).toEqual({ phase: 'mounted', error: null });
 		screen.dispose();
 		expect(unmount).toHaveBeenCalledTimes(1);

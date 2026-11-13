@@ -7,8 +7,8 @@
 		pluginText,
 		TimePicker,
 		type EdgeBarAction,
-		type EdgeBarActionsController,
-		type ChronosUiController,
+		type PluginEdgeActions,
+		type ChronosUiView,
 		type DateFieldLabels,
 		type TimePickerLabels,
 		type TimeValue
@@ -22,16 +22,17 @@
 	import { CLOCK_MESSAGES } from './messages';
 
 	interface Props {
-		controller: ChronosUiController;
+		controller: ChronosUiView;
+		context: import('@chronos/core').ChronosContext;
 		pluginId: string;
-		edgeActions?: EdgeBarActionsController;
+		edgeActions?: PluginEdgeActions;
 	}
 
-	let { controller, pluginId, edgeActions }: Props = $props();
+	let { controller, context, pluginId, edgeActions }: Props = $props();
 	const compactLandscape = new MediaQuery('(orientation: landscape) and (max-height: 500px)');
 
 	const ui = $derived(fromStore(controller.snapshot));
-	const pluginContext = $derived(controller.getPluginContext(pluginId));
+	const pluginContext = $derived(context);
 	const locale = $derived(appLocaleToBcp47(ui.current.locale));
 
 	function pt(key: keyof (typeof CLOCK_MESSAGES)['zh-cn'], params?: Record<string, unknown>) {
@@ -44,7 +45,7 @@
 	let draftTime = $state<TimeValue>(wallParts.time);
 
 	onMount(() => {
-		const parts = partsFromDate(controller.getPluginContext(pluginId).state.now);
+		const parts = partsFromDate(context.state.now);
 		draftIso = parts.isoDate;
 		draftTime = parts.time;
 	});
@@ -103,7 +104,7 @@
 			onClick: onApply
 		}
 	]);
-	$effect(() => edgeActions?.register(pluginId, actions));
+	$effect(() => edgeActions?.register(actions));
 
 	async function onApply() {
 		const next = combineLocalDateTime(draftIso, draftTime);

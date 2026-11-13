@@ -10,6 +10,7 @@
 		appShellScroll,
 		MountableSlotOutlet,
 		createEdgeBarActions,
+		createPluginUiProps,
 		setEdgeBarActions
 	} from '@chronos/ui-kit';
 	import type { ChronosMountable } from '@chronos/core';
@@ -42,6 +43,15 @@
 	const edgeActions = createEdgeBarActions();
 	const compactLandscape = new MediaQuery('(orientation: landscape) and (max-height: 500px)');
 	setEdgeBarActions(edgeActions);
+	const railProps = $derived(
+		railPluginId
+			? createPluginUiProps(controller, railPluginId, {
+					viewId: railViewId,
+					active: true,
+					edgeActions
+				})
+			: undefined
+	);
 
 	$effect(() => {
 		return registerPageBackFallback(backFallback);
@@ -81,13 +91,9 @@
 			<h1 class="edge-bar-title" {title} aria-label={title}>{title}</h1>
 		{/snippet}
 		{#snippet content()}
-			{#if compactLandscape.current && landscapeRail && railPluginId}
+			{#if compactLandscape.current && landscapeRail && railProps}
 				{#key `${railPluginId}/${railViewId}`}
-					<MountableSlotOutlet
-						component={landscapeRail}
-						props={{ controller, pluginId: railPluginId, viewId: railViewId, active: true }}
-						class="w-full"
-					/>
+					<MountableSlotOutlet component={landscapeRail} props={railProps} class="w-full" />
 				{/key}
 			{/if}
 		{/snippet}

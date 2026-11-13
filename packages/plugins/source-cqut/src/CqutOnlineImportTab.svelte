@@ -4,7 +4,7 @@
 
 	const SOURCE_CQUT_PLUGIN_ID = 'source-cqut';
 
-	let { controller, transfer, onContinue }: ImportTabComponentProps = $props();
+	let { controller, context, transfer, onContinue }: ImportTabComponentProps = $props();
 	let loading = $state(false);
 	let account = $state('');
 	let password = $state('');
@@ -48,7 +48,7 @@
 					username: account,
 					password
 				},
-				controller
+				context
 			);
 			if (ok) onContinue();
 		} finally {

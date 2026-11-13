@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { ChronosUiController } from '../reactivity/chronos-ui-controller';
+	import type { ChronosUiView } from '../reactivity/chronos-ui-controller';
 	let {
 		controller,
 		retry
 	}: {
-		controller?: Pick<ChronosUiController, 'translatePlugin'>;
+		controller?: Pick<ChronosUiView, 'translatePlugin'>;
 		retry: () => void;
 	} = $props();
 	const hostT = (key: string, fallback: string) =>

@@ -9,7 +9,7 @@
 
 	const SHARE_CODEC_PLUGIN_ID = 'codec-share';
 
-	let { controller, transfer, onContinue }: ImportTabComponentProps = $props();
+	let { controller, context, transfer, onContinue }: ImportTabComponentProps = $props();
 
 	let loading = $state(false);
 
@@ -34,7 +34,7 @@
 				transfer,
 				'share-link',
 				{ content: content.trim() },
-				controller
+				context
 			);
 			if (ok) onContinue();
 		} catch (err) {
@@ -47,7 +47,7 @@
 							SHARE_CODEC_MESSAGES,
 							'import.ui.clipboardError'
 						);
-			controller?.notify(msg, 'error');
+			context.actions.notify(msg, 'error');
 		} finally {
 			loading = false;
 		}

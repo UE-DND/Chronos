@@ -8,7 +8,12 @@
 	import { snackbar } from '#lib/components/ui/snackbar-state.svelte.ts';
 	import { getAppController } from '#lib/services/app-engine.ts';
 
-	import { MountableSlotOutlet, SchemaForm } from '@chronos/ui-kit';
+	import {
+		MountableSlotOutlet,
+		SchemaForm,
+		createPluginUiProps,
+		createImportTabTransfer
+	} from '@chronos/ui-kit';
 
 	let {
 		transfer,
@@ -30,6 +35,20 @@
 		availableSlots.find((slot) => slot.id === transfer.state.selectedSlotId) ?? availableSlots[0]
 	);
 	const activeSlotId = $derived(activeSlot?.id ?? '');
+	const pluginProps = $derived.by(() => {
+		if (!activeSlot) return undefined;
+		const owner = controller.resolveSlotOwner('import.source.tab', activeSlot.id);
+		const ui = owner && createPluginUiProps(controller, owner);
+		if (!ui) return undefined;
+		const { context } = ui;
+		return {
+			...ui,
+			transfer: createImportTabTransfer(transfer, activeSlot.id, context),
+			onContinue: () => {
+				if (!context.signal.aborted) onContinue();
+			}
+		};
+	});
 	const useSegmentedTabs = $derived(availableSlots.length > 0 && availableSlots.length <= 3);
 	const useScrollableTabs = $derived(availableSlots.length > 3);
 
@@ -97,12 +116,8 @@
 	{/if}
 
 	<div class="w-full">
-		{#if activeSlot?.component}
-			<MountableSlotOutlet
-				component={activeSlot.component}
-				props={{ controller, transfer, onContinue }}
-				class="w-full"
-			/>
+		{#if activeSlot?.component && pluginProps}
+			<MountableSlotOutlet component={activeSlot.component} props={pluginProps} class="w-full" />
 		{:else if activeSlot?.inputSchema}
 			<div class="ui-section-surface ui-section-surface--comfortable">
 				<div class="ui-section-stack">

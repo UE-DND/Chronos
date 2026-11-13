@@ -1,11 +1,12 @@
 <script lang="ts">
-	import type { ChronosUiController } from '@chronos/ui-kit';
+	import type { ChronosUiView } from '@chronos/ui-kit';
 	import { appLocaleToBcp47, appShellScroll, pluginText } from '@chronos/ui-kit';
 	import { fromStore } from 'svelte/store';
 	import {
 		filterHolidaysInTermRange,
 		formatCompactDate,
-		type CalendarHoliday
+		type CalendarHoliday,
+		type ChronosContext
 	} from '@chronos/core';
 	import { HOLIDAY_MESSAGES } from './messages';
 	import { HOLIDAY_PLUGIN_ID } from './constants';
@@ -17,12 +18,11 @@
 	} from './holiday-sync';
 
 	interface Props {
-		controller: ChronosUiController;
-		pluginId: string;
+		controller: ChronosUiView;
+		context: ChronosContext;
 	}
 
-	let { controller, pluginId }: Props = $props();
-	const context = $derived(controller.getPluginContext(pluginId));
+	let { controller, context }: Props = $props();
 
 	let syncing = $state(false);
 	let errorMessage = $state<string | null>(null);

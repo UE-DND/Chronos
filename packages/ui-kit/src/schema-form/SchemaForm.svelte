@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { ConfigSchema, SchemaField } from '@chronos/core';
 	import { resolveLocalizedText } from '@chronos/core';
-	import type { ChronosUiController } from '../reactivity/chronos-ui-controller';
+	import type { ChronosUiView } from '../reactivity/chronos-ui-controller';
 	import TextField from './inputs/TextField.svelte';
 	import Checkbox from './inputs/Checkbox.svelte';
 	import SelectField from './inputs/SelectField.svelte';
@@ -12,12 +12,13 @@
 	import RadioGroupField from '../form/RadioGroupField.svelte';
 	import type { DateFieldLabels } from '../form/date-field-utils';
 	import { appLocaleToBcp47 } from '../form/date-field-utils';
+	import { fromStore } from 'svelte/store';
 
 	interface Props {
 		schema: ConfigSchema<Record<string, unknown>>;
 		value?: Record<string, unknown>;
 		disabled?: boolean;
-		controller?: ChronosUiController;
+		controller?: ChronosUiView;
 		onValueChange?: (value: Record<string, unknown>) => void;
 		dateFieldLabels?: DateFieldLabels;
 		dateFieldLocale?: string;
@@ -35,7 +36,8 @@
 
 	const entries = $derived(Object.entries(schema) as Array<[string, SchemaField<unknown>]>);
 	const resolvedValue = $derived(value ?? {});
-	const resolvedDateFieldLocale = $derived(dateFieldLocale ?? appLocaleToBcp47(controller?.locale));
+	const ui = $derived(controller ? fromStore(controller.snapshot) : null);
+	const resolvedDateFieldLocale = $derived(dateFieldLocale ?? appLocaleToBcp47(ui?.current.locale));
 
 	function updateField(key: string, nextValue: unknown) {
 		const next = {

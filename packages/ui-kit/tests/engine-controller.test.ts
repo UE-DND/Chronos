@@ -11,6 +11,9 @@ import {
 } from '@chronos/core';
 import { get } from 'svelte/store';
 import { ReactiveChronosController } from '../src/reactivity/engine-controller.svelte';
+import { createChronosUiView } from '../src/reactivity/chronos-ui-view';
+import { createPluginUiProps } from '../src/plugin-screen/plugin-ui-props';
+import { createEdgeBarActions } from '../src/plugin-screen/edge-bar-actions.svelte';
 
 function createMockEnv(): ChronosEnv {
 	const timetables = new Map<string, Timetable>();
@@ -416,6 +419,82 @@ describe('ReactiveChronosController', () => {
 		expect(locales.at(-1)).toBe('en');
 
 		unsubscribe();
+		controller.dispose();
+	});
+
+	it('mounts plugins with an actual read-only view and only their own context and edge actions', async () => {
+		const controller = new ReactiveChronosController(engine);
+		const contexts: ChronosContext[] = [];
+		await engine.loadPlugin({
+			id: 'ui-test',
+			name: 'UI test',
+			version: '1',
+			apply(ctx) {
+				contexts.push(ctx);
+			}
+		});
+		const context = contexts[0]!;
+		const edges = createEdgeBarActions();
+		const props = createPluginUiProps(controller, context.pluginId, { edgeActions: edges })!;
+		expect(props.context).toBe(context);
+		expect(props.controller).not.toBe(controller);
+		expect(Object.isFrozen(props.controller)).toBe(true);
+		for (const privateKey of [
+			'engine',
+			'dispose',
+			'clearAllData',
+			'getPluginContext',
+			'getSlots',
+			'saveCourse',
+			'deleteTimetable'
+		]) {
+			expect(privateKey in props.controller).toBe(false);
+		}
+		const snapshots: string[] = [];
+		const unsubscribe = props.controller.snapshot.subscribe((value) =>
+			snapshots.push(value.locale)
+		);
+		engine.setLocale('en');
+		expect(snapshots.at(-1)).toBe('en');
+		expect(props.controller.locale).toBe('en');
+		const action = { id: 'own', label: 'Own', icon: 'check', onClick: vi.fn() };
+		props.edgeActions!.register([action]);
+		expect(edges.get('ui-test')).toEqual([action]);
+		expect(Object.keys(props.edgeActions!)).toEqual(['register']);
+		await engine.unloadPlugin('ui-test');
+		const before = snapshots.length;
+		engine.setLocale('zh-cn');
+		expect(snapshots).toHaveLength(before);
+		expect(edges.get('ui-test')).toEqual([]);
+		props.edgeActions!.register([action]);
+		expect(edges.get('ui-test')).toEqual([]);
+		unsubscribe();
+		controller.dispose();
+	});
+
+	it('does not expose a page context until its candidate is accepted', async () => {
+		const controller = new ReactiveChronosController(engine);
+		const handle = await engine.loadPlugin(
+			{
+				id: 'candidate-ui',
+				name: 'Candidate',
+				version: '1',
+				apply() {}
+			},
+			{ deferAcceptance: true }
+		);
+		expect(createPluginUiProps(controller, 'candidate-ui')).toBeUndefined();
+		handle.accept();
+		expect(createPluginUiProps(controller, 'candidate-ui')?.context.pluginId).toBe('candidate-ui');
+		controller.dispose();
+	});
+
+	it('does not leak additional history-controller methods through the public view', () => {
+		const history = { openOverlay: vi.fn(), clearPrivateHistory: vi.fn() };
+		const controller = new ReactiveChronosController(engine, { overlayHistoryPort: history });
+		const view = createChronosUiView(controller);
+		expect(Object.keys(view.overlayHistoryPort!)).toEqual(['openOverlay']);
+		expect(Object.isFrozen(view.overlayHistoryPort)).toBe(true);
 		controller.dispose();
 	});
 

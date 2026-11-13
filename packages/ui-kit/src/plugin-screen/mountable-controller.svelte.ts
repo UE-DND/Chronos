@@ -4,6 +4,7 @@ import {
 	type ChronosMountHandle,
 	type ChronosMountable
 } from '@chronos/core';
+import { releasePluginUiResources } from './plugin-ui-props';
 
 type MountableState = {
 	readonly phase: 'idle' | 'mounted' | 'failed';
@@ -19,9 +20,13 @@ export function createMountableController(
 	let handle: ChronosMountHandle | undefined;
 	let component: ChronosMountable | undefined;
 	let target: HTMLElement | undefined;
-	let context: Map<unknown, unknown> | undefined;
+	let mountToken: symbol | undefined;
+	const views = new Set<unknown>();
 
 	function stop() {
+		mountToken = undefined;
+		for (const view of views) releasePluginUiResources(view);
+		views.clear();
 		const previous = handle;
 		handle = undefined;
 		try {
@@ -39,10 +44,22 @@ export function createMountableController(
 	}
 	function start(props: Record<string, unknown>) {
 		if (!target || !component) return;
+		const token = Symbol('mount');
+		mountToken = token;
+		views.add(props.controller);
 		try {
-			handle = component.mount(target, props, context);
-			if (!isChronosMountHandle(handle)) {
+			const mounted = component.mount(target, props, {
+				onError: (error) => {
+					if (mountToken === token) fail('update', error);
+				}
+			});
+			handle = mounted;
+			if (!isChronosMountHandle(mounted)) {
 				throw new Error('Invalid mount handle: expected unmount() and optional update()');
+			}
+			if (mountToken !== token) {
+				stop();
+				return;
 			}
 			state = { phase: 'mounted', error: null };
 		} catch (error) {
@@ -53,22 +70,15 @@ export function createMountableController(
 		stop();
 		component = undefined;
 		target = undefined;
-		context = undefined;
 		state = { phase: 'idle', error: null };
 	}
 	return {
 		get state() {
 			return state;
 		},
-		mount(
-			next: unknown,
-			element: HTMLElement,
-			props: Record<string, unknown>,
-			contexts?: Map<unknown, unknown>
-		) {
+		mount(next: unknown, element: HTMLElement, props: Record<string, unknown>) {
 			dispose();
 			target = element;
-			context = contexts;
 			if (!isChronosMountable(next)) {
 				fail('mount', new Error('Invalid plugin component: expected CHRONOS_MOUNTABLE'));
 				return;
@@ -78,6 +88,7 @@ export function createMountableController(
 		},
 		update(props: Record<string, unknown>) {
 			if (state.phase !== 'mounted' || !handle?.update) return;
+			views.add(props.controller);
 			try {
 				handle.update(props);
 			} catch (error) {

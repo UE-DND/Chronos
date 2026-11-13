@@ -1,25 +1,27 @@
 export interface OverlayHistoryPort {
 	openOverlay(id: string, onDismiss: () => void): { close(): void; dispose(): void };
 }
-export interface HistoryOverlaySync {
+export interface OverlayParent {
+	attachChild(cancel: () => void): () => void;
+}
+export interface HistoryOverlaySync extends OverlayParent {
 	syncOpenState(isOpen: boolean): void;
 	dispose(): void;
 }
 /** Component ancestry, independent of the browser's chronological record order. */
 export const OVERLAY_LIFECYCLE_CONTEXT = Symbol('overlay-lifecycle');
-const childrenByLifecycle = new WeakMap<HistoryOverlaySync, Set<() => void>>();
 
 export function createHistoryOverlaySync(options: {
 	overlayId: string;
 	setOpen: (open: boolean) => void;
 	port?: OverlayHistoryPort;
-	parent?: HistoryOverlaySync;
+	parent?: OverlayParent;
 }): HistoryOverlaySync {
 	let handle: ReturnType<OverlayHistoryPort['openOverlay']> | undefined;
 	let disposed = false;
 	let open = false;
 	const children = new Set<() => void>();
-	const siblings = options.parent && childrenByLifecycle.get(options.parent);
+	const detach = options.parent?.attachChild(cancel);
 	function cancelChildren() {
 		for (const cancel of children) cancel();
 	}
@@ -33,6 +35,14 @@ export function createHistoryOverlaySync(options: {
 		options.setOpen(false);
 	}
 	const sync: HistoryOverlaySync = {
+		attachChild(cancelChild) {
+			if (disposed) {
+				cancelChild();
+				return () => {};
+			}
+			children.add(cancelChild);
+			return () => children.delete(cancelChild);
+		},
 		syncOpenState(next) {
 			if (disposed || next === open) return;
 			open = next;
@@ -51,12 +61,10 @@ export function createHistoryOverlaySync(options: {
 		dispose() {
 			if (disposed) return;
 			disposed = true;
-			siblings?.delete(cancel);
+			detach?.();
 			cancel();
 			children.clear();
 		}
 	};
-	childrenByLifecycle.set(sync, children);
-	siblings?.add(cancel);
 	return sync;
 }
