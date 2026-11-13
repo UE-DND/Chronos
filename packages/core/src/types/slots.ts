@@ -178,6 +178,7 @@ export const DEFAULT_MINE_SECTION_ID = 'app-support';
 export type HostShellPanel = 'timetable' | 'mine';
 
 export interface BottomTabSlotContribution {
+	navigationIntent?: 'today';
 	id: string;
 	label: LocalizedText;
 	order?: number;

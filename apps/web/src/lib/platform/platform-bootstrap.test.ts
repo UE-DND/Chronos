@@ -70,7 +70,15 @@ vi.mock('#lib/services/app-engine.ts', () => ({
 	}),
 	getOfficialPluginService: () => ({ retryPendingUpdates: mocks.retryPendingUpdates }),
 	getAppController: vi.fn(() => ({
-		getSlots: () => mocks.tabIds.map((id) => ({ id }))
+		getSlots: (slot: string) =>
+			slot === 'shell.bottom-bar.tab'
+				? mocks.tabIds.map((id) =>
+						id === 'timetable' ? { id, hostPanel: 'timetable' } : { id, navigationIntent: 'today' }
+					)
+				: [{ id: 'today-owner', title: 'Today', schema: {} }],
+		resolveSlotOwner: (_slot: string, id: string) =>
+			id === 'timetable' ? 'host.shell' : 'today-owner',
+		getPluginContext: () => ({})
 	})),
 	getAppEngine: vi.fn(() => ({
 		themes: { getTheme: vi.fn() },

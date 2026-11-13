@@ -1,9 +1,10 @@
 import { resolveDefaultLaunchTab, resolveHostPanelTab } from '@chronos/core';
 import type { ReactiveChronosController } from '@chronos/ui-kit';
 import { SvelteSet } from 'svelte/reactivity';
+import { getNavigableTabs } from './resolve-navigation-tab';
 
 function pickFallbackTabId(controller: ReactiveChronosController): string {
-	const tabs = controller.getSlots('shell.bottom-bar.tab');
+	const tabs = getNavigableTabs(controller);
 	return resolveHostPanelTab(tabs, 'timetable')?.id ?? tabs[0]?.id ?? '';
 }
 
@@ -27,7 +28,7 @@ export function createShellTabController(getController: () => ReactiveChronosCon
 	function reconcileActiveTab(): void {
 		if (!initialized) return;
 		const controller = getController();
-		const tabs = controller.getSlots('shell.bottom-bar.tab');
+		const tabs = getNavigableTabs(controller);
 		const defaultTab = resolveDefaultLaunchTab(tabs);
 
 		if (defaultLaunchPending) {
@@ -53,7 +54,7 @@ export function createShellTabController(getController: () => ReactiveChronosCon
 	function init(): void {
 		if (initialized) return;
 		const controller = getController();
-		const tabs = controller.getSlots('shell.bottom-bar.tab');
+		const tabs = getNavigableTabs(controller);
 		const defaultTab = resolveDefaultLaunchTab(tabs);
 		if (defaultTab) {
 			activateTab(defaultTab.id);

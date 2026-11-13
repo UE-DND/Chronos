@@ -15,13 +15,14 @@
 	import { haptic } from '#lib/haptic/haptic.ts';
 	import TimetableEditBar from '#lib/components/timetable/TimetableEditBar.svelte';
 	import LayoutOptionsSheet from '#lib/components/timetable/LayoutOptionsSheet.svelte';
+	import { getNavigableTabs } from '#lib/shell/resolve-navigation-tab.ts';
 	import { trackEvent } from '#lib/client/analytics.ts';
 
 	const timetableScreen = getContext<TimetableScreenController>('timetableScreen');
 	const shellTab = getContext<ShellTabController>('shellTab');
 	const controller = getAppController();
 
-	const sortedTabs = $derived(controller.getSlots('shell.bottom-bar.tab'));
+	const sortedTabs = $derived(getNavigableTabs(controller));
 	const compactLandscape = new MediaQuery('(orientation: landscape) and (max-height: 500px)');
 	const displayedTabs = $derived(compactLandscape.current ? sortedTabs.toReversed() : sortedTabs);
 	const activeTabId = $derived(shellTab.activeTabId);

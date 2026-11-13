@@ -24,6 +24,7 @@ import type { ShellTabController } from '#lib/shell/shell-tab.svelte.ts';
 import { createTodayWidgetSyncService, type TodayWidgetSyncService } from './today-widget-sync';
 import { registerHyperellipse } from 'hyperellipse';
 import { DEFAULT_USER_PREFERENCES } from '@chronos/core';
+import { resolveTodayTab } from '#lib/shell/resolve-navigation-tab.ts';
 
 export type PlatformBootstrapDeps = {
 	shell: AppShellController;
@@ -103,11 +104,10 @@ export function createPlatformBootstrap(deps: PlatformBootstrapDeps): PlatformBo
 							void ensureEngineFullyReady()
 								.then(async () => {
 									if (!session.alive) return;
-									const hasTodayTab = getAppController()
-										.getSlots('shell.bottom-bar.tab')
-										.some((tab) => tab.id === 'today');
-									deps.shellTab.setActiveTab(hasTodayTab ? 'today' : 'timetable');
-									if (!hasTodayTab) deps.timetableScreen.jumpToCurrentWeek();
+									const target = resolveTodayTab(getAppController());
+									if (!target) return;
+									deps.shellTab.setActiveTab(target.id);
+									if (target.hostPanel === 'timetable') deps.timetableScreen.jumpToCurrentWeek();
 									const { navigateForward } = await import('#lib/navigation/nav-coordinator.ts');
 									if (session.alive) await navigateForward('/', { replace: true });
 								})

@@ -4,19 +4,27 @@ import { createMockEnv } from '@chronos/core/test-utils';
 import { ReactiveChronosController } from '@chronos/ui-kit';
 import { createShellTabController } from './shell-tab.svelte';
 
-function registerCoreTabs(ctx: ChronosContext): void {
-	ctx.registerSlot('shell.bottom-bar.tab', {
-		id: 'timetable',
-		label: () => 'Timetable',
-		order: 10,
-		hostPanel: 'timetable'
-	});
-	ctx.registerSlot('shell.bottom-bar.tab', {
-		id: 'mine',
-		label: () => 'Mine',
-		order: 20,
-		hostPanel: 'mine'
-	});
+function registerCoreTabs(engine: ChronosEngine): void {
+	engine.slots.register(
+		'shell.bottom-bar.tab',
+		{
+			id: 'timetable',
+			label: () => 'Timetable',
+			order: 10,
+			hostPanel: 'timetable'
+		},
+		'host.shell'
+	);
+	engine.slots.register(
+		'shell.bottom-bar.tab',
+		{
+			id: 'mine',
+			label: () => 'Mine',
+			order: 20,
+			hostPanel: 'mine'
+		},
+		'host.shell'
+	);
 }
 
 function createTodayTabPlugin() {
@@ -25,6 +33,7 @@ function createTodayTabPlugin() {
 		name: 'Today',
 		version: '1.0.0',
 		apply(ctx: ChronosContext) {
+			ctx.registerSlot('shell.route.screen', { id: 'tool-today', title: 'Today', schema: {} });
 			ctx.registerSlot('shell.bottom-bar.tab', {
 				id: 'today',
 				label: () => 'Today',
@@ -44,12 +53,7 @@ describe('createShellTabController', () => {
 		engine = new ChronosEngine({ env });
 		await engine.init();
 		controller = new ReactiveChronosController(engine);
-		await engine.loadPlugin({
-			id: 'core-shell',
-			name: 'Core Shell',
-			version: '1.0.0',
-			apply: registerCoreTabs
-		});
+		registerCoreTabs(engine);
 	});
 
 	it('defaults to timetable when no tab declares defaultLaunch', () => {

@@ -24,6 +24,7 @@ export function createTodayPlugin(options: CreateTodayPluginOptions = {}) {
 		defaultConfig: { scope: 'active' },
 		async apply(ctx, t) {
 			ctx.registerSlot('shell.bottom-bar.tab', {
+				navigationIntent: 'today',
 				id: 'today',
 				label: () => t('tab.label'),
 				order: 15,
