@@ -2,6 +2,8 @@
 
 - 日期：2026-09-13
 
+2026-11-13 修订：插件实例、存储、日历贡献及公共界面的当前契约见 [ADR 0052](0052-plugin-activation-and-calendar-contributions.md)。本记录保留原决策的背景；与后续契约冲突的接口不再适用。
+
 ## 决策
 
 宿主事件由 `HostAnalyticsEvent` 的固定清单管理，并通过 `trackEvent` 上报。插件事件不加入宿主清单。插件在本地定义 action，并通过 `trackPluginAnalytics(ctx, pluginId, action)` 按 `plugin.{pluginId}.{action}` 上报。

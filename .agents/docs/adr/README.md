@@ -19,6 +19,8 @@
 
 ## 主要演进关系
 
+- 0052 收紧插件实例与持久化 scope，改用可撤销的日历贡献，并明确 UI、服务、导航和主题边界。相关主题的当前契约优先读 [0052](0052-plugin-activation-and-calendar-contributions.md)。
+
 - 0006 的 WebAuthn 保险箱由 0017 移除。可选的凭据端口继续保留。
 - 0007 的静态插件装配由 0042 的市场预安装替代。Profile 的发行配置职责继续保留。
 - 0014 的壁纸插件由 0040 的宿主图片能力替代。0016 的动态配色广播由 0043 的主题计算能力替代。
@@ -80,3 +82,5 @@
 - [0049：iOS 自签 IPA 更新](0049-ios-sideload-update.md)
 - [0050：错误契约与失败边界](0050-error-contracts-and-failure-boundaries.md)
 - [0051：领域修改与插件资源的原子边界](0051-atomic-domain-and-plugin-boundaries.md)
+
+- [0052：插件实例边界与可撤销日历贡献](0052-plugin-activation-and-calendar-contributions.md)

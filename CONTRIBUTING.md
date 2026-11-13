@@ -63,7 +63,7 @@ vp run dev
 
 `vp run check` 还会检查运行时依赖、源码导入和 Svelte 脚本，并同时解析 Web 与 Mobile 的平台别名。生产 Web 构建会再检查最终模块图，避免把 Capacitor 打进纯 Web 产物。
 
-改了官方插件时，运行 `vp run build:official-plugins` 或相应的应用构建，并核对安装、启用和相关界面。领域、HTML 解析、分享往返和浏览器导入共用同一组[课表场景](packages/core/tests/fixtures/README.md)。新增场景时，输入和预期结果一起维护。
+改了官方插件时，运行 `vp run build:official-plugins` 或相应的应用构建，并核对安装、激活和相关界面。领域、HTML 解析、分享往返和浏览器导入共用同一组[课表场景](packages/core/tests/fixtures/README.md)。新增场景时，输入和预期结果一起维护。
 
 CI 还会构建 CQUT、CQUT 离线、默认、Mobile 和 Pages 发行版，见 [quality.yml](.github/workflows/quality.yml)。
 
@@ -76,11 +76,13 @@ vp exec playwright install chromium
 vp run test:browser
 ```
 
-任务会构建 `old`、`new`，以及部署路径不同的 `isolated` 三份 Pages 产物，再在同一来源上切换部署。`old` 和 `new` 的应用版本相同，公共环境变量不同，用来确认只改配置时更新是否正确。测试使用真实的 Service Worker、IndexedDB 和插件产物，覆盖未授权更新、下载失败后的重试、多窗口接管、禁用插件和离线重载。官方市场请求转到本地构建产物，不访问外网；应用仍会校验目录、摘要和插件代码。
+任务会构建 `old`、`new`，以及部署路径不同的 `isolated` 三份 Pages 产物，再在同一来源上切换部署。`old` 和 `new` 的应用版本相同，公共环境变量不同，用来确认只改配置时更新是否正确。测试使用真实的 Service Worker、IndexedDB 和插件产物，覆盖未授权更新、下载失败后的重试、多窗口接管、卸载插件和离线重载。官方市场请求转到本地构建产物，不访问外网；应用仍会校验目录、摘要和插件代码。
 
 CI 把检查、发行版构建和浏览器产物构建并行启动。浏览器产物只构建一次，再分给独立 job。分片按历史耗时分配，基准文件和更新方式在 [`scripts/e2e`](scripts/e2e)。不传 `--shard` 时运行全部用例。
 
 默认只保留失败截图。要看布局参考图时，使用 `CHRONOS_E2E_SCREENSHOTS=1 vp run test:browser`，或对已有产物执行 `CHRONOS_E2E_SCREENSHOTS=1 vpx playwright test`。截图、跟踪和 HTML 报告写在 `dist/e2e`，不要提交。
+
+插件边界改动还需运行 `vpx packages/ui-kit/tests/browser/verify-mountable.ts` 和 `vpx scripts/verify-plugin-storage.ts`。前者验证真实白名单、跨挂载弹层、渲染失败重载和卸载清理；后者使用 Chromium 的 IndexedDB 与 BroadcastChannel，验证修订隔离、原子卸载回滚、跨窗口同步和缓存恢复。
 
 ### 移动端原生检查
 
@@ -118,7 +120,7 @@ Android 发布构建与 Quality 并行准备 APK。插件历史写入、部署�
 
 `apps/web` 不直接依赖 `@capacitor/*`。移动能力由 `apps/mobile` 在 Mobile 静态 SPA 构建时通过配置和别名接入。插件和业务代码面向 `HostPlatformAdapter` 或 `ChronosEnv` 编写，不要直接导入 Capacitor API。`core` 可以声明 DOM 契约类型，但不能读取 DOM 全局对象，也不能改元素样式。
 
-引擎保存课表等业务状态。`ReactiveChronosController` 把这些状态交给界面。宿主通过 `ChronosEnv` 向引擎提供存储、网络等平台能力；插件通过 `ScopedContext` 使用这些能力。插件停用或卸载时，上下文会清理该插件注册的资源。
+引擎保存课表等业务状态。`ReactiveChronosController` 把这些状态交给界面。宿主通过 `ChronosEnv` 向引擎提供存储、网络等平台能力；插件通过 `ScopedContext` 使用这些能力。插件实例停止时，上下文会清理它注册的资源。当前只有安装和卸载，没有停用开关。
 
 公开的引擎状态、课表事件和 UI 快照是只读的领域视图。数据进入引擎时会复制并冻结，读取时不再整份复制。编辑表单使用单独的草稿。新增、修改、删除、按周删除和拖动课程，都通过语义动作提交到最新的已保存课表，而不是把界面上的旧课程列表整份写回。细节见 [ADR 0051](.agents/docs/adr/0051-atomic-domain-and-plugin-boundaries.md)。
 
@@ -246,7 +248,13 @@ Firebase Analytics 的 Web 配置使用 `.env.example` 里的 `PUBLIC_FIREBASE_*
 
 用 [`defineChronosPlugin`](packages/core/src/plugin/define-chronos-plugin.ts) 声明插件信息、翻译和 `apply(ctx, t)`。可以参考[今日插件](packages/plugins/today/src/index.ts)或[分享插件](packages/plugins/codec-share/src/index.ts)。官方构建会填上与宿主相同的版本号。
 
-插件通过 `ctx` 获取服务、读写自己的配置和键值数据、读取应用状态、调用业务操作，并注册插槽和事件。接口见 [context.ts](packages/core/src/types/context.ts)。`registerSlot` 和 `on` 注册的内容会随上下文清理。其他资源用 `addDisposable` 登记，或在 `dispose` 里释放。
+插件通过 `ctx` 获取服务、读写自己的配置和键值数据、读取应用状态、调用语义业务动作，并注册插槽和事件。接口见 [context.ts](packages/core/src/types/context.ts)。每次激活都有独立的 `instanceToken` 和 `signal`。`getPluginContext(id)` 只返回正在运行的实例，未运行时抛错；旧加载句柄只能释放原实例。停止会立即取消信号、撤销贡献和订阅、拒绝新动作和注册。停止之后交给 `addDisposable` 的资源会立即释放。
+
+`apply` 负责读取缓存、准备实例和注册贡献，期间持久化写入会立即失败。宿主提交安装记录并接受实例后，才允许写入并发送 `plugin:loaded`；直接通过引擎加载时由引擎完成接受。可能写入的订阅、缓存整理等工作应在自己的 `plugin:loaded` 事件后开始。已经受理的业务写入保留真实提交结果，卸载和替换会等它们结束。
+
+插件动作类型为 `Omit<ChronosActions, 'setVirtualNow'>`。插件不能取得完整 `IStorageService`，也不能发布核心事实事件。只读查询用 `ctx.query.listTimetables()`、`getTimetable(id)` 和 `queryCourses(filter)`，返回冻结的领域视图。私有数据用 `ctx.storage`。时钟覆盖用 `ctx.clock.set(date)`，传 `null` 释放自身覆盖；多个实例中最后更新的有效覆盖生效，释放后恢复上一覆盖或系统时间。
+
+持久化 scope 绑定插件 ID 和安装修订，每次写入在同一数据库事务中核对安装记录。另一窗口卸载、重装或升级后，旧实例不能写回。卸载把安装记录移除、资源回收和插件 JSON／二进制数据删除放在同一事务；失败时保留数据并恢复原运行时。升级、重载和应用关闭保留私有数据。完整边界见 [ADR 0052](.agents/docs/adr/0052-plugin-activation-and-calendar-contributions.md)。
 
 ESM 插件和宿主在同一个进程里，没有安全沙箱。哈希只能说明资源没有损坏，不能说明来源可信。安装前仍要确认插件从哪里来。
 
@@ -256,7 +264,11 @@ ESM 插件和宿主在同一个进程里，没有安全沙箱。哈希只能说�
 
 自定义界面通过 [`ChronosMountable`](packages/core/src/types/mountable.ts) 挂载。`mount` 必须返回带 `unmount` 的对象，也可以提供 `update`。挂载失败时，插件要在抛出错误之前清理已经创建的资源。挂载成功之后，由宿主的组件容器负责卸载。简单输入可以用 `SchemaForm`。
 
-官方 ESM 插件带有自己的 Svelte 运行时，不能用 `getContext()` 读宿主上下文。需要的数据通过 props、controller 或平台接口传入。订阅应用状态可以用 `fromStore(controller.snapshot)`。
+`mount(target, props, lifecycle)` 的可选 `lifecycle.onError(error)` 把异步渲染失败交还宿主；Svelte 适配器自动上报。宿主销毁失败的 UI，释放快照订阅、弹层和边栏操作，再显示重载入口。迟到的旧挂载错误不能影响新挂载。候选实例接受前不挂载插件页面。
+
+官方 ESM 插件带有自己的 Svelte 运行时，不能用 `getContext()` 读宿主上下文。插件页面、导入界面和横屏侧栏获得真实的白名单 props：`controller` 是公共 `ChronosUiView`，`context` 是自身实例的上下文。`ChronosUiView` 只提供只读快照、翻译、日历解析和必要的 UI 能力，不包含完整宿主控制器。订阅状态用 `fromStore(controller.snapshot)`，业务操作用 `context.actions`。
+
+弹层历史、嵌套弹层父级 `overlayParent` 和侧栏操作 `edgeActions.register(actions)` 通过明确的公共 props 传递，不整包复制宿主 Svelte context。导入界面的 transfer 只允许预览自身 tab，确认界面只提供确认输入的读取和修改，实例停止后拒绝调用。插件挂载边界卸载、失败或重载时，必须清理已经挂载的弹层与订阅。
 
 课前的「准备上课」时间是宿主偏好 `UserPreferences.prepareReminderMinutes`，默认 30 分钟，只接受 5–60 分钟之间、间隔为 5 分钟的整数。用户在「反馈设置 → 课前提醒」里修改。今日插件和 Android 小组件用的是同一项设置。插件可以读取、修改和监听；非法写入会被拒绝，原来的值保持不变：
 
@@ -276,9 +288,21 @@ ctx.on('preferences:updated', ({ preferences }) => {
 
 ### 实际课程安排
 
-要判断某一天有没有课，用 `core` 的 `queryTimetableCoursesForDate(timetable, dateIso)`。要查多天或整学期，用 `queryTimetableCourseOccurrences(timetable, range?)`。范围包含两端；不传范围表示整学期。这两个函数会处理学期边界、周次、星期、已经同步的节假日和可见节次。它们不会把学期以外的日期夹到第一周或最后一周，也不会猜测没有写明的开学日期。课程的具体时刻，以及通知要提前多久，由调用方处理。
+要判断某一天有没有课，用 `core` 的 `queryTimetableCoursesForDate(timetable, dateIso, holidays)`。要查多天或整学期，用 `queryTimetableCourseOccurrences(timetable, holidays, range?)`。范围包含两端；不传范围表示整学期。这两个函数会处理学期边界、周次、星期、已经同步的节假日和可见节次。它们不会把学期以外的日期夹到第一周或最后一周，也不会猜测没有写明的开学日期。课程的具体时刻，以及通知要提前多久，由调用方处理。
 
-`IStorageService.queryCourses` 用来查找已经保存的课程记录，不判断某个日期是否真的有课。宿主提供的服务、状态、操作、事件、插槽和界面接口见[参考：端口契约](#参考端口契约)与[参考：槽位目录](#参考槽位目录)。
+`ctx.query.queryCourses` 用来查找已经保存的课程记录，不判断某个日期是否真的有课。宿主提供的服务、状态、操作、事件、插槽和界面接口见[参考：端口契约](#参考端口契约)与[参考：槽位目录](#参考槽位目录)。
+
+### 日历贡献与节假日缓存
+
+算法、布局、通知和小组件都显式接收必填的 `holidays`，纯算法不读取插件或存储。宿主从 `engine.resolveHolidays(timetable)`，插件从 `ctx.calendar.getHolidays(timetable)` 取得统一解析结果；UI 用 `controller.resolveHolidays(timetable)`。已有课表预览使用相同结果，尚未导入的课表预览传 `[]`。`calendarRevision` 和 `calendar:changed` 表示贡献变化，异步消费者在完成计算后还要核对代次。
+
+`calendar.holidays` 贡献提供同步的 `getHolidays(timetable)`，只读取已发布的不可变缓存快照。注册表按现有顺序合并提供者，按日期去重，同一天采用首个提供者的标签。未注册的插件缓存没有效果；卸载节假日插件立即撤销贡献，宿主同时清理其 KV，不改写用户课表。
+
+节假日插件在自己的 `calendars` 键里按课表、年份保存缓存、来源、同步时间和请求标识。激活先订阅键变更，再读取并校验缓存，旧读取不能覆盖新读取。同一课表后发请求拥有提交权，不同课表可并行；请求目标在发起后不随当前课表切换。删除课表会取消任务并整理孤儿缓存，缓存不能创建领域课表。
+
+`ctx.storage.updateJson(key, synchronousChange)` 在一个事务里读取最新 JSON 并修改，返回提交后的值。修改函数必须同步。`onKeyChanged(key, listener)` 只订阅自身键；跨窗口只广播提交后的键通知，接收方重新读取内容。网络同步开始时原子更新 `requestId` 并保留旧缓存，完成时仅匹配的请求能合并最新年度缓存。保存成功才发布新贡献；保存失败保留上次成功效果。取消、卸载和被替代的请求不触发离线 fallback 或成功提示。
+
+页面壳可先启动，通知和小组件首次发布要等插件恢复完成。升级、重载和回滚期间等插件操作协调器稳定后再发布最终结果。应用关闭时先停止外部派生服务，再释放插件。恢复或日历解析失败会报告错误并保留上次成功的外部输出。
 
 ### 样式与资源
 
@@ -300,9 +324,9 @@ UI 插件在 `bundle/entry.ts` 里导入 `bundle/styles.css`。样式文件需�
 
 插件通过平台接口访问网络和存储。使用可选能力之前，先用 `ctx.tryService` 或相应的检测方法确认它可用。
 
-`IHttpService.proxy` 通过 `/api/plugins/{pluginId}/{action}` 调用服务端。调用前用 `supportsPluginServer` 确认当前部署支持这个操作。`bypassCors` 在 Web 宿主上需要构建包含服务端插件代理；移动宿主可以提供自己的网络实现。不要假定每个部署都支持它。
+`IPluginHttpService.proxy(action, payload)` 通过 `/api/plugins/{pluginId}/{action}` 调用服务端，插件 ID 由实例自动绑定。调用前用 `supportsServer(action)` 确认当前部署支持这个操作。直接请求也通过 `IPluginHttpService.request`，宿主按声明的域名规则校验 URL，并合并实例和调用者的取消信号。`bypassCors` 在 Web 宿主上需要构建包含服务端插件代理；移动宿主可以提供自己的网络实现。不要假定每个部署都支持它。
 
-官方插件 Manifest 的 `optionalServerCapabilities` 列出插件可以用的服务端能力。已经声明、但当前部署没有的能力，会在插件列表里提示，安装仍然允许。当前构建只会把已启用的服务端插件写入这个字段，所以没启用的可选能力可能没有提示。插件仍要先调用 `supportsPluginServer`，再注册相关入口。项目还没有通用的网络依赖声明。联网导入可以用 `importKind: 'online'` 标记。其他联网功能要检查请求失败后的表现，并在界面上说明限制或降级结果。
+官方插件 Manifest 的 `optionalServerCapabilities` 列出插件可以用的服务端能力。已经声明、但当前部署没有的能力，会在插件列表里提示，安装仍然允许。当前构建只会把已启用的服务端插件写入这个字段，所以没启用的可选能力可能没有提示。插件仍要先调用 `supportsServer`，再注册相关入口。项目还没有通用的网络依赖声明。联网导入可以用 `importKind: 'online'` 标记。其他联网功能要检查请求失败后的表现，并在界面上说明限制或降级结果。
 
 服务端插件从 `./server` 导出请求处理函数，从 `./server/definition` 导出插件 ID、代理 action 和域名。导入定义模块时不要做其他事。宿主要把插件包加进构建依赖，并在部署配置里启用对应的插件 ID。域名用于核对和审查，不会限制服务端向外请求。
 
@@ -312,6 +336,8 @@ UI 插件在 `bundle/entry.ts` 里导入 `bundle/styles.css`。样式文件需�
 
 原生 HTTP session 关闭底层的自动重定向，由宿主逐跳检查 HTTPS 和声明过的域名，最多跟随 20 次，并拒绝循环。显式 `disableRedirects` 会返回原始响应。跨来源跳转会去掉认证和 Cookie 请求头。请求方法和请求体按 HTTP 的跳转语义处理。
 
+插件获得的 `IAnalyticsService` 自动将 action 变成 `plugin.{pluginId}.{action}` 并固定归属字段。`IErrorCaptureService` 的订阅随实例清理。插件端不暴露 vault；宿主原生凭据接口保留。
+
 打开宿主里的课程详情时，使用可选的 `IHostNavigation.openCourseDetail(courseId, timetableId)`，并传入课程所属的课表 ID。打开课程编辑器使用 `IHostNavigation.openCourseEditor`。获取公开导入链接使用 `IHostLinks.getImportUrl`。不要自己拼接宿主内部路径。
 
 ## 新增官方插件与插槽类型
@@ -320,7 +346,7 @@ UI 插件在 `bundle/entry.ts` 里导入 `bundle/styles.css`。样式文件需�
 
 1. 在 `packages/plugins/` 下新建插件包。有业务逻辑或自定义界面的插件使用 ESM。只有静态资源的主题可以只提供 JSON。目录可以参考现有的同类插件。
 2. 在 [official-plugins.config.ts](scripts/official-plugins.config.ts) 里登记构建入口和市场展示信息。市场文案独立于插件内部词条，这样安装之前也能显示。
-3. 某个发行版需要预装时，把插件 ID 加进对应 Profile。服务端插件还要加入部署配置和宿主的构建依赖。有 Android 原生代理的插件按上一节导出 `./mobile`，不必再登记移动端路由。当前 Profile 要求预装的插件不能禁用或卸载。
+3. 某个发行版需要预装时，把插件 ID 加进对应 Profile。服务端插件还要加入部署配置和宿主的构建依赖。有 Android 原生代理的插件按上一节导出 `./mobile`，不必再登记移动端路由。当前 Profile 要求预装的插件不能卸载。
 4. 运行插件构建或对应的应用构建，检查安装、激活，以及失败后的回滚。可选插件还要检查卸载。有界面的插件还要检查切换语言，以及关闭界面后资源有没有释放。
 
 Bundle、Manifest 和 Catalog 都由构建生成，不要提交到源码分支。开发环境通过中间件提供插件市场。完整的生产市场输出到 `dist/plugin-market/`。宿主的 `apps/web/static/official-plugins/` 只放当前 Profile 必需的插件。在线目录按宿主版本发布到 GitHub Pages，见 [ADR 0047](.agents/docs/adr/0047-host-update-transactions.md) 与 [ADR 0048](.agents/docs/adr/0048-android-native-self-update.md)。
@@ -345,11 +371,12 @@ Manifest 里的 `downloadSizeBytes` 只用于显示下载大小，数值是安�
 
 | 端口                                        | 职责                                                                                            |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `IStorageService`                           | 读写课表、偏好和插件 KV，并查询多个课表中的课程。按日期判断是否有课，使用上一节的课程安排 API。 |
-| `IHttpService`                              | 发起请求、调用服务端代理，以及检查服务端能力。                                                  |
+| `IStorageService`（仅宿主）                 | 读写课表、偏好和插件 KV，并查询多个课表中的课程。按日期判断是否有课，使用上一节的课程安排 API。 |
+| `IHttpService`（仅宿主）                    | 发起请求、调用服务端代理，以及检查服务端能力。                                                  |
+| `IPluginHttpService`                        | 插件实例的网络请求、自动绑定 ID 的代理和服务端能力查询。                                        |
 | `IHostHttpSessionService`                   | 给原生插件 handler 提供受限来源的 HTTP session，并管理 Cookie 的生命周期。                      |
 | `IRuntimeService`                           | 提供平台标识和 SHA-256。                                                                        |
-| `IVaultService`                             | 可选的凭据加密存储。Web 端没有实现。                                                            |
+| `IVaultService`（仅宿主）                   | 可选的原生凭据加密存储。Web 端没有实现。                                                        |
 | `IAnalyticsService`、`IErrorCaptureService` | 可选的产品统计和错误捕获。                                                                      |
 | `IHostNavigation`、`IHostLinks`             | 可选的课程详情、编辑器导航，以及公开导入链接。                                                  |
 | `ICoursePresentationService`                | 查询课程调色板，并按课表取得课程颜色。                                                          |
@@ -369,12 +396,15 @@ Manifest 里的 `downloadSizeBytes` 只用于显示下载大小，数值是安�
 | `mine.section`、`mine.item` | 注册「我的」页面里的分组和条目。没有指定分组时，宿主使用 `app-support`。           |
 | `shell.route.screen`        | 注册 `/plugins/[pluginId]/[id]` 独立页面，也可以用 `landscapeRail` 提供横屏侧栏。  |
 | `shell.bottom-bar.tab`      | 注册底部标签。`hostPanel` 表示宿主页面，`defaultLaunch` 表示它可以作为默认启动页。 |
+| `calendar.holidays`         | 提供已发布缓存中的节假日；按顺序合并、日期去重，同日保留首个标签。                 |
 | `timetable.cell.badge`      | 汇总插件提供的课程徽章。没有贡献时直接返回。                                       |
 | `course.detail.action`      | 注册课程详情页上的操作。                                                           |
 | `theme.definition`          | 注册用户可以选择的配色主题。                                                       |
 | `theme.icon.definition`     | 注册图标主题。用哪一套由图标所属的配色主题决定。                                   |
 
-启动时，按排序选择第一个声明了 `defaultLaunch` 的标签。没有声明时选择课表页；还是没有，就选第一项。切换标签只改应用内部状态，不增加路由历史。
+启动时，按排序选择第一个有效且声明了 `defaultLaunch` 的标签。没有声明时选择课表页；还是没有，就选首个有效标签。插件标签必须具有当前 owner 和可以挂载的默认页面。切换标签只改应用内部状态，不增加路由历史。
+
+`chronos://today` 根据底栏标签的 `navigationIntent: 'today'` 选择目标，不依赖具体标签 ID。顺序是匹配意图的有效标签、课表宿主面板、有效的默认启动标签、首个有效标签。完全没有目标时不写入虚构 ID。只有落到课表面板时才跳转当前周。这不改变 `defaultLaunch` 的冷启动语义。
 
 插件页面使用宿主提供的剩余内容区，高度按 `100%` 继承，不要再用 `100dvh` 撑满设备。宿主会在 Tab 顶部或独立页面工具栏中消费顶部安全区；`PluginScreenContainer` 内的 `--topbar-safe` 为 `0px`，现有 `ui-safe-area-top` 样式只增加尚未消费的留白。插件不要再次添加原始 `env(safe-area-inset-top)`。
 
@@ -395,3 +425,22 @@ Profile 指定默认主题。构建时根据主题的静态资源生成首屏颜
 JSON 主题里的壁纸 URL 相对颜色 JSON 的地址解析。图片下载并通过校验后，保存到宿主的图片库。
 
 只有同时满足这几项，才能按壁纸取色：当前用的是 Profile 的默认主题，该主题支持取色，并且壁纸来源是 `custom`。没有图片或取色失败时，保留用户的取色开关，外观回到主题本身的样子。只有这些条件不再成立时才关掉取色。主题暂时没加载时，不清除用户的选择。见 [ADR 0040](.agents/docs/adr/0040-host-wallpaper-and-theme-assets.md) 和 [ADR 0043](.agents/docs/adr/0043-theme-owned-color-runtime-and-plugin-host-contracts.md)。
+
+### 公共样式入口
+
+主题可依赖已有的 `ui-*`、`text-*`、颜色、圆角和阴影接口，以及以下语义入口；不要依赖内部布局类、Bits UI 属性、HTML 标签或子元素结构：
+
+| 入口                                                             | 用途                                                 |
+| ---------------------------------------------------------------- | ---------------------------------------------------- |
+| `ui-page-surface`                                                | 页面背景面                                           |
+| `ui-navigation-tab`、`ui-navigation-icon`、`ui-navigation-label` | 导航标签、图标容器和文字；选中态使用 `aria-selected` |
+| `ui-heading-text`                                                | 工具栏和弹层标题文字                                 |
+| `ui-overlay-surface`                                             | 对话框、底部弹层和日期弹层的表面                     |
+| `course-capsule`                                                 | 课程卡片的公开样式入口                               |
+| 根节点 `reduce-motion`、`prefers-reduced-motion`                 | 减少动画状态，主题应同时尊重两者                     |
+
+分隔线结构由共享样式维护，主题只设置 `--ui-section-divider-inset`、`--ui-section-divider-width` 和 `--ui-section-divider-color`。分段控件统一使用 `--ui-segmented-track-padding`，滑块计算读取相同变量；分隔线使用 `--ui-segmented-divider-width` 和 `--ui-segmented-divider-color`。主题规则必须以自身主题类为作用域，切换和卸载后不得残留。
+
+宿主运行时代码不能直接导入业务插件。构建装配和测试是明确例外；生成的服务端注册表只导入插件 `/server`，移动注册表只导入 `/mobile`。`scripts/architecture/check-boundaries.ts` 同时检查 Web 与 Mobile 的依赖边界。
+
+本轮插件 API 和内部课表结构有破坏性调整，不保留旧接口或 `AcademicConfig.holidayCalendar` 的读取分支。数据版本仍为 `1`，不新增迁移链，也不自动清空用户数据。旧开发数据按前述约定手动清理；分享线格式、Manifest 线格式、原生链接和共同发行方式保持现状。

@@ -2,6 +2,8 @@
 
 - 日期：2026-09-20
 
+2026-11-13 修订：插件实例、存储、日历贡献及公共界面的当前契约见 [ADR 0052](0052-plugin-activation-and-calendar-contributions.md)。本记录保留原决策的背景；与后续契约冲突的接口不再适用。
+
 ## 主题职责
 
 M3 的算法、颜色、课程调色板和资源生成都由 `theme-m3` 负责。插件交付静态颜色 JSON 和 ESM。ESM 注册主题，也可以提供 `resolveWallpaperColors({ pixels, mode, signal })`。主题只计算颜色。图片的保存、解码、降采样、取消、结果校验和 DOM 更新都由宿主做。颜色键和 Tailwind 的对应关系是公共契约，宿主不留一套 M3 备用色表。

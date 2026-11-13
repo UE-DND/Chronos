@@ -2,6 +2,8 @@
 
 - 日期：2026-09-01
 
+2026-11-13 修订：插件实例、存储、日历贡献及公共界面的当前契约见 [ADR 0052](0052-plugin-activation-and-calendar-contributions.md)。本记录保留原决策的背景；与后续契约冲突的接口不再适用。
+
 ## 决策
 
 `DayClock` 由 `ChronosEngine` 独占。时钟按分钟边界调度，并通过 `time:tick` 向宿主和插件提供统一时间。引擎冻结时，时钟停止；引擎销毁时，时钟释放。恢复后，时钟立即同步并重新对齐分钟。页面恢复可见时，宿主调用 `refreshSystemTime`。`core` 不监听 DOM，冻结期间会忽略刷新。
