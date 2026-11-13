@@ -107,7 +107,7 @@
 
 <svelte:window onkeydown={active ? onWindowKeydown : undefined} />
 
-<div class="relative flex h-[calc(100dvh-var(--bottom-bar-height))] flex-col">
+<div class="relative flex h-full min-h-0 flex-col">
 	<TopAppBar class="timetable-week-top-bar shrink-0">
 		{#snippet titleSnippet()}
 			<div class="flex min-h-0 flex-1 items-center py-0.5 text-left sm:py-1" aria-label={weekLabel}>

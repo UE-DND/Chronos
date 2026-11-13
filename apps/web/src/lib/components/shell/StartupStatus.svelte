@@ -59,7 +59,7 @@
 
 {#if showing}
 	<div
-		class="fixed inset-0 z-[9998] flex min-h-dvh flex-col items-center justify-center gap-5 bg-canvas px-6 text-center text-ink"
+		class="app-viewport-overlay fixed inset-x-0 z-[9998] flex min-h-0 flex-col items-center justify-center gap-5 bg-canvas px-6 text-center text-ink"
 		data-startup-state={failed ? 'failed' : 'loading'}
 	>
 		{#if failed}

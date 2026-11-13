@@ -32,7 +32,9 @@
 	});
 </script>
 
-<div class="route-warmup-cover fixed inset-0 z-[9998] flex items-center justify-center">
+<div
+	class="route-warmup-cover app-viewport-overlay fixed inset-x-0 z-[9998] flex items-center justify-center"
+>
 	<LoadingIndicator />
 </div>
 

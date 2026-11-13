@@ -61,7 +61,10 @@
 @layer base {
 	html,
 	body {
+		height: 100%;
+		overflow: hidden;
 		overscroll-behavior: none;
+		background-color: var(--color-surface);
 	}
 
 	html {
@@ -116,6 +119,9 @@
 	}
 
 	:root {
+		--app-viewport-height: 100dvh;
+		--app-viewport-top: 0px;
+		--app-viewport-bottom: 0px;
 		--topbar-safe: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
 		--tabbar-block-safe: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 		--tabbar-inline-safe: 0px;

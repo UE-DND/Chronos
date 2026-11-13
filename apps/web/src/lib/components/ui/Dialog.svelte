@@ -83,14 +83,17 @@
 	:global(.ui-dialog-content[data-dialog-content]) {
 		/* Center and constrain the whole dialog inside the usable viewport. */
 		top: calc(
-			(
-					100dvh + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) -
+			var(--app-viewport-top, 0px) +
+				(
+					var(--app-viewport-height, 100dvh) +
+						var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) -
 						var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))
 				) /
 				2
 		);
 		max-height: calc(
-			100dvh - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) -
+			var(--app-viewport-height, 100dvh) -
+				var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) -
 				var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) - 2rem
 		);
 	}

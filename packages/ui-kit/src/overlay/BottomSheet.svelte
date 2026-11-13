@@ -193,7 +193,7 @@
 		/>
 		<Dialog.Content
 			bind:ref={contentRef}
-			class="bottom-sheet-content rounded-t-sheet fixed inset-x-0 bottom-0 z-[var(--z-overlay)] flex max-h-[85dvh] min-h-0 flex-col overflow-hidden bg-surface-container-high text-on-surface shadow-overlay outline-none"
+			class="bottom-sheet-content rounded-t-sheet fixed inset-x-0 z-[var(--z-overlay)] flex min-h-0 flex-col overflow-hidden bg-surface-container-high text-on-surface shadow-overlay outline-none"
 			style={contentTransformStyle}
 			data-dragging={isDragging ? '' : undefined}
 			data-snapping-back={motion.state.phase === 'returning' ? '' : undefined}
@@ -304,11 +304,19 @@
 </Dialog.Root>
 
 <style>
+	:global(.bottom-sheet-content[data-dialog-content]) {
+		bottom: var(--app-viewport-bottom, 0px);
+		max-height: calc(var(--app-viewport-height, 100dvh) * 0.85);
+	}
+
 	@media (orientation: landscape) and (max-height: 500px) {
 		:global(.bottom-sheet-content[data-dialog-content]) {
 			inset-inline-end: var(--shell-tab-bar-inline-size, 0px);
 			max-width: min(32rem, calc(100vw - var(--shell-tab-bar-inline-size, 0px)));
-			max-height: calc(100dvh - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) - 0.5rem);
+			max-height: calc(
+				var(--app-viewport-height, 100dvh) -
+					var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) - 0.5rem
+			);
 			margin-inline: auto;
 		}
 	}

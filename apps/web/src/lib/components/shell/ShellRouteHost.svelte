@@ -108,8 +108,8 @@
 </script>
 
 {#if browser && presentation.state.shellHostEnabled}
-	<div class="shell-page min-h-dvh bg-canvas text-ink">
-		<div class="relative h-[calc(100dvh-var(--bottom-bar-height))]">
+	<div class="shell-page bg-canvas text-ink">
+		<div class="relative h-full">
 			{#if wallpaperUri}
 				<ShellWallpaper
 					uri={wallpaperUri}

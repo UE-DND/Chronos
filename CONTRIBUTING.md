@@ -378,7 +378,7 @@ Manifest 里的 `downloadSizeBytes` 只用于显示下载大小，数值是安�
 
 插件页面使用宿主提供的剩余内容区，高度按 `100%` 继承，不要再用 `100dvh` 撑满设备。宿主会在 Tab 顶部或独立页面工具栏中消费顶部安全区；`PluginScreenContainer` 内的 `--topbar-safe` 为 `0px`，现有 `ui-safe-area-top` 样式只增加尚未消费的留白。插件不要再次添加原始 `env(safe-area-inset-top)`。
 
-Schema 页面由插件容器提供滚动区域。自定义组件负责自己的滚动区域，可使用 `min-h-0 flex-1 overflow-y-auto` 和 `appShellScroll`，避免再嵌套一个整页滚动容器。
+Schema 页面由插件容器提供滚动区域。自定义组件负责自己的滚动区域，可使用 `min-h-0 flex-1 overflow-y-auto` 和 `appShellScroll`，避免再嵌套一个整页滚动容器。Web 宿主通过 VisualViewport 跟踪键盘引起的可见高度和偏移；挂载到 `body` 的弹层使用 `--app-viewport-height`、`--app-viewport-top` 和 `--app-viewport-bottom`，各自回退到 `100dvh`、`0px`、`0px`。
 
 ## 参考：主题契约
 

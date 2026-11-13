@@ -43,7 +43,7 @@
 	});
 </script>
 
-<div class="flex min-h-dvh flex-col items-center justify-center gap-4 bg-canvas px-6 text-center">
+<div class="flex min-h-full flex-col items-center justify-center gap-4 bg-canvas px-6 text-center">
 	{#if status === 'loading'}
 		<p class="text-body-large text-on-surface">{hostT('share.loading')}</p>
 	{:else}

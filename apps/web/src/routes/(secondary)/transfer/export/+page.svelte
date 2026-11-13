@@ -26,7 +26,7 @@
 		<TransferExportScreen warningMessage={exportWarning} />
 	</SecondaryPageShell>
 {:else}
-	<div class="flex min-h-dvh items-center justify-center bg-canvas">
+	<div class="flex min-h-full items-center justify-center bg-canvas">
 		<LoadingIndicator />
 	</div>
 {/if}

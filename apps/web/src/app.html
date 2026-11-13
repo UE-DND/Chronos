@@ -227,7 +227,7 @@
 		<style>
 			#chronos-boot-fallback {
 				position: fixed;
-				inset: 0;
+				inset: var(--app-viewport-top, 0px) 0 var(--app-viewport-bottom, 0px);
 				z-index: 9999;
 				display: flex;
 				align-items: center;

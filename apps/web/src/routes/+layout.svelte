@@ -169,12 +169,10 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<div
-	class="relative grid min-h-dvh w-full grid-cols-1 grid-rows-1 overflow-x-clip bg-canvas text-ink"
->
+<div class="app-viewport grid w-full grid-cols-1 grid-rows-1 overflow-hidden bg-canvas text-ink">
 	<div
 		class={[
-			'shell-root col-start-1 row-start-1 h-dvh w-full bg-canvas text-ink',
+			'shell-root relative col-start-1 row-start-1 h-full min-h-0 w-full bg-canvas text-ink',
 			presentation.state.receded && 'is-receded'
 		]}
 		class:invisible={blockShell}
@@ -184,7 +182,7 @@
 		<ShellRouteHost />
 	</div>
 	<div
-		class="secondary-root col-start-1 row-start-1 h-dvh w-full"
+		class="secondary-root col-start-1 row-start-1 h-full min-h-0 w-full"
 		class:is-blocked={blockShell}
 		class:invisible={blockShell}
 	>

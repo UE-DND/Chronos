@@ -218,9 +218,21 @@
 }
 
 @layer components {
+	.app-viewport {
+		position: fixed;
+		inset-inline: 0;
+		top: var(--app-viewport-top);
+		height: var(--app-viewport-height);
+	}
+
+	.app-viewport-overlay {
+		inset-block: var(--app-viewport-top) var(--app-viewport-bottom);
+	}
+
 	.shell-page {
-		min-height: 100dvh;
-		padding-bottom: var(--shell-tab-bar-block-size);
+		height: 100%;
+		min-height: 0;
+		padding-bottom: var(--bottom-bar-height);
 		padding-inline-end: var(--shell-tab-bar-inline-size);
 	}
 
@@ -244,7 +256,7 @@
 	}
 
 	.shell-tab-bar {
-		position: fixed;
+		position: absolute;
 		inset-inline: 0;
 		bottom: 0;
 		height: var(--shell-tab-bar-block-size);
@@ -314,7 +326,7 @@
 			inset-inline: auto 0;
 			inset-block: 0;
 			width: var(--shell-tab-bar-inline-size);
-			height: 100dvh;
+			height: 100%;
 		}
 
 		.secondary-page {
@@ -445,7 +457,10 @@
 		:root:has(.shell-root:not(.invisible) .shell-tab-bar:not(.hidden)) .shell-snackbar,
 		:root:has(.secondary-root:not(.is-blocked):not(.invisible) .secondary-page) .shell-snackbar {
 			right: calc(var(--shell-tab-bar-inline-size) + 1rem);
-			bottom: calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 0.75rem);
+			bottom: calc(
+				var(--app-viewport-bottom) +
+					var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 0.75rem
+			);
 		}
 	}
 

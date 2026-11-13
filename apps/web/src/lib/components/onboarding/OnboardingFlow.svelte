@@ -173,7 +173,7 @@
 {#if shouldRenderOnboarding}
 	<div
 		bind:this={dialogNode}
-		class="fixed inset-0 z-[var(--z-onboarding)] flex flex-col bg-canvas text-ink outline-none"
+		class="app-viewport-overlay fixed inset-x-0 z-[var(--z-onboarding)] flex flex-col bg-canvas text-ink outline-none"
 		class:invisible={!showOnboarding}
 		class:pointer-events-none={!showOnboarding}
 		role="dialog"

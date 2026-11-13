@@ -8,8 +8,10 @@
 	import MineRow from '#lib/components/mine/MineRow.svelte';
 </script>
 
-<div class="pointer-events-none" inert aria-hidden="true">
-	<div class="secondary-page relative flex h-dvh flex-col overflow-hidden bg-canvas text-ink">
+<div class="pointer-events-none h-full min-h-0 w-full" inert aria-hidden="true">
+	<div
+		class="secondary-page relative flex h-full min-h-0 flex-col overflow-hidden bg-canvas text-ink"
+	>
 		<TopAppBar title={hostT('route.displaySettings')}>
 			{#snippet leading()}
 				<span class="ui-icon-button inline-flex items-center justify-center rounded-control">
