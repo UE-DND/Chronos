@@ -46,10 +46,12 @@
 			class="fixed inset-0 z-[var(--z-overlay)] bg-black/50 backdrop-blur-xs transition-opacity duration-200"
 		/>
 		<Dialog.Content
-			class="ui-dialog-content fixed left-1/2 z-[var(--z-overlay)] flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-hidden rounded-dialog bg-surface-container-high p-6 text-on-surface shadow-overlay transition-all duration-200 outline-none"
+			class="ui-overlay-surface ui-dialog-content fixed left-1/2 z-[var(--z-overlay)] flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-hidden rounded-dialog bg-surface-container-high p-6 text-on-surface shadow-overlay transition-all duration-200 outline-none"
 		>
 			{#if title}
-				<Dialog.Title class="text-headline-small shrink-0 font-medium text-on-surface">
+				<Dialog.Title
+					class="ui-heading-text text-headline-small shrink-0 font-medium text-on-surface"
+				>
 					{title}
 				</Dialog.Title>
 			{/if}

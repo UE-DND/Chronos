@@ -193,7 +193,7 @@
 		/>
 		<Dialog.Content
 			bind:ref={contentRef}
-			class="bottom-sheet-content rounded-t-sheet fixed inset-x-0 z-[var(--z-overlay)] flex min-h-0 flex-col overflow-hidden bg-surface-container-high text-on-surface shadow-overlay outline-none"
+			class="ui-overlay-surface bottom-sheet-content rounded-t-sheet fixed inset-x-0 z-[var(--z-overlay)] flex min-h-0 flex-col overflow-hidden bg-surface-container-high text-on-surface shadow-overlay outline-none"
 			style={contentTransformStyle}
 			data-dragging={isDragging ? '' : undefined}
 			data-snapping-back={motion.state.phase === 'returning' ? '' : undefined}
@@ -237,7 +237,7 @@
 									bind:ref={titleRef}
 									tabindex={-1}
 									class={[
-										'text-title-large min-w-0 flex-1 font-medium text-on-surface outline-none',
+										'ui-heading-text text-title-large min-w-0 flex-1 font-medium text-on-surface outline-none',
 										showHandle ? 'truncate' : 'text-center'
 									]}
 								>

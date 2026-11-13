@@ -143,7 +143,7 @@
 						<TimetableWeekBadge screen={timetableScreen} />
 					{/if}
 					{#if compactLandscape.current && activePluginId && pluginTitle}
-						<h1 class="edge-bar-title" title={pluginTitle} aria-label={pluginTitle}>
+						<h1 class="ui-heading-text edge-bar-title" title={pluginTitle} aria-label={pluginTitle}>
 							{pluginTitle}
 						</h1>
 					{/if}

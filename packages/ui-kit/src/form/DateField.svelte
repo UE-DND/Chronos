@@ -230,7 +230,7 @@
 					></div>
 				{/if}
 				<DatePicker.ContentStatic
-					class="ui-date-picker-content fixed top-1/2 left-1/2 z-[var(--z-overlay)] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-surface-container-high p-4 text-on-surface shadow-overlay outline-none"
+					class="ui-overlay-surface ui-date-picker-content fixed top-1/2 left-1/2 z-[var(--z-overlay)] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-surface-container-high p-4 text-on-surface shadow-overlay outline-none"
 				>
 					<DatePicker.Calendar class="flex w-full flex-col">
 						{#snippet children({ months, weekdays })}

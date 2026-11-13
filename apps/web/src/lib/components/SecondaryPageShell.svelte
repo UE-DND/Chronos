@@ -79,7 +79,10 @@
 			{@render children?.()}
 		</main>
 	{:else}
-		<main use:appShellScroll class="secondary-scroll min-h-0 w-full flex-1 overflow-y-auto">
+		<main
+			use:appShellScroll
+			class="ui-page-surface secondary-scroll min-h-0 w-full flex-1 overflow-y-auto"
+		>
 			<div class="mx-auto w-full max-w-lg p-4">{@render children?.()}</div>
 		</main>
 	{/if}
@@ -88,7 +91,7 @@
 			<IconButton ariaLabel={hostT('ui.nav.back')} onclick={handleBack}>
 				<ArrowBack class="size-6 text-on-surface" />
 			</IconButton>
-			<h1 class="edge-bar-title" {title} aria-label={title}>{title}</h1>
+			<h1 class="ui-heading-text edge-bar-title" {title} aria-label={title}>{title}</h1>
 		{/snippet}
 		{#snippet content()}
 			{#if compactLandscape.current && landscapeRail && railProps}

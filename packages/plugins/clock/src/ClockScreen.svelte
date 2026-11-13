@@ -147,7 +147,10 @@
 		</header>
 	{/if}
 
-	<div use:appShellScroll class="secondary-scroll relative z-0 min-h-0 flex-1 overflow-y-auto">
+	<div
+		use:appShellScroll
+		class="ui-page-surface secondary-scroll relative z-0 min-h-0 flex-1 overflow-y-auto"
+	>
 		<div
 			class="mx-auto flex w-full max-w-lg flex-col gap-4 p-4 pb-[max(1rem,var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))]"
 		>

@@ -94,7 +94,7 @@
 </script>
 
 <div class="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-	<div use:appShellScroll class="secondary-scroll min-h-0 flex-1 overflow-y-auto">
+	<div use:appShellScroll class="ui-page-surface secondary-scroll min-h-0 flex-1 overflow-y-auto">
 		<div class="p-4">
 			<div class="ui-section-surface divide-y divide-outline/10 overflow-hidden">
 				{#if entries.length === 0}

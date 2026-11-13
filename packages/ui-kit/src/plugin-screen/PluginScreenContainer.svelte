@@ -69,7 +69,10 @@
 			class="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden"
 		/>
 	{:else if screenSlot?.schema && pluginProps}
-		<div use:appShellScroll class="secondary-scroll min-h-0 w-full flex-1 overflow-y-auto p-4">
+		<div
+			use:appShellScroll
+			class="ui-page-surface secondary-scroll min-h-0 w-full flex-1 overflow-y-auto p-4"
+		>
 			<div class="ui-section-surface ui-section-surface--comfortable">
 				<div class="ui-section-stack">
 					<SchemaForm schema={screenSlot.schema} bind:value={formValues} {controller} />
@@ -88,7 +91,10 @@
 			</div>
 		</div>
 	{:else}
-		<div use:appShellScroll class="secondary-scroll min-h-0 w-full flex-1 overflow-y-auto p-4">
+		<div
+			use:appShellScroll
+			class="ui-page-surface secondary-scroll min-h-0 w-full flex-1 overflow-y-auto p-4"
+		>
 			<div
 				class="flex flex-col items-center justify-center py-16 text-center text-on-surface-variant"
 			>

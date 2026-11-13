@@ -142,7 +142,7 @@
 				<TopAppBar title={hostT('mine.title')} class="shrink-0" />
 				<div
 					bind:this={mineScrollEl}
-					class="mine-menu-background app-scroll-y native-overscroll-y min-h-0 flex-1 overflow-y-auto"
+					class="ui-page-surface mine-menu-background app-scroll-y native-overscroll-y min-h-0 flex-1 overflow-y-auto"
 				>
 					{@render minePanel()}
 				</div>

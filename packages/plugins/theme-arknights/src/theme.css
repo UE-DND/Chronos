@@ -1,6 +1,10 @@
 /* Scoped adaptation of the ak-ui system language. All rules leave with the theme. */
 .chronos-theme-arknights {
 	--font-command: serif;
+	--ui-section-divider-inset: 0.5rem;
+	--ui-section-divider-color: var(--color-outline-variant);
+	--ui-segmented-divider-width: 1px;
+	--ui-segmented-divider-color: var(--color-outline-variant);
 	--radius-dialog: 0px;
 	--radius-sheet-top: 0px;
 	--radius-section-surface: 0px;
@@ -32,8 +36,7 @@
 	);
 }
 
-.chronos-theme-arknights .mine-menu-background,
-.chronos-theme-arknights .secondary-scroll {
+.chronos-theme-arknights .ui-page-surface {
 	background-color: var(--color-canvas);
 	background-image:
 		linear-gradient(
@@ -61,15 +64,6 @@
 	border-color: var(--ak-line);
 	border-block-start: 2px solid var(--color-on-surface);
 	background-color: var(--ak-surface-panel);
-}
-
-.chronos-theme-arknights .ui-section-surface > * + a::before,
-.chronos-theme-arknights .ui-section-surface > * + label::before,
-.chronos-theme-arknights .ui-section-surface > * + button::before,
-.chronos-theme-arknights .ui-section-surface.divide-y > * + div::before {
-	left: 0.5rem;
-	right: 0.5rem;
-	background-color: var(--ak-line);
 }
 
 .chronos-theme-arknights .ui-btn {
@@ -113,27 +107,28 @@
 }
 
 .chronos-theme-arknights .ui-btn:focus-visible,
-.chronos-theme-arknights [role='tab']:focus-visible {
+.chronos-theme-arknights .ui-navigation-tab:focus-visible {
 	outline: 2px solid var(--color-primary);
 	outline-offset: 3px;
 }
 
 .chronos-theme-arknights .ui-btn:focus:not(:focus-visible),
-.chronos-theme-arknights [role='tab']:focus:not(:focus-visible) {
+.chronos-theme-arknights .ui-navigation-tab:focus:not(:focus-visible) {
 	outline: none;
 }
 
-.chronos-theme-arknights [role='tab'] .tab-icon-shell {
+.chronos-theme-arknights .ui-navigation-icon {
 	border-radius: var(--radius-control);
-	border-block-end: 2px solid transparent;
+	border-block-end: 2px solid var(--ui-navigation-icon-border-color, transparent);
 }
 
-.chronos-theme-arknights [role='tab'][aria-selected='true'] .tab-icon-shell {
-	border-block-end-color: var(--color-primary);
+.chronos-theme-arknights .ui-navigation-tab[aria-selected='true'] {
+	--ui-navigation-icon-border-color: var(--color-primary);
+	--ui-navigation-label-weight: 800;
+	--ui-navigation-label-color: var(--color-on-surface);
 }
 
-.chronos-theme-arknights [data-dialog-content],
-.chronos-theme-arknights [data-sheet-content] {
+.chronos-theme-arknights .ui-overlay-surface {
 	border: 1px solid var(--ak-line);
 	border-block-start: 3px solid var(--ak-signal-info);
 }
@@ -153,13 +148,13 @@
 }
 
 /* Command type is reserved for headings; navigation and numbers use the data face. */
-.chronos-theme-arknights .ui-shell-top-bar h1 {
+.chronos-theme-arknights .ui-heading-text {
 	font-weight: 700;
 	letter-spacing: 0.035em;
 }
 
 .chronos-theme-arknights .ui-segmented-track {
-	padding: 0;
+	--ui-segmented-track-padding: 0px;
 	border-color: var(--ak-line);
 	background-color: var(--color-surface-container-low);
 }
@@ -179,10 +174,6 @@
 	transition: none;
 }
 
-.chronos-theme-arknights .ui-segmented-tab + .ui-segmented-tab {
-	border-inline-start: 1px solid var(--ak-line);
-}
-
 .chronos-theme-arknights .ui-segmented-tab[aria-selected='true'] {
 	color: var(--color-inverse-on-surface);
 	background-color: var(--color-inverse-surface);
@@ -199,12 +190,9 @@
 	outline: none;
 }
 
-.chronos-theme-arknights .tab-label {
+.chronos-theme-arknights .ui-navigation-label {
 	font-family: var(--font-mono);
 	letter-spacing: 0.04em;
-}
-
-.chronos-theme-arknights [role='tab'][aria-selected='true'] .tab-label {
-	font-weight: 800;
-	color: var(--color-on-surface);
+	font-weight: var(--ui-navigation-label-weight, 500);
+	color: var(--ui-navigation-label-color, var(--color-on-surface-variant));
 }

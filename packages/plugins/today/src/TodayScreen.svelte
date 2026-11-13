@@ -125,7 +125,10 @@
 		</header>
 	{/if}
 
-	<div use:appShellScroll class="secondary-scroll relative z-0 min-h-0 flex-1 overflow-y-auto">
+	<div
+		use:appShellScroll
+		class="ui-page-surface secondary-scroll relative z-0 min-h-0 flex-1 overflow-y-auto"
+	>
 		<div class="flex flex-col gap-4 p-4">
 			{#if compactLandscape.current}
 				<section class="ui-section-surface ui-section-surface--comfortable">
