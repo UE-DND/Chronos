@@ -72,7 +72,7 @@ test('QR PNG download and file import preserve whole-semester weeks after reload
 	await expect(plugin.getByText('已安装', { exact: true })).toBeVisible();
 
 	await page.goto('/Chronos/transfer/export');
-	await page.getByRole('tab', { name: '二维码', exact: true }).click();
+	await page.getByRole('radio', { name: '二维码', exact: true }).click();
 	const downloadPromise = page.waitForEvent('download');
 	await page.getByRole('button', { name: '导出为 二维码', exact: true }).click();
 	const download = await downloadPromise;
@@ -86,7 +86,10 @@ test('QR PNG download and file import preserve whole-semester weeks after reload
 	await page.getByRole('button', { name: '选择图片', exact: true }).click();
 	await (await fileChooserPromise).setFiles(pngPath);
 	await expect(page.getByRole('heading', { name: timetable.name })).toBeVisible();
-	await page.getByRole('button', { name: '作为新课程表导入', exact: true }).click();
+	await page
+		.locator('label')
+		.filter({ has: page.getByRole('radio', { name: '作为新课程表导入', exact: true }) })
+		.click();
 	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
 	await expect(page).toHaveURL(/\/Chronos\/$/);
 	await expect

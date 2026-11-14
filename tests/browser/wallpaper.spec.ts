@@ -293,7 +293,11 @@ test.describe('wallpaper persistence', () => {
 					await custom.focus();
 					await custom.press('Space');
 				} else if (activation === 'radio')
-					await page.locator('label').filter({ has: custom }).locator('input + div').click();
+					await page
+						.locator('label')
+						.filter({ has: custom })
+						.locator('input + [aria-hidden=true]')
+						.click();
 				else await page.getByText('自定义', { exact: true }).click();
 			};
 			await activate();

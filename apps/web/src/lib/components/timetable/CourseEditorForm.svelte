@@ -79,6 +79,8 @@
 			<FormCard>
 				<div class="ui-form-field gap-3">
 					<SegmentedControl
+						semantics="options"
+						ariaLabel={hostT('course.form.recurrence.label')}
 						segments={recurrenceSegments}
 						value={draft.recurrenceMode}
 						onValueChange={(value) => editor.setRecurrenceMode(value as 'all' | 'weeks')}

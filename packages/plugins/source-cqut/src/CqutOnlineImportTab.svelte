@@ -39,6 +39,7 @@
 	const onlineImportDisabled = $derived(loading || !isOnline);
 
 	async function handleOnlinePreview() {
+		if (onlineImportDisabled) return;
 		loading = true;
 		try {
 			const ok = await previewAndNotify(
@@ -60,7 +61,13 @@
 <svelte:window ononline={handleOnline} onoffline={handleOffline} />
 
 <div class="ui-section-surface ui-section-surface--comfortable">
-	<div class="flex flex-col gap-4">
+	<form
+		class="flex flex-col gap-4"
+		onsubmit={(event) => {
+			event.preventDefault();
+			void handleOnlinePreview();
+		}}
+	>
 		{#if !isOnline}
 			<div class="flex items-center gap-2 rounded-inset bg-error-container/40 p-3 text-error">
 				<span class="text-body-small">{offlineMessage}</span>
@@ -77,6 +84,8 @@
 				<label class="ui-field-label" for="import-account">{accountLabel}</label>
 				<input
 					id="import-account"
+					name="username"
+					required
 					class="ui-form-field-input"
 					type="text"
 					inputmode="numeric"
@@ -93,6 +102,8 @@
 				<div class="ui-form-field-input-row">
 					<input
 						id="import-password"
+						name="password"
+						required
 						class="ui-form-field-input"
 						type={passwordVisible ? 'text' : 'password'}
 						autocomplete="current-password"
@@ -138,13 +149,12 @@
 
 		<div class="flex w-full pt-1">
 			<button
-				type="button"
+				type="submit"
 				class="ui-btn ui-btn-filled ui-btn-block"
 				disabled={onlineImportDisabled}
-				onclick={handleOnlinePreview}
 			>
 				{submitLabel}
 			</button>
 		</div>
-	</div>
+	</form>
 </div>

@@ -19,7 +19,7 @@
 	} & HTMLInputAttributes = $props();
 </script>
 
-<div
+<span
 	class="rounded-circular relative flex size-10 items-center justify-center transition-colors {disabled
 		? ''
 		: 'focus-within:bg-on-surface/10 hover:bg-on-surface/5'} {className}"
@@ -34,19 +34,20 @@
 		{...props}
 		class="peer sr-only"
 	/>
-	<div
+	<span
+		aria-hidden="true"
 		class="rounded-circular relative flex size-5 items-center justify-center border-2 transition-colors duration-200 {disabled
 			? 'border-on-surface/38'
 			: checked
 				? 'border-brand'
 				: 'border-on-surface-variant/70'}"
 	>
-		<div
+		<span
 			class="rounded-circular size-2.5 {disabled
 				? 'bg-on-surface/38'
 				: 'bg-brand'} transition-transform duration-200 ease-out {checked
 				? 'scale-100'
 				: 'scale-0'}"
-		></div>
-	</div>
-</div>
+		></span>
+	</span>
+</span>

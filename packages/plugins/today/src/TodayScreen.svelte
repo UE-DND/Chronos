@@ -105,6 +105,8 @@
 	{/if}
 
 	<SegmentedControl
+		semantics="options"
+		ariaLabel={pt('config.scope.title')}
 		class="mt-4"
 		segments={scopeSegments}
 		value={screen.scope}

@@ -130,6 +130,8 @@
 
 	{#if showExportTabs}
 		<SegmentedControl
+			semantics="options"
+			ariaLabel={hostT('transfer.export.methodsAria')}
 			{segments}
 			value={selectedAction?.id ?? ''}
 			onValueChange={(id) => (selectedId = id)}

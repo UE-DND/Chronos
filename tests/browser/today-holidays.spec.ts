@@ -117,7 +117,7 @@ test('committed holidays survive offline reload, refresh another window and clea
 	await expect(mainCourse).toHaveCSS('opacity', '0.4');
 	await page.getByRole('tab', { name: '今日', exact: true }).click();
 	await expect(page.getByText('今天没有课', { exact: true })).toBeVisible();
-	await page.getByRole('tab', { name: '全部课表', exact: true }).click();
+	await page.getByRole('radio', { name: '全部课表', exact: true }).click();
 	await expect(page.getByText('今天没有课', { exact: true })).toBeVisible();
 	await page.evaluate(async () => {
 		await navigator.serviceWorker.ready;

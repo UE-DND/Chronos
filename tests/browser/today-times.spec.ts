@@ -128,7 +128,7 @@ for (const viewport of [
 			await expect(page).toHaveURL(/\/Chronos\/$/);
 			await page.keyboard.press('Escape');
 			await expect(detail).toBeHidden();
-			await page.getByRole('tab', { name: '全部课表', exact: true }).click();
+			await page.getByRole('radio', { name: '全部课表', exact: true }).click();
 			await expect(later).toContainText('09:00');
 			await expect(later).toContainText('09:45');
 			await expect(later).toContainText('准备上课');
@@ -167,16 +167,16 @@ for (const viewport of [
 			await expect(page).toHaveURL(/\/Chronos\/plugins\/tool-today$/);
 			await page.keyboard.press('Escape');
 			await expect(detail).toBeHidden();
-			await page.getByRole('tab', { name: '当前课表', exact: true }).click();
+			await page.getByRole('radio', { name: '当前课表', exact: true }).click();
 			await expect(later).toHaveCount(0);
 			await page.getByRole('button', { name: '返回', exact: true }).click();
 			await expect(page).toHaveURL(/\/Chronos\/$/);
 			await page.getByRole('tab', { name: '今日', exact: true }).click();
-			await expect(page.getByRole('tab', { name: '当前课表', exact: true })).toHaveAttribute(
-				'aria-selected',
+			await expect(page.getByRole('radio', { name: '当前课表', exact: true })).toHaveAttribute(
+				'aria-checked',
 				'true'
 			);
-			await page.getByRole('tab', { name: '全部课表', exact: true }).click();
+			await page.getByRole('radio', { name: '全部课表', exact: true }).click();
 			await expect(later).toContainText('准备上课');
 
 			await page.goto('/Chronos/feedback-settings');
@@ -194,12 +194,12 @@ for (const viewport of [
 			await expect(later).toContainText('上课中');
 			await expect(early.getByRole('button')).toHaveClass(/opacity-60/);
 			await page.goto('/Chronos/manage-timetables');
-			const timetableOption = page.getByRole('button', { name: /晚课课表/ });
-			await timetableOption.click();
-			await expect(timetableOption.getByRole('radio')).toBeChecked();
+			const timetableOption = page.getByRole('radio', { name: /晚课课表/ });
+			await page.locator('label').filter({ has: timetableOption }).click();
+			await expect(timetableOption).toBeChecked();
 			await page.goto('/Chronos/');
 			await page.getByRole('tab', { name: '今日', exact: true }).click();
-			await page.getByRole('tab', { name: '当前课表', exact: true }).click();
+			await page.getByRole('radio', { name: '当前课表', exact: true }).click();
 			await expect(early).toHaveCount(0);
 			await expect(later).toContainText('上课中');
 			await expect(later).toContainText('09:45');
@@ -211,7 +211,7 @@ for (const viewport of [
 			await page.clock.setFixedTime(new Date('2026-03-02T10:00:00+08:00'));
 			await page.reload();
 			await page.getByRole('tab', { name: '今日', exact: true }).click();
-			await page.getByRole('tab', { name: '全部课表', exact: true }).click();
+			await page.getByRole('radio', { name: '全部课表', exact: true }).click();
 			await expect(later.getByRole('button')).toHaveClass(/opacity-60/);
 			await expect(later.getByText('上课中', { exact: true })).toHaveCount(0);
 			await expect(later).toContainText('09:00');
@@ -219,15 +219,18 @@ for (const viewport of [
 			await page.reload();
 			await page.getByRole('tab', { name: '今日', exact: true }).click();
 			await expect(page.getByText('今天没有课', { exact: true })).toBeVisible();
-			await page.getByRole('tab', { name: '当前课表', exact: true }).click();
+			await page.getByRole('radio', { name: '当前课表', exact: true }).click();
 			await expect(page.getByText('今天没有课', { exact: true })).toBeVisible();
 
 			await page.clock.setFixedTime(new Date('2026-03-02T08:50:00+08:00'));
 			await page.goto('/Chronos/manage-timetables');
-			await page.getByRole('button', { name: /早课课表/ }).click();
+			await page
+				.locator('label')
+				.filter({ has: page.getByRole('radio', { name: /早课课表/ }) })
+				.click();
 			await page.goto('/Chronos/');
 			await page.getByRole('tab', { name: '今日', exact: true }).click();
-			await page.getByRole('tab', { name: '全部课表', exact: true }).click();
+			await page.getByRole('radio', { name: '全部课表', exact: true }).click();
 			await later.getByRole('button').click();
 			await expect(detail.getByRole('heading', { name: '晚课', exact: true })).toBeVisible();
 			await detail.getByRole('button', { name: '编辑课程', exact: true }).click();

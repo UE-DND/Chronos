@@ -1,22 +1,24 @@
 <script lang="ts">
-	import { SegmentedControl as UiSegmentedControl } from '@chronos/ui-kit';
-
-	type Segment = {
-		value: string;
-		label: string;
-	};
+	import {
+		SegmentedControl as UiSegmentedControl,
+		type SegmentedControlSegment as Segment
+	} from '@chronos/ui-kit';
 
 	let {
 		segments,
 		value,
 		onValueChange,
-		class: className = ''
+		class: className = '',
+		semantics = 'tabs',
+		ariaLabel
 	}: {
 		segments: Segment[];
 		value: string;
 		onValueChange: (value: string) => void;
 		class?: string;
+		semantics?: 'tabs' | 'options';
+		ariaLabel?: string;
 	} = $props();
 </script>
 
-<UiSegmentedControl {segments} {value} {onValueChange} class={className} />
+<UiSegmentedControl {segments} {value} {onValueChange} {semantics} {ariaLabel} class={className} />

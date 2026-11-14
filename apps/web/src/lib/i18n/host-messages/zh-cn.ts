@@ -1,5 +1,9 @@
 export const zhCn = {
 	'content.markdown.failed': '无法显示文档内容，请重试。',
+	'transfer.import.sourcesAria': '导入来源',
+	'plugins.tabsAria': '插件列表',
+	'transfer.export.methodsAria': '导出方式',
+	'course.form.recurrence.label': '重复方式',
 	'startup.failed': '启动未完成',
 	'startup.coreFailed': '无法准备本地应用数据，请重新启动后重试。',
 	'startup.pluginsFailed': '部分功能未能完成初始化。你可以重新启动，或先进入课表。',

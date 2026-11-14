@@ -27,6 +27,8 @@
 	const appController = getAppController();
 	onMount(screen.start);
 	let activeTab = $state<'installed' | 'official'>('installed');
+	const instanceId = $props.id();
+	const panelId = `${instanceId}-plugin-panel`;
 	const edgeActions = $derived.by((): EdgeBarAction[] =>
 		activeTab === 'official'
 			? [
@@ -62,9 +64,16 @@
 		return [
 			{
 				value: 'installed',
-				label: hostT('plugins.tab.installed', { count: screen.state.installedRecords.length })
+				label: hostT('plugins.tab.installed', { count: screen.state.installedRecords.length }),
+				id: `${instanceId}-installed`,
+				controls: panelId
 			},
-			{ value: 'official', label: hostT('plugins.tab.market') }
+			{
+				value: 'official',
+				label: hostT('plugins.tab.market'),
+				id: `${instanceId}-official`,
+				controls: panelId
+			}
 		];
 	});
 	function resolveManifestText(
@@ -111,116 +120,56 @@
 		<SegmentedControl
 			segments={tabSegments}
 			value={activeTab}
+			ariaLabel={hostT('plugins.tabsAria')}
 			onValueChange={(val) => (activeTab = val as 'installed' | 'official')}
 		/>
 	</div>
 {/snippet}
 
 <FormScreenLayout class="text-on-surface" header={tabHeader} actions={edgeActions}>
-	{#if screen.state.installationFrozen}<p
-			role="status"
-			class="text-body-medium px-4 text-on-surface-variant"
-		>
-			{hostT('plugins.update.locked')}
-		</p>{/if}
-	{#if activeTab === 'installed'}
-		{#if screen.state.preinstallFailures.length}
-			<section class="ui-section">
-				{#each screen.state.preinstallFailures as [id, error] (id)}<p>{id}: {error}</p>{/each}
-				<Button onclick={() => screen.retryPreinstall()}>{hostT('plugins.preinstall.retry')}</Button
-				>
-			</section>
-		{/if}
-		{#if screen.state.activeInstallTasks.length > 0}
-			<section class="ui-section">
-				<div class="flex items-center justify-between px-1">
-					<h3 class="text-label-large font-command font-medium text-on-surface">
-						{hostT('plugins.installing.heading')}
-					</h3>
-					<span class="text-label-small text-supporting text-on-surface-variant">
-						{hostT('plugins.builtin.count', { count: screen.state.activeInstallTasks.length })}
-					</span>
-				</div>
-				<div class="ui-section-surface [&>*+*]:border-t [&>*+*]:border-border/40">
-					{#each screen.state.activeInstallTasks as task (task.pluginId)}
-						{@const manifest = task.manifest}
-						{@const name = resolveManifestText(manifest.name)}
-						{@const desc = resolveManifestText(manifest.description)}
-						<div class="ui-row-state flex items-center justify-between gap-3 p-3 transition-colors">
-							<div class="flex min-w-0 flex-1 flex-col justify-center">
-								<span class="text-body-medium line-clamp-1 font-semibold text-on-surface">
-									{name}
-								</span>
-								{#if desc}
-									<p
-										class="text-body-small text-supporting mt-0.5 line-clamp-1 text-on-surface-variant"
-									>
-										{desc}
-									</p>
-								{/if}
-							</div>
-							<PluginInstallAction
-								disabled={screen.state.installationFrozen}
-								{manifest}
-								installed={screen.isInstalled(manifest.id)}
-								{task}
-								onInstall={() => screen.install(manifest, task.manifestUrl)}
-								onCancel={() => screen.cancel(manifest.id)}
-								onRetry={() => screen.retry(manifest.id)}
-							/>
-						</div>
-					{/each}
-				</div>
-			</section>
-		{/if}
-
-		<section class="ui-section">
-			<div class="flex items-center justify-between px-1">
-				<h3 class="text-label-large font-command font-medium text-on-surface">
-					{hostT('plugins.installed.heading')}
-				</h3>
-				<span class="text-label-small text-supporting text-on-surface-variant"
-					>{hostT('plugins.builtin.count', {
-						count: screen.state.installedRecords.length
-					})}</span
-				>
-			</div>
-
-			{#if screen.state.installedRecords.length === 0}
-				<div
-					class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-surface/40 px-4 py-8 text-center text-on-surface-variant"
-				>
-					<p class="text-body-medium">{hostT('plugins.empty.installed')}</p>
-					<div class="mt-2 flex flex-wrap items-center justify-center gap-2">
-						<Button variant="text" class="text-xs" onclick={() => (activeTab = 'official')}>
-							{hostT('plugins.empty.browse')}
-						</Button>
-						<Button variant="outlined" class="text-xs" onclick={promptLinkInstall}>
-							{hostT('plugins.link.open')}
-						</Button>
+	<div
+		id={panelId}
+		role="tabpanel"
+		aria-labelledby="{instanceId}-{activeTab}"
+		class="flex flex-col gap-5"
+	>
+		{#if screen.state.installationFrozen}<p
+				role="status"
+				class="text-body-medium px-4 text-on-surface-variant"
+			>
+				{hostT('plugins.update.locked')}
+			</p>{/if}
+		{#if activeTab === 'installed'}
+			{#if screen.state.preinstallFailures.length}
+				<section class="ui-section">
+					{#each screen.state.preinstallFailures as [id, error] (id)}<p>{id}: {error}</p>{/each}
+					<Button onclick={() => screen.retryPreinstall()}
+						>{hostT('plugins.preinstall.retry')}</Button
+					>
+				</section>
+			{/if}
+			{#if screen.state.activeInstallTasks.length > 0}
+				<section class="ui-section">
+					<div class="flex items-center justify-between px-1">
+						<h3 class="text-label-large font-command font-medium text-on-surface">
+							{hostT('plugins.installing.heading')}
+						</h3>
+						<span class="text-label-small text-supporting text-on-surface-variant">
+							{hostT('plugins.builtin.count', { count: screen.state.activeInstallTasks.length })}
+						</span>
 					</div>
-				</div>
-			{:else}
-				<div class="ui-section-surface [&>*+*]:border-t [&>*+*]:border-border/40">
-					{#each screen.state.installedRecords as record (record.manifest.id)}
-						{@const name = resolveManifestText(record.manifest.name)}
-						{@const desc = resolveManifestText(record.manifest.description)}
-						{@const meta = getPluginCategoryMeta(resolvePluginCatalogCategory(record.manifest))}
-						{@const isBusy = screen.state.operatingPluginId === record.manifest.id}
-						{@const update = screen.state.updateStatuses[record.manifest.id]}
-						<div class="ui-row-state flex items-center justify-between gap-3 p-3 transition-colors">
-							<div class="flex min-w-0 flex-1 flex-col gap-2">
-								<div>
-									<div class="flex flex-wrap items-center gap-1.5">
-										<span class="text-body-medium line-clamp-1 font-semibold text-on-surface">
-											{name}
-										</span>
-										<span
-											class="text-label-small py-0.2 text-caption rounded-full px-1.5 {meta.badgeClass}"
-										>
-											{meta.label}
-										</span>
-									</div>
+					<div class="ui-section-surface [&>*+*]:border-t [&>*+*]:border-border/40">
+						{#each screen.state.activeInstallTasks as task (task.pluginId)}
+							{@const manifest = task.manifest}
+							{@const name = resolveManifestText(manifest.name)}
+							{@const desc = resolveManifestText(manifest.description)}
+							<div
+								class="ui-row-state flex items-center justify-between gap-3 p-3 transition-colors"
+							>
+								<div class="flex min-w-0 flex-1 flex-col justify-center">
+									<span class="text-body-medium line-clamp-1 font-semibold text-on-surface">
+										{name}
+									</span>
 									{#if desc}
 										<p
 											class="text-body-small text-supporting mt-0.5 line-clamp-1 text-on-surface-variant"
@@ -228,182 +177,255 @@
 											{desc}
 										</p>
 									{/if}
-									{#if record.manifest.author}
-										<p class="text-caption mt-1 text-on-surface-variant/70">
-											by {record.manifest.author}
+								</div>
+								<PluginInstallAction
+									disabled={screen.state.installationFrozen}
+									{manifest}
+									installed={screen.isInstalled(manifest.id)}
+									{task}
+									onInstall={() => screen.install(manifest, task.manifestUrl)}
+									onCancel={() => screen.cancel(manifest.id)}
+									onRetry={() => screen.retry(manifest.id)}
+								/>
+							</div>
+						{/each}
+					</div>
+				</section>
+			{/if}
+
+			<section class="ui-section">
+				<div class="flex items-center justify-between px-1">
+					<h3 class="text-label-large font-command font-medium text-on-surface">
+						{hostT('plugins.installed.heading')}
+					</h3>
+					<span class="text-label-small text-supporting text-on-surface-variant"
+						>{hostT('plugins.builtin.count', {
+							count: screen.state.installedRecords.length
+						})}</span
+					>
+				</div>
+
+				{#if screen.state.installedRecords.length === 0}
+					<div
+						class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-surface/40 px-4 py-8 text-center text-on-surface-variant"
+					>
+						<p class="text-body-medium">{hostT('plugins.empty.installed')}</p>
+						<div class="mt-2 flex flex-wrap items-center justify-center gap-2">
+							<Button variant="text" class="text-xs" onclick={() => (activeTab = 'official')}>
+								{hostT('plugins.empty.browse')}
+							</Button>
+							<Button variant="outlined" class="text-xs" onclick={promptLinkInstall}>
+								{hostT('plugins.link.open')}
+							</Button>
+						</div>
+					</div>
+				{:else}
+					<div class="ui-section-surface [&>*+*]:border-t [&>*+*]:border-border/40">
+						{#each screen.state.installedRecords as record (record.manifest.id)}
+							{@const name = resolveManifestText(record.manifest.name)}
+							{@const desc = resolveManifestText(record.manifest.description)}
+							{@const meta = getPluginCategoryMeta(resolvePluginCatalogCategory(record.manifest))}
+							{@const isBusy = screen.state.operatingPluginId === record.manifest.id}
+							{@const update = screen.state.updateStatuses[record.manifest.id]}
+							<div
+								class="ui-row-state flex items-center justify-between gap-3 p-3 transition-colors"
+							>
+								<div class="flex min-w-0 flex-1 flex-col gap-2">
+									<div>
+										<div class="flex flex-wrap items-center gap-1.5">
+											<span class="text-body-medium line-clamp-1 font-semibold text-on-surface">
+												{name}
+											</span>
+											<span
+												class="text-label-small py-0.2 text-caption rounded-full px-1.5 {meta.badgeClass}"
+											>
+												{meta.label}
+											</span>
+										</div>
+										{#if desc}
+											<p
+												class="text-body-small text-supporting mt-0.5 line-clamp-1 text-on-surface-variant"
+											>
+												{desc}
+											</p>
+										{/if}
+										{#if record.manifest.author}
+											<p class="text-caption mt-1 text-on-surface-variant/70">
+												by {record.manifest.author}
+											</p>
+										{/if}
+									</div>
+
+									{#if update && update.status !== 'ready'}
+										<p
+											class="text-body-small text-supporting text-on-surface-variant"
+											title={update.error}
+										>
+											{hostT(`plugins.update.${update.status}`)}
 										</p>
+										{#if update.status === 'confirmation-required'}
+											<Button
+												variant="outlined"
+												disabled={isBusy || screen.state.installationFrozen}
+												onclick={() => screen.confirmCompatibility(record.manifest.id)}
+												>{hostT('plugins.action.confirmCompatibility')}</Button
+											>
+										{:else if update.status !== 'downloading'}
+											<Button
+												variant="outlined"
+												disabled={screen.state.installationFrozen}
+												onclick={() => screen.retryPendingUpdates()}
+												>{hostT('plugins.action.retry')}</Button
+											>
+										{/if}
+									{/if}
+									{#if record.manifest.configSchema}
+										<div class="flex items-center gap-1.5">
+											<Button
+												variant="outlined"
+												class="text-label-small h-7 px-2.5"
+												disabled={isBusy || update?.status === 'confirmation-required'}
+												onclick={() =>
+													handleOpenConfig(record.manifest.id, name, record.manifest.configSchema)}
+											>
+												<TuneFill class="mr-0.5 size-3" />
+												{hostT('plugins.action.settings')}
+											</Button>
+										</div>
 									{/if}
 								</div>
-
-								{#if update && update.status !== 'ready'}
-									<p
-										class="text-body-small text-supporting text-on-surface-variant"
-										title={update.error}
-									>
-										{hostT(`plugins.update.${update.status}`)}
-									</p>
-									{#if update.status === 'confirmation-required'}
+								<div class="flex shrink-0 items-center justify-end">
+									{#if screen.isPreinstalled(record.manifest.id)}
+										<span
+											class="text-label-large inline-flex h-7 min-h-7 min-w-24 shrink-0 items-center justify-center gap-1 rounded-full border border-transparent bg-surface-variant px-2.5 text-on-surface-variant"
+										>
+											<CheckCircleFill class="size-3.5" />
+											{hostT('plugins.preinstall.label')}
+										</span>
+									{:else}
 										<Button
-											variant="outlined"
+											variant="text"
+											tone="danger"
+											class="text-caption h-6 shrink-0 px-1.5"
 											disabled={isBusy || screen.state.installationFrozen}
-											onclick={() => screen.confirmCompatibility(record.manifest.id)}
-											>{hostT('plugins.action.confirmCompatibility')}</Button
+											onclick={() => promptUninstall(record.manifest.id, name)}
 										>
-									{:else if update.status !== 'downloading'}
-										<Button
-											variant="outlined"
-											disabled={screen.state.installationFrozen}
-											onclick={() => screen.retryPendingUpdates()}
-											>{hostT('plugins.action.retry')}</Button
-										>
-									{/if}
-								{/if}
-								{#if record.manifest.configSchema}
-									<div class="flex items-center gap-1.5">
-										<Button
-											variant="outlined"
-											class="text-label-small h-7 px-2.5"
-											disabled={isBusy || update?.status === 'confirmation-required'}
-											onclick={() =>
-												handleOpenConfig(record.manifest.id, name, record.manifest.configSchema)}
-										>
-											<TuneFill class="mr-0.5 size-3" />
-											{hostT('plugins.action.settings')}
+											{hostT('common.uninstall')}
 										</Button>
-									</div>
-								{/if}
+									{/if}
+								</div>
 							</div>
-							<div class="flex shrink-0 items-center justify-end">
-								{#if screen.isPreinstalled(record.manifest.id)}
-									<span
-										class="text-label-large inline-flex h-7 min-h-7 min-w-24 shrink-0 items-center justify-center gap-1 rounded-full border border-transparent bg-surface-variant px-2.5 text-on-surface-variant"
-									>
-										<CheckCircleFill class="size-3.5" />
-										{hostT('plugins.preinstall.label')}
-									</span>
-								{:else}
-									<Button
-										variant="text"
-										tone="danger"
-										class="text-caption h-6 shrink-0 px-1.5"
-										disabled={isBusy || screen.state.installationFrozen}
-										onclick={() => promptUninstall(record.manifest.id, name)}
-									>
-										{hostT('common.uninstall')}
-									</Button>
-								{/if}
-							</div>
-						</div>
-					{/each}
-				</div>
-			{/if}
-		</section>
-	{:else}
-		<section class="ui-section">
-			{#if screen.state.loadingCatalog}
-				<div class="flex flex-col items-center justify-center py-12">
-					<LoadingIndicator size="large" />
-					<p class="text-body-small text-supporting mt-2 text-on-surface-variant">
-						{hostT('plugins.catalog.loading')}
-					</p>
-				</div>
-			{:else if screen.state.catalogError}
-				<div
-					class="flex flex-col items-center justify-center rounded-2xl border border-error/30 bg-error-container/20 p-6 text-center"
-				>
-					<p class="text-body-medium font-medium text-error">
-						{hostT('plugins.catalog.error.title')}
-					</p>
-					<p class="text-body-small text-supporting mt-1 text-on-surface-variant">
-						{screen.state.catalogError}
-					</p>
-					<Button variant="outlined" class="mt-3 h-8 px-4 text-xs" onclick={screen.loadCatalog}>
-						{hostT('plugins.catalog.retry')}
-					</Button>
-				</div>
-			{:else if screen.state.catalogManifests.length === 0}
-				<div
-					class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-surface/40 px-4 py-12 text-center text-on-surface-variant"
-				>
-					<p class="text-body-medium">{hostT('plugins.catalog.empty')}</p>
-				</div>
-			{:else}
-				<div class="flex flex-col gap-5">
-					{#each groupedCatalogManifests as group (group.category)}
-						{@const groupMeta = getPluginCategoryMeta(group.category)}
-						<div class="flex flex-col gap-2">
-							<div class="px-1">
-								<h3 class="text-label-large font-command font-medium text-on-surface">
-									{groupMeta.label}
-								</h3>
-							</div>
-							<div class="ui-section-surface [&>*+*]:border-t [&>*+*]:border-border/40">
-								{#each group.entries as entry (entry.manifest.id)}
-									{@const manifest = entry.manifest}
-									{@const name = resolveManifestText(manifest.name)}
-									{@const desc = resolveManifestText(manifest.description)}
-									{@const installed = screen.isInstalled(manifest.id)}
-									<div
-										class="ui-row-state flex items-center justify-between gap-3 p-3 transition-colors"
-									>
-										<div class="flex min-w-0 flex-1 flex-col justify-center">
-											<div class="flex flex-wrap items-center gap-1.5">
-												<span class="text-body-medium line-clamp-1 font-semibold text-on-surface">
-													{name}
-												</span>
-											</div>
-											{#if desc}
-												<p
-													class="text-body-small text-supporting mt-0.5 line-clamp-1 text-on-surface-variant"
-												>
-													{desc}
-												</p>
-											{/if}
-											{#if screen.hasUnavailableServerCapability(manifest)}
-												<p class="text-body-small text-supporting mt-1 text-on-surface-variant">
-													{hostT('plugins.online.unavailable')}
-												</p>
-											{/if}
-											{#if manifest.author || manifest.downloadSizeBytes !== undefined}
-												<div class="mt-1 flex flex-wrap items-center gap-1">
-													{#if manifest.author}
-														<span class="text-caption text-on-surface-variant/70"
-															>by {manifest.author}</span
-														>
-													{/if}
-													{#if manifest.downloadSizeBytes !== undefined}
-														<span
-															class="text-caption inline-flex items-center gap-1 text-on-surface-variant/70"
-														>
-															<span aria-hidden="true">｜</span>
-															{formatBytes(manifest.downloadSizeBytes, 0)}
-														</span>
-													{/if}
+						{/each}
+					</div>
+				{/if}
+			</section>
+		{:else}
+			<section class="ui-section">
+				{#if screen.state.loadingCatalog}
+					<div class="flex flex-col items-center justify-center py-12">
+						<LoadingIndicator size="large" />
+						<p class="text-body-small text-supporting mt-2 text-on-surface-variant">
+							{hostT('plugins.catalog.loading')}
+						</p>
+					</div>
+				{:else if screen.state.catalogError}
+					<div
+						class="flex flex-col items-center justify-center rounded-2xl border border-error/30 bg-error-container/20 p-6 text-center"
+					>
+						<p class="text-body-medium font-medium text-error">
+							{hostT('plugins.catalog.error.title')}
+						</p>
+						<p class="text-body-small text-supporting mt-1 text-on-surface-variant">
+							{screen.state.catalogError}
+						</p>
+						<Button variant="outlined" class="mt-3 h-8 px-4 text-xs" onclick={screen.loadCatalog}>
+							{hostT('plugins.catalog.retry')}
+						</Button>
+					</div>
+				{:else if screen.state.catalogManifests.length === 0}
+					<div
+						class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-surface/40 px-4 py-12 text-center text-on-surface-variant"
+					>
+						<p class="text-body-medium">{hostT('plugins.catalog.empty')}</p>
+					</div>
+				{:else}
+					<div class="flex flex-col gap-5">
+						{#each groupedCatalogManifests as group (group.category)}
+							{@const groupMeta = getPluginCategoryMeta(group.category)}
+							<div class="flex flex-col gap-2">
+								<div class="px-1">
+									<h3 class="text-label-large font-command font-medium text-on-surface">
+										{groupMeta.label}
+									</h3>
+								</div>
+								<div class="ui-section-surface [&>*+*]:border-t [&>*+*]:border-border/40">
+									{#each group.entries as entry (entry.manifest.id)}
+										{@const manifest = entry.manifest}
+										{@const name = resolveManifestText(manifest.name)}
+										{@const desc = resolveManifestText(manifest.description)}
+										{@const installed = screen.isInstalled(manifest.id)}
+										<div
+											class="ui-row-state flex items-center justify-between gap-3 p-3 transition-colors"
+										>
+											<div class="flex min-w-0 flex-1 flex-col justify-center">
+												<div class="flex flex-wrap items-center gap-1.5">
+													<span class="text-body-medium line-clamp-1 font-semibold text-on-surface">
+														{name}
+													</span>
 												</div>
-											{/if}
-										</div>
+												{#if desc}
+													<p
+														class="text-body-small text-supporting mt-0.5 line-clamp-1 text-on-surface-variant"
+													>
+														{desc}
+													</p>
+												{/if}
+												{#if screen.hasUnavailableServerCapability(manifest)}
+													<p class="text-body-small text-supporting mt-1 text-on-surface-variant">
+														{hostT('plugins.online.unavailable')}
+													</p>
+												{/if}
+												{#if manifest.author || manifest.downloadSizeBytes !== undefined}
+													<div class="mt-1 flex flex-wrap items-center gap-1">
+														{#if manifest.author}
+															<span class="text-caption text-on-surface-variant/70"
+																>by {manifest.author}</span
+															>
+														{/if}
+														{#if manifest.downloadSizeBytes !== undefined}
+															<span
+																class="text-caption inline-flex items-center gap-1 text-on-surface-variant/70"
+															>
+																<span aria-hidden="true">｜</span>
+																{formatBytes(manifest.downloadSizeBytes, 0)}
+															</span>
+														{/if}
+													</div>
+												{/if}
+											</div>
 
-										<div class="flex shrink-0 flex-col items-end gap-1">
-											<PluginInstallAction
-												disabled={screen.state.installationFrozen}
-												{manifest}
-												{installed}
-												needsUpdate={screen.needsUpdate(manifest)}
-												task={screen.state.taskMap.get(manifest.id)}
-												onInstall={() => screen.install(manifest, entry.url)}
-												onCancel={() => screen.cancel(manifest.id)}
-												onRetry={() => screen.retry(manifest.id)}
-											/>
+											<div class="flex shrink-0 flex-col items-end gap-1">
+												<PluginInstallAction
+													disabled={screen.state.installationFrozen}
+													{manifest}
+													{installed}
+													needsUpdate={screen.needsUpdate(manifest)}
+													task={screen.state.taskMap.get(manifest.id)}
+													onInstall={() => screen.install(manifest, entry.url)}
+													onCancel={() => screen.cancel(manifest.id)}
+													onRetry={() => screen.retry(manifest.id)}
+												/>
+											</div>
 										</div>
-									</div>
-								{/each}
+									{/each}
+								</div>
 							</div>
-						</div>
-					{/each}
-				</div>
-			{/if}
-		</section>
-	{/if}
+						{/each}
+					</div>
+				{/if}
+			</section>
+		{/if}
+	</div>
 </FormScreenLayout>
 
 <PluginConfigModal

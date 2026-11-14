@@ -7,6 +7,7 @@
 	import SegmentedControl from '#lib/components/ui/SegmentedControl.svelte';
 	import { snackbar } from '#lib/components/ui/snackbar-state.svelte.ts';
 	import { getAppController } from '#lib/services/app-engine.ts';
+	import { focusSegmentByKey } from '@chronos/ui-kit/components/segmented-control.ts';
 
 	import {
 		MountableSlotOutlet,
@@ -24,17 +25,22 @@
 	} = $props();
 
 	const controller = getAppController();
+	const instanceId = $props.id();
+	const panelId = `${instanceId}-source-panel`;
 	const availableSlots = $derived(controller.getSlots('import.source.tab'));
 	const importSegments = $derived(
-		availableSlots.map((slot) => ({
+		availableSlots.map((slot, index) => ({
 			value: slot.id,
-			label: resolveLocalizedText(slot.title)
+			label: resolveLocalizedText(slot.title),
+			id: `${instanceId}-source-${index}`,
+			controls: panelId
 		}))
 	);
 	const activeSlot = $derived(
 		availableSlots.find((slot) => slot.id === transfer.state.selectedSlotId) ?? availableSlots[0]
 	);
 	const activeSlotId = $derived(activeSlot?.id ?? '');
+	const activeSegment = $derived(importSegments.find((segment) => segment.value === activeSlotId));
 	const pluginProps = $derived.by(() => {
 		if (!activeSlot) return undefined;
 		const owner = controller.resolveSlotOwner('import.source.tab', activeSlot.id);
@@ -82,23 +88,36 @@
 		<SegmentedControl
 			segments={importSegments}
 			value={activeSlotId}
+			ariaLabel={hostT('transfer.import.sourcesAria')}
 			onValueChange={handleSourceChange}
 		/>
 	{:else if useScrollableTabs}
-		<div class="flex w-full gap-2 overflow-x-auto pb-1" role="tablist">
-			{#each availableSlots as slot (slot.id)}
+		<div
+			class="flex w-full gap-2 overflow-x-auto pb-1"
+			role="tablist"
+			aria-label={hostT('transfer.import.sourcesAria')}
+		>
+			{#each availableSlots as slot, index (slot.id)}
 				{@const title = resolveLocalizedText(slot.title)}
 				{@const badge = resolveLocalizedText(slot.badge)}
-				{@const isSelected = transfer.state.selectedSlotId === slot.id}
+				{@const isSelected = activeSlotId === slot.id}
 				<button
 					type="button"
+					id={importSegments[index]?.id}
 					role="tab"
+					aria-controls={panelId}
 					aria-selected={isSelected}
 					tabindex={isSelected ? 0 : -1}
 					class="ui-segmented-tab text-label-large relative flex shrink-0 items-center gap-1.5 rounded-control px-4 py-2 text-center transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 {isSelected
 						? 'bg-secondary-container text-on-secondary-container'
 						: 'bg-surface-variant/40 text-on-surface-variant hover:bg-surface-variant/70 hover:text-on-surface'}"
 					onclick={() => handleSourceChange(slot.id)}
+					onkeydown={(event) => {
+						const nextIndex = focusSegmentByKey(event, index);
+						if (nextIndex === null || nextIndex === index) return;
+						const next = availableSlots[nextIndex];
+						if (next) handleSourceChange(next.id);
+					}}
 				>
 					<span>{title}</span>
 					{#if badge}
@@ -115,7 +134,12 @@
 		</div>
 	{/if}
 
-	<div class="w-full">
+	<div
+		id={panelId}
+		class="w-full"
+		role={activeSlot ? 'tabpanel' : undefined}
+		aria-labelledby={activeSegment?.id}
+	>
 		{#if activeSlot?.component && pluginProps}
 			<MountableSlotOutlet component={activeSlot.component} props={pluginProps} class="w-full" />
 		{:else if activeSlot?.inputSchema}

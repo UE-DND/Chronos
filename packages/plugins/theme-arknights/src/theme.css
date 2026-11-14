@@ -174,7 +174,7 @@
 	transition: none;
 }
 
-.chronos-theme-arknights .ui-segmented-tab[aria-selected='true'] {
+.chronos-theme-arknights .ui-segmented-tab:is([aria-selected='true'], [aria-checked='true']) {
 	color: var(--color-inverse-on-surface);
 	background-color: var(--color-inverse-surface);
 	border-block-end-color: var(--color-primary);

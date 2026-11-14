@@ -83,23 +83,32 @@ test('synchronizes the overwrite target across tabs and preserves the other time
 		await expect(page.locator('.timetable-week-pager')).toBeVisible();
 	}
 	await page.goto('/Chronos/manage-timetables');
-	await page.getByRole('button', { name: /课表 A/ }).click();
-	await expect(page.getByRole('button', { name: /课表 A/ }).locator('input')).toBeChecked();
+	await page
+		.locator('label')
+		.filter({ has: page.getByRole('radio', { name: /课表 A/ }) })
+		.click();
+	await expect(page.getByRole('radio', { name: /课表 A/ })).toBeChecked();
 	const other = await context.newPage();
 	await other.goto(`/Chronos/s#${await payload('导入 C')}`);
 	await expect(other.getByText('当前课程表：课表 A', { exact: true })).toBeVisible();
-	await page.getByRole('button', { name: /课表 B/ }).click();
+	await page
+		.locator('label')
+		.filter({ has: page.getByRole('radio', { name: /课表 B/ }) })
+		.click();
 	await expect(other.getByText('当前课程表：课表 B', { exact: true })).toBeVisible();
-	await other.getByRole('button', { name: /覆盖当前课程表/ }).click();
+	await other
+		.locator('label')
+		.filter({ has: other.getByRole('radio', { name: /覆盖当前课程表/ }) })
+		.click();
 	await other.getByRole('button', { name: '覆盖当前课程表', exact: true }).click();
 	await expect(other.locator('.timetable-week-pager')).toBeVisible();
 	await other.goto('/Chronos/manage-timetables');
-	await expect(other.getByRole('button', { name: /课表 A/ })).toBeVisible();
-	await expect(other.getByRole('button', { name: /导入 C/ })).toBeVisible();
-	await expect(other.getByRole('button', { name: /课表 B/ })).toHaveCount(0);
+	await expect(other.getByRole('radio', { name: /课表 A/ })).toBeVisible();
+	await expect(other.getByRole('radio', { name: /导入 C/ })).toBeVisible();
+	await expect(other.getByRole('radio', { name: /课表 B/ })).toHaveCount(0);
 	await other.reload();
-	await expect(other.getByRole('button', { name: /课表 A/ })).toBeVisible();
-	await expect(other.getByRole('button', { name: /导入 C/ }).locator('input')).toBeChecked();
+	await expect(other.getByRole('radio', { name: /课表 A/ })).toBeVisible();
+	await expect(other.getByRole('radio', { name: /导入 C/ })).toBeChecked();
 });
 
 test('pins the deletion target across tabs and broadcasts deletion of an inactive timetable', async ({
@@ -117,15 +126,21 @@ test('pins the deletion target across tabs and broadcasts deletion of an inactiv
 		await expect(page.locator('.timetable-week-pager')).toBeVisible();
 	}
 	await page.goto('/Chronos/manage-timetables');
-	await page.getByRole('button', { name: /课表 A/ }).click();
-	await expect(page.getByRole('button', { name: /课表 A/ }).locator('input')).toBeChecked();
+	await page
+		.locator('label')
+		.filter({ has: page.getByRole('radio', { name: /课表 A/ }) })
+		.click();
+	await expect(page.getByRole('radio', { name: /课表 A/ })).toBeChecked();
 	await page.getByRole('button', { name: '删除课表', exact: true }).click();
 	const dialog = page.getByRole('dialog');
 	await expect(dialog).toContainText('课表 A');
 	const other = await context.newPage();
 	await other.goto('/Chronos/manage-timetables');
-	await other.getByRole('button', { name: /课表 B/ }).click();
-	await expect(page.getByRole('button', { name: /课表 B/ }).locator('input')).toBeChecked();
+	await other
+		.locator('label')
+		.filter({ has: other.getByRole('radio', { name: /课表 B/ }) })
+		.click();
+	await expect(page.getByRole('radio', { name: /课表 B/ })).toBeChecked();
 	await expect(dialog).toContainText('课表 A');
 	await expect(dialog).not.toContainText('课表 B');
 	const activeBefore = await other.evaluate(() =>
@@ -134,8 +149,8 @@ test('pins the deletion target across tabs and broadcasts deletion of an inactiv
 	await dialog.getByRole('button', { name: '删除', exact: true }).click();
 	await expect(dialog).not.toBeVisible();
 	for (const tab of [page, other]) {
-		await expect(tab.getByRole('button', { name: /课表 A/ })).toHaveCount(0);
-		await expect(tab.getByRole('button', { name: /课表 B/ }).locator('input')).toBeChecked();
+		await expect(tab.getByRole('radio', { name: /课表 A/ })).toHaveCount(0);
+		await expect(tab.getByRole('radio', { name: /课表 B/ })).toBeChecked();
 	}
 	expect(
 		await other.evaluate(() =>
@@ -143,7 +158,7 @@ test('pins the deletion target across tabs and broadcasts deletion of an inactiv
 		)
 	).toBe(activeBefore);
 	await page.reload();
-	await expect(page.getByRole('button', { name: /课表 B/ }).locator('input')).toBeChecked();
+	await expect(page.getByRole('radio', { name: /课表 B/ })).toBeChecked();
 });
 
 test('reports committed deletion separately when saving the successor selection fails', async ({
@@ -178,14 +193,14 @@ test('reports committed deletion separately when saving the successor selection 
 	await expect(
 		page.getByRole('status').filter({ hasText: '课表已删除，但后续状态更新失败，请重新选择课表' })
 	).toBeVisible();
-	await expect(page.getByRole('button', { name: /课表 B/ })).toHaveCount(0);
-	await expect(page.getByRole('button', { name: /课表 A/ }).locator('input')).not.toBeChecked();
+	await expect(page.getByRole('radio', { name: /课表 B/ })).toHaveCount(0);
+	await expect(page.getByRole('radio', { name: /课表 A/ })).not.toBeChecked();
 	expect(
 		await page.evaluate(() =>
 			localStorage.getItem('chronos:/Chronos:chronos_preferences:current_timetable_id')
 		)
 	).toBeNull();
 	await page.reload();
-	await expect(page.getByRole('button', { name: /课表 A/ }).locator('input')).toBeChecked();
-	await expect(page.getByRole('button', { name: /课表 B/ })).toHaveCount(0);
+	await expect(page.getByRole('radio', { name: /课表 A/ })).toBeChecked();
+	await expect(page.getByRole('radio', { name: /课表 B/ })).toHaveCount(0);
 });

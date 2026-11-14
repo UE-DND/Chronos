@@ -52,16 +52,16 @@ for (const width of [430, 1280]) {
 			await page.goto('/Chronos/timetable/course-editor');
 			await expect(nameField).toHaveValue('');
 			await expect(page.getByRole('button', { name: '保存', exact: true })).toBeDisabled();
-			await page.getByRole('tab', { name: '指定周次', exact: true }).click();
-			await expect(page.getByRole('tab', { name: '指定周次', exact: true })).toHaveAttribute(
-				'aria-selected',
+			await page.getByRole('radio', { name: '指定周次', exact: true }).click();
+			await expect(page.getByRole('radio', { name: '指定周次', exact: true })).toHaveAttribute(
+				'aria-checked',
 				'true'
 			);
 			await expect(page.getByRole('button', { name: /周次范围/ }).first()).toBeVisible();
 			await page.emulateMedia({ reducedMotion: 'reduce' });
-			await page.getByRole('tab', { name: '整学期', exact: true }).click();
-			await expect(page.getByRole('tab', { name: '整学期', exact: true })).toHaveAttribute(
-				'aria-selected',
+			await page.getByRole('radio', { name: '整学期', exact: true }).click();
+			await expect(page.getByRole('radio', { name: '整学期', exact: true })).toHaveAttribute(
+				'aria-checked',
 				'true'
 			);
 			await expect(page.getByRole('button', { name: /周次范围/ })).toHaveCount(0);

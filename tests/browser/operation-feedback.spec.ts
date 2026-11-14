@@ -41,7 +41,11 @@ test('theme and display settings write once for row, radio and keyboard activati
 	expect(await writes()).toEqual(['dark']);
 	await page.getByText('暗色主题', { exact: true }).click();
 	expect(await writes()).toEqual(['dark']);
-	await page.locator('label').filter({ hasText: '亮色主题' }).locator('input + div').click();
+	await page
+		.locator('label')
+		.filter({ hasText: '亮色主题' })
+		.locator('input + [aria-hidden=true]')
+		.click();
 	await expect(page.getByRole('radio', { name: '亮色主题' })).toBeChecked();
 	expect(await writes()).toEqual(['dark', 'light']);
 	await page.getByRole('radio', { name: '跟随系统' }).focus();
@@ -472,7 +476,7 @@ test('timetable switching and deletion show progress and recover from storage er
 		await expect(page.locator('.timetable-week-pager')).toBeVisible();
 	}
 	await page.goto('/Chronos/manage-timetables');
-	const target = page.getByRole('button', { name: new RegExp(timetable.name) });
+	const target = page.getByRole('radio', { name: timetable.name, exact: true });
 	await expect(target).toBeVisible();
 	await holdStorage(page);
 	await page.evaluate(() => {
@@ -484,8 +488,8 @@ test('timetable switching and deletion show progress and recover from storage er
 			setItem.call(this, key, value);
 		};
 	});
-	await target.click();
-	await expect(target).toContainText('切换中…');
+	await page.locator('label').filter({ has: target }).click();
+	await expect(target).toHaveAccessibleDescription('切换中…');
 	await expect(target).toBeDisabled();
 	await expect(page.getByRole('button', { name: '删除课表', exact: true })).toBeDisabled();
 	await releaseStorage(page);

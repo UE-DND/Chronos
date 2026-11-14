@@ -1,19 +1,23 @@
 <script lang="ts">
 	import { haptic } from '../haptic/haptic';
-	import type { Segment } from './segmented-control';
+	import { focusSegmentByKey, type Segment } from './segmented-control';
 
 	let {
 		segments,
 		value,
 		onValueChange,
 		class: className = '',
-		animateThumb = true
+		animateThumb = true,
+		semantics = 'tabs',
+		ariaLabel
 	}: {
 		segments: Segment[];
 		value: string;
 		onValueChange: (value: string) => void;
 		class?: string;
 		animateThumb?: boolean;
+		semantics?: 'tabs' | 'options';
+		ariaLabel?: string;
 	} = $props();
 
 	const selectedIndex = $derived(segments.findIndex((segment) => segment.value === value));
@@ -40,17 +44,18 @@
 	}
 
 	function handleSegmentKeydown(event: KeyboardEvent, index: number) {
-		if (segmentCount <= 1) return;
-		if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-		event.preventDefault();
-		const direction = event.key === 'ArrowRight' ? 1 : -1;
-		const nextIndex = (index + direction + segmentCount) % segmentCount;
+		const nextIndex = focusSegmentByKey(event, index, semantics === 'options');
+		if (nextIndex === null || nextIndex === index) return;
 		const nextValue = segments[nextIndex]?.value;
-		if (nextValue) handleSegmentClick(nextValue);
+		if (nextValue !== undefined) handleSegmentClick(nextValue);
 	}
 </script>
 
-<div class="ui-segmented-track {className}" role="tablist">
+<div
+	class="ui-segmented-track {className}"
+	role={semantics === 'tabs' ? 'tablist' : 'radiogroup'}
+	aria-label={ariaLabel}
+>
 	{#if segmentCount > 0 && selectedIndex >= 0}
 		<div
 			class="ui-segmented-thumb"
@@ -66,8 +71,11 @@
 	{#each segments as segment, index (segment.value)}
 		<button
 			type="button"
-			role="tab"
-			aria-selected={value === segment.value}
+			id={segment.id}
+			role={semantics === 'tabs' ? 'tab' : 'radio'}
+			aria-controls={semantics === 'tabs' ? segment.controls : undefined}
+			aria-selected={semantics === 'tabs' ? value === segment.value : undefined}
+			aria-checked={semantics === 'options' ? value === segment.value : undefined}
 			tabindex={value === segment.value || (selectedIndex < 0 && index === 0) ? 0 : -1}
 			class="ui-segmented-tab text-label-large relative z-10 flex-1 cursor-pointer rounded-control py-2 text-center transition-[color] duration-150 outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 {value ===
 			segment.value

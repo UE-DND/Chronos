@@ -29,17 +29,18 @@
 		onValueChange?: (value: string | number) => void;
 	} = $props();
 
-	const fieldName = $derived(name ?? id ?? 'radio-group');
+	const instanceId = $props.id();
+	const fieldName = $derived(name ?? id ?? instanceId);
 </script>
 
-<div class="flex flex-col gap-3">
+<fieldset class="flex min-w-0 flex-col gap-3" {disabled}>
+	<legend class="text-title-medium px-1 text-on-surface">
+		{label}
+		{#if required}
+			<span class="ml-0.5 text-error">*</span>
+		{/if}
+	</legend>
 	<div class="px-1">
-		<h3 class="text-title-medium text-on-surface">
-			{label}
-			{#if required}
-				<span class="ml-0.5 text-error">*</span>
-			{/if}
-		</h3>
 		{#if description}
 			<p class="text-body-small text-supporting mt-1 text-on-surface-variant">{description}</p>
 		{/if}
@@ -57,4 +58,4 @@
 			/>
 		{/each}
 	</div>
-</div>
+</fieldset>

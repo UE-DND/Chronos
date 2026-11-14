@@ -1,5 +1,9 @@
 export const en = {
 	'content.markdown.failed': 'Unable to display this document. Try again.',
+	'transfer.import.sourcesAria': 'Import sources',
+	'plugins.tabsAria': 'Plugin lists',
+	'transfer.export.methodsAria': 'Export methods',
+	'course.form.recurrence.label': 'Recurrence',
 	'startup.failed': 'Startup incomplete',
 	'startup.coreFailed': 'Local app data could not be prepared. Restart to try again.',
 	'startup.pluginsFailed':
