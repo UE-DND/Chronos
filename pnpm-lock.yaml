@@ -355,8 +355,8 @@ importers:
         specifier: ^0.5.5
         version: 0.5.5
       rolldown-license-plugin:
-        specifier: ^3.0.14
-        version: 3.0.14(rolldown@1.2.14)
+        specifier: ^3.0.15
+        version: 3.0.15(rolldown@1.2.14)
       smol-toml:
         specifier: ^1.9.1
         version: 1.9.1
@@ -3619,8 +3619,8 @@ packages:
     engines: {node: 20 || >=22}
     hasBin: true
 
-  rolldown-license-plugin@3.0.14:
-    resolution: {integrity: sha512-Lf0UPQNfKpVXVZJLsVA4VriRcTk1HpY0LknqBIi72eEo//K5bHk9kTfUD6OMvlQh3Qfb3wbwFmK4O2vT9pvNtg==}
+  rolldown-license-plugin@3.0.15:
+    resolution: {integrity: sha512-sTBc9dRZfZ/OMXIVTnbRSHnVS4Z4Kbgq+edboAYGN5XuQGHUnDPfRK560tbI6Ekfrw3LPpW6YnIopNDxj+8EHg==}
     peerDependencies:
       rolldown: '*'
 
@@ -6665,7 +6665,7 @@ snapshots:
       glob: 13.0.6
       package-json-from-dist: 1.0.1
 
-  rolldown-license-plugin@3.0.14(rolldown@1.2.14):
+  rolldown-license-plugin@3.0.15(rolldown@1.2.14):
     dependencies:
       rolldown: 1.2.14
 
