@@ -32,6 +32,15 @@ async function reconcile(expectedToken?: string): Promise<boolean> {
 	}
 	// Preserve authorization while a worker may still be downloading or awaiting takeover.
 	if (registration?.waiting || registration?.installing) return false;
+	// Another window may have committed its preparation before registration.update() creates
+	// an installing worker. Only its failure handler may release that lease before expiry.
+	// MAX_SAFE_INTEGER is the worker's extension: without a worker it is safe to reclaim.
+	if (
+		!expectedToken &&
+		prepared.until !== Number.MAX_SAFE_INTEGER &&
+		(prepared.until === null || prepared.until > Date.now())
+	)
+		return false;
 	await service.cancelHostPreparation(prepared.token);
 	return false;
 }

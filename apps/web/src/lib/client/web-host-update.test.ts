@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import type { PreparedPluginUpdate } from '#lib/services/official-plugins/installed-store.ts';
-import type { HostBuildIdentity } from '@chronos/core';
+import {
+	emptyInstallationState,
+	OfficialPluginInstalledStore,
+	type PreparedPluginUpdate
+} from '#lib/services/official-plugins/installed-store.ts';
+import type { ChronosEngine, HostBuildIdentity } from '@chronos/core';
 
 const mocks = vi.hoisted(() => ({
 	prepare: vi.fn().mockResolvedValue('prepared-token'),
@@ -48,6 +52,9 @@ import { applyPreparedWebUpdate, recoverInterruptedWebUpdate } from './web-host-
 
 beforeEach(() => {
 	mocks.prepared = undefined;
+	mocks.cancel.mockImplementation(async (token: string) => {
+		if (mocks.prepared?.token === token) mocks.prepared = undefined;
+	});
 	mocks.prepare.mockImplementation(async () => {
 		mocks.prepared = {
 			target,
@@ -61,6 +68,7 @@ beforeEach(() => {
 });
 afterEach(() => {
 	vi.clearAllMocks();
+	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 });
 describe('prepared Web update recovery', () => {
@@ -81,14 +89,14 @@ describe('prepared Web update recovery', () => {
 		}
 	);
 	it.each(['waiting', 'installing', 'active', 'absent', 'unknown'] as const)(
-		'recovers prepared snapshot with %s worker',
+		'recovers expired prepared snapshot with %s worker',
 		async (state) => {
 			mocks.prepared = {
 				target,
 				token: 'existing',
 				revision: 0,
 				records: [],
-				until: Date.now() + 180000
+				until: Date.now() - 1
 			};
 			vi.stubGlobal('navigator', { serviceWorker: { getRegistration: mocks.registration } });
 			const reload = vi.fn();
@@ -109,6 +117,110 @@ describe('prepared Web update recovery', () => {
 			expect(reload).toHaveBeenCalledTimes(state === 'active' ? 1 : 0);
 		}
 	);
+	it('preserves another window preparation before its worker starts installing', async () => {
+		vi.stubGlobal('navigator', { serviceWorker: { getRegistration: mocks.registration } });
+		mocks.registration.mockResolvedValue({ active: {} });
+		mocks.identity.mockResolvedValue(current);
+		mocks.feed.mockResolvedValue({ ok: true, value: { hostUpdate: { host: target } } });
+		const installGate = Promise.withResolvers<void>();
+		mocks.apply.mockReturnValue(installGate.promise);
+		// Each browser window has its own applying/recovering promises, but shares IndexedDB.
+		vi.resetModules();
+		const otherWindow = await import('./web-host-update');
+		const applying = applyPreparedWebUpdate();
+		try {
+			await vi.waitFor(() => expect(mocks.apply).toHaveBeenCalledOnce());
+			await otherWindow.recoverInterruptedWebUpdate();
+			expect(mocks.cancel).not.toHaveBeenCalled();
+			expect(mocks.prepared?.token).toBe('prepared-token');
+		} finally {
+			installGate.resolve();
+			await applying;
+		}
+	});
+	it('releases a preparation abandoned before worker installation after its lease expires', async () => {
+		const now = vi.spyOn(Date, 'now').mockReturnValue(100);
+		mocks.prepared = {
+			target,
+			token: 'abandoned',
+			revision: 0,
+			records: [],
+			until: 101
+		};
+		vi.stubGlobal('navigator', { serviceWorker: { getRegistration: mocks.registration } });
+		mocks.registration.mockResolvedValue({ active: {} });
+		mocks.identity.mockResolvedValue(current);
+		await recoverInterruptedWebUpdate();
+		expect(mocks.cancel).not.toHaveBeenCalled();
+		now.mockReturnValue(101);
+		await recoverInterruptedWebUpdate();
+		expect(mocks.cancel).toHaveBeenCalledWith('abandoned');
+		expect(mocks.prepared).toBeUndefined();
+	});
+	it('does not replace another window live preparation when an update is requested', async () => {
+		let state = {
+			...emptyInstallationState(),
+			prepared: {
+				target,
+				token: 'other-window',
+				revision: 0,
+				records: [],
+				until: Date.now() + 180000
+			} as PreparedPluginUpdate | undefined
+		};
+		const store = new OfficialPluginInstalledStore({} as ChronosEngine, {
+			read: async () => structuredClone(state),
+			transaction: async (change) => {
+				const next = structuredClone(state);
+				change(next);
+				state = next;
+				mocks.prepared = state.prepared;
+				return next;
+			}
+		});
+		mocks.prepared = state.prepared;
+		mocks.cancel.mockImplementation((token: string) => store.cancelPreparation(token));
+		mocks.prepare.mockImplementation(async () => {
+			await store.prepare({
+				target,
+				token: 'replacement',
+				revision: 0,
+				records: [],
+				until: Date.now() + 180000
+			});
+			return 'replacement';
+		});
+		vi.stubGlobal('navigator', { serviceWorker: { getRegistration: mocks.registration } });
+		mocks.registration.mockResolvedValue({ active: {} });
+		mocks.identity.mockResolvedValue(current);
+		mocks.feed.mockResolvedValue({ ok: true, value: { hostUpdate: { host: target } } });
+		try {
+			await expect(applyPreparedWebUpdate()).rejects.toThrow(
+				'Update is already running in another window'
+			);
+			expect(mocks.cancel).not.toHaveBeenCalled();
+			await store.load();
+			expect(store.prepared?.token).toBe('other-window');
+			expect(mocks.apply).not.toHaveBeenCalled();
+		} finally {
+			store.dispose();
+		}
+	});
+	it('releases a worker-extended authorization when the worker was discarded', async () => {
+		mocks.prepared = {
+			target,
+			token: 'discarded-worker',
+			revision: 0,
+			records: [],
+			until: Number.MAX_SAFE_INTEGER
+		};
+		vi.stubGlobal('navigator', { serviceWorker: { getRegistration: mocks.registration } });
+		mocks.registration.mockResolvedValue({ active: {} });
+		mocks.identity.mockResolvedValue(current);
+		await recoverInterruptedWebUpdate();
+		expect(mocks.cancel).toHaveBeenCalledWith('discarded-worker');
+		expect(mocks.prepared).toBeUndefined();
+	});
 	it('reuses an existing preparation without fetching or downloading plugins', async () => {
 		mocks.prepared = {
 			target,
