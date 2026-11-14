@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { createCourse } from '@chronos/core';
 import { createWeekPagerController } from './week-pager-controller.svelte';
+import { createTimetableInteraction } from './timetable-interaction.svelte';
 
 function harness(pageWidth = 1000) {
 	vi.useFakeTimers();
@@ -46,6 +48,7 @@ function harness(pageWidth = 1000) {
 		clearPreview: () => calls.push('clear')
 	};
 	const complete = vi.fn();
+	const firstMove = vi.fn();
 	const pager = createWeekPagerController({
 		setPreview: preview.setPreview,
 		clearPreview: preview.clearPreview,
@@ -54,7 +57,7 @@ function harness(pageWidth = 1000) {
 			context = { ...context, displayedWeek: week };
 			pager.sync(context);
 		},
-		onFirstMove: vi.fn(),
+		onFirstMove: firstMove,
 		onCompleted: complete
 	});
 	pager.sync(context);
@@ -66,6 +69,7 @@ function harness(pageWidth = 1000) {
 		pager,
 		calls,
 		complete,
+		firstMove,
 		resize: () => resize(),
 		detach,
 		sync: (patch: Partial<typeof context>) => {
@@ -95,6 +99,70 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 describe('week pager lifecycle', () => {
+	it.each([0, 0.5, -0.5, 4, 5, 6, -6])(
+		'only suppresses a course tap after real paging movement (offset %s px)',
+		(delta) => {
+			const h = harness(412.19049);
+			h.sync({ displayedWeek: 16 });
+			vi.advanceTimersByTime(160);
+			const interaction = createTimetableInteraction();
+			h.firstMove.mockImplementation(() => interaction.notePagerFirstMove());
+			const course = createCourse({
+				id: 'course',
+				name: 'Linear Algebra',
+				dayOfWeek: 1,
+				startPeriod: 1,
+				endPeriod: 2,
+				weeks: [16]
+			});
+			const onCourseClick = vi.fn();
+			const handlers = interaction.createCourseCardHandlers(course, { onCourseClick });
+			const pointer = {
+				pointerId: 1,
+				pointerType: 'touch',
+				isPrimary: true,
+				button: 0,
+				clientX: 100,
+				clientY: 100
+			} as PointerEvent;
+			handlers.onpointerdown(pointer);
+			h.pointer('pointerdown');
+			h.scroll(h.node.scrollLeft + delta);
+			h.pointer('pointerup');
+			handlers.onpointerup(pointer);
+			const click = new Event('click', { cancelable: true }) as MouseEvent;
+			handlers.onclick(click);
+			expect(onCourseClick).toHaveBeenCalledTimes(Math.abs(delta) > 5 ? 0 : 1);
+			expect(click.defaultPrevented).toBe(Math.abs(delta) > 5);
+			interaction.destroy();
+			h.detach();
+		}
+	);
+
+	it('accumulates small scroll deltas and suppresses only once even after returning', () => {
+		const h = harness();
+		h.scroll(2);
+		h.scroll(4);
+		expect(h.firstMove).not.toHaveBeenCalled();
+		h.scroll(6);
+		h.scroll(0);
+		expect(h.firstMove).toHaveBeenCalledOnce();
+		h.detach();
+	});
+
+	it('uses the completed page as the origin for the next tap', () => {
+		const h = harness();
+		h.scroll(600);
+		h.scroll(1000);
+		h.node.dispatchEvent(new Event('scrollend'));
+		h.firstMove.mockClear();
+		h.pointer('pointerdown');
+		h.scroll(1000);
+		h.pointer('pointerup');
+		expect(h.firstMove).not.toHaveBeenCalled();
+		h.detach();
+	});
+
 	it('ignores native resize snapping even when the browser already aligned the page', () => {
 		const width = 412.19049;
 		const h = harness(width);
@@ -118,7 +186,9 @@ describe('week pager lifecycle', () => {
 		expect(h.node.scrollLeft).toBeCloseTo(15 * width, 6);
 		vi.advanceTimersByTime(160);
 		h.scroll(15 * width);
-		expect(h.calls).toContain('preview:16');
+		expect(h.firstMove).not.toHaveBeenCalled();
+		h.scroll(15.5 * width);
+		expect(h.calls).toContain('preview:16.5');
 		h.detach();
 	});
 	it('publishes preview before the integer week and keeps it through quiet time', () => {

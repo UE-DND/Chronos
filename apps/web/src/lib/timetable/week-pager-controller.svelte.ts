@@ -7,6 +7,7 @@ import {
 import { createWeekPagerSnap } from './week-pager-snap';
 import { createWeekPagerTouch } from './week-pager-touch';
 import { weekPagerPageWidth } from './week-pager-metrics';
+import { TIMETABLE_POINTER_THRESHOLD_PX } from './timetable-interaction-types';
 
 export interface WeekPagerContext {
 	timetableId: string | null;
@@ -35,6 +36,7 @@ export function createWeekPagerController(options: {
 	let active = $state(false);
 	let held = false;
 	let gestureStart: number | null = null;
+	let settledOffset = 0;
 	let generation = 0;
 	let suppressUntil = 0;
 	let settleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -58,6 +60,7 @@ export function createWeekPagerController(options: {
 			suppressUntil = Date.now() + 150;
 			node.scrollTo({ left, behavior: 'instant' });
 		}
+		settledOffset = node.scrollLeft;
 		ready = true;
 	}
 	function interrupt() {
@@ -107,11 +110,13 @@ export function createWeekPagerController(options: {
 		}
 	}
 	function finish() {
-		if (!active || touch?.isActive || snap?.isAnimating || held || gestureStart === null) return;
+		if (!active || !node || touch?.isActive || snap?.isAnimating || held || gestureStart === null)
+			return;
 		clearTimeout(settleTimer);
 		const start = gestureStart;
 		publish();
 		gestureStart = null;
+		settledOffset = node.scrollLeft;
 		options.clearPreview();
 		if (context?.displayedWeek !== start) options.onCompleted();
 		collapse();
@@ -119,6 +124,12 @@ export function createWeekPagerController(options: {
 	function scroll() {
 		if (!active || !node || !context || Date.now() < suppressUntil) return;
 		if (node.clientWidth <= 0) return;
+		// Ignore stationary scroll events and snap corrections within the course tap threshold.
+		if (
+			gestureStart === null &&
+			Math.abs(node.scrollLeft - settledOffset) <= TIMETABLE_POINTER_THRESHOLD_PX
+		)
+			return;
 		expand();
 		if (gestureStart === null) {
 			generation++;

@@ -84,6 +84,34 @@ async function importTimetable(
 	return { pager, position };
 }
 
+test('opens course details when a tap produces a stationary pager scroll event', async ({
+	page,
+	request
+}) => {
+	const { pager, position } = await importTimetable(page, request);
+	const initial = await position();
+	const capsule = pager
+		.locator('.timetable-week-page')
+		.nth(Math.round(initial))
+		.locator('button.course-capsule')
+		.first();
+	// Run after delegated pointerdown handlers have started the course gesture.
+	await page.evaluate(() => {
+		document.addEventListener(
+			'pointerdown',
+			(event) => {
+				(event.target as Element)
+					.closest('.timetable-week-pager')
+					?.dispatchEvent(new Event('scroll'));
+			},
+			{ once: true }
+		);
+	});
+	await capsule.tap();
+	await expect(page.getByRole('dialog')).toBeVisible();
+	await expect.poll(position).toBeCloseTo(initial, 1);
+});
+
 test('keeps vertical scrolling on its week and limits a touch swipe to one week', async ({
 	page,
 	request
