@@ -8,10 +8,12 @@ import { TIMETABLE_LONG_PRESS_DELAY_MS } from '#lib/timetable/timetable-interact
 export function attachDemoMotion(
 	root: HTMLElement,
 	create: (root: HTMLElement) => gsap.core.Timeline,
-	reset?: (reduced: boolean) => void
+	options: { paused?: boolean; reset?: (reduced: boolean) => void } = {}
 ) {
 	let context: gsap.Context | undefined;
 	let timeline: gsap.core.Timeline | undefined;
+	let userPaused = options.paused ?? false;
+	let reduced = false;
 	const measured = [
 		root,
 		...root.querySelectorAll<HTMLElement>('.grid-area, .viewport, .grid, .timetable-grid-body')
@@ -20,22 +22,23 @@ export function attachDemoMotion(
 		measured.map((node) => `${node.offsetWidth}:${node.offsetHeight}`).join('|');
 	let size = '';
 	const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+	function syncPlayback() {
+		if (userPaused || reduced || document.hidden) timeline?.pause();
+		else timeline?.resume();
+	}
 	function rebuild() {
 		context?.revert();
+		context = undefined;
 		timeline = undefined;
-		const reduced =
+		reduced =
 			isReducedMotionActive() || document.documentElement.classList.contains('reduce-motion');
 		root.classList.toggle('demo-reduced', reduced);
-		reset?.(reduced);
+		options.reset?.(reduced);
 		if (reduced) return;
 		context = gsap.context(() => {
 			timeline = create(root);
-			if (document.hidden) timeline.pause();
+			syncPlayback();
 		}, root);
-	}
-	function visibility() {
-		if (document.hidden) timeline?.pause();
-		else timeline?.resume();
 	}
 	const resize = new ResizeObserver(() => {
 		const next = dimensions();
@@ -51,17 +54,24 @@ export function attachDemoMotion(
 	const preferences = new MutationObserver(preferenceChanged);
 	preferences.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 	media.addEventListener('change', preferenceChanged);
-	document.addEventListener('visibilitychange', visibility);
+	document.addEventListener('visibilitychange', syncPlayback);
 	for (const node of measured) resize.observe(node);
 	size = dimensions();
 	rebuild();
-	return () => {
-		resize.disconnect();
-		preferences.disconnect();
-		media.removeEventListener('change', preferenceChanged);
-		document.removeEventListener('visibilitychange', visibility);
-		context?.revert();
-		root.classList.remove('demo-reduced');
+	return {
+		setPaused(paused: boolean) {
+			userPaused = paused;
+			syncPlayback();
+		},
+		destroy() {
+			resize.disconnect();
+			preferences.disconnect();
+			media.removeEventListener('change', preferenceChanged);
+			document.removeEventListener('visibilitychange', syncPlayback);
+			context?.revert();
+			timeline = undefined;
+			root.classList.remove('demo-reduced');
+		}
 	};
 }
 

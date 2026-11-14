@@ -4,6 +4,8 @@ export const zhCn = {
 	'plugins.tabsAria': '插件列表',
 	'transfer.export.methodsAria': '导出方式',
 	'course.form.recurrence.label': '重复方式',
+	'onboarding.motion.pause': '暂停演示',
+	'onboarding.motion.resume': '继续演示',
 	'plugins.progress.label': '安装插件：{name}',
 	'startup.failed': '启动未完成',
 	'startup.coreFailed': '无法准备本地应用数据，请重新启动后重试。',

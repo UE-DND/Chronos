@@ -101,6 +101,7 @@ for (const preference of ['system', 'application'] as const) {
 		}
 		await expect(demo.locator('.edit-bottom-bar-controls')).toBeVisible();
 		await expect(primary(demo)).toBeVisible();
+		await expect(page.getByRole('button', { name: /^(暂停演示|继续演示)$/ })).toHaveCount(0);
 		await page.clock.runFor(6_000);
 		expect(await column(demo)).toBe(1);
 		await expect(demo.locator('.timetable-drop-preview')).toHaveCount(0);
@@ -131,4 +132,51 @@ test('plays the complete rehearsal automatically without writing real courses', 
 	await page.getByRole('button', { name: '稍后再说', exact: true }).click();
 	await expect(page.getByRole('dialog')).toHaveCount(0);
 	await expect(demo).toHaveCount(0);
+});
+
+test('pauses both layout previews and keeps them paused after a viewport change', async ({
+	page,
+	request
+}) => {
+	await page.clock.install();
+	await openLayout(page, request);
+	const previews = page.locator('.preview .grid, .preview .course');
+	const styles = () =>
+		previews.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('style')));
+	await page.getByRole('button', { name: '暂停演示', exact: true }).click();
+	const paused = await styles();
+	await page.clock.runFor(4_000);
+	expect(await styles()).toEqual(paused);
+	await page.getByRole('button', { name: '继续演示', exact: true }).press('Enter');
+	await page.clock.runFor(750);
+	expect(await styles()).not.toEqual(paused);
+	await page.getByRole('button', { name: '暂停演示', exact: true }).click();
+	await page.setViewportSize({ width: 932, height: 430 });
+	await page.clock.runFor(300);
+	const resized = await styles();
+	await page.clock.runFor(4_000);
+	expect(await styles()).toEqual(resized);
+	await expect(page.getByRole('button', { name: '继续演示', exact: true })).toBeVisible();
+});
+
+test('pauses the long-press rehearsal without resetting it and continues on demand', async ({
+	page,
+	request
+}) => {
+	await page.clock.install();
+	await openLayout(page, request);
+	await page.getByRole('button', { name: '下一步', exact: true }).click();
+	const demo = page.locator('.demo');
+	await expect.poll(() => column(demo)).toBe(2);
+	await page.getByRole('button', { name: '暂停演示', exact: true }).click();
+	const touch = demo.locator('.touch-indicator');
+	const paused = await touch.getAttribute('style');
+	await page.clock.runFor(6_000);
+	expect(await column(demo)).toBe(2);
+	expect(await touch.getAttribute('style')).toBe(paused);
+	await page.getByRole('button', { name: '继续演示', exact: true }).press('Enter');
+	await expect(demo.locator('.confirm-overlay')).toHaveCSS('visibility', 'visible');
+	await page.getByRole('button', { name: '上一步', exact: true }).click();
+	await expect(demo).toHaveCount(0);
+	await expect(page.getByRole('button', { name: '暂停演示', exact: true })).toBeVisible();
 });

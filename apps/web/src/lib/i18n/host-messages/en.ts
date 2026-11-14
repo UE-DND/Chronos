@@ -4,6 +4,8 @@ export const en = {
 	'plugins.tabsAria': 'Plugin lists',
 	'transfer.export.methodsAria': 'Export methods',
 	'course.form.recurrence.label': 'Recurrence',
+	'onboarding.motion.pause': 'Pause demonstration',
+	'onboarding.motion.resume': 'Resume demonstration',
 	'plugins.progress.label': 'Installing plugin: {name}',
 	'startup.failed': 'Startup incomplete',
 	'startup.coreFailed': 'Local app data could not be prepared. Restart to try again.',

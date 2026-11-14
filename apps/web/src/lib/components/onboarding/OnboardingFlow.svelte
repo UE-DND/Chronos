@@ -3,6 +3,7 @@
 	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { fade } from 'svelte/transition';
 	import { getContext } from 'svelte';
+	import { MediaQuery } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
@@ -32,7 +33,6 @@
 		ShieldFill,
 		WifiOffFill
 	} from '#lib/icons/index.ts';
-	import { isReducedMotionActive } from '@chronos/ui-kit';
 	import { haptic } from '#lib/haptic/haptic.ts';
 	import Switch from '#lib/components/ui/Switch.svelte';
 
@@ -49,6 +49,11 @@
 	let dialogNode = $state<HTMLElement | null>(null);
 	let analyticsEnabled = $state(shell.controller.userPreferences?.analyticsEnabled ?? true);
 	let legalAccepted = $state(false);
+	let demoPaused = $state(false);
+	const systemReducedMotion = new MediaQuery('(prefers-reduced-motion: reduce)', false);
+	const reducedMotion = $derived(
+		systemReducedMotion.current || (shell.controller.userPreferences?.reduceMotionEnabled ?? false)
+	);
 
 	const layoutOptions = $derived.by(() => {
 		return [
@@ -114,7 +119,7 @@
 		return () => node.removeEventListener('keydown', onKeydown);
 	}
 
-	const stepTransitionDuration = $derived(isReducedMotionActive() ? 1 : 200);
+	const stepTransitionDuration = $derived(reducedMotion ? 1 : 200);
 
 	function handleNext() {
 		if (step === 'legal') {
@@ -124,12 +129,14 @@
 			trackEvent('onboarding_step_next', { step: stepIndex });
 		}
 		haptic.light();
+		demoPaused = false;
 		onboardingController.next();
 	}
 
 	function handleBack() {
 		trackEvent('onboarding_step_back', { step: stepIndex });
 		haptic.light();
+		demoPaused = false;
 		onboardingController.back();
 	}
 
@@ -169,6 +176,14 @@
 		void goto(href);
 	}
 </script>
+
+{#snippet demoPlaybackControls()}
+	{#if !reducedMotion}
+		<Button variant="text" class="self-center" onclick={() => (demoPaused = !demoPaused)}>
+			{hostT(demoPaused ? 'onboarding.motion.resume' : 'onboarding.motion.pause')}
+		</Button>
+	{/if}
+{/snippet}
 
 {#if shouldRenderOnboarding}
 	<div
@@ -349,6 +364,7 @@
 												<LayoutModePreview
 													mode={option.mode}
 													active={showOnboarding && step === 'layout'}
+													paused={demoPaused}
 												/>
 											</span>
 											<span
@@ -364,6 +380,7 @@
 										</label>
 									{/each}
 								</div>
+								{@render demoPlaybackControls()}
 								<p class="text-body-small text-supporting text-center text-on-surface-variant">
 									{layoutOptions.find((option) => option.mode === layoutMode)?.description}
 								</p>
@@ -381,7 +398,11 @@
 								>
 									{hostT('onboarding.longPress.title')}
 								</h2>
-								<LongPressDemo active={showOnboarding && step === 'longPress'} />
+								<LongPressDemo
+									active={showOnboarding && step === 'longPress'}
+									paused={demoPaused}
+								/>
+								{@render demoPlaybackControls()}
 							</div>
 						{:else}
 							<div class="flex flex-1 flex-col items-center justify-center gap-3 text-center">

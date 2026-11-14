@@ -1,14 +1,23 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import type { TimetableLayoutMode } from '@chronos/core';
 	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 
 	import { attachDemoMotion, createLayoutTimeline } from './demo-motion';
 
-	let { mode, active = true }: { mode: TimetableLayoutMode; active?: boolean } = $props();
+	let {
+		mode,
+		active = true,
+		paused = false
+	}: { mode: TimetableLayoutMode; active?: boolean; paused?: boolean } = $props();
 	function animatePreview(node: HTMLElement) {
 		if (!active) return;
 		const currentMode = mode;
-		return attachDemoMotion(node, (root) => createLayoutTimeline(root, currentMode));
+		const motion = untrack(() =>
+			attachDemoMotion(node, (root) => createLayoutTimeline(root, currentMode), { paused })
+		);
+		$effect(() => motion.setPaused(paused));
+		return motion.destroy;
 	}
 
 	const days = [
