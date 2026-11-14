@@ -1,0 +1,56 @@
+{
+	"formatVersion": 1,
+	"release": {
+		"tagName": "v1.3.5",
+		"name": "Chronos 1.3.5",
+		"body": "## 新特性\n\n- 首次引导中的布局与长按演示新增暂停与继续控制，方便按需查看交互细节。\n\n## 优化\n\n- 恢复桌面端内容区域的原生滚动条，补全底部导航焦点样式、选择控件语义与表单键盘操作；完善插件及应用更新安装进度的无障碍名称与减少动画支持。\n- 统一更新日志、开发者说明与法律条款的 Markdown 安全渲染，并在加载失败时提供重试入口。\n- 隔离插件运行时实例、界面传参与私有存储，节假日缓存归入对应插件存储，卸载或替换插件时自动撤销日历贡献并原子清理安装数据。\n- 统一主题语义样式入口并解耦 Arknights 主题适配，同步更新 Svelte、Tailwind CSS 与构建工具链依赖。\n\n## 修复\n\n- 修复课表周翻页在静止或微幅回正滚动时误拦截课程点击的问题，仅在真实翻页滑动后抑制误触。\n- 修复「今日」入口的导航意图解析，自动过滤失效或未就绪的底部标签页。\n- 修复插件页面在剩余高度内滚动受限、空课表在短横屏下无法滚动，以及引导页底部操作区与横屏手势区重叠的问题。\n- 修复应用外壳与弹层未随可见视口变化而调整的问题，并抑制 iOS 主屏幕网页应用状态栏区域的滚动模糊。",
+		"publishedAt": "2026-11-14"
+	},
+	"packageId": "org.uednd.chronos",
+	"versionCode": 1003005,
+	"signingCertificateSha256": "22e59e404c8384fd31bb21c15e66960155350a7a82c8cdfe460e93c5423cb468",
+	"profiles": {
+		"chronos-default": {
+			"host": {
+				"version": "1.3.5",
+				"buildId": "effaed2ea2c6854241ed788f206f9f47f737da78c2a8635899aef8f68ac9bb9b",
+				"sourceCommit": "ff55adc367aa0bff379d3a609bd3bfaf3dbf5426",
+				"profileId": "chronos-default",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.5/Chronos-default-1.3.5.apk",
+			"sha256": "f4677faa4143f89a60a19a6c44a2881e16eec915e807f1c0e3dd7244178a6ab1",
+			"sizeBytes": 2260811,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.5/catalog.json"
+		},
+		"chronos-cqut": {
+			"host": {
+				"version": "1.3.5",
+				"buildId": "85d62da7abcf1bd43042604f09d8ef286f72a09aca9635c84a343449fdfbffaa",
+				"sourceCommit": "ff55adc367aa0bff379d3a609bd3bfaf3dbf5426",
+				"profileId": "chronos-cqut",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.5/Chronos-cqut-1.3.5.apk",
+			"sha256": "93342c624c2ca492dbe2a8ad75ee1721f4f82282a6a60ee472138a7315e9e21c",
+			"sizeBytes": 2293146,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.5/catalog.json"
+		},
+		"chronos-cqut-offline": {
+			"host": {
+				"version": "1.3.5",
+				"buildId": "58319f8b6ea6873a18d7a4b4659b563328b10a0b0fb61cd1d49370486711c4fe",
+				"sourceCommit": "ff55adc367aa0bff379d3a609bd3bfaf3dbf5426",
+				"profileId": "chronos-cqut-offline",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"apkUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.5/Chronos-cqut-offline-1.3.5.apk",
+			"sha256": "00a1fd3ab88c6a5e09e20848a967babdb1424d8f77a0dd5ce17a7b26b56ef4df",
+			"sizeBytes": 2258343,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.5/catalog.json"
+		}
+	}
+}
