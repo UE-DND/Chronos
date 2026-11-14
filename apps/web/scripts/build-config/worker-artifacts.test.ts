@@ -41,7 +41,7 @@ it('keeps a null preparation lock active in the generated worker', () => {
 	);
 });
 
-it('serves and caches a redirected offline shell as an ordinary navigation response', async () => {
+it.each(['', '/Chronos'])('serves redirected offline pages at base %s', async (base) => {
 	const shell = '<!doctype html><title>Chronos</title>';
 	const upstream = createServer((request, response) => {
 		if (request.url === '/shell.html') {
@@ -73,7 +73,7 @@ it('serves and caches a redirected offline shell as an ordinary navigation respo
 		writeFileSync(resolve(output, `_chronos/${host.buildId}/shell.html`), shell);
 		writeFileSync(resolve(output, '_app/env.js'), '');
 		writeFileSync(resolve(output, 'sw.js'), '');
-		finalizeWorkerArtifacts(output, host, '');
+		finalizeWorkerArtifacts(output, host, base);
 
 		const cache = new Map<string, Response>();
 		const listeners = new Map<string, (event: unknown) => void>();
@@ -105,25 +105,37 @@ it('serves and caches a redirected offline shell as an ordinary navigation respo
 					listeners.set(type, listener)
 			}
 		});
-		async function navigate(): Promise<Response> {
+		function dispatchFetch(path: string, mode = 'navigate'): Promise<Response> | undefined {
 			let result: Promise<Response> | undefined;
 			listeners.get('fetch')!({
-				request: { url: 'https://chronos.test/plugins', mode: 'navigate' },
+				request: { url: `https://chronos.test${base}${path}`, mode },
 				respondWith: (response: Promise<Response>) => {
 					result = response;
 				}
 			});
-			if (!result) throw new Error('Navigation did not receive the offline shell');
 			return result;
 		}
-		for (let visit = 0; visit < 2; visit += 1) {
-			const response = await navigate();
+		for (const path of ['/', '/plugins', '/plugins/tool-clock', '/plugins/tool-clock/settings']) {
+			const pending = dispatchFetch(path);
+			expect(pending, path).toBeDefined();
+			const response = await pending!;
 			expect(response.redirected).toBe(false);
 			expect(response.status).toBe(200);
 			expect(response.headers.get('x-shell')).toBe('verified');
 			expect(await response.text()).toBe(shell);
 		}
 		expect(downloads).toBe(1);
+		for (const path of [
+			'/api/plugins/source-cqut/preview',
+			'/plugins/releases/1.0.0/',
+			'/plugins/releases/1.0.0/catalog.json',
+			'/official-plugins/catalog.json',
+			'/official-plugins/bundles/tool-clock.js',
+			'/version.json'
+		]) {
+			expect(dispatchFetch(path), path).toBeUndefined();
+		}
+		expect(dispatchFetch('/plugins/tool-clock', 'cors')).toBeUndefined();
 	} finally {
 		await new Promise<void>((resolve, reject) =>
 			upstream.close((error) => (error ? reject(error) : resolve()))

@@ -74,6 +74,23 @@ async function importScenario(page: Page) {
 	await expect.poll(() => workerBuild(page)).toBe(oldFeed.host.buildId);
 }
 
+async function installClock(page: Page) {
+	await page.goto('/Chronos/plugins');
+	await page.getByRole('tab', { name: '插件市场', exact: true }).click();
+	const clockRow = page
+		.locator('div.flex.items-center.justify-between')
+		.filter({ has: page.getByText('自定义时间', { exact: true }) })
+		.last();
+	await clockRow.getByRole('button', { name: '安装', exact: true }).click();
+	await expect
+		.poll(async () =>
+			(await stored(page)).installation?.records.some(
+				(record: { manifest: { id: string } }) => record.manifest.id === 'tool-clock'
+			)
+		)
+		.toBe(true);
+}
+
 test.beforeAll(() => {
 	expect(newFeed.host.version).toBe(oldFeed.host.version);
 	expect(newFeed.host.buildId).not.toBe(oldFeed.host.buildId);
@@ -133,20 +150,7 @@ test('retries preparation, updates every window and preserves installed plugins 
 	request
 }) => {
 	await importScenario(page);
-	await page.goto('/Chronos/plugins');
-	await page.getByRole('tab', { name: '插件市场', exact: true }).click();
-	const clockRow = page
-		.locator('div.flex.items-center.justify-between')
-		.filter({ has: page.getByText('自定义时间', { exact: true }) })
-		.last();
-	await clockRow.getByRole('button', { name: '安装', exact: true }).click();
-	await expect
-		.poll(async () =>
-			(await stored(page)).installation?.records.some(
-				(record: { manifest: { id: string } }) => record.manifest.id === 'tool-clock'
-			)
-		)
-		.toBe(true);
+	await installClock(page);
 	const other = await context.newPage();
 	await other.goto('/Chronos/');
 	await expect.poll(() => workerBuild(other)).toBe(oldFeed.host.buildId);
@@ -195,6 +199,38 @@ test('retries preparation, updates every window and preserves installed plugins 
 	const offline = await stored(page);
 	expect(offline.courses).toEqual(before.courses);
 	expect(offline.tables).toEqual(before.tables);
+});
+
+test('reloads installed plugin pages offline', async ({ page, context }) => {
+	await importScenario(page);
+	await installClock(page);
+	await page.goto('/Chronos/plugins/tool-clock');
+	await expect(page.getByRole('heading', { name: '自定义时间', exact: true })).toBeVisible();
+	await context.setOffline(true);
+	await page.reload();
+	await expect(page.getByRole('heading', { name: '自定义时间', exact: true })).toBeVisible();
+	await expect.poll(() => workerBuild(page)).toBe(oldFeed.host.buildId);
+	await page.goto('/Chronos/');
+	await page.goto('/Chronos/plugins/tool-clock');
+	await expect(page.getByRole('heading', { name: '自定义时间', exact: true })).toBeVisible();
+});
+
+test('keeps plugin page navigation on the controlling build before update consent', async ({
+	page,
+	request
+}) => {
+	await importScenario(page);
+	await installClock(page);
+	await request.post('/__e2e/deploy?build=new');
+	const rootResponse = await page.goto('/Chronos/');
+	const rootBody = await rootResponse!.text();
+	expect(rootBody).toContain(oldFeed.host.buildId);
+	expect(rootBody).not.toContain(newFeed.host.buildId);
+	const pluginResponse = await page.goto('/Chronos/plugins/tool-clock');
+	expect(await pluginResponse!.text()).toBe(rootBody);
+	await expect(page.getByRole('heading', { name: '自定义时间', exact: true })).toBeVisible();
+	await expect.poll(() => workerBuild(page)).toBe(oldFeed.host.buildId);
+	expect((await stored(page)).installation.generation).toBe(oldFeed.host.buildId);
 });
 
 test('detects a deployment on focus and keeps installation under user control', async ({

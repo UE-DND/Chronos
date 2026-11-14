@@ -88,7 +88,7 @@ self.addEventListener('message', event => {
 function shouldServeShell(url, request) {
  if (request.mode !== 'navigate') return false;
  const path = url.pathname;
- if (path.startsWith('${base}/api/') || path.startsWith('${base}/plugins/') || path.startsWith('${base}/official-plugins/')) return false;
+ if (path.startsWith('${base}/api/') || path.startsWith('${base}/plugins/releases/') || path.startsWith('${base}/official-plugins/')) return false;
  return !/\\.(?:json|js|css|png|svg|woff2?|md|apk)$/.test(path);
 }
 self.addEventListener('fetch', event => {
