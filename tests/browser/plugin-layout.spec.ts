@@ -65,6 +65,12 @@ test('long schema screens scroll to save and retain their values in a route and 
 	await page.getByRole('textbox').fill('https://layout.example/manifest.json');
 	await page.getByRole('button', { name: '确认安装', exact: true }).click();
 	await expect(page.getByRole('dialog')).toBeHidden();
+	// Closing the dialog only queues installation; wait for persistence before a full navigation.
+	const installed = page
+		.locator('div.flex.items-center.justify-between')
+		.filter({ has: page.getByText('Schema Layout', { exact: true }) })
+		.getByRole('button', { name: '卸载', exact: true });
+	await expect(installed).toBeVisible();
 	for (const location of ['route', 'tab']) {
 		await page.goto(location === 'route' ? `/Chronos/plugins/${id}` : '/Chronos/');
 		if (location === 'tab')
