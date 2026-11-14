@@ -54,10 +54,37 @@ async function fixture() {
 		origin: { kind: 'user' },
 		installedAt: 1
 	});
-	return { service, store, other, active, started, release, activated, record };
+	return { service, store, other, active, started, release, activated, record, runtime };
 }
 
 describe('runtime follows external installation changes', () => {
+	it('publishes ready status after a failed cached activation succeeds on retry', async () => {
+		const { service, store, other, record, runtime } = await fixture();
+		const id = 'external-plugin';
+		try {
+			runtime.activate.mockRejectedValueOnce(new Error('Temporary activation failure'));
+			await other.upsert(record(id));
+			await store.load();
+			store.notify();
+			await expect(service.waitForSettled()).rejects.toThrow('Plugin restoration failed');
+			expect(service.getUpdateStatus(id)?.status).toBe('failed');
+			expect(service.isPluginActive(id)).toBe(false);
+
+			const observed: ReturnType<typeof service.getUpdateStatus>[] = [];
+			const subscription = service.onChanged(() => observed.push(service.getUpdateStatus(id)));
+			store.notify();
+			await service.waitForSettled();
+
+			expect(service.isPluginActive(id)).toBe(true);
+			expect(service.listFailures().has(id)).toBe(false);
+			expect(service.getUpdateStatus(id)).toEqual({ status: 'ready' });
+			expect(observed.at(-1)).toEqual({ status: 'ready' });
+			subscription.dispose();
+		} finally {
+			service.dispose();
+		}
+	});
+
 	it('deactivates a plugin removed while its asynchronous activation is pending', async () => {
 		const { service, store, other, started, release, activated } = await fixture();
 		try {

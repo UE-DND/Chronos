@@ -467,6 +467,8 @@ export class OfficialPluginService implements Disposable {
 				try {
 					if (!(await this.activateCachedRecord(record))) continue;
 					this.failures.delete(record.manifest.id);
+					this.updateStatuses.set(record.manifest.id, { status: 'ready' });
+					this.installedStore.notify();
 				} catch (err) {
 					this.lifecycle.signal.throwIfAborted();
 					if (isAbortError(err)) continue;
