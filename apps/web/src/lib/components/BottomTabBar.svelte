@@ -109,7 +109,7 @@
 					role="tab"
 					aria-selected={active}
 					aria-label={resolveLocalizedText(tab.label)}
-					class="ui-navigation-tab flex min-h-0 cursor-pointer flex-col items-center justify-center border-0 bg-transparent py-0.5 text-on-surface-variant transition-colors outline-none hover:text-on-surface focus:outline-none sm:py-1"
+					class="ui-navigation-tab flex min-h-0 cursor-pointer flex-col items-center justify-center border-0 bg-transparent py-0.5 text-on-surface-variant transition-colors outline-none hover:text-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand focus-visible:outline-solid sm:py-1"
 					onclick={(e) => handleTabClick(e, tab)}
 				>
 					<span

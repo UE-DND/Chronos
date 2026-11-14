@@ -257,7 +257,7 @@
 							class={[
 								showHandle
 									? [
-											'app-scroll-y min-h-0 flex-1 overflow-y-auto',
+											'app-scroll-y content-scroll min-h-0 flex-1 overflow-y-auto',
 											!footer &&
 												'pb-[calc(1rem+var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))]'
 										]

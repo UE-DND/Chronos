@@ -56,7 +56,7 @@
 				</Dialog.Title>
 			{/if}
 			{#if description || children}
-				<div class="app-scroll-y flex min-h-0 flex-col gap-4 overflow-y-auto">
+				<div class="app-scroll-y content-scroll flex min-h-0 flex-col gap-4 overflow-y-auto">
 					{#if description}
 						<Dialog.Description
 							class="text-body-medium text-supporting shrink-0 text-on-surface-variant"

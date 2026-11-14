@@ -172,8 +172,10 @@
 		scrollbar-width: none;
 	}
 
-	*::-webkit-scrollbar {
-		display: none;
+	@media not all and (any-hover: hover) and (any-pointer: fine) {
+		*::-webkit-scrollbar {
+			display: none;
+		}
 	}
 
 	.app-scroll-y {
@@ -212,12 +214,6 @@
 		transition: none;
 	}
 
-	.secondary-scroll::-webkit-scrollbar {
-		display: none;
-		width: 0;
-		height: 0;
-	}
-
 	.secondary-scroll-host {
 		position: relative;
 		z-index: 0;
@@ -246,5 +242,29 @@
 
 	:root.reduce-motion .secondary-scroll-thumb {
 		transition: none;
+	}
+
+	/* Keep gesture surfaces unchanged; general content gains mouse scroll controls. */
+	@media (any-hover: hover) and (any-pointer: fine) {
+		:is(.secondary-scroll, .native-overscroll-y, .content-scroll) {
+			scrollbar-width: auto;
+			scrollbar-color: auto;
+			scrollbar-gutter: stable;
+		}
+
+		/* Matching native surfaces here would turn them into custom WebKit scrollbars. */
+		*:not(.secondary-scroll, .native-overscroll-y, .content-scroll)::-webkit-scrollbar {
+			display: none;
+		}
+
+		:is(.secondary-scroll, .native-overscroll-y, .content-scroll) ~ .secondary-scroll-thumb {
+			display: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.secondary-scroll-thumb {
+			background-color: CanvasText;
+		}
 	}
 }
