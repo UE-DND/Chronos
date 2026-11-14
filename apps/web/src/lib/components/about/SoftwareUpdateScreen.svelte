@@ -8,7 +8,7 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { type SoftwareUpdateStateController } from '#lib/content/releases/update-state.svelte.ts';
-	import { parseMarkdown } from '#lib/content/markdown.ts';
+	import MarkdownContent from '#lib/content/MarkdownContent.svelte';
 	import { formatPublishedDate } from '#lib/content/releases/release-display.ts';
 	import { SOURCE_CODE_URL } from '#lib/config/app-meta.ts';
 	import { copyTextWithFallback } from '#lib/platform/transfer.ts';
@@ -72,18 +72,7 @@
 		};
 	});
 
-	let htmlBody = $state('');
-
-	$effect(() => {
-		const body = updateState.state.latestRelease?.body;
-		if (!body) {
-			htmlBody = '';
-			return;
-		}
-		void parseMarkdown(body).then((html) => {
-			htmlBody = html;
-		});
-	});
+	const releaseBody = $derived(updateState.state.latestRelease?.body ?? '');
 
 	const heroSubtitle = $derived(
 		updateState.state.hasUpdate
@@ -153,13 +142,12 @@
 				/>
 			</HighlightRowList>
 
-			{#if htmlBody && updateState.state.hasNewerVersion}
+			{#if releaseBody && updateState.state.hasNewerVersion}
 				<MineSection title={hostT('about.update.changelog')} comfortable>
-					<div
+					<MarkdownContent
+						markdown={releaseBody}
 						class="markdown-prose markdown-prose--release prose prose-sm max-w-none dark:prose-invert"
-					>
-						{@html htmlBody}
-					</div>
+					/>
 				</MineSection>
 			{/if}
 

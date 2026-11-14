@@ -1,4 +1,5 @@
 export const en = {
+	'content.markdown.failed': 'Unable to display this document. Try again.',
 	'startup.failed': 'Startup incomplete',
 	'startup.coreFailed': 'Local app data could not be prepared. Restart to try again.',
 	'startup.pluginsFailed':

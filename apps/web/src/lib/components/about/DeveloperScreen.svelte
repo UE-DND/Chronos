@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { AppLocale } from '@chronos/core';
 	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
-	import { parseMarkdown } from '#lib/content/markdown.ts';
+	import MarkdownContent from '#lib/content/MarkdownContent.svelte';
 	import { trackEvent } from '#lib/client/analytics.ts';
 	import { getAppEngine, getAppController } from '#lib/services/app-engine.ts';
 	import { APP_LOCALES, applySessionAppLocale, normalizeAppLocale } from '#lib/i18n/locale-sync.ts';
@@ -12,16 +12,8 @@
 
 	const controller = getAppController();
 	const markdownContent = $derived(hostT('developer.markdown'));
-	let htmlContent = $state('');
 
 	const activeLocale = $derived(normalizeAppLocale(controller.locale));
-
-	$effect(() => {
-		const markdown = markdownContent;
-		void parseMarkdown(markdown).then((html) => {
-			htmlContent = html;
-		});
-	});
 
 	function localeLabel(locale: AppLocale): string {
 		return hostT(locale === 'en' ? 'display.locale.en' : 'display.locale.zh-cn');
@@ -50,7 +42,8 @@
 		{/each}
 	</MineSection>
 
-	<div class="markdown-prose markdown-prose--developer prose prose-sm max-w-none dark:prose-invert">
-		{@html htmlContent}
-	</div>
+	<MarkdownContent
+		markdown={markdownContent}
+		class="markdown-prose markdown-prose--developer prose prose-sm max-w-none dark:prose-invert"
+	/>
 </div>
