@@ -99,6 +99,9 @@ export function createPluginInstallationRepository(
 				hydrate(await readMetadata(), cached, true)
 			),
 		async transaction(change, options) {
+			if (options?.deletePluginData?.includes(OFFICIAL_PLUGINS_PLUGIN_ID)) {
+				throw new Error('Cannot delete host plugin installation data');
+			}
 			const assets = new Map(cached);
 			const result = await database.transaction(
 				'rw',

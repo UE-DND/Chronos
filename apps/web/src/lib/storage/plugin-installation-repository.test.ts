@@ -145,6 +145,23 @@ describe('plugin image transactions', () => {
 });
 
 describe('plugin installation resources', () => {
+	it('rejects deleting the host namespace before changing metadata or resources', async () => {
+		const { repository, resources } = fixture();
+		await repository.transaction((state) => {
+			state.records = [record('retained')];
+		});
+		const before = await repository.read();
+		await expect(
+			repository.transaction(
+				(state) => {
+					state.records = [];
+				},
+				{ deletePluginData: ['core.official-plugins'] }
+			)
+		).rejects.toThrow('Cannot delete host plugin installation data');
+		expect(await repository.read()).toEqual(before);
+		expect(resources.size).toBe(1);
+	});
 	it('keeps resource bodies out of metadata and reuses them for metadata mutations', async () => {
 		const { repository, database, metadata, resources } = fixture();
 		await repository.transaction((state) => {

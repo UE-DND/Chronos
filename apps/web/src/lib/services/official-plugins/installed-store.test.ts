@@ -118,6 +118,19 @@ describe('OfficialPluginInstalledStore', () => {
 			await engine.storage.getPluginData('core.official-plugins', 'installed_plugins')
 		).toEqual(invalid);
 	});
+	it('rejects clearing host installation data without changing the saved collection', async () => {
+		await store.upsert({
+			manifest: { id: 'another-plugin' } as never,
+			origin: { kind: 'user' },
+			installedAt: 1
+		});
+		const before = structuredClone(await store.load());
+		await expect(store.remove('core.official-plugins')).rejects.toThrow(
+			'Cannot delete host plugin installation data'
+		);
+		expect(await store.load()).toEqual(before);
+		expect(store.getRemoved()).toEqual([]);
+	});
 	it('rejects obsolete enable state without migrating development data', () => {
 		expect(() =>
 			parseInstallationState({

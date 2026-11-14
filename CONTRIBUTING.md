@@ -248,6 +248,8 @@ Firebase Analytics 的 Web 配置使用 `.env.example` 里的 `PUBLIC_FIREBASE_*
 
 用 [`defineChronosPlugin`](packages/core/src/plugin/define-chronos-plugin.ts) 声明插件信息、翻译和 `apply(ctx, t)`。可以参考[今日插件](packages/plugins/today/src/index.ts)或[分享插件](packages/plugins/codec-share/src/index.ts)。官方构建会填上与宿主相同的版本号。
 
+插件 ID 的 `core.` 命名空间保留给宿主，安装时会拒绝使用该前缀的 Manifest。插件卸载也不能清除宿主的安装集合数据。
+
 插件通过 `ctx` 获取服务、读写自己的配置和键值数据、读取应用状态、调用语义业务动作，并注册插槽和事件。接口见 [context.ts](packages/core/src/types/context.ts)。每次激活都有独立的 `instanceToken` 和 `signal`。`getPluginContext(id)` 只返回正在运行的实例，未运行时抛错；旧加载句柄只能释放原实例。停止会立即取消信号、撤销贡献和订阅、拒绝新动作和注册。停止之后交给 `addDisposable` 的资源会立即释放。
 
 `apply` 负责读取缓存、准备实例和注册贡献，期间持久化写入会立即失败。宿主提交安装记录并接受实例后，才允许写入并发送 `plugin:loaded`；直接通过引擎加载时由引擎完成接受。可能写入的订阅、缓存整理等工作应在自己的 `plugin:loaded` 事件后开始。已经受理的业务写入保留真实提交结果，卸载和替换会等它们结束。

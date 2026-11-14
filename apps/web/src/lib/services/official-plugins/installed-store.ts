@@ -106,6 +106,9 @@ function storageRepository(
 	return {
 		read,
 		transaction(change, options) {
+			if (options?.deletePluginData?.includes(OFFICIAL_PLUGINS_PLUGIN_ID)) {
+				return Promise.reject(new Error('Cannot delete host plugin installation data'));
+			}
 			const operation = (queues.get(engine.storage) ?? Promise.resolve())
 				.catch(() => {})
 				.then(async () => {

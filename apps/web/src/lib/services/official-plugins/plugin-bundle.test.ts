@@ -47,6 +47,11 @@ describe('validatePluginManifest', () => {
 	it('rejects missing id', () => {
 		expect(() => validatePluginManifest({ ...BASE_MANIFEST, id: '' })).toThrow(/missing id/);
 	});
+	it.each(['core.official-plugins', 'core.other'])('rejects host-reserved id %s', (id) => {
+		expect(() => validatePluginManifest({ ...BASE_MANIFEST, id })).toThrow(
+			/reserved host plugin id/
+		);
+	});
 
 	it('rejects missing sha256 for bundleUrl', () => {
 		expect(() => validatePluginManifest({ ...BASE_MANIFEST, sha256: '' })).toThrow(

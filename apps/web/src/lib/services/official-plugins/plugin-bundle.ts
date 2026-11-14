@@ -79,6 +79,9 @@ export function validatePluginManifest(
 	if (typeof m.id !== 'string' || !m.id) {
 		throw new Error('Invalid plugin manifest: missing id');
 	}
+	if (m.id.startsWith('core.')) {
+		throw new Error('Invalid plugin manifest: reserved host plugin id');
+	}
 	if (typeof m.version !== 'string' || !m.version) {
 		throw new Error('Invalid plugin manifest: missing version');
 	}

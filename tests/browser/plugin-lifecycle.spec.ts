@@ -91,6 +91,51 @@ test.beforeEach(async ({ page, request, context }) => {
 	});
 });
 
+test('rejects a host-reserved theme id without downloading assets or changing installations', async ({
+	page,
+	context
+}) => {
+	const colors = JSON.stringify({
+		id: 'reserved-colors',
+		name: 'Reserved Theme',
+		variants: {
+			light: { colors: { 'color.primary': '#123456' } },
+			dark: { colors: { 'color.primary': '#654321' } }
+		}
+	});
+	let assetRequests = 0;
+	await context.route('https://reserved.example/**', async (route) => {
+		const manifest = new URL(route.request().url()).pathname.endsWith('manifest.json');
+		if (!manifest) assetRequests++;
+		await route.fulfill({
+			contentType: 'application/json',
+			body: manifest
+				? JSON.stringify({
+						id: 'core.official-plugins',
+						name: { en: 'Reserved Theme' },
+						description: { en: 'Reserved namespace regression' },
+						author: 'Browser test',
+						version: '1.0.0',
+						type: 'theme',
+						bundleFormat: 'esm',
+						colorsUrl: './colors.json',
+						colorsSha256: createHash('sha256').update(colors).digest('hex')
+					})
+				: colors
+		});
+	});
+	await installClock(page);
+	const before = await installation(page);
+	await page.getByRole('button', { name: '从链接安装', exact: true }).click();
+	await page
+		.getByPlaceholder('https://example.com/plugin.manifest.json')
+		.fill('https://reserved.example/manifest.json');
+	await page.getByRole('button', { name: '确认安装', exact: true }).click();
+	await expect(page.getByText(/reserved host plugin id/)).toBeVisible();
+	expect(assetRequests).toBe(0);
+	expect(await installation(page)).toEqual(before);
+});
+
 test('plugin settings preserve numeric and string option values and reject empty required numbers', async ({
 	page,
 	context
