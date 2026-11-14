@@ -131,7 +131,7 @@ describe('PluginOperationCoordinator interleaving in OfficialPluginService', () 
 		vi.restoreAllMocks();
 	});
 
-	async function seedStaleOfficialPlugin() {
+	async function seedStaleOfficialPlugin(seed = true) {
 		const manifest: PluginManifest = {
 			id: 'test-plugin',
 			name: { en: 'Test' },
@@ -145,13 +145,14 @@ describe('PluginOperationCoordinator interleaving in OfficialPluginService', () 
 			sha256: await engine.runtime.sha256(SAMPLE_BUNDLE)
 		};
 		const manifestUrl = '/official-plugins/manifests/test-plugin.manifest.json';
-		await service.installationStore.upsert({
-			manifest: { ...manifest, version: '0.4.0' },
-			manifestUrl,
-			code: SAMPLE_BUNDLE,
-			origin: { kind: 'user' },
-			installedAt: 1
-		});
+		if (seed)
+			await service.installationStore.upsert({
+				manifest: { ...manifest, version: '0.4.0' },
+				manifestUrl,
+				code: SAMPLE_BUNDLE,
+				origin: { kind: 'user' },
+				installedAt: 1
+			});
 		return { manifest, manifestUrl };
 	}
 
@@ -271,6 +272,133 @@ describe('PluginOperationCoordinator interleaving in OfficialPluginService', () 
 		expect(service.installationStore.getRemoved()).toContain(manifest.id);
 		expect(httpRequest.mock.calls.some(([url]) => url.includes('test.bundle.js'))).toBe(false);
 	});
+
+	it.each(['queued', 'downloading'] as const)(
+		'cancels a %s reinstall when its plugin is uninstalled',
+		async (stage) => {
+			const manifest: PluginManifest = {
+				id: 'test-plugin',
+				name: { en: 'Test' },
+				version: '1.0.0',
+				description: { en: 'Test' },
+				author: 'Chronos',
+				type: 'tool',
+				toolGroup: 'utility',
+				bundleFormat: 'esm',
+				bundleUrl: '/test.bundle.js',
+				sha256: await engine.runtime.sha256(SAMPLE_BUNDLE)
+			};
+			const otherBundle = SAMPLE_BUNDLE.replaceAll('test-plugin', 'other-plugin').replaceAll(
+				'test-item',
+				'other-item'
+			);
+			const otherManifest: PluginManifest = {
+				...manifest,
+				id: 'other-plugin',
+				bundleUrl: '/other.bundle.js',
+				sha256: await engine.runtime.sha256(otherBundle)
+			};
+			httpRequest.mockResolvedValue(httpResponse({ text: async () => SAMPLE_BUNDLE }));
+			await service.install(manifest, '/test.manifest.json');
+
+			const started = Promise.withResolvers<void>();
+			const release = Promise.withResolvers<void>();
+			const blockedUrl = stage === 'queued' ? 'other.bundle.js' : 'test.bundle.js';
+			httpRequest.mockImplementation(async (url) => {
+				if (url.includes(blockedUrl)) {
+					started.resolve();
+					await release.promise;
+				}
+				return httpResponse({
+					text: async () => (url.includes('other.bundle.js') ? otherBundle : SAMPLE_BUNDLE)
+				});
+			});
+			try {
+				if (stage === 'queued') {
+					service.installQueue.enqueue(otherManifest, '/other.manifest.json');
+					await started.promise;
+				}
+				service.installQueue.enqueue(manifest, '/test.manifest.json');
+				if (stage === 'downloading') await started.promise;
+				expect(service.installQueue.getTask(manifest.id)?.status).toBe(stage);
+
+				const uninstall = service.uninstall(manifest.id);
+				release.resolve();
+				await uninstall;
+				await vi.waitFor(() => expect(service.installQueue.getTasks()).toEqual([]));
+
+				expect(service.getInstalled(manifest.id)).toBeUndefined();
+				expect(service.isPluginActive(manifest.id)).toBe(false);
+				expect(service.installationStore.getRemoved()).toContain(manifest.id);
+				if (stage === 'queued') expect(service.isPluginActive(otherManifest.id)).toBe(true);
+			} finally {
+				release.resolve();
+			}
+		}
+	);
+
+	it.each(['removed', 'replaced', 'never-installed-cycle', 'previously-removed-cycle'] as const)(
+		"preserves another window's changes when a queued attempt resumes (%s)",
+		async (change) => {
+			const { manifest, manifestUrl } = await seedStaleOfficialPlugin(
+				change !== 'never-installed-cycle'
+			);
+			httpRequest.mockResolvedValue(httpResponse({ text: async () => SAMPLE_BUNDLE }));
+			if (change !== 'never-installed-cycle') await service.install(manifest, manifestUrl);
+			if (change === 'previously-removed-cycle') await service.uninstall(manifest.id);
+			const otherEngine = new ChronosEngine({ env: engine.env, onNotification: vi.fn() });
+			await otherEngine.init();
+			const other = createService(otherEngine);
+			const blockerCode = SAMPLE_BUNDLE.replaceAll('test-plugin', 'blocking-plugin').replaceAll(
+				'test-item',
+				'blocking-item'
+			);
+			const blocker: PluginManifest = {
+				...manifest,
+				id: 'blocking-plugin',
+				bundleUrl: '/blocking.bundle.js',
+				sha256: await engine.runtime.sha256(blockerCode)
+			};
+			const started = Promise.withResolvers<void>();
+			const release = Promise.withResolvers<void>();
+			httpRequest.mockImplementation(async (url) => {
+				if (url.includes('blocking.bundle.js')) {
+					started.resolve();
+					await release.promise;
+					return httpResponse({ text: async () => blockerCode });
+				}
+				return httpResponse({ text: async () => SAMPLE_BUNDLE });
+			});
+			try {
+				service.installQueue.enqueue(blocker, '/blocking.manifest.json');
+				await started.promise;
+				service.installQueue.enqueue(manifest, manifestUrl);
+				expect(service.installQueue.getTask(manifest.id)?.status).toBe('queued');
+
+				if (change === 'never-installed-cycle' || change === 'previously-removed-cycle')
+					await other.install(manifest, manifestUrl);
+				await other.uninstall(manifest.id);
+				if (change === 'replaced')
+					await other.install({ ...manifest, description: { en: 'Replacement' } }, manifestUrl);
+				const retained = other.getInstalled(manifest.id);
+				release.resolve();
+				await vi.waitFor(() => expect(service.installQueue.getTasks()).toEqual([]));
+
+				expect(service.getInstalled(manifest.id)).toEqual(retained);
+				expect(service.isPluginActive(blocker.id)).toBe(true);
+				if (change !== 'replaced') {
+					service.installQueue.enqueue(manifest, manifestUrl);
+					await vi.waitFor(() => expect(service.installQueue.getTasks()).toEqual([]));
+					expect(service.getInstalled(manifest.id)).toBeDefined();
+					expect(service.isPluginActive(manifest.id)).toBe(true);
+				}
+			} finally {
+				release.resolve();
+				other.dispose();
+				otherEngine.dispose();
+			}
+		}
+	);
 
 	it('aborts in-flight install when uninstall is called concurrently, preventing resurrection', async () => {
 		const hash = await engine.env.runtime.sha256(SAMPLE_BUNDLE);

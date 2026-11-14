@@ -18,6 +18,8 @@ export interface PreparedPluginUpdate {
 export interface PluginInstallationState {
 	records: InstalledOfficialPluginRecord[];
 	removed: string[];
+	/** Latest removal per plugin, so absent installations retain their revision. */
+	removalRevisions?: Record<string, number>;
 	seeded: boolean;
 	revision: number;
 	generation: string;
@@ -32,6 +34,14 @@ export interface PluginInstallationRepository {
 }
 export function emptyInstallationState(): PluginInstallationState {
 	return { records: [], removed: [], seeded: false, revision: 0, generation: '' };
+}
+
+function pluginRevision(state: PluginInstallationState, id: string): number {
+	const record = state.records.find((record) => record.manifest.id === id);
+	if (record) return record.revision ?? 0;
+	return state.removalRevisions && Object.hasOwn(state.removalRevisions, id)
+		? state.removalRevisions[id]!
+		: -1;
 }
 
 /** A preparation locks installation changes until it is adopted, cancelled, or expires. */
@@ -75,6 +85,16 @@ function hasInstallationHeader(state: PluginInstallationState): boolean {
 	if (!Array.isArray(state.records) || !Array.isArray(state.removed)) return false;
 	if (typeof state.seeded !== 'boolean' || typeof state.generation !== 'string') return false;
 	if (!Number.isSafeInteger(state.revision) || state.revision < 0) return false;
+	if (
+		state.removalRevisions !== undefined &&
+		(!state.removalRevisions ||
+			typeof state.removalRevisions !== 'object' ||
+			Array.isArray(state.removalRevisions) ||
+			Object.values(state.removalRevisions).some(
+				(revision) => !Number.isSafeInteger(revision) || revision <= 0 || revision > state.revision
+			))
+	)
+		return false;
 	return state.removed.every((id) => typeof id === 'string');
 }
 
@@ -218,6 +238,9 @@ export class OfficialPluginInstalledStore {
 	find(id: string) {
 		return this.state.records.find((record) => record.manifest.id === id);
 	}
+	getPluginRevision(id: string): number {
+		return pluginRevision(this.state, id);
+	}
 	has(id: string) {
 		return Boolean(this.find(id));
 	}
@@ -295,14 +318,14 @@ export class OfficialPluginInstalledStore {
 	async upsert(record: InstalledOfficialPluginRecord, expected?: number): Promise<void> {
 		await this.mutate((state) => {
 			const index = state.records.findIndex((old) => old.manifest.id === record.manifest.id);
-			const old = state.records[index];
-			if (expected !== undefined && (old ? (old.revision ?? 0) : -1) !== expected)
+			if (expected !== undefined && pluginRevision(state, record.manifest.id) !== expected)
 				throw new Error('Plugin changed during download; retry');
 			// State revisions do not reset when a plugin is uninstalled and reinstalled.
 			const next = { ...record, revision: state.revision + 1 };
 			if (index >= 0) state.records[index] = next;
 			else state.records.push(next);
 			state.removed = state.removed.filter((id) => id !== record.manifest.id);
+			if (state.removalRevisions) delete state.removalRevisions[record.manifest.id];
 		});
 	}
 	async remove(id: string, expectedRevision?: number) {
@@ -313,6 +336,7 @@ export class OfficialPluginInstalledStore {
 					throw new Error('Plugin changed during uninstall; retry');
 				state.records = state.records.filter((record) => record.manifest.id !== id);
 				state.removed = [...new Set([...state.removed, id])];
+				state.removalRevisions = { ...state.removalRevisions, [id]: state.revision + 1 };
 			},
 			{ deletePluginData: [id] }
 		);

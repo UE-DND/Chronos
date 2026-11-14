@@ -1,18 +1,46 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
+import type { ChronosEngine } from '@chronos/core';
 import type { ChronosDB } from './db';
-import { createPluginInstallationRepository } from './plugin-installation-repository';
-import { emptyInstallationState } from '#lib/services/official-plugins/installed-store.ts';
+import {
+	clearUserDataKeepingPreinstalls,
+	createPluginInstallationRepository
+} from './plugin-installation-repository';
+import {
+	emptyInstallationState,
+	OfficialPluginInstalledStore
+} from '#lib/services/official-plugins/installed-store.ts';
 import type { InstalledOfficialPluginRecord } from '#lib/services/official-plugins/official-plugin-types.ts';
 
 function fixture() {
-	const metadata = new Map<string, { valueJson: string }>();
+	const metadata = new Map<string, { pluginId: string; valueJson: string }>();
 	const resources = new Map<string, Record<string, unknown>>();
 	const images = new Map<string, { id: string; blob: Blob }>();
 	const database = {
 		pluginData: {
 			get: async (id: string) => metadata.get(id),
-			put: vi.fn(async (row: { id: string; valueJson: string }) => metadata.set(row.id, row))
+			put: vi.fn(async (row: { id: string; pluginId: string; valueJson: string }) =>
+				metadata.set(row.id, row)
+			),
+			toCollection: () => ({ primaryKeys: async () => [...metadata.keys()] }),
+			bulkDelete: async (ids: string[]) => {
+				for (const id of ids) metadata.delete(id);
+			},
+			where: () => ({
+				equals: (pluginId: string) => ({
+					delete: async () => {
+						for (const [key, row] of metadata) {
+							if (row.pluginId === pluginId) metadata.delete(key);
+						}
+					}
+				})
+			})
 		},
+		pluginBinary: {
+			where: () => ({ equals: () => ({ delete: async () => {} }) }),
+			clear: async () => {}
+		},
+		timetables: { clear: async () => {} },
+		courses: { clear: async () => {} },
 		pluginResources: {
 			get: vi.fn(async (id: string) => resources.get(id)),
 			bulkGet: vi.fn(async (ids: string[]) => ids.map((id) => resources.get(id))),
@@ -145,6 +173,55 @@ describe('plugin image transactions', () => {
 });
 
 describe('plugin installation resources', () => {
+	it('persists removal revisions across repository recreation and clears only the reinstalled ID', async () => {
+		const { repository, database } = fixture();
+		const store = new OfficialPluginInstalledStore({} as ChronosEngine, repository);
+		await store.upsert(record('installed'));
+		const installedRevision = store.find('plugin')!.revision!;
+		await store.remove('plugin', installedRevision);
+		await store.remove('another-plugin');
+		const reopened = createPluginInstallationRepository(database as unknown as ChronosDB);
+		const removed = await reopened.read();
+		expect(removed.records).toEqual([]);
+		expect(removed.removalRevisions?.plugin).toBeGreaterThan(installedRevision);
+		expect(removed.removalRevisions?.['another-plugin']).toBeGreaterThan(
+			removed.removalRevisions!.plugin!
+		);
+		const restarted = new OfficialPluginInstalledStore({} as ChronosEngine, reopened);
+		await restarted.upsert(record('reinstalled'));
+		const retained = await repository.read();
+		expect(retained.records[0]?.code).toBe('reinstalled');
+		expect(retained.removalRevisions?.plugin).toBeUndefined();
+		expect(retained.removalRevisions?.['another-plugin']).toBe(
+			removed.removalRevisions?.['another-plugin']
+		);
+		store.dispose();
+		restarted.dispose();
+	});
+	it('clears all removal revisions during factory reset while retaining required resources', async () => {
+		const { repository, database, resources } = fixture();
+		const store = new OfficialPluginInstalledStore({} as ChronosEngine, repository);
+		await store.upsert({
+			...record('required'),
+			origin: { kind: 'profile', profileId: 'qa' }
+		});
+		await store.remove('removed-one');
+		await store.remove('removed-two');
+		expect(Object.keys((await repository.read()).removalRevisions ?? {})).toHaveLength(2);
+		await clearUserDataKeepingPreinstalls(database as unknown as ChronosDB, {
+			profileId: 'qa',
+			preinstallIds: ['plugin'],
+			hostVersion: '1',
+			hostBuildId: ''
+		});
+		const reset = await createPluginInstallationRepository(database as unknown as ChronosDB).read();
+		expect(reset.removalRevisions).toBeUndefined();
+		expect(reset.removed).toEqual([]);
+		expect(reset.records).toHaveLength(1);
+		expect(reset.records[0]?.code).toBe('required');
+		expect(resources.size).toBe(1);
+		store.dispose();
+	});
 	it('rejects deleting the host namespace before changing metadata or resources', async () => {
 		const { repository, resources } = fixture();
 		await repository.transaction((state) => {

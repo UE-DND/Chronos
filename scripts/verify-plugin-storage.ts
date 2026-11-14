@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite-plus';
 import { chromium, expect } from '@playwright/test';
+import { HOLIDAY_PLUGIN_ID } from '../packages/plugins/calendar-holidays/src/constants';
 import type { createStorageFixture } from './fixtures/plugin-storage-browser';
 
 declare global {
@@ -100,7 +101,13 @@ try {
 		late: null
 	});
 	expect(await first.evaluate(() => window.storageQa.cache())).toBeNull();
+	const removed = await second.evaluate(() => window.storageQa.removalState());
+	expect(removed.removed).toEqual([HOLIDAY_PLUGIN_ID]);
+	expect(removed.removalRevisions?.[HOLIDAY_PLUGIN_ID]).toBeGreaterThan(0);
 	await first.evaluate(() => window.storageQa.reinstall());
+	const reinstalled = await second.evaluate(() => window.storageQa.removalState());
+	expect(reinstalled.removed).toEqual([]);
+	expect(reinstalled.removalRevisions?.[HOLIDAY_PLUGIN_ID]).toBeUndefined();
 	const fresh = first.evaluate(() => window.storageQa.sync('one'));
 	await expect.poll(() => first.evaluate(() => window.storageQa.requests().length)).toBe(2);
 	await first.evaluate(() => window.storageQa.respond(1, 'reinstalled'));
@@ -110,10 +117,19 @@ try {
 	expect(await first.evaluate(() => window.storageQa.holidays('one'))).toEqual([
 		{ date: '2026-03-02', label: 'reinstalled' }
 	]);
+	expect(await first.evaluate(() => window.storageQa.uninstall())).toBe('removed');
+	const removedAgain = await second.evaluate(() => window.storageQa.removalState());
+	expect(removedAgain.removalRevisions?.[HOLIDAY_PLUGIN_ID]).toBeGreaterThan(
+		removed.removalRevisions![HOLIDAY_PLUGIN_ID]!
+	);
+	await first.evaluate(() => window.storageQa.reset());
+	const reset = await second.evaluate(() => window.storageQa.removalState());
+	expect(reset.removed).toEqual([]);
+	expect(reset.removalRevisions).toBeUndefined();
 	for (const page of [first, second]) await page.evaluate(() => window.storageQa.close());
 	expect(errors).toEqual([]);
 	console.log(
-		'IndexedDB scope revisions, atomic rollback/deletion, concurrent windows, reload and stale requests: passed'
+		'IndexedDB scope revisions, atomic rollback/deletion, concurrent windows, reload, stale requests and reset: passed'
 	);
 } finally {
 	await browser.close();

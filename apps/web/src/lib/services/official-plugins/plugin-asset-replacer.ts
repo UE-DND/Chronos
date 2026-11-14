@@ -27,7 +27,7 @@ export async function replacePluginAssets(
 ): Promise<InstalledOfficialPluginRecord> {
 	const pluginId = candidate.manifest.id;
 	const existing = deps.installedStore.find(pluginId);
-	const currentRevision = existing ? (existing.revision ?? 0) : -1;
+	const currentRevision = deps.installedStore.getPluginRevision(pluginId);
 	const expectedRevision = options?.expectedRevision ?? currentRevision;
 	if (currentRevision !== expectedRevision)
 		throw new Error('Plugin changed during download; retry');

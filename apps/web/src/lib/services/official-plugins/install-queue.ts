@@ -61,7 +61,10 @@ export class OfficialPluginInstallQueue implements Disposable {
 		const task = existing
 			? requeueTask(existing, manifest, manifestUrl)
 			: createQueuedTask(manifest, manifestUrl);
-		this.tasks.set(manifest.id, task);
+		this.tasks.set(manifest.id, {
+			...task,
+			expectedInstalledRevision: this.deps.getInstalledRevision?.(manifest.id)
+		});
 		this.attempts.set(manifest.id, Symbol());
 		this.notifyState();
 		void this.processNext();
@@ -98,7 +101,10 @@ export class OfficialPluginInstallQueue implements Disposable {
 		if (!task) return;
 		if (task.status !== 'failed' && task.status !== 'canceled') return;
 
-		this.tasks.set(pluginId, requeueTask(task, task.manifest, task.manifestUrl));
+		this.tasks.set(pluginId, {
+			...requeueTask(task, task.manifest, task.manifestUrl),
+			expectedInstalledRevision: this.deps.getInstalledRevision?.(pluginId)
+		});
 		this.attempts.set(pluginId, Symbol());
 		this.notifyState();
 		void this.processNext();
@@ -233,6 +239,7 @@ export class OfficialPluginInstallQueue implements Disposable {
 			// Runner errors are classified below; queue does not rethrow.
 			await this.deps.runner(nextTask.manifest, nextTask.manifestUrl, {
 				signal: controller.signal,
+				expectedInstalledRevision: nextTask.expectedInstalledRevision,
 				onProgress: (prog) => {
 					if (this.attempts.get(activeId) !== attempt) return;
 					const current = this.tasks.get(activeId);

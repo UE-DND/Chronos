@@ -30,10 +30,17 @@ describe('OfficialPluginInstallQueue', () => {
 				.mockImplementationOnce(() => second.promise);
 			const onTaskCanceled = vi.fn();
 			const onTaskCompleted = vi.fn();
-			const queue = new OfficialPluginInstallQueue({ runner, onTaskCanceled, onTaskCompleted });
+			let installationRevision = 1;
+			const queue = new OfficialPluginInstallQueue({
+				runner,
+				onTaskCanceled,
+				onTaskCompleted,
+				getInstalledRevision: () => installationRevision
+			});
 			const manifest = createManifest('theme');
 			queue.enqueue(manifest);
 			queue.cancel(manifest.id);
+			installationRevision = 2;
 			if (restart === 'enqueue') queue.enqueue(manifest);
 			else queue.retry(manifest.id);
 			reportOldProgress?.({ stage: 'verifying', percent: 80 });
@@ -43,6 +50,9 @@ describe('OfficialPluginInstallQueue', () => {
 			await Promise.resolve();
 			await Promise.resolve();
 			expect(runner).toHaveBeenCalledTimes(2);
+			expect(runner.mock.calls.map(([, , options]) => options?.expectedInstalledRevision)).toEqual([
+				1, 2
+			]);
 			expect(queue.getTask(manifest.id)?.status).toBe('downloading');
 			expect(onTaskCanceled).not.toHaveBeenCalled();
 			reportOldProgress?.({ stage: 'installing', percent: 90 });

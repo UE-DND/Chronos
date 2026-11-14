@@ -169,10 +169,12 @@ describe('OfficialPluginInstalledStore', () => {
 	it('persists explicit removal and clears it only after reinstall succeeds', async () => {
 		await store.load();
 		await store.remove('removed');
+		const removalRevision = store.revision;
 		const restarted = new OfficialPluginInstalledStore(engine);
 		await restarted.load();
 		expect(restarted.getRemoved()).toEqual(['removed']);
 		expect(restarted.getCache()).toEqual([]);
+		expect(restarted.getPluginRevision('removed')).toBe(removalRevision);
 		await restarted.upsert({
 			manifest: { id: 'removed' } as never,
 			origin: { kind: 'user' },
@@ -181,7 +183,33 @@ describe('OfficialPluginInstalledStore', () => {
 		await store.load();
 		expect(store.getRemoved()).toEqual([]);
 		expect(store.getCache()).toHaveLength(1);
+		expect(store.getPluginRevision('removed')).toBeGreaterThan(removalRevision);
 	});
+	it.each(['plugin', '__proto__', 'constructor'])(
+		'rejects a late first install after an install/uninstall cycle for %s',
+		async (id) => {
+			await store.remove('unrelated');
+			const previousRevision = store.getPluginRevision(id);
+			expect(previousRevision).toBe(-1);
+			const other = new OfficialPluginInstalledStore(engine);
+			const record = {
+				manifest: { id } as never,
+				origin: { kind: 'user' as const },
+				installedAt: 1
+			};
+			await other.upsert(record);
+			await other.remove(id);
+
+			await expect(store.upsert(record, previousRevision)).rejects.toThrow('Plugin changed');
+			await store.load();
+			const removalRevision = store.getPluginRevision(id);
+			expect(removalRevision).toBeGreaterThan(0);
+			await other.remove('unrelated');
+			await store.upsert(record, removalRevision);
+			expect(store.has(id)).toBe(true);
+			expect(store.getPluginRevision(id)).toBeGreaterThan(removalRevision);
+		}
+	);
 	it('merges independent windows and rejects a late download after uninstall', async () => {
 		const other = new OfficialPluginInstalledStore(engine);
 		await Promise.all([store.load(), other.load()]);
@@ -284,6 +312,8 @@ describe('OfficialPluginInstalledStore', () => {
 			origin: { kind: 'user' },
 			installedAt: 1
 		});
+		await store.remove('removed-before-update');
+		const removalRevision = store.getPluginRevision('removed-before-update');
 		const previousRevision = store.find('optional')!.revision;
 		const target = { ...host, version: '1.2.3', buildId: 'next' };
 		await store.prepare({
@@ -308,6 +338,8 @@ describe('OfficialPluginInstalledStore', () => {
 		expect(later.prepared?.token).toBe('owner');
 		await later.startHost(target);
 		expect(later.find('optional')?.code).toBe('new');
+		expect(later.getPluginRevision('removed-before-update')).toBe(removalRevision);
+		expect(later.has('removed-before-update')).toBe(false);
 		expect(later.find('optional')?.revision).toBeGreaterThan(previousRevision!);
 		expect(later.prepared).toBeUndefined();
 		const revision = later.revision;
@@ -343,6 +375,11 @@ describe('installation state validation', () => {
 		{ records: [{ ...record('profile'), origin: { kind: 'profile', profileId: 1 } }] },
 		{ records: [null] },
 		{ removed: [1] },
+		{ removalRevisions: null },
+		{ removalRevisions: [] },
+		{ removalRevisions: { plugin: -1 } },
+		{ removalRevisions: { plugin: 1 }, revision: 0 },
+		{ removalRevisions: { plugin: 0.5 }, revision: 1 },
 		{ revision: -1 },
 		{ prepared: { ...prepared(), records: [{ manifest: { id: 'obsolete' }, enabled: false }] } },
 		{ prepared: { ...prepared(), records: [null] } },

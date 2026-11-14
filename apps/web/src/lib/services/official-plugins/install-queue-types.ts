@@ -21,6 +21,7 @@ export interface PluginInstallTask {
 	readonly pluginId: string;
 	readonly manifest: PluginManifest;
 	readonly manifestUrl?: string;
+	readonly expectedInstalledRevision?: number;
 	readonly status: PluginInstallStage;
 	readonly progress: PluginInstallProgress;
 	readonly error?: string;
@@ -34,6 +35,7 @@ export type PluginInstallRunner = (
 	manifestUrl?: string,
 	options?: {
 		signal?: AbortSignal;
+		expectedInstalledRevision?: number;
 		onProgress?: (progress: {
 			stage: PluginInstallStage;
 			percent: number;
@@ -44,6 +46,8 @@ export type PluginInstallRunner = (
 
 export interface OfficialPluginInstallQueueDeps {
 	runner: PluginInstallRunner;
+	/** Captures the last installation/removal revision; -1 means no recorded change. */
+	getInstalledRevision?: (pluginId: string) => number;
 	onTaskFailed?: (task: PluginInstallTask) => void;
 	onTaskCompleted?: (task: PluginInstallTask) => void;
 	onTaskCanceled?: (task: PluginInstallTask) => void;

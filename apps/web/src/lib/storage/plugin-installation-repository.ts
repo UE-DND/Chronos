@@ -225,6 +225,7 @@ export async function clearUserDataKeepingPreinstalls(
 				state.revision++;
 				for (const record of state.records) record.revision = state.revision;
 				state.removed = [];
+				delete state.removalRevisions;
 				state.seeded = false;
 				delete state.prepared;
 			});

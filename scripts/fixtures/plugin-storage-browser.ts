@@ -1,7 +1,10 @@
 import { ChronosEngine, createTimetable, type HttpResponse } from '../../packages/core/src/index';
 import { ChronosDB } from '../../apps/web/src/lib/storage/db';
 import { DexieStorageProvider } from '../../apps/web/src/lib/providers/dexie-storage';
-import { createPluginInstallationRepository } from '../../apps/web/src/lib/storage/plugin-installation-repository';
+import {
+	clearUserDataKeepingPreinstalls,
+	createPluginInstallationRepository
+} from '../../apps/web/src/lib/storage/plugin-installation-repository';
 import { OfficialPluginInstalledStore } from '../../apps/web/src/lib/services/official-plugins/installed-store';
 import {
 	createHolidayPlugin,
@@ -107,6 +110,20 @@ export async function createStorageFixture() {
 			return engine.resolveHolidays((await storage.getTimetable(id))!);
 		},
 		cache: () => storage.getPluginData(HOLIDAY_PLUGIN_ID, 'calendars'),
+		async removalState() {
+			const state = await createPluginInstallationRepository(database).read();
+			return { removed: state.removed, removalRevisions: state.removalRevisions };
+		},
+		async reset() {
+			await engine.unloadPlugin(HOLIDAY_PLUGIN_ID);
+			await store.load();
+			await clearUserDataKeepingPreinstalls(database, {
+				profileId: 'qa',
+				preinstallIds: [],
+				hostVersion: '1',
+				hostBuildId: store.hostGeneration
+			});
+		},
 		async upgrade(fail = false) {
 			await engine.unloadPlugin(HOLIDAY_PLUGIN_ID);
 			if (!fail) await store.upsert(record);

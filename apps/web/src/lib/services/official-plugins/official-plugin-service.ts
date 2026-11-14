@@ -226,6 +226,7 @@ export class OfficialPluginService implements Disposable {
 			resolved.installQueue ??
 			new OfficialPluginInstallQueue({
 				runner: (manifest, manifestUrl, options) => this.install(manifest, manifestUrl, options),
+				getInstalledRevision: (id) => this.installedStore.getPluginRevision(id),
 				onTaskFailed: (task) => {
 					this.engine.notify(
 						hostT('snackbar.install.failed', { message: task.error ?? '' }),
@@ -612,9 +613,8 @@ export class OfficialPluginService implements Disposable {
 			wallpaper?: Blob;
 		}
 	): Promise<InstalledOfficialPluginRecord> {
-		const previous = this.installedStore.find(candidate.manifest.id);
 		const expectedRevision =
-			options?.expectedRevision ?? (previous ? (previous.revision ?? 0) : -1);
+			options?.expectedRevision ?? this.installedStore.getPluginRevision(candidate.manifest.id);
 
 		const id = options?.wallpaper
 			? `theme:${candidate.manifest.id}:${crypto.randomUUID()}`
@@ -710,14 +710,13 @@ export class OfficialPluginService implements Disposable {
 		if (this.installedStore.isFrozen || this.installedStore.hostChanged)
 			throw new Error('Application update in progress; reload before changing plugins');
 		const existingSnapshot = this.installedStore.find(manifest.id);
-		// A catalog refresh may have queued behind an uninstall or a newer install.
+		const expectedRevision = this.installedStore.getPluginRevision(manifest.id);
+		// A queued install or catalog refresh must not overwrite a newer user decision.
 		if (
 			options?.expectedInstalledRevision !== undefined &&
-			(!existingSnapshot || (existingSnapshot.revision ?? 0) !== options.expectedInstalledRevision)
+			expectedRevision !== options.expectedInstalledRevision
 		)
 			return;
-
-		const expectedRevision = existingSnapshot ? (existingSnapshot.revision ?? 0) : -1;
 
 		const mergedSignal = mergeAbortSignals(
 			options?.signal ? [options.signal, this.lifecycle.signal] : [this.lifecycle.signal]
@@ -736,9 +735,7 @@ export class OfficialPluginService implements Disposable {
 			await this.installedStore.load();
 			if (this.installedStore.isFrozen || this.installedStore.hostChanged)
 				throw new Error('Application update in progress; reload before changing plugins');
-			const current = this.installedStore.find(manifest.id);
-
-			if ((current ? (current.revision ?? 0) : -1) !== expectedRevision)
+			if (this.installedStore.getPluginRevision(manifest.id) !== expectedRevision)
 				throw new Error('Plugin changed during download; retry');
 
 			options?.onProgress?.({ stage: 'installing', percent: 88 });
@@ -790,6 +787,7 @@ export class OfficialPluginService implements Disposable {
 
 	async uninstall(pluginId: string): Promise<void> {
 		this.assertUserRemoval(pluginId);
+		this.installQueue.cancel(pluginId);
 		return this.operations.run(
 			pluginId,
 			async ({ signal }) => {
