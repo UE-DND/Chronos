@@ -7,6 +7,7 @@
 
 	let {
 		manifest,
+		pluginName,
 		installed = false,
 		disabled = false,
 		needsUpdate = false,
@@ -16,6 +17,7 @@
 		onRetry
 	}: {
 		manifest: PluginManifest;
+		pluginName: string;
 		installed?: boolean;
 		disabled?: boolean;
 		needsUpdate?: boolean;
@@ -56,6 +58,7 @@
 			<div class="group relative size-8">
 				<div
 					role="progressbar"
+					aria-label={hostT('plugins.progress.label', { name: pluginName.trim() || manifest.id })}
 					aria-valuenow={percent}
 					aria-valuemin={0}
 					aria-valuemax={100}
@@ -84,7 +87,7 @@
 							stroke-linecap="round"
 							stroke-dasharray={CIRCUMFERENCE}
 							stroke-dashoffset={strokeOffset}
-							class="text-primary transition-[stroke-dashoffset] duration-200"
+							class="plugin-progress-ring text-primary transition-[stroke-dashoffset] duration-200"
 						/>
 					</svg>
 				</div>
@@ -153,3 +156,15 @@
 		</Button>
 	{/if}
 </div>
+
+<style>
+	@media (prefers-reduced-motion: reduce) {
+		.plugin-progress-ring {
+			transition: none;
+		}
+	}
+
+	:global(:root.reduce-motion) .plugin-progress-ring {
+		transition: none;
+	}
+</style>

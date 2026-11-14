@@ -50,7 +50,7 @@
 			<div class="progress-indeterminate h-full rounded-full bg-primary"></div>
 		{:else}
 			<div
-				class="h-full rounded-full bg-primary transition-[width] duration-200"
+				class="progress-determinate h-full rounded-full bg-primary transition-[width] duration-200"
 				style:width="{clampedPercent}%"
 			></div>
 		{/if}
@@ -77,5 +77,18 @@
 			animation: none;
 			transform: translateX(90%);
 		}
+
+		.progress-determinate {
+			transition: none;
+		}
+	}
+
+	:global(:root.reduce-motion) .progress-indeterminate {
+		animation: none;
+		transform: translateX(90%);
+	}
+
+	:global(:root.reduce-motion) .progress-determinate {
+		transition: none;
 	}
 </style>

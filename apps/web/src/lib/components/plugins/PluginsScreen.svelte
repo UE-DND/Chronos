@@ -179,6 +179,7 @@
 									{/if}
 								</div>
 								<PluginInstallAction
+									pluginName={name}
 									disabled={screen.state.installationFrozen}
 									{manifest}
 									installed={screen.isInstalled(manifest.id)}
@@ -406,6 +407,7 @@
 
 											<div class="flex shrink-0 flex-col items-end gap-1">
 												<PluginInstallAction
+													pluginName={name}
 													disabled={screen.state.installationFrozen}
 													{manifest}
 													{installed}
