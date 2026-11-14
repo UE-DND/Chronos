@@ -49,13 +49,20 @@ export interface PluginResourceRow {
 	iconThemeJson?: string | null;
 }
 
+export interface ImageRow {
+	id: string;
+	blob: Blob;
+	/** Changes on every write. Repeated reads of one save keep the same value. */
+	revision?: string;
+}
+
 export class ChronosDB extends Dexie {
 	timetables!: Table<TimetableRow, string>;
 	courses!: Table<CourseRow, string>;
 	pluginData!: Table<PluginDataRow, string>;
 	pluginBinary!: Table<PluginBinaryRow, string>;
 	pluginResources!: Table<PluginResourceRow, string>;
-	images!: Table<{ id: string; blob: Blob }, string>;
+	images!: Table<ImageRow, string>;
 
 	constructor(name = storageNamespace.databaseName) {
 		super(name);
