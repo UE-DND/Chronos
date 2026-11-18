@@ -736,6 +736,7 @@ describe('OfficialPluginService', () => {
 		expect(httpRequest).not.toHaveBeenCalled();
 		expect(engine.isPluginLoaded('test-plugin')).toBe(false);
 		expect(service.getUpdateStatus('test-plugin')?.status).toBe('confirmation-required');
+		await expect(service.waitForSettled()).resolves.toBeUndefined();
 		await service.confirmHostCompatibility('test-plugin');
 		expect(engine.isPluginLoaded('test-plugin')).toBe(true);
 		expect(service.getInstalled('test-plugin')?.acceptedHostVersion).toBe('0.4.1');
@@ -811,6 +812,7 @@ describe('OfficialPluginService', () => {
 		await expect(service.init()).resolves.toBeUndefined();
 		expect(service.getInstalled('test-plugin')?.manifest.version).toBe('0.4.0');
 		expect(engine.isPluginLoaded('test-plugin')).toBe(false);
+		await expect(service.waitForSettled()).resolves.toBeUndefined();
 	});
 
 	it('preserves plugin config when syncing stale official plugins during init', async () => {

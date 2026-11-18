@@ -459,4 +459,37 @@ describe('OfficialPluginInstallQueue', () => {
 		expect(runner.mock.calls.map(([manifest]) => manifest.id)).toEqual(['first', 'second']);
 		expect(queue.getActiveTask()).toBeUndefined();
 	});
+
+	it('marks a task canceled and clears it when the runner returns false', async () => {
+		const onTaskCompleted = vi.fn();
+		const onTaskCanceled = vi.fn();
+		const onTaskFailed = vi.fn();
+		const observedStatuses: string[] = [];
+		const runner = vi.fn<PluginInstallRunner>().mockResolvedValue(false);
+		const queue = new OfficialPluginInstallQueue({
+			runner,
+			onTaskCompleted,
+			onTaskCanceled,
+			onTaskFailed
+		});
+		const manifest = createManifest('skipped-plugin');
+		queue.onChanged(({ kind }) => {
+			if (kind !== 'state') return;
+			const status = queue.getTask(manifest.id)?.status;
+			if (status) observedStatuses.push(status);
+		});
+
+		queue.enqueue(manifest);
+		await vi.waitFor(() => expect(queue.getTasks()).toEqual([]));
+
+		expect(observedStatuses).toEqual(['queued', 'downloading', 'canceled']);
+		expect(onTaskCanceled).toHaveBeenCalledTimes(1);
+		expect(onTaskCanceled.mock.calls[0]?.[0]).toMatchObject({
+			pluginId: 'skipped-plugin',
+			status: 'canceled'
+		});
+		expect(onTaskCompleted).not.toHaveBeenCalled();
+		expect(onTaskFailed).not.toHaveBeenCalled();
+		expect(queue.getTask(manifest.id)).toBeUndefined();
+	});
 });

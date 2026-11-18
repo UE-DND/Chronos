@@ -128,4 +128,41 @@ describe('runtime follows external installation changes', () => {
 			service.dispose();
 		}
 	});
+
+	it('resolves waitForSettled for deferred incompatible plugins while still rejecting failures or compatible inactive records', async () => {
+		const { service, store, other, active, record } = await fixture();
+		try {
+			await other.upsert({
+				manifest: { id: 'pending-official', version: '0' } as never,
+				manifestUrl: '/official-plugins/manifests/pending-official.manifest.json',
+				origin: { kind: 'user' },
+				installedAt: 1
+			});
+			await other.upsert({
+				manifest: { id: 'unconfirmed-external', version: '0' } as never,
+				manifestUrl: 'https://cdn.example.com/plugins/unconfirmed/manifest.json',
+				acceptedHostVersion: '0',
+				origin: { kind: 'user' },
+				installedAt: 1
+			});
+			await store.load();
+			store.notify();
+
+			await expect(service.waitForSettled()).resolves.toBeUndefined();
+			expect(service.getUpdateStatus('pending-official')?.status).toBe('pending');
+			expect(service.getUpdateStatus('unconfirmed-external')?.status).toBe('confirmation-required');
+
+			await other.upsert(record('compatible-plugin'));
+			await store.load();
+			store.notify();
+			await expect(service.waitForSettled()).resolves.toBeUndefined();
+
+			active.delete('compatible-plugin');
+			await expect(service.waitForSettled()).rejects.toThrow(
+				'Plugin restoration failed: compatible-plugin'
+			);
+		} finally {
+			service.dispose();
+		}
+	});
 });

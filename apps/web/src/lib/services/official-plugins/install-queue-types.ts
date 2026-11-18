@@ -42,7 +42,7 @@ export type PluginInstallRunner = (
 			message?: string;
 		}) => void;
 	}
-) => Promise<void>;
+) => Promise<boolean | void>;
 
 export interface OfficialPluginInstallQueueDeps {
 	runner: PluginInstallRunner;

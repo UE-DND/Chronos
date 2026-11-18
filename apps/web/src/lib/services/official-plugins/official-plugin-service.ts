@@ -17,7 +17,7 @@ import { OfficialPluginAssetPipeline } from './asset-pipeline';
 import { OfficialPluginCatalogClient } from './catalog-client';
 import { OfficialPluginInstalledStore } from './installed-store';
 import type { InstalledOfficialPluginRecord } from './official-plugin-types';
-import { replacePluginAssets } from './plugin-asset-replacer';
+import { PluginReplacementRollbackError, replacePluginAssets } from './plugin-asset-replacer';
 import { OfficialPluginRuntimeActivator } from './runtime-activator';
 import { assertValidManifestInstallUrl } from './manifest-url';
 import { validatePluginManifest } from './plugin-bundle';
@@ -648,6 +648,16 @@ export class OfficialPluginService implements Disposable {
 			result = required
 				? await this.engine.withPluginReplacement(candidate.manifest.id, replace)
 				: await replace();
+		} catch (error) {
+			if (
+				error instanceof PluginReplacementRollbackError &&
+				this.installedStore.find(candidate.manifest.id)
+			) {
+				this.activeVersions.delete(candidate.manifest.id);
+				this.failures.set(candidate.manifest.id, String(error));
+				this.updateStatuses.set(candidate.manifest.id, { status: 'failed', error: String(error) });
+			}
+			throw error;
 		} finally {
 			if (!this.disposed && required && this.engine.themes.isSelectable(required.themeId))
 				this.engine.configureDefaultTheme(required);
@@ -665,17 +675,18 @@ export class OfficialPluginService implements Disposable {
 		manifest: PluginManifest,
 		manifestUrl?: string,
 		options?: Parameters<OfficialPluginService['performInstall']>[2]
-	): Promise<void> {
+	): Promise<boolean> {
 		if (this.disposed) throw new DOMException('Aborted', 'AbortError');
 		return this.operations.run(
 			manifest.id,
 			async ({ signal }) => {
-				await this.performInstall(manifest, manifestUrl, {
+				const installed = await this.performInstall(manifest, manifestUrl, {
 					...options,
 					signal
 				});
 				if (!this.disposed) await this.installedStore.load();
 				this.installedStore.notify();
+				return installed;
 			},
 			{ signal: options?.signal }
 		);
@@ -695,7 +706,7 @@ export class OfficialPluginService implements Disposable {
 				message?: string;
 			}) => void;
 		}
-	): Promise<void> {
+	): Promise<boolean> {
 		options?.signal?.throwIfAborted();
 		this.lifecycle.signal.throwIfAborted();
 		validatePluginManifest(manifest);
@@ -724,7 +735,7 @@ export class OfficialPluginService implements Disposable {
 			options?.expectedInstalledRevision !== undefined &&
 			expectedRevision !== options.expectedInstalledRevision
 		)
-			return;
+			return false;
 
 		const mergedSignal = mergeAbortSignals(
 			options?.signal ? [options.signal, this.lifecycle.signal] : [this.lifecycle.signal]
@@ -780,9 +791,10 @@ export class OfficialPluginService implements Disposable {
 
 			options?.onProgress?.({ stage: 'completed', percent: 100 });
 
-			if (options?.silent) return;
-
-			this.engine.notify(hostT('plugins.notify.installed', { pluginId: manifest.id }), 'info');
+			if (!options?.silent) {
+				this.engine.notify(hostT('plugins.notify.installed', { pluginId: manifest.id }), 'info');
+			}
+			return true;
 		} catch (err: unknown) {
 			if (signal?.aborted || isAbortError(err)) {
 				throw new DOMException('Aborted', 'AbortError');
@@ -817,7 +829,14 @@ export class OfficialPluginService implements Disposable {
 					if (previous && wasActive && retained && retained.revision === previous.revision) {
 						try {
 							await this.runtimeActivator.activate(retained);
+							this.failures.delete(pluginId);
 						} catch (restoreError) {
+							this.activeVersions.delete(pluginId);
+							this.failures.set(pluginId, String(restoreError));
+							this.updateStatuses.set(pluginId, {
+								status: 'failed',
+								error: String(restoreError)
+							});
 							throw new AggregateError(
 								[error, restoreError],
 								'Plugin uninstall failed and runtime could not be restored'
@@ -827,6 +846,8 @@ export class OfficialPluginService implements Disposable {
 					throw error;
 				}
 				this.activeVersions.delete(pluginId);
+				this.failures.delete(pluginId);
+				this.updateStatuses.delete(pluginId);
 				if (ownedTheme && this.engine.state.userPreferences.visualThemeId === preferred)
 					await this.engine.revertToDefaultThemes();
 				this.installQueue.clearFinished(pluginId);
@@ -900,7 +921,7 @@ export class OfficialPluginService implements Disposable {
 			.filter(
 				(record) =>
 					this.failures.has(record.manifest.id) ||
-					!this.runtimeActivator.isActive(record.manifest.id)
+					(this.isCompatible(record) && !this.runtimeActivator.isActive(record.manifest.id))
 			);
 		if (failed.length)
 			throw new Error(

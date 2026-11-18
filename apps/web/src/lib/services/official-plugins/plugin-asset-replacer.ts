@@ -16,6 +16,15 @@ export interface ReplacePluginAssetsOptions {
 	signal?: AbortSignal;
 }
 
+export class PluginReplacementRollbackError extends AggregateError {
+	constructor(pluginId: string, cause: unknown, rollbackError: unknown) {
+		super(
+			[cause, rollbackError],
+			`Failed to replace plugin ${pluginId} and rollback previous runtime`
+		);
+	}
+}
+
 /**
  * Atomically swaps plugin runtime assets and persisted record.
  * Rollback order on failure: deactivate new runtime → re-activate previous snapshot.
@@ -43,8 +52,6 @@ export async function replacePluginAssets(
 	};
 
 	let runtimeTouched = false;
-	const rollbackErrors: unknown[] = [];
-
 	const rollbackRuntime = async (cause: unknown): Promise<InstalledOfficialPluginRecord> => {
 		if (runtimeTouched) {
 			try {
@@ -75,17 +82,11 @@ export async function replacePluginAssets(
 						}
 					}
 				}
-			} catch (rollbackErr) {
-				rollbackErrors.push(rollbackErr);
+			} catch (rollbackError) {
+				throw new PluginReplacementRollbackError(pluginId, cause, rollbackError);
 			}
 		}
 
-		if (rollbackErrors.length > 0) {
-			throw new AggregateError(
-				[cause, ...rollbackErrors],
-				`Failed to replace plugin ${pluginId} and rollback previous runtime`
-			);
-		}
 		throw cause;
 	};
 

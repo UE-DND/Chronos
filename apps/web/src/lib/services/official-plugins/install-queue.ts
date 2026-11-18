@@ -237,7 +237,7 @@ export class OfficialPluginInstallQueue implements Disposable {
 
 		try {
 			// Runner errors are classified below; queue does not rethrow.
-			await this.deps.runner(nextTask.manifest, nextTask.manifestUrl, {
+			const installed = await this.deps.runner(nextTask.manifest, nextTask.manifestUrl, {
 				signal: controller.signal,
 				expectedInstalledRevision: nextTask.expectedInstalledRevision,
 				onProgress: (prog) => {
@@ -256,10 +256,17 @@ export class OfficialPluginInstallQueue implements Disposable {
 				current.status !== 'canceled' &&
 				!controller.signal.aborted
 			) {
-				const completed = markTaskCompleted(current);
-				this.tasks.set(activeId, completed);
-				this.notifyState();
-				this.deps.onTaskCompleted?.(completed);
+				if (installed === false) {
+					const canceled = markTaskCanceled(current);
+					this.tasks.set(activeId, canceled);
+					this.notifyState();
+					this.deps.onTaskCanceled?.(canceled);
+				} else {
+					const completed = markTaskCompleted(current);
+					this.tasks.set(activeId, completed);
+					this.notifyState();
+					this.deps.onTaskCompleted?.(completed);
+				}
 				this.clearFinished(activeId);
 			}
 		} catch (err: unknown) {

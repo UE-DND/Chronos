@@ -63,7 +63,7 @@ export interface SyncInstalledPluginsOptions {
 		manifest: PluginManifest,
 		manifestUrl: string,
 		options?: { silent?: boolean; expectedInstalledRevision?: number }
-	) => Promise<void>;
+	) => Promise<boolean | void>;
 }
 
 /**

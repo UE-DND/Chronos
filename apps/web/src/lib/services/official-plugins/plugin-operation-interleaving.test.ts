@@ -12,6 +12,7 @@ import { OfficialPluginAssetPipeline } from './asset-pipeline';
 import { OfficialPluginCatalogClient } from './catalog-client';
 import { OfficialPluginInstalledStore } from './installed-store';
 import { OfficialPluginRuntimeActivator } from './runtime-activator';
+import { OfficialPluginInstallQueue } from './install-queue';
 
 type HttpMock = Mock<(url: string, options?: HttpRequestOptions) => Promise<HttpResponse>>;
 
@@ -624,5 +625,87 @@ describe('PluginOperationCoordinator interleaving in OfficialPluginService', () 
 		expect(service.getInstalled('plugin-b')).toBeDefined();
 		expect(engine.isPluginLoaded('plugin-a')).toBe(true);
 		expect(engine.isPluginLoaded('plugin-b')).toBe(true);
+	});
+
+	it('keeps a restored plugin healthy when the replacement rejects with an AggregateError', async () => {
+		const { manifest, manifestUrl } = await seedStaleOfficialPlugin(false);
+		httpRequest.mockResolvedValue(httpResponse({ text: async () => SAMPLE_BUNDLE }));
+		await service.install(manifest, manifestUrl);
+
+		const candidate = SAMPLE_BUNDLE.replace(
+			"ctx.registerSlot('mine.item', {",
+			"throw new AggregateError([], 'candidate apply failed'); ctx.registerSlot('mine.item', {"
+		);
+		httpRequest.mockResolvedValue(httpResponse({ text: async () => candidate }));
+		await expect(
+			service.install({ ...manifest, sha256: await engine.runtime.sha256(candidate) }, manifestUrl)
+		).rejects.toThrow('candidate apply failed');
+
+		expect(service.isPluginActive(manifest.id)).toBe(true);
+		expect(service.getUpdateStatus(manifest.id)?.status).toBe('ready');
+		await expect(service.waitForSettled()).resolves.toBeUndefined();
+	});
+
+	it('reports skipped queued installs as canceled instead of completed when expected revision is stale', async () => {
+		const { manifest, manifestUrl } = await seedStaleOfficialPlugin();
+		httpRequest.mockResolvedValue(httpResponse({ text: async () => SAMPLE_BUNDLE }));
+		await expect(service.install(manifest, manifestUrl)).resolves.toBe(true);
+
+		const onTaskCompleted = vi.fn();
+		const onTaskCanceled = vi.fn();
+		const queue = new OfficialPluginInstallQueue({
+			runner: (m, url, options) => service.install(m, url, options),
+			getInstalledRevision: (id) => service.installationStore.getPluginRevision(id),
+			onTaskCompleted,
+			onTaskCanceled
+		});
+
+		const blockerCode = SAMPLE_BUNDLE.replaceAll('test-plugin', 'blocking-plugin').replaceAll(
+			'test-item',
+			'blocking-item'
+		);
+		const blocker: PluginManifest = {
+			...manifest,
+			id: 'blocking-plugin',
+			bundleUrl: '/blocking.bundle.js',
+			sha256: await engine.runtime.sha256(blockerCode)
+		};
+		const started = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		httpRequest.mockImplementation(async (url) => {
+			if (url.includes('blocking.bundle.js')) {
+				started.resolve();
+				await release.promise;
+				return httpResponse({ text: async () => blockerCode });
+			}
+			return httpResponse({ text: async () => SAMPLE_BUNDLE });
+		});
+
+		const otherEngine = new ChronosEngine({ env: engine.env, onNotification: vi.fn() });
+		await otherEngine.init();
+		const other = createService(otherEngine);
+		try {
+			queue.enqueue(blocker, '/blocking.manifest.json');
+			await started.promise;
+			queue.enqueue(manifest, manifestUrl);
+
+			await other.uninstall(manifest.id);
+			release.resolve();
+			await vi.waitFor(() => expect(queue.getTasks()).toEqual([]));
+
+			expect(onTaskCompleted).toHaveBeenCalledTimes(1);
+			expect(onTaskCompleted.mock.calls[0]?.[0]?.pluginId).toBe(blocker.id);
+			expect(onTaskCanceled).toHaveBeenCalledTimes(1);
+			expect(onTaskCanceled.mock.calls[0]?.[0]).toMatchObject({
+				pluginId: manifest.id,
+				status: 'canceled'
+			});
+			expect(service.getInstalled(manifest.id)).toBeUndefined();
+		} finally {
+			release.resolve();
+			queue.dispose();
+			other.dispose();
+			otherEngine.dispose();
+		}
 	});
 });
