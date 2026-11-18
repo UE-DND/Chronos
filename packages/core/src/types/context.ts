@@ -21,6 +21,15 @@ import type { ToolGroup } from './official-plugins';
 /** Plugin category classification */
 export type PluginCategory = 'source' | 'parser' | 'codec' | 'theme' | 'tool';
 
+/** Host-granted privileged capabilities a plugin may declare. */
+export const PLUGIN_CAPABILITIES = ['clock'] as const;
+export type PluginCapability = (typeof PLUGIN_CAPABILITIES)[number];
+
+/** Returns true when value is a supported plugin capability name. */
+export function isPluginCapability(value: unknown): value is PluginCapability {
+	return typeof value === 'string' && (PLUGIN_CAPABILITIES as readonly string[]).includes(value);
+}
+
 export interface ChronosPlugin<Config extends object = Record<string, unknown>> {
 	readonly id: string;
 	readonly name: LocalizedText;
@@ -43,6 +52,8 @@ export interface ChronosPlugin<Config extends object = Record<string, unknown>> 
 	readonly defaultConfig?: Config;
 	/** Allowed domain whitelist for network requests */
 	readonly allowedDomains?: string[];
+	/** Host capabilities required by this plugin (e.g. 'clock') */
+	readonly capabilities?: readonly PluginCapability[];
 
 	/** Plugin activation lifecycle hook */
 	apply(ctx: ChronosContext<Config>): void | Promise<void>;
@@ -74,7 +85,7 @@ export interface ChronosContext<Config extends object = Record<string, unknown>>
 	};
 	readonly calendar: { getHolidays(timetable: ReadonlyTimetable): readonly CalendarHoliday[] };
 	/** This activation owns its override; null releases only its own lease. */
-	readonly clock: { set(now: Date | null): void };
+	readonly clock?: { set(now: Date | null): void };
 
 	/** Internationalization runtime */
 	readonly i18n: {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vite-plus/test';
-import { ChronosEngine } from '@chronos/core';
+import { ChronosEngine, IPluginHttpService } from '@chronos/core';
 import type { ChronosEnv } from '@chronos/core';
 import { DEFAULT_USER_PREFERENCES } from '@chronos/core';
 import { OfficialPluginRuntimeActivator } from './runtime-activator';
@@ -624,4 +624,151 @@ describe('OfficialPluginRuntimeActivator', () => {
 			expect(activator.isActive('theme-plugin')).toBe(false);
 		}
 	);
+
+	it('does not fall back to bundle allowedDomains or let bundle widen manifest scope', async () => {
+		installed.add('net-plugin');
+		const bundleWithDomains = `
+export default {
+  id: 'net-plugin',
+  name: () => 'Net',
+  version: '1.0.0',
+  allowedDomains: ['api.example.org', 'evil.org'],
+  apply() {}
+};
+`;
+		await activator.activate({
+			manifest: {
+				id: 'net-plugin',
+				name: { 'zh-CN': 'Net' },
+				version: '1.0.0',
+				description: { 'zh-CN': 'Net' },
+				author: 'Chronos',
+				type: 'tool',
+				toolGroup: 'utility',
+				bundleFormat: 'esm',
+				bundleUrl: '/net.js',
+				sha256: 'hash'
+			},
+			code: bundleWithDomains,
+			origin: { kind: 'user' as const },
+			installedAt: 1
+		});
+
+		const httpWithoutManifestDomains = engine
+			.getPluginContext('net-plugin')
+			.service(IPluginHttpService);
+		await expect(
+			httpWithoutManifestDomains.request('https://api.example.org/data')
+		).rejects.toThrow('not allowed');
+
+		await activator.activate({
+			manifest: {
+				id: 'net-plugin',
+				name: { 'zh-CN': 'Net' },
+				version: '1.0.0',
+				description: { 'zh-CN': 'Net' },
+				author: 'Chronos',
+				type: 'tool',
+				toolGroup: 'utility',
+				bundleFormat: 'esm',
+				bundleUrl: '/net.js',
+				sha256: 'hash',
+				allowedDomains: ['example.org']
+			},
+			code: bundleWithDomains,
+			origin: { kind: 'user' as const },
+			installedAt: 1
+		});
+
+		const httpIntersected = engine.getPluginContext('net-plugin').service(IPluginHttpService);
+		await expect(httpIntersected.request('https://evil.org/data')).rejects.toThrow('not allowed');
+		await expect(httpIntersected.request('https://other.example.org/data')).rejects.toThrow(
+			'not allowed'
+		);
+		await httpIntersected.request('https://api.example.org/data');
+	});
+
+	it('grants ctx.clock only when declared in manifest capabilities and not narrowed away', async () => {
+		installed.add('clock-candidate');
+		const bundleDeclaringClock = `
+export default {
+  id: 'clock-candidate',
+  name: () => 'Clock',
+  version: '1.0.0',
+  capabilities: ['clock'],
+  apply() {}
+};
+`;
+		await activator.activate({
+			manifest: {
+				id: 'clock-candidate',
+				name: { 'zh-CN': 'Clock' },
+				version: '1.0.0',
+				description: { 'zh-CN': 'Clock' },
+				author: 'Chronos',
+				type: 'tool',
+				toolGroup: 'dev',
+				bundleFormat: 'esm',
+				bundleUrl: '/clock.js',
+				sha256: 'hash'
+			},
+			code: bundleDeclaringClock,
+			origin: { kind: 'user' as const },
+			installedAt: 1
+		});
+		expect(engine.getPluginContext('clock-candidate').clock).toBeUndefined();
+
+		await activator.activate({
+			manifest: {
+				id: 'clock-candidate',
+				name: { 'zh-CN': 'Clock' },
+				version: '1.0.0',
+				description: { 'zh-CN': 'Clock' },
+				author: 'Chronos',
+				type: 'tool',
+				toolGroup: 'dev',
+				bundleFormat: 'esm',
+				bundleUrl: '/clock.js',
+				sha256: 'hash',
+				capabilities: ['clock']
+			},
+			code: bundleDeclaringClock,
+			origin: { kind: 'user' as const },
+			installedAt: 1
+		});
+		const grantedCtx = engine.getPluginContext('clock-candidate');
+		expect(grantedCtx.clock).toBeDefined();
+		grantedCtx.clock?.set(new Date('2026-05-01T10:00:00Z'));
+		expect(engine.state.clockFrozen).toBe(true);
+
+		const bundleWithoutClock = `
+export default {
+  id: 'clock-candidate',
+  name: () => 'Clock',
+  version: '1.0.0',
+  capabilities: [],
+  apply() {}
+};
+`;
+		await activator.activate({
+			manifest: {
+				id: 'clock-candidate',
+				name: { 'zh-CN': 'Clock' },
+				version: '1.0.0',
+				description: { 'zh-CN': 'Clock' },
+				author: 'Chronos',
+				type: 'tool',
+				toolGroup: 'dev',
+				bundleFormat: 'esm',
+				bundleUrl: '/clock.js',
+				sha256: 'hash',
+				capabilities: ['clock']
+			},
+			code: bundleWithoutClock,
+			origin: { kind: 'user' as const },
+			installedAt: 1
+		});
+		expect(engine.getPluginContext('clock-candidate').clock).toBeUndefined();
+		expect(engine.state.clockFrozen).toBe(false);
+	});
 });

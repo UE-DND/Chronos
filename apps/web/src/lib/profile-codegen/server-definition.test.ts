@@ -110,5 +110,11 @@ describe('server plugin package discovery', () => {
 		await expect(resolveOfficialServerPlugin(catalog[0], root, true)).rejects.toThrow(
 			'Invalid server proxy domain'
 		);
+		for (const domain of ['com', '127.0.0.1', 'edu.cn', 'github.io', '*.example.org']) {
+			fixture(catalog[0], { domains: [domain] });
+			await expect(resolveOfficialServerPlugin(catalog[0], root, true)).rejects.toThrow(
+				'Invalid server proxy domain'
+			);
+		}
 	});
 });

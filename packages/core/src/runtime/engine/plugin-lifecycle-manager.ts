@@ -82,7 +82,8 @@ export class PluginLifecycleManager {
 			plugin.id,
 			this.host,
 			{ ...plugin.defaultConfig, ...saved },
-			plugin.allowedDomains
+			plugin.allowedDomains,
+			plugin.capabilities
 		);
 		const entry: LoadedPluginEntry = {
 			plugin: plugin as unknown as ChronosPlugin<Record<string, unknown>>,

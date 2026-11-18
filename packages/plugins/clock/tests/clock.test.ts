@@ -76,4 +76,20 @@ describe('clock plugin', () => {
 		reload.dispose();
 		engine.dispose();
 	});
+
+	it('declares the clock capability and fails fast if loaded without it', async () => {
+		const plugin = createClockPlugin();
+		expect(plugin.capabilities).toEqual(['clock']);
+
+		const { env } = createMockEnv();
+		const engine = new ChronosEngine({ env });
+		try {
+			await engine.init();
+			await expect(engine.loadPlugin({ ...plugin, capabilities: [] })).rejects.toThrow(
+				/Clock capability/
+			);
+		} finally {
+			engine.dispose();
+		}
+	});
 });

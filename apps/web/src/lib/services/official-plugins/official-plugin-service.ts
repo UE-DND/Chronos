@@ -547,7 +547,13 @@ export class OfficialPluginService implements Disposable {
 
 				const isTheme = data.type === 'theme' || existing.manifest.type === 'theme';
 				const nextManifest = data.manifest
-					? { ...existing.manifest, ...data.manifest, id: existing.manifest.id }
+					? {
+							...existing.manifest,
+							...data.manifest,
+							id: existing.manifest.id,
+							allowedDomains: data.manifest.allowedDomains,
+							capabilities: data.manifest.capabilities
+						}
 					: existing.manifest;
 
 				const candidate: InstalledOfficialPluginRecord = {

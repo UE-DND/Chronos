@@ -156,6 +156,31 @@ describe('PluginOperationCoordinator interleaving in OfficialPluginService', () 
 		return { manifest, manifestUrl };
 	}
 
+	it('revokes permissions omitted from a new hot reload manifest', async () => {
+		const { manifest, manifestUrl } = await seedStaleOfficialPlugin(false);
+		httpRequest.mockResolvedValue(httpResponse({ text: async () => SAMPLE_BUNDLE }));
+		await service.install(
+			{ ...manifest, capabilities: ['clock'], allowedDomains: ['example.com'] },
+			manifestUrl
+		);
+		const loadPlugin = vi.spyOn(engine, 'loadPlugin');
+		const record = await service.applyHotUpdate({
+			id: manifest.id,
+			manifest: { ...manifest },
+			code: SAMPLE_BUNDLE,
+			cssCode: null,
+			colorsJson: null,
+			iconThemeJson: null
+		});
+
+		expect(record.manifest.allowedDomains).toBeUndefined();
+		expect(record.manifest.capabilities).toBeUndefined();
+		expect(loadPlugin).toHaveBeenCalledWith(
+			expect.objectContaining({ allowedDomains: [], capabilities: [] }),
+			{ deferAcceptance: true }
+		);
+	});
+
 	it.each(['catalog', 'manifest', 'other-window manifest'])(
 		'does not reinstall a plugin uninstalled while host sync awaits its %s',
 		async (stage) => {

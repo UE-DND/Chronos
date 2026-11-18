@@ -1,3 +1,5 @@
+import { isAllowedDomainPattern, isPluginCapability } from '@chronos/core';
+
 function isChronosPlugin(value: unknown): value is import('@chronos/core').ChronosPlugin {
 	if (!value || typeof value !== 'object') return false;
 	const candidate = value as import('@chronos/core').ChronosPlugin;
@@ -104,6 +106,24 @@ export function validatePluginManifest(
 		throw new Error(
 			'Invalid plugin manifest: optionalServerCapabilities must declare pluginId and action'
 		);
+
+	if (
+		m.allowedDomains !== undefined &&
+		(!Array.isArray(m.allowedDomains) ||
+			!m.allowedDomains.every(
+				(domain) => typeof domain === 'string' && isAllowedDomainPattern(domain)
+			))
+	) {
+		throw new Error('Invalid plugin manifest: allowedDomains contains invalid or public domain');
+	}
+
+	if (
+		m.capabilities !== undefined &&
+		(!Array.isArray(m.capabilities) ||
+			!m.capabilities.every((capability) => isPluginCapability(capability)))
+	) {
+		throw new Error('Invalid plugin manifest: capabilities contains unsupported entry');
+	}
 
 	const hasBundle = typeof m.bundleUrl === 'string' && m.bundleUrl.length > 0;
 	const hasColors = typeof m.colorsUrl === 'string' && m.colorsUrl.length > 0;

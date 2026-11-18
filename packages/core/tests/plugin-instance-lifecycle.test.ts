@@ -79,25 +79,41 @@ describe('plugin instance ownership', () => {
 
 	it('restores the previous clock lease and fences late updates from a replaced instance', async () => {
 		const engine = new ChronosEngine({ env: createMockEnv().env });
-		const first = { id: 'first', name: 'First', version: '1', apply() {} };
+		const first = {
+			id: 'first',
+			name: 'First',
+			version: '1',
+			capabilities: ['clock'] as const,
+			apply() {}
+		};
 		try {
 			await engine.loadPlugin(first);
 			await engine.loadPlugin({ ...first, id: 'second' });
 			const old = engine.getPluginContext('first');
 			const second = engine.getPluginContext('second');
-			old.clock.set(new Date('2026-01-01T00:00:00Z'));
-			second.clock.set(new Date('2026-02-01T00:00:00Z'));
-			old.clock.set(new Date('2026-03-01T00:00:00Z'));
+			old.clock!.set(new Date('2026-01-01T00:00:00Z'));
+			second.clock!.set(new Date('2026-02-01T00:00:00Z'));
+			old.clock!.set(new Date('2026-03-01T00:00:00Z'));
 			await engine.loadPlugin(first);
 			expect(engine.now().toISOString()).toBe('2026-02-01T00:00:00.000Z');
-			engine.getPluginContext('first').clock.set(new Date('2026-04-01T00:00:00Z'));
-			expect(() => old.clock.set(null)).toThrow('disposed');
-			expect(() => old.clock.set(new Date())).toThrow('disposed');
+			engine.getPluginContext('first').clock!.set(new Date('2026-04-01T00:00:00Z'));
+			expect(() => old.clock!.set(null)).toThrow('disposed');
+			expect(() => old.clock!.set(new Date())).toThrow('disposed');
 			expect(engine.now().toISOString()).toBe('2026-04-01T00:00:00.000Z');
 			await engine.unloadPlugin('first');
 			expect(engine.now().toISOString()).toBe('2026-02-01T00:00:00.000Z');
 			await engine.unloadPlugin('second');
 			expect(engine.state.clockFrozen).toBe(false);
+		} finally {
+			engine.dispose();
+		}
+	});
+
+	it('omits ctx.clock when a plugin does not declare the clock capability', async () => {
+		const engine = new ChronosEngine({ env: createMockEnv().env });
+		try {
+			await engine.loadPlugin({ id: 'regular', name: 'Regular', version: '1', apply() {} });
+			expect(engine.getPluginContext('regular').clock).toBeUndefined();
 		} finally {
 			engine.dispose();
 		}

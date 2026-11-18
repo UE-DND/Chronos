@@ -1,14 +1,29 @@
 import { ImageRepository } from '#lib/storage/image-repository.ts';
-import type { ChronosEngine, Disposable, PluginLoadHandle } from '@chronos/core';
+import type { ChronosEngine, Disposable, PluginCapability, PluginLoadHandle } from '@chronos/core';
 import {
 	createIconThemeFromJson,
 	createThemeFromColorJson,
+	intersectAllowedDomains,
+	isPluginCapability,
 	parseColorThemeJson,
 	parseIconThemeJson
 } from '@chronos/core';
 import { loadEsmPluginFromCode } from './plugin-bundle';
 import { PluginCssInjector } from './plugin-css-injector';
 import type { InstalledOfficialPluginRecord } from './official-plugin-types';
+
+function resolvePluginCapabilities(
+	manifestCapabilities: unknown,
+	pluginCapabilities: unknown
+): PluginCapability[] {
+	const granted = Array.isArray(manifestCapabilities)
+		? [...new Set(manifestCapabilities.filter(isPluginCapability))]
+		: [];
+	if (pluginCapabilities === undefined) return granted;
+	if (!Array.isArray(pluginCapabilities)) return [];
+	const declared = new Set(pluginCapabilities.filter(isPluginCapability));
+	return granted.filter((capability) => declared.has(capability));
+}
 
 /**
  * Loads/unloads official plugin runtime in the engine.
@@ -190,12 +205,22 @@ export class OfficialPluginRuntimeActivator {
 		if (plugin.id !== manifest.id) {
 			throw new Error(`Plugin id mismatch: manifest "${manifest.id}" vs bundle "${plugin.id}"`);
 		}
+		const allowedDomains = intersectAllowedDomains(
+			Array.isArray(manifest.allowedDomains) ? manifest.allowedDomains : [],
+			plugin.allowedDomains === undefined
+				? undefined
+				: Array.isArray(plugin.allowedDomains)
+					? plugin.allowedDomains
+					: []
+		);
+		const capabilities = resolvePluginCapabilities(manifest.capabilities, plugin.capabilities);
 		return this.engine.loadPlugin(
 			{
 				...plugin,
 				defaultConfig: { ...plugin.defaultConfig, ...record.initialConfig },
 				configSchema: manifest.configSchema ?? plugin.configSchema,
-				allowedDomains: manifest.allowedDomains ?? plugin.allowedDomains
+				allowedDomains,
+				capabilities
 			},
 			{ deferAcceptance: true }
 		);

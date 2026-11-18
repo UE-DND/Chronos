@@ -1,5 +1,6 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { PluginCapability } from '../packages/core/src/types/context.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -15,6 +16,8 @@ type OfficialPluginBase = {
 	iconsJson?: string;
 	/** JSON-only assets skip self-contained bundle.css verification (default: has entry) */
 	tailwindSource?: boolean;
+	allowedDomains?: readonly string[];
+	capabilities?: readonly PluginCapability[];
 };
 
 export type OfficialPluginDef =
@@ -43,7 +46,8 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 			'zh-CN': '在线课表及正方教务导入支持',
 			en: 'Online timetable and ZF educational system import support'
 		},
-		entry: resolve(root, 'packages/plugins/source-cqut/bundle/entry.ts')
+		entry: resolve(root, 'packages/plugins/source-cqut/bundle/entry.ts'),
+		allowedDomains: ['authserver.cqut.edu.cn', 'uis.cqut.edu.cn', 'timetable-cfc.cqut.edu.cn']
 	},
 	{
 		id: 'theme-m3',
@@ -105,7 +109,8 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 			'zh-CN': '在课表中展示法定节假日',
 			en: 'Show public holidays on the timetable'
 		},
-		entry: resolve(root, 'packages/plugins/calendar-holidays/bundle/entry.ts')
+		entry: resolve(root, 'packages/plugins/calendar-holidays/bundle/entry.ts'),
+		allowedDomains: ['fastly.jsdelivr.net', 'raw.githubusercontent.com']
 	},
 	{
 		id: 'tool-today',
@@ -135,6 +140,7 @@ export const OFFICIAL_PLUGINS: OfficialPluginDef[] = [
 		sourceDir: 'clock',
 		name: { 'zh-CN': '自定义时间', en: 'Custom Date & Time' },
 		description: {},
-		entry: resolve(root, 'packages/plugins/clock/bundle/entry.ts')
+		entry: resolve(root, 'packages/plugins/clock/bundle/entry.ts'),
+		capabilities: ['clock']
 	}
 ];

@@ -1,4 +1,5 @@
 import type { ConfigSchema } from '../schema/schema';
+import type { PluginCapability } from './context';
 
 export type BundleFormat = 'esm';
 
@@ -31,6 +32,7 @@ export interface PluginManifest {
 	iconThemeUrl?: string;
 	iconThemeSha256?: string;
 	allowedDomains?: string[];
+	capabilities?: PluginCapability[];
 	optionalServerCapabilities?: { pluginId: string; action: string }[];
 	configSchema?: ConfigSchema<Record<string, unknown>>;
 	icon?: string;

@@ -328,6 +328,10 @@ UI 插件在 `bundle/entry.ts` 里导入 `bundle/styles.css`。样式文件需�
 
 `IPluginHttpService.proxy(action, payload)` 通过 `/api/plugins/{pluginId}/{action}` 调用服务端，插件 ID 由实例自动绑定。调用前用 `supportsServer(action)` 确认当前部署支持这个操作。直接请求也通过 `IPluginHttpService.request`，宿主按声明的域名规则校验 URL，并合并实例和调用者的取消信号。`bypassCors` 在 Web 宿主上需要构建包含服务端插件代理；移动宿主可以提供自己的网络实现。不要假定每个部署都支持它。
 
+已安装插件由 Manifest 的 `allowedDomains` 获得直接联网权限。插件包也声明域名时，宿主取两者的交集。域名规则覆盖指定站点及其子域，公共后缀不可用作规则。维护者可运行 `vpx scripts/update-public-suffix-rules.ts` 更新随宿主发布的 Public Suffix List 快照。
+
+Manifest 的 `capabilities` 授予宿主能力。使用 `ctx.clock` 前需检查它是否可用。使用直接联网或虚拟时钟的旧插件需要发布含相应授权的新清单。
+
 官方插件 Manifest 的 `optionalServerCapabilities` 列出插件可以用的服务端能力。已经声明、但当前部署没有的能力，会在插件列表里提示，安装仍然允许。当前构建只会把已启用的服务端插件写入这个字段，所以没启用的可选能力可能没有提示。插件仍要先调用 `supportsServer`，再注册相关入口。项目还没有通用的网络依赖声明。联网导入可以用 `importKind: 'online'` 标记。其他联网功能要检查请求失败后的表现，并在界面上说明限制或降级结果。
 
 服务端插件从 `./server` 导出请求处理函数，从 `./server/definition` 导出插件 ID、代理 action 和域名。导入定义模块时不要做其他事。宿主要把插件包加进构建依赖，并在部署配置里启用对应的插件 ID。域名用于核对和审查，不会限制服务端向外请求。

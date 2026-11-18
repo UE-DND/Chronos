@@ -149,6 +149,7 @@ describe('ScopedContext in @chronos/core', () => {
 	it('resolves capability services from ChronosEnv', () => {
 		const host = createMockHost();
 		const ctx = createAcceptedContext('plugin-a', host);
+		expect(ctx.clock).toBeUndefined();
 
 		const http = ctx.service(IPluginHttpService);
 		expect(http).toBeDefined();
@@ -300,5 +301,18 @@ describe('ScopedContext in @chronos/core', () => {
 		handle.dispose();
 
 		expect(host.slots.get('timetable.cell.badge').length).toBe(0);
+	});
+
+	it('exposes ctx.clock only when the clock capability is granted', () => {
+		const host = createMockHost();
+		const ctx = new ScopedContext('clock-owner', host, undefined, [], ['clock']);
+		ctx.accept();
+		const target = new Date('2026-04-01T08:00:00Z');
+
+		ctx.clock?.set(target);
+		expect(host.actions.setVirtualNow).toHaveBeenLastCalledWith(target);
+
+		ctx.dispose();
+		expect(host.actions.setVirtualNow).toHaveBeenLastCalledWith(null);
 	});
 });

@@ -1,4 +1,9 @@
-import type { ChronosContext, ChronosPlugin, PluginCategory } from '../types/context';
+import type {
+	ChronosContext,
+	ChronosPlugin,
+	PluginCapability,
+	PluginCategory
+} from '../types/context';
 import type { ToolGroup } from '../types/official-plugins';
 import type { ConfigSchema } from '../schema/schema';
 import type { PluginMessageCatalog } from '../i18n/i18n-catalog';
@@ -19,6 +24,7 @@ export interface DefineChronosPluginOptions<Config extends object = Record<strin
 	readonly configSchema?: ConfigSchema<Config>;
 	readonly defaultConfig?: Config;
 	readonly allowedDomains?: string[];
+	readonly capabilities?: readonly PluginCapability[];
 	readonly apply: (ctx: ChronosContext<Config>, t: PluginTranslate) => void | Promise<void>;
 	readonly dispose?: () => void | Promise<void>;
 }
@@ -63,6 +69,7 @@ export function defineChronosPlugin<Config extends object = Record<string, unkno
 		configSchema: options.configSchema,
 		defaultConfig: options.defaultConfig,
 		allowedDomains: options.allowedDomains,
+		capabilities: options.capabilities,
 		async apply(ctx) {
 			ctx.i18n.registerMessages(options.messages);
 			const t: PluginTranslate = (key, params) => ctx.i18n.t(key, params);

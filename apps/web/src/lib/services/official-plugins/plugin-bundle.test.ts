@@ -79,4 +79,39 @@ describe('validatePluginManifest', () => {
 			})
 		).not.toThrow();
 	});
+
+	it('accepts valid allowedDomains and supported capabilities', () => {
+		expect(() =>
+			validatePluginManifest({
+				...BASE_MANIFEST,
+				allowedDomains: ['fastly.jsdelivr.net', '*.cqut.edu.cn'],
+				capabilities: ['clock']
+			})
+		).not.toThrow();
+	});
+
+	it.each([
+		'com',
+		'*.com',
+		'localhost',
+		'127.0.0.1',
+		'edu.cn',
+		'co.uk',
+		'jsdelivr.net',
+		'github.io',
+		'bad..example.org'
+	])('rejects invalid or public allowedDomains entry %s', (domain) => {
+		expect(() => validatePluginManifest({ ...BASE_MANIFEST, allowedDomains: [domain] })).toThrow(
+			/allowedDomains/
+		);
+	});
+
+	it.each(['example.org', ['admin'], ['clock', 'other'], [123]])(
+		'rejects invalid capabilities %j',
+		(capabilities) => {
+			expect(() => validatePluginManifest({ ...BASE_MANIFEST, capabilities } as never)).toThrow(
+				/capabilities/
+			);
+		}
+	);
 });

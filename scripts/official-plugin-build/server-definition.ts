@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { PluginServerDefinition } from '../../packages/core/src/types/plugin-server.ts';
+import { isAllowedDomainPattern } from '../../packages/core/src/hosts/url-policy.ts';
 import type { OfficialPluginDef } from '../official-plugins.config.ts';
 import { OFFICIAL_PLUGINS } from '../official-plugins.config.ts';
 import { resolvePackageExport } from './package-exports.ts';
@@ -15,14 +16,10 @@ export interface ResolvedServerPlugin {
 	definition: PluginServerDefinition;
 }
 
-function isValidDomainLabel(label: string): boolean {
-	return label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label);
-}
-
 function isValidProxyDomain(value: unknown): value is string {
-	if (typeof value !== 'string' || value.length > 253) return false;
-	const labels = value.split('.');
-	return labels.length >= 2 && labels.every(isValidDomainLabel);
+	if (typeof value !== 'string' || !value || value !== value.trim().toLowerCase()) return false;
+	if (value.startsWith('*.') || value.endsWith('.')) return false;
+	return isAllowedDomainPattern(value);
 }
 
 function validateDefinition(value: unknown, pluginId: string): PluginServerDefinition {

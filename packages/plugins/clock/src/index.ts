@@ -20,7 +20,9 @@ export function createClockPlugin(options: CreateClockPluginOptions = {}) {
 		order: 55,
 		author: 'Chronos',
 		homepage: 'https://github.com/UE-DND/Chronos',
+		capabilities: ['clock'],
 		async apply(ctx, t) {
+			if (!ctx.clock) throw new Error('Clock capability is required');
 			const stored = parseStoredFrozenEpoch(await ctx.storage.get(CLOCK_STORAGE_KEY));
 			if (stored != null) {
 				ctx.clock.set(new Date(stored));

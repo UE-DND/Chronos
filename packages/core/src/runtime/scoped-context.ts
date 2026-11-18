@@ -5,7 +5,7 @@ import type {
 	PluginStorageScope,
 	IPluginHttpService
 } from '../types/services';
-import type { ChronosContext, ChronosEvents } from '../types/context';
+import type { ChronosContext, ChronosEvents, PluginCapability } from '../types/context';
 import type { ChronosActions } from '../types/actions';
 import type { ChronosSlotMap, CourseBadgeSlotContribution } from '../types/slots';
 import type { EngineContextHost } from './engine-context-host';
@@ -35,13 +35,14 @@ export class ScopedContext<Config extends object = Record<string, unknown>>
 	readonly actions: Omit<ChronosActions, 'setVirtualNow'>;
 	readonly query: ChronosContext['query'];
 	readonly calendar: ChronosContext['calendar'];
-	readonly clock: ChronosContext['clock'];
+	readonly clock?: ChronosContext['clock'];
 
 	constructor(
 		readonly pluginId: string,
 		private host: EngineContextHost,
 		initialConfig?: Config,
-		private allowedDomains: readonly string[] = []
+		private allowedDomains: readonly string[] = [],
+		capabilities: readonly PluginCapability[] = []
 	) {
 		this._config = immutableSnapshot((initialConfig ?? {}) as Config);
 		this.scope = createPluginStorage(pluginId, host.env.storage);
@@ -92,20 +93,22 @@ export class ScopedContext<Config extends object = Record<string, unknown>>
 			queryCourses: async (filter) => immutableSnapshot(await host.env.storage.queryCourses(filter))
 		};
 		this.calendar = { getHolidays: (timetable) => host.resolveHolidays(timetable) };
-		this.clock = {
-			set: (now) => {
-				this.assertRunning();
-				if (now && !Number.isFinite(now.getTime())) throw new TypeError('Invalid virtual clock');
-				let leases = clockLeases.get(host);
-				if (!leases) {
-					leases = new Map();
-					clockLeases.set(host, leases);
+		if (capabilities.includes('clock')) {
+			this.clock = {
+				set: (now) => {
+					this.assertRunning();
+					if (now && !Number.isFinite(now.getTime())) throw new TypeError('Invalid virtual clock');
+					let leases = clockLeases.get(host);
+					if (!leases) {
+						leases = new Map();
+						clockLeases.set(host, leases);
+					}
+					leases.delete(this.instanceToken);
+					if (now) leases.set(this.instanceToken, new Date(now.getTime()));
+					this.publishClock(leases);
 				}
-				leases.delete(this.instanceToken);
-				if (now) leases.set(this.instanceToken, new Date(now.getTime()));
-				this.publishClock(leases);
-			}
-		};
+			};
+		}
 	}
 
 	private publishClock(leases: Map<symbol, Date>): void {

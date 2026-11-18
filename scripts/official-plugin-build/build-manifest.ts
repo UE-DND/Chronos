@@ -1,6 +1,8 @@
 import { hash } from 'node:crypto';
 import { writeChanged } from './cache.ts';
 import { resolve } from 'node:path';
+import { isAllowedDomainPattern } from '../../packages/core/src/hosts/url-policy.ts';
+import { isPluginCapability } from '../../packages/core/src/types/context.ts';
 import type { OfficialPluginDef } from '../official-plugins.config.ts';
 import type { ResolvedServerPlugin } from './server-definition.ts';
 import { pluginAssetUrl, pluginDevAssetUrl } from './urls.ts';
@@ -13,11 +15,11 @@ export interface OfficialPluginAssetPayload {
 	iconThemeJson: string | null;
 }
 
-export function buildManifestForPlugin(
+function createBaseManifest(
 	plugin: OfficialPluginDef,
-	assets: OfficialPluginAssetPayload,
 	releaseVersion: string,
-	serverPlugin?: ResolvedServerPlugin | null
+	serverPlugin?: ResolvedServerPlugin | null,
+	devRev?: string
 ): Record<string, unknown> {
 	const manifest: Record<string, unknown> = {
 		id: plugin.id,
@@ -28,15 +30,38 @@ export function buildManifestForPlugin(
 		type: plugin.type,
 		bundleFormat: 'esm'
 	};
-	if (plugin.type === 'tool') {
-		manifest.toolGroup = plugin.toolGroup;
+	if (devRev !== undefined) manifest.devRev = devRev;
+	if (plugin.type === 'tool') manifest.toolGroup = plugin.toolGroup;
+	if (plugin.allowedDomains !== undefined) {
+		for (const domain of plugin.allowedDomains) {
+			if (!isAllowedDomainPattern(domain)) {
+				throw new Error(`${plugin.id}: invalid allowed domain "${domain}"`);
+			}
+		}
+		manifest.allowedDomains = [...new Set(plugin.allowedDomains)];
 	}
-
+	if (plugin.capabilities !== undefined) {
+		for (const capability of plugin.capabilities) {
+			if (!isPluginCapability(capability)) {
+				throw new Error(`${plugin.id}: invalid capability "${String(capability)}"`);
+			}
+		}
+		manifest.capabilities = [...new Set(plugin.capabilities)];
+	}
 	if (serverPlugin)
 		manifest.optionalServerCapabilities = [
 			{ pluginId: serverPlugin.id, action: serverPlugin.definition.proxy.action }
 		];
+	return manifest;
+}
 
+export function buildManifestForPlugin(
+	plugin: OfficialPluginDef,
+	assets: OfficialPluginAssetPayload,
+	releaseVersion: string,
+	serverPlugin?: ResolvedServerPlugin | null
+): Record<string, unknown> {
+	const manifest = createBaseManifest(plugin, releaseVersion, serverPlugin);
 	applyAssetManifestFields(manifest, assets, (fileName) => pluginAssetUrl(plugin.id, fileName));
 
 	return manifest;
@@ -96,24 +121,7 @@ export function buildDevManifestForPlugin(
 	rev: string,
 	serverPlugin?: ResolvedServerPlugin | null
 ): Record<string, unknown> {
-	const manifest: Record<string, unknown> = {
-		id: plugin.id,
-		name: plugin.name,
-		version: releaseVersion,
-		description: plugin.description,
-		author: 'Chronos',
-		type: plugin.type,
-		bundleFormat: 'esm',
-		devRev: rev
-	};
-	if (plugin.type === 'tool') {
-		manifest.toolGroup = plugin.toolGroup;
-	}
-	if (serverPlugin)
-		manifest.optionalServerCapabilities = [
-			{ pluginId: serverPlugin.id, action: serverPlugin.definition.proxy.action }
-		];
-
+	const manifest = createBaseManifest(plugin, releaseVersion, serverPlugin, rev);
 	applyAssetManifestFields(manifest, assets, (fileName) =>
 		pluginDevAssetUrl(plugin.id, rev, fileName)
 	);

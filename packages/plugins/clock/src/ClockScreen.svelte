@@ -113,14 +113,14 @@
 			return;
 		}
 		await pluginContext.storage.set(CLOCK_STORAGE_KEY, next.getTime());
-		pluginContext.clock.set(next);
+		pluginContext.clock?.set(next);
 		trackPluginAnalytics(pluginContext, CLOCK_ANALYTICS.apply);
 		pluginContext.actions.notify(pt('screen.notify.applied'), 'info');
 	}
 
 	async function onReset() {
 		await pluginContext.storage.delete(CLOCK_STORAGE_KEY);
-		pluginContext.clock.set(null);
+		pluginContext.clock?.set(null);
 		const parts = partsFromDate(pluginContext.state.now);
 		draftIso = parts.isoDate;
 		draftTime = parts.time;
