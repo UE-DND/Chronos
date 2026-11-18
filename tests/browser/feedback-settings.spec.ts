@@ -3,6 +3,30 @@ import { test, expect } from '@playwright/test';
 
 test.use({ viewport: { width: 430, height: 932 }, isMobile: true, hasTouch: true });
 
+test('opening the reminder sheet preserves focus already inside it', async ({ page, request }) => {
+	await request.post('/__e2e/deploy?build=old');
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
+	await page.goto('/Chronos/feedback-settings');
+	await page.evaluate(() => {
+		// Focus the wheel as it mounts, before the sheet's autofocus frame.
+		const observer = new MutationObserver(() => {
+			const wheel = document.querySelector<HTMLElement>('[role="dialog"] [role="listbox"]');
+			if (!wheel) return;
+			observer.disconnect();
+			wheel.focus({ preventScroll: true });
+		});
+		observer.observe(document.body, { childList: true, subtree: true });
+	});
+	await page.getByRole('button', { name: /提醒时间/ }).click();
+	const dialog = page.getByRole('dialog', { name: '提醒时间' });
+	await expect
+		.poll(() => dialog.evaluate((el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).m42))
+		.toBe(0);
+	await expect(dialog.getByRole('listbox', { name: '提醒时间' })).toBeFocused();
+});
+
 for (const labels of [
 	{
 		locale: 'zh-cn',

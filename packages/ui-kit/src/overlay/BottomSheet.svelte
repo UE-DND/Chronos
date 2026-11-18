@@ -137,7 +137,9 @@
 	function handleOpenAutoFocus(event: Event) {
 		event.preventDefault();
 		requestAnimationFrame(() => {
-			if (sheetOpen) (titleRef ?? contentRef)?.focus();
+			const content = contentRef;
+			if (!sheetOpen || !content || content.contains(content.ownerDocument.activeElement)) return;
+			(titleRef ?? content).focus();
 		});
 	}
 
