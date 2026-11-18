@@ -1,56 +1,56 @@
 {
 	"formatVersion": 1,
 	"release": {
-		"tagName": "v1.3.5",
-		"name": "Chronos 1.3.5",
-		"body": "## 新特性\n\n- 首次引导中的布局与长按演示新增暂停与继续控制，方便按需查看交互细节。\n\n## 优化\n\n- 恢复桌面端内容区域的原生滚动条，补全底部导航焦点样式、选择控件语义与表单键盘操作；完善插件及应用更新安装进度的无障碍名称与减少动画支持。\n- 统一更新日志、开发者说明与法律条款的 Markdown 安全渲染，并在加载失败时提供重试入口。\n- 隔离插件运行时实例、界面传参与私有存储，节假日缓存归入对应插件存储，卸载或替换插件时自动撤销日历贡献并原子清理安装数据。\n- 统一主题语义样式入口并解耦 Arknights 主题适配，同步更新 Svelte、Tailwind CSS 与构建工具链依赖。\n\n## 修复\n\n- 修复课表周翻页在静止或微幅回正滚动时误拦截课程点击的问题，仅在真实翻页滑动后抑制误触。\n- 修复「今日」入口的导航意图解析，自动过滤失效或未就绪的底部标签页。\n- 修复插件页面在剩余高度内滚动受限、空课表在短横屏下无法滚动，以及引导页底部操作区与横屏手势区重叠的问题。\n- 修复应用外壳与弹层未随可见视口变化而调整的问题，并抑制 iOS 主屏幕网页应用状态栏区域的滚动模糊。",
-		"publishedAt": "2026-11-14"
+		"tagName": "v1.3.6",
+		"name": "Chronos 1.3.6",
+		"body": "## 新特性\n\n- 桌面课表底部直接显示当前周次。可用鼠标或键盘选择周次，也可用左右按钮逐周切换。\n\n## 优化\n\n- 简化首次引导中的布局与长按演示。开启「减少动态效果」时显示静态示意。\n- 补全课表和壁纸预览的中英文文案，改善节次编辑与选择滚轮的无障碍提示和焦点样式。\n- 统一对话框、底部弹层和日期选择器与底部导航的底色，去除课程编辑表单的重复分隔线和时钟工具的多余分隔线。\n- 知行理工导入页提示课表可离线查看，教务课表变动后需重新导入。\n- 并行预缓存离线资源，缩短 PWA 更新准备时间。\n\n## 修复\n\n- 修复从 GitHub Pages 的子页面直接打开应用时，PWA 未能正确注册的问题。\n- 修复返回操作超时后迟到的导航事件可能干扰后续导航的问题。\n- 修正插件安装、更新回滚和卸载后的状态显示，避免将未完成的安装误报为成功。\n\n## 插件兼容性\n\n- 宿主按插件清单授予直接联网和虚拟时钟权限。使用这些能力的旧插件需要发布新版清单，在 `allowedDomains` 中声明联网域名，或在 `capabilities` 中声明 `clock`。使用虚拟时钟的插件还需在调用前检查 `ctx.clock` 是否可用。",
+		"publishedAt": "2026-11-18"
 	},
 	"bundleId": "org.uednd.chronos",
 	"profiles": {
 		"chronos-default": {
 			"host": {
-				"version": "1.3.5",
-				"buildId": "c671e4772b03b0abef534275aea23b3e1deb1945cab643704adf4824c2e07cb4",
-				"sourceCommit": "ff55adc367aa0bff379d3a609bd3bfaf3dbf5426",
+				"version": "1.3.6",
+				"buildId": "543410a96698eb9a47fb80c04b156db3d119178b05a9a2f907f427c3bf538ac9",
+				"sourceCommit": "0da366fe84c00e0d60acb48baea292a5e2b15fe8",
 				"profileId": "chronos-default",
 				"deploymentId": "mobile",
 				"target": "mobile"
 			},
-			"ipaUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.5/Chronos-default-1.3.5.ipa",
-			"sha256": "669a5fd8f139262cb8c547e6366c82f365443fa91435e889b49d5c3de0099451",
-			"sizeBytes": 2184905,
-			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.5/catalog.json",
+			"ipaUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.6/Chronos-default-1.3.6.ipa",
+			"sha256": "611eaceccc85563fbbdfc4e6d2a2dbec4e6abcba6f9865fbc8c5bb864891bbfe",
+			"sizeBytes": 2228219,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.6/catalog.json",
 			"minimumOsVersion": "17.4"
 		},
 		"chronos-cqut": {
 			"host": {
-				"version": "1.3.5",
-				"buildId": "0a34398e429326b0b5da43208d1b233db9bafa8de3462052b6e1b955b9b9d2ab",
-				"sourceCommit": "ff55adc367aa0bff379d3a609bd3bfaf3dbf5426",
+				"version": "1.3.6",
+				"buildId": "9793b60dd0247322c41d95a1e5174b8c7836a45e16ffd7da11cd7c68d5e3c25c",
+				"sourceCommit": "0da366fe84c00e0d60acb48baea292a5e2b15fe8",
 				"profileId": "chronos-cqut",
 				"deploymentId": "mobile",
 				"target": "mobile"
 			},
-			"ipaUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.5/Chronos-cqut-1.3.5.ipa",
-			"sha256": "1e3c403704d6497def0080594e29d27a246def8b440d056d4de1c62d8ad9a85d",
-			"sizeBytes": 2217519,
-			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.5/catalog.json",
+			"ipaUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.6/Chronos-cqut-1.3.6.ipa",
+			"sha256": "4dfb627fdf304130523324a730ddb93a548c923559ecce29f3224b1020f950ac",
+			"sizeBytes": 2260978,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.6/catalog.json",
 			"minimumOsVersion": "17.4"
 		},
 		"chronos-cqut-offline": {
 			"host": {
-				"version": "1.3.5",
-				"buildId": "c7f633ec2ab1d825d4dfba45f9c48c8967ca0f42ea937cbdd9502aaa313a2f7a",
-				"sourceCommit": "ff55adc367aa0bff379d3a609bd3bfaf3dbf5426",
+				"version": "1.3.6",
+				"buildId": "acce6bdb76744d9f54177fd4c69ef34695c05a80758b2e28274bbb4ab8b003d5",
+				"sourceCommit": "0da366fe84c00e0d60acb48baea292a5e2b15fe8",
 				"profileId": "chronos-cqut-offline",
 				"deploymentId": "mobile",
 				"target": "mobile"
 			},
-			"ipaUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.5/Chronos-cqut-offline-1.3.5.ipa",
-			"sha256": "70372893df6692fd1e1964998cc723538864f8e50c9c240d0f3b0e0caabd0430",
-			"sizeBytes": 2182651,
-			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.5/catalog.json",
+			"ipaUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.6/Chronos-cqut-offline-1.3.6.ipa",
+			"sha256": "5289095370708ed15fa0153c69192f4f82b320529fa591b99e02242b90be8f19",
+			"sizeBytes": 2226018,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.6/catalog.json",
 			"minimumOsVersion": "17.4"
 		}
 	}
