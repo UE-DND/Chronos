@@ -712,7 +712,7 @@ test('returning to the current week interrupts an unfinished swipe', async ({ pa
 test.describe('desktop fine-pointer week navigation', () => {
 	test.use({ viewport: { width: 1280, height: 800 }, isMobile: false, hasTouch: false });
 
-	test('keeps indicator persistent and navigates weeks via buttons, click, and keyboard', async ({
+	test('shows the displayed week and navigates via buttons, click, and keyboard', async ({
 		page,
 		request
 	}) => {
@@ -727,6 +727,7 @@ test.describe('desktop fine-pointer week navigation', () => {
 		await page.waitForTimeout(900);
 		await expect(indicator).toHaveCSS('opacity', '1');
 		await expect(indicator).toHaveCSS('pointer-events', 'auto');
+		await expect(indicator).toHaveText('第 8 周');
 		await expect(indicator).toHaveAttribute('tabindex', '0');
 		expect(await indicator.getAttribute('inert')).toBeNull();
 		await expect(prevButton).toBeVisible();
@@ -736,6 +737,7 @@ test.describe('desktop fine-pointer week navigation', () => {
 
 		await prevButton.click();
 		await expect.poll(position).toBeCloseTo(6, 1);
+		await expect(indicator).toHaveText('第 7 周');
 		await expect(indicator).toHaveAttribute('aria-valuenow', '7');
 
 		await nextButton.click();

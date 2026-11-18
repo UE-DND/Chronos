@@ -440,8 +440,9 @@
 				aria-valuenow={ariaWeek}
 				aria-valuetext={tooltipWeekLabel}
 				class={[
-					'capsule-indicator inline-flex min-h-11 cursor-pointer touch-none items-center justify-center rounded-full px-2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none',
+					'capsule-indicator inline-flex min-h-11 cursor-pointer touch-none items-center justify-center rounded-full px-2 focus-visible:outline-2 focus-visible:outline-primary/40',
 					isExpanded && 'capsule-indicator--expanded',
+					hasFinePointer && !isExpanded && 'capsule-indicator--week-label',
 					hasGlass && 'capsule-indicator--glass'
 				]}
 				style:--expanded-width={expandedWidth}
@@ -452,6 +453,10 @@
 			>
 				{#if isExpanded}
 					{@render expandedIndicator()}
+				{:else if hasFinePointer}
+					<span class="text-sm font-semibold whitespace-nowrap text-on-surface tabular-nums">
+						{tooltipWeekLabel}
+					</span>
 				{:else if isCollapsing}
 					<div class="dots-track-shell">
 						{@render compactIndicator()}
@@ -518,11 +523,15 @@
 		transition-duration: var(--indicator-transition-duration);
 	}
 
-	@media (any-hover: hover) and (any-pointer: fine) {
-		.capsule-indicator {
-			opacity: 1;
-			pointer-events: auto;
-		}
+	.capsule-indicator--week-label {
+		width: 5rem;
+		opacity: 1;
+		pointer-events: auto;
+		background-color: transparent;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+		border-color: transparent;
+		box-shadow: none;
 	}
 
 	.capsule-nav-button {
