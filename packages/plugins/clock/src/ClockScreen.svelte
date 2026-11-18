@@ -160,7 +160,7 @@
 				</section>
 			{/if}
 			<section class="ui-section-surface ui-section-surface--comfortable">
-				<div class="ui-section-stack divide-y divide-outline/10">
+				<div class="ui-section-stack">
 					<DateField
 						historyPort={controller.overlayHistoryPort}
 						label={pt('screen.field.date')}
