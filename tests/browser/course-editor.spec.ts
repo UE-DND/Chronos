@@ -33,6 +33,8 @@ for (const width of [430, 1280]) {
 			await openCourse();
 			const nameField = page.getByRole('textbox', { name: '课程名称', exact: true });
 			await expect(nameField).toBeVisible();
+			await expect(nameField).toHaveCSS('border-bottom-width', '1px');
+			await expect(nameField.locator('..')).toHaveCSS('border-bottom-width', '0px');
 			const originalName = await nameField.inputValue();
 			const editorUrl = page.url();
 			await page.reload();
