@@ -490,6 +490,7 @@
 <style>
 	.capsule-indicator-wrapper {
 		--indicator-easing: cubic-bezier(0.2, 0, 0, 1);
+		--indicator-shadow: 0 2px 5px -2px rgb(0 0 0 / 18%);
 	}
 
 	.capsule-indicator {
@@ -510,7 +511,7 @@
 		-webkit-backdrop-filter: blur(16px) saturate(1.3);
 		backdrop-filter: blur(16px) saturate(1.3);
 		border: 1px solid color-mix(in srgb, var(--color-outline-variant, #aeb2bb) 50%, transparent);
-		box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+		box-shadow: var(--indicator-shadow);
 		transition:
 			width var(--indicator-transition-duration) var(--indicator-easing),
 			padding var(--indicator-transition-duration) var(--indicator-easing),
@@ -549,7 +550,7 @@
 		-webkit-backdrop-filter: blur(16px) saturate(1.3);
 		backdrop-filter: blur(16px) saturate(1.3);
 		border: 1px solid color-mix(in srgb, var(--color-outline-variant, #aeb2bb) 50%, transparent);
-		box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+		box-shadow: var(--indicator-shadow);
 		transition:
 			opacity var(--indicator-transition-duration) var(--indicator-easing),
 			transform var(--indicator-transition-duration) var(--indicator-easing),
