@@ -64,6 +64,12 @@ export default defineConfig({
 		],
 		dedupe: ['svelte']
 	},
+	environments: {
+		ssr: {
+			// Compile the Svelte components that bits-ui ships.
+			resolve: { noExternal: ['bits-ui'] }
+		}
+	},
 	define: {
 		__BUILD_TIME__: JSON.stringify(new Date().toISOString()),
 		__CHRONOS_PROFILE__: JSON.stringify(process.env.CHRONOS_PROFILE ?? 'chronos-default'),
@@ -267,11 +273,6 @@ export default defineConfig({
 			'**/node_modules/**',
 			'packages/**/node_modules/**',
 			'apps/mobile/**/node_modules/**'
-		],
-		server: {
-			deps: {
-				inline: ['bits-ui']
-			}
-		}
+		]
 	}
 });
