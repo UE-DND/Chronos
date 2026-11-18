@@ -386,7 +386,8 @@ test.describe('wallpaper persistence', () => {
 				.value as typeof URL.createObjectURL;
 			URL.createObjectURL = function (blob) {
 				const uri = create.call(this, blob);
-				window.wallpaperCounts.created.push(uri);
+				if (blob instanceof Blob && blob.type.startsWith('image/'))
+					window.wallpaperCounts.created.push(uri);
 				return uri;
 			};
 			const revoke = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL')!
@@ -418,6 +419,17 @@ test.describe('wallpaper persistence', () => {
 				attributes: true,
 				attributeFilter: ['src']
 			});
+		});
+		// Plugin bundles can load through JavaScript Blob URLs during this counting window.
+		await page.evaluate(async () => {
+			const pluginUrl = URL.createObjectURL(
+				new Blob(['export default {}'], { type: 'text/javascript' })
+			);
+			try {
+				await import(pluginUrl);
+			} finally {
+				URL.revokeObjectURL(pluginUrl);
+			}
 		});
 		await confirm(page).click();
 		await expect(crop(page)).toHaveCount(0);
