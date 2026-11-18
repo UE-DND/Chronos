@@ -8,12 +8,10 @@ import { TIMETABLE_LONG_PRESS_DELAY_MS } from '#lib/timetable/timetable-interact
 export function attachDemoMotion(
 	root: HTMLElement,
 	create: (root: HTMLElement) => gsap.core.Timeline,
-	options: { paused?: boolean; reset?: (reduced: boolean) => void } = {}
+	options: { reset?: (reduced: boolean) => void } = {}
 ) {
 	let context: gsap.Context | undefined;
 	let timeline: gsap.core.Timeline | undefined;
-	let userPaused = options.paused ?? false;
-	let reduced = false;
 	const measured = [
 		root,
 		...root.querySelectorAll<HTMLElement>('.grid-area, .viewport, .grid, .timetable-grid-body')
@@ -23,14 +21,14 @@ export function attachDemoMotion(
 	let size = '';
 	const media = window.matchMedia('(prefers-reduced-motion: reduce)');
 	function syncPlayback() {
-		if (userPaused || reduced || document.hidden) timeline?.pause();
+		if (document.hidden) timeline?.pause();
 		else timeline?.resume();
 	}
 	function rebuild() {
 		context?.revert();
 		context = undefined;
 		timeline = undefined;
-		reduced =
+		const reduced =
 			isReducedMotionActive() || document.documentElement.classList.contains('reduce-motion');
 		root.classList.toggle('demo-reduced', reduced);
 		options.reset?.(reduced);
@@ -59,10 +57,6 @@ export function attachDemoMotion(
 	size = dimensions();
 	rebuild();
 	return {
-		setPaused(paused: boolean) {
-			userPaused = paused;
-			syncPlayback();
-		},
 		destroy() {
 			resize.disconnect();
 			preferences.disconnect();

@@ -86,44 +86,36 @@ afterEach(() => {
 });
 
 describe('onboarding demo playback', () => {
-	it('pauses and resumes the existing timeline without resetting its position', () => {
-		const { motion, timelines } = harness();
-		timelines[0].position = 4.2;
-		motion.setPaused(true);
-		expect(timelines[0]).toEqual({ paused: true, position: 4.2 });
-		motion.setPaused(false);
-		expect(timelines).toEqual([{ paused: false, position: 4.2 }]);
-		motion.destroy();
+	it('pauses in the background and resumes the existing timeline at the same position', () => {
+		const h = harness();
+		h.timelines[0].position = 4.2;
+		h.setHidden(true);
+		expect(h.timelines[0]).toEqual({ paused: true, position: 4.2 });
+		h.setHidden(false);
+		expect(h.timelines).toEqual([{ paused: false, position: 4.2 }]);
+		h.motion.destroy();
 	});
 
-	it('preserves user pause across backgrounding and resize while still suspending background playback', () => {
+	it('keeps a timeline paused when rebuilt in the background', () => {
 		const h = harness();
-		h.motion.setPaused(true);
 		h.setHidden(true);
-		h.setHidden(false);
-		expect(h.timelines[0].paused).toBe(true);
 		h.resize();
 		expect(h.timelines).toHaveLength(2);
-		expect(h.timelines[1].paused).toBe(true);
-		h.setHidden(true);
-		h.motion.setPaused(false);
 		expect(h.timelines[1].paused).toBe(true);
 		h.setHidden(false);
 		expect(h.timelines[1].paused).toBe(false);
 		h.motion.destroy();
 	});
 
-	it('cannot resume through reduced motion and retains user pause when the preference clears', () => {
+	it('rebuilds the timeline only after reduced motion is disabled', () => {
 		const h = harness();
-		h.motion.setPaused(true);
 		h.setReduced(true);
 		h.setHidden(true);
 		h.setHidden(false);
 		expect(h.timelines).toHaveLength(1);
-		expect(h.timelines[0].paused).toBe(true);
 		h.setReduced(false);
 		expect(h.timelines).toHaveLength(2);
-		expect(h.timelines[1].paused).toBe(true);
+		expect(h.timelines[1].paused).toBe(false);
 		h.motion.destroy();
 	});
 });

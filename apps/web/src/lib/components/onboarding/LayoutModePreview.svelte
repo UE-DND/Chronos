@@ -5,18 +5,13 @@
 
 	import { attachDemoMotion, createLayoutTimeline } from './demo-motion';
 
-	let {
-		mode,
-		active = true,
-		paused = false
-	}: { mode: TimetableLayoutMode; active?: boolean; paused?: boolean } = $props();
+	let { mode, active = true }: { mode: TimetableLayoutMode; active?: boolean } = $props();
 	function animatePreview(node: HTMLElement) {
 		if (!active) return;
 		const currentMode = mode;
 		const motion = untrack(() =>
-			attachDemoMotion(node, (root) => createLayoutTimeline(root, currentMode), { paused })
+			attachDemoMotion(node, (root) => createLayoutTimeline(root, currentMode))
 		);
-		$effect(() => motion.setPaused(paused));
 		return motion.destroy;
 	}
 

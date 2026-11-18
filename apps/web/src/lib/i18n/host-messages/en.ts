@@ -4,8 +4,6 @@ export const en = {
 	'plugins.tabsAria': 'Plugin lists',
 	'transfer.export.methodsAria': 'Export methods',
 	'course.form.recurrence.label': 'Recurrence',
-	'onboarding.motion.pause': 'Pause demonstration',
-	'onboarding.motion.resume': 'Resume demonstration',
 	'plugins.progress.label': 'Installing plugin: {name}',
 	'startup.failed': 'Startup incomplete',
 	'startup.coreFailed': 'Local app data could not be prepared. Restart to try again.',
@@ -448,8 +446,6 @@ export const en = {
 	'onboarding.layout.compact.landscapeUnavailable':
 		'Compact landscape: unavailable; choose in portrait',
 	'onboarding.longPress.title': 'Long press your timetable to discover more',
-	'onboarding.longPress.description':
-		'Long press a class, then release to stay in edit mode. Press again to move it, or drag it to the remove area and confirm removal for this week.',
 	'onboarding.longPress.coursePrimary': 'Mathematics',
 	'onboarding.longPress.courseSecondary': 'English',
 	'onboarding.install.title': 'Add to home screen',

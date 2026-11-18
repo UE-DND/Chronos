@@ -9,7 +9,7 @@
 	import { attachDemoMotion, createLongPressTimeline } from './demo-motion';
 	import { createLongPressDemo } from './long-press-demo.svelte';
 
-	let { active = true, paused = false }: { active?: boolean; paused?: boolean } = $props();
+	let { active = true }: { active?: boolean } = $props();
 	const demo = createLongPressDemo(() => ({
 		primary: hostT('onboarding.longPress.coursePrimary'),
 		secondary: hostT('onboarding.longPress.courseSecondary')
@@ -19,14 +19,12 @@
 		if (!active) return;
 		const motion = untrack(() =>
 			attachDemoMotion(node, (root) => createLongPressTimeline(root, demo), {
-				paused,
 				reset(reduced) {
 					demo.reset();
 					if (reduced) demo.interaction.enterEdit();
 				}
 			})
 		);
-		$effect(() => motion.setPaused(paused));
 		return () => {
 			motion.destroy();
 			demo.destroy();
@@ -35,9 +33,6 @@
 	function ignoreAction() {}
 </script>
 
-<p class="text-body-small text-supporting max-w-sm text-center text-on-surface-variant">
-	{hostT('onboarding.longPress.description')}
-</p>
 <div
 	{@attach animateDemo}
 	class="demo rounded-3xl border border-outline-variant bg-surface text-on-surface shadow-raised"

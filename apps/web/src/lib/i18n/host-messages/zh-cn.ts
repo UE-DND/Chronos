@@ -4,8 +4,6 @@ export const zhCn = {
 	'plugins.tabsAria': '插件列表',
 	'transfer.export.methodsAria': '导出方式',
 	'course.form.recurrence.label': '重复方式',
-	'onboarding.motion.pause': '暂停演示',
-	'onboarding.motion.resume': '继续演示',
 	'plugins.progress.label': '安装插件：{name}',
 	'startup.failed': '启动未完成',
 	'startup.coreFailed': '无法准备本地应用数据，请重新启动后重试。',
@@ -430,8 +428,6 @@ export const zhCn = {
 	'onboarding.layout.compact.desc': '一屏展示全天课程，无需滚动',
 	'onboarding.layout.compact.landscapeUnavailable': '紧凑横屏不可用，竖屏后可选择',
 	'onboarding.longPress.title': '长按课表页，发现更多功能',
-	'onboarding.longPress.description':
-		'长按课程后松手进入编辑模式。再次按住可拖动调整位置，或拖到删除区，确认删除本周这次课程。',
 	'onboarding.longPress.coursePrimary': '高等数学',
 	'onboarding.longPress.courseSecondary': '大学英语',
 	'onboarding.install.title': '安装到主屏幕',
