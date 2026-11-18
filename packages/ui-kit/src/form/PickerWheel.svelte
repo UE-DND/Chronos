@@ -27,6 +27,9 @@
 	let settleTimer = 0;
 	let liveIndex = 0;
 	const optionValues = $derived(options.map((option) => option.value).join('\u0000'));
+	const activeOption = $derived(
+		disabled ? undefined : options.find((option) => option.value === value)
+	);
 
 	function selectedIndex(): number {
 		return Math.max(
@@ -139,6 +142,7 @@
 	<div
 		role="listbox"
 		aria-label={label}
+		aria-activedescendant={activeOption ? `${idPrefix}-${activeOption.value}` : undefined}
 		aria-disabled={disabled}
 		tabindex={disabled ? -1 : 0}
 		class={[

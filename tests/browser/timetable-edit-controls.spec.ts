@@ -63,6 +63,38 @@ test('date labels initialize the current value and discard cancelled drafts', as
 	await expect(trigger).toBeVisible();
 });
 
+test('period buttons expose period times and validation errors in accessible names', async ({
+	page,
+	request
+}) => {
+	await request.post('/__e2e/deploy?build=old');
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
+	await page.goto(`/Chronos/s#${payload}`);
+	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
+	await expect(page.locator('.timetable-week-pager')).toBeVisible();
+	await page.goto('/Chronos/timetable/details');
+
+	const periodOneButton = page.getByRole('button', { name: /第 1 节\s*08:00\s*08:45/ });
+	const periodTwoButton = page.getByRole('button', { name: /第 2 节\s*09:00\s*09:45/ });
+	await expect(periodOneButton).toBeVisible();
+	await expect(periodTwoButton).toBeVisible();
+
+	await periodTwoButton.click();
+	const startHourWheel = page.getByRole('listbox', { name: '开始时', exact: true });
+	await expect(startHourWheel).toHaveAttribute('aria-activedescendant', 'period-edit-start-hour-9');
+	await startHourWheel.focus();
+	await startHourWheel.press('ArrowUp');
+	await expect(startHourWheel).toHaveAttribute('aria-activedescendant', 'period-edit-start-hour-8');
+	await page.getByRole('button', { name: '确定', exact: true }).click();
+
+	const conflictingPeriodTwoButton = page.getByRole('button', {
+		name: /第 2 节\s*与第 1 节重叠/
+	});
+	await expect(conflictingPeriodTwoButton).toBeVisible();
+});
+
 test.describe('touch edit dismissal', () => {
 	test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
 

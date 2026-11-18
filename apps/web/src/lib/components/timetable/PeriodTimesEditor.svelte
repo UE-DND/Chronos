@@ -229,7 +229,6 @@
 			<button
 				type="button"
 				class="flex w-full cursor-pointer items-center gap-3 px-4 py-3.5 text-left"
-				aria-label={hostT('timetable.details.periods.label', { index: period.index })}
 				onclick={() => void openEdit(pos)}
 			>
 				<span class="text-body-large min-w-0 flex-1 text-on-surface">

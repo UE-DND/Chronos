@@ -42,6 +42,12 @@ for (const labels of [
 				'aria-selected',
 				'true'
 			);
+			const initialActiveId = await wheel.getAttribute('aria-activedescendant');
+			expect(initialActiveId).toMatch(/-30$/);
+			await expect(wheel.locator(`[id="${initialActiveId}"]`)).toHaveAttribute(
+				'aria-selected',
+				'true'
+			);
 			await expect.poll(() => wheel.evaluate((node) => Math.round(node.scrollTop))).toBe(200);
 			await expect
 				.poll(() =>
@@ -60,6 +66,15 @@ for (const labels of [
 				'aria-selected',
 				'true'
 			);
+			const endActiveId = await wheel.getAttribute('aria-activedescendant');
+			expect(endActiveId).toMatch(/-60$/);
+			await expect(wheel.locator(`[id="${endActiveId}"]`)).toHaveAttribute('aria-selected', 'true');
+			await wheel.getByRole('option', { name: '15', exact: true }).click();
+			await expect(wheel.getByRole('option', { name: '15', exact: true })).toHaveAttribute(
+				'aria-selected',
+				'true'
+			);
+			await expect(wheel).toHaveAttribute('aria-activedescendant', /-15$/);
 			await page.getByRole('button', { name: labels.cancel, exact: true }).click();
 			await expect(wheel).toBeHidden();
 			await expect(row).toContainText(labels.minutes(30));
@@ -71,6 +86,7 @@ for (const labels of [
 			await wheel.focus();
 			await wheel.press('Home');
 			await expect.poll(() => wheel.evaluate((node) => Math.round(node.scrollTop))).toBe(0);
+			await expect(wheel).toHaveAttribute('aria-activedescendant', /-5$/);
 			await page.getByRole('button', { name: labels.confirm, exact: true }).click();
 			await expect(wheel).toBeHidden();
 			await expect(row).toContainText(labels.minutes(5));
