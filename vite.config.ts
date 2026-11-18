@@ -95,7 +95,7 @@ export default defineConfig({
 				command: 'vp -C apps/web preview',
 				cache: false
 			},
-			'build:browser': { command: 'tsx scripts/e2e/build.ts', cache: false },
+			'build:browser': { command: 'vpx ./scripts/e2e/build.ts', cache: false },
 			'test:browser': {
 				dependsOn: ['build:browser'],
 				command: 'playwright test',
@@ -197,7 +197,7 @@ export default defineConfig({
 			},
 			'icons:png': 'node --experimental-strip-types scripts/generate-icons.ts',
 			'bench:share-link': {
-				command: 'tsx scripts/share-link-compression-benchmark.ts',
+				command: 'vpx ./scripts/share-link-compression-benchmark.ts',
 				cache: false
 			},
 			'build:official-plugins': {
