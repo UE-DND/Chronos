@@ -138,7 +138,7 @@
 	onDestroy(() => clearTimeout(settleTimer));
 </script>
 
-<div class="picker-wheel-column relative w-full">
+<div class="picker-wheel-column relative w-full rounded-xl">
 	<div
 		role="listbox"
 		aria-label={label}
@@ -146,7 +146,7 @@
 		aria-disabled={disabled}
 		tabindex={disabled ? -1 : 0}
 		class={[
-			'picker-wheel overflow-y-auto rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand',
+			'picker-wheel overflow-y-auto rounded-xl outline-none',
 			disabled && 'pointer-events-none opacity-60'
 		]}
 		{@attach wheelAttach}
@@ -177,14 +177,6 @@
 	</div>
 	<div
 		aria-hidden="true"
-		class="picker-wheel-fade-top pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-surface-container-high to-transparent"
-	></div>
-	<div
-		aria-hidden="true"
-		class="picker-wheel-fade-bottom pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-surface-container-high to-transparent"
-	></div>
-	<div
-		aria-hidden="true"
 		class="pointer-events-none absolute inset-x-2 top-1/2 h-10 -translate-y-1/2 rounded-lg border-y border-outline-variant/40 bg-brand/5"
 	></div>
 </div>
@@ -194,18 +186,24 @@
 		--picker-wheel-height: 200px;
 		--picker-wheel-fade: 80px;
 	}
+	.picker-wheel-column:has(> .picker-wheel:focus-visible) {
+		outline: 2px solid var(--color-brand);
+	}
 	.picker-wheel {
 		height: var(--picker-wheel-height);
 		padding-block: var(--picker-wheel-fade);
+		mask-image: linear-gradient(
+			to bottom,
+			transparent,
+			black var(--picker-wheel-fade),
+			black calc(100% - var(--picker-wheel-fade)),
+			transparent
+		);
 		scroll-snap-type: y mandatory;
 		scrollbar-width: none;
 		touch-action: pan-y;
 		overscroll-behavior-y: contain;
 		-webkit-overflow-scrolling: touch;
-	}
-	.picker-wheel-fade-top,
-	.picker-wheel-fade-bottom {
-		height: var(--picker-wheel-fade);
 	}
 	.picker-wheel::-webkit-scrollbar {
 		display: none;
