@@ -245,6 +245,8 @@ export const en = {
 	'timetable.week.indicatorAria': 'Week pagination indicator, swipe or drag to navigate weeks',
 	'timetable.week.indicatorGlassAria':
 		'Week pagination indicator, tap to return to the current week, or long press to navigate weeks',
+	'timetable.week.prevAria': 'Previous week',
+	'timetable.week.nextAria': 'Next week',
 	'timetable.week.label': 'Week {week}{today}',
 	'timetable.week.compactLead': 'W',
 	'timetable.week.compactTail': '',

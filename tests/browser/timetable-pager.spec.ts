@@ -336,6 +336,7 @@ test('shows the whole capsule only during week navigation and disables it after 
 }) => {
 	const { pager, position } = await importTimetable(page, request);
 	const indicator = page.locator('#week-indicator');
+	await expect(page.locator('.capsule-nav-button')).toHaveCount(0);
 	await expect(indicator).toHaveCSS('opacity', '0');
 	await expect(indicator).toHaveCSS('pointer-events', 'none');
 	await expect(indicator).toHaveAttribute('tabindex', '-1');
@@ -706,4 +707,97 @@ test('returning to the current week interrupts an unfinished swipe', async ({ pa
 	await page.getByRole('tab', { name: '我的', exact: true }).click();
 	await page.getByRole('tab', { name: '课表', exact: true }).click();
 	await expect.poll(position).toBeCloseTo(6, 1);
+});
+
+test.describe('desktop fine-pointer week navigation', () => {
+	test.use({ viewport: { width: 1280, height: 800 }, isMobile: false, hasTouch: false });
+
+	test('keeps indicator persistent and navigates weeks via buttons, click, and keyboard', async ({
+		page,
+		request
+	}) => {
+		await page.clock.install({ time: new Date('2026-04-22T10:15:00+08:00') });
+		const { position } = await importTimetable(page, request);
+		await expect.poll(position).toBeCloseTo(7, 1);
+
+		const indicator = page.locator('#week-indicator');
+		const prevButton = page.getByRole('button', { name: '上一周', exact: true });
+		const nextButton = page.getByRole('button', { name: '下一周', exact: true });
+
+		await page.waitForTimeout(900);
+		await expect(indicator).toHaveCSS('opacity', '1');
+		await expect(indicator).toHaveCSS('pointer-events', 'auto');
+		await expect(indicator).toHaveAttribute('tabindex', '0');
+		expect(await indicator.getAttribute('inert')).toBeNull();
+		await expect(prevButton).toBeVisible();
+		await expect(prevButton).toBeEnabled();
+		await expect(nextButton).toBeVisible();
+		await expect(nextButton).toBeEnabled();
+
+		await prevButton.click();
+		await expect.poll(position).toBeCloseTo(6, 1);
+		await expect(indicator).toHaveAttribute('aria-valuenow', '7');
+
+		await nextButton.click();
+		await nextButton.click();
+		await expect.poll(position).toBeCloseTo(8, 1);
+		await expect(indicator).toHaveAttribute('aria-valuenow', '9');
+
+		await indicator.click();
+		await expect.poll(position).toBeCloseTo(7, 1);
+		await expect(indicator).toHaveAttribute('aria-valuenow', '8');
+
+		await indicator.focus();
+		await indicator.press('Home');
+		await expect.poll(position).toBeCloseTo(0, 1);
+		await expect(indicator).toHaveAttribute('aria-valuenow', '1');
+		await expect(prevButton).toBeDisabled();
+		await expect(nextButton).toBeEnabled();
+
+		await indicator.press('End');
+		const maxWeek = Number(await indicator.getAttribute('aria-valuemax'));
+		await expect.poll(position).toBeCloseTo(maxWeek - 1, 1);
+		await expect(indicator).toHaveAttribute('aria-valuenow', String(maxWeek));
+		await expect(nextButton).toBeDisabled();
+		await expect(prevButton).toBeEnabled();
+
+		await indicator.press('ArrowLeft');
+		await expect.poll(position).toBeCloseTo(maxWeek - 2, 1);
+		await expect(prevButton).toBeEnabled();
+		await expect(nextButton).toBeEnabled();
+
+		await indicator.press('Enter');
+		await expect.poll(position).toBeCloseTo(7, 1);
+		await expect(indicator).toHaveAttribute('aria-valuenow', '8');
+	});
+
+	test('hides and disables flanking buttons while scrubbing the indicator', async ({
+		page,
+		request
+	}) => {
+		await page.clock.install({ time: new Date('2026-04-22T10:15:00+08:00') });
+		const { position } = await importTimetable(page, request);
+		await expect.poll(position).toBeCloseTo(7, 1);
+
+		const indicator = page.locator('#week-indicator');
+		const prevButton = page.getByRole('button', { name: '上一周', exact: true });
+		const nextButton = page.getByRole('button', { name: '下一周', exact: true });
+
+		const box = (await indicator.boundingBox())!;
+		await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+		await page.mouse.down();
+		await expect(indicator).toHaveClass(/capsule-indicator--expanded/);
+		await expect(prevButton).toBeDisabled();
+		await expect(nextButton).toBeDisabled();
+		await expect(prevButton).toBeHidden();
+		await expect(nextButton).toBeHidden();
+
+		await page.mouse.move(box.x + box.width / 2 + 40, box.y + box.height / 2, { steps: 6 });
+		await page.mouse.up();
+		await expect(indicator).not.toHaveClass(/capsule-indicator--expanded/);
+		await expect(prevButton).toBeVisible();
+		await expect(nextButton).toBeVisible();
+		await expect(prevButton).toBeEnabled();
+		await expect(nextButton).toBeEnabled();
+	});
 });

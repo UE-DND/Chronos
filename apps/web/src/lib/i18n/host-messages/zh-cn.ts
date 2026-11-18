@@ -236,6 +236,8 @@ export const zhCn = {
 	'timetable.empty.guide': '查看导入方式说明',
 	'timetable.week.indicatorAria': '周次分页指示器，左右滑动或长按快速切换周次',
 	'timetable.week.indicatorGlassAria': '周次分页指示器，单击返回当前周，或长按快速切换周次',
+	'timetable.week.prevAria': '上一周',
+	'timetable.week.nextAria': '下一周',
 	'timetable.week.label': '第 {week} 周{today}',
 	'timetable.week.compactLead': '第',
 	'timetable.week.compactTail': '周',

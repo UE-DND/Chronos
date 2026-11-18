@@ -15,6 +15,7 @@
 	import { createTransitionStateScheduler } from '#lib/timetable/capsule-indicator-transition.ts';
 	import { trackEvent } from '#lib/client/analytics.ts';
 	import { haptic } from '#lib/haptic/haptic.ts';
+	import { ChevronLeft, ChevronRight } from '#lib/icons/index.ts';
 
 	const STATE_TRANSITION_MS = 260;
 	const INDICATOR_LINGER_MS = 400;
@@ -64,6 +65,8 @@
 	const isExpanded = $derived(gesture.isScrubbing);
 	let pagerPreviewActive = $state(false);
 	const hasGlass = $derived(isExpanded || pagerPreviewActive || glassLingerActive);
+	let hasFinePointer = $state(false);
+	const isInteractive = $derived(hasGlass || hasFinePointer);
 	const indicatorWeek = $derived(gesture.isScrubbing ? gesture.scrubWeek : displayedWeek);
 	const ariaWeek = $derived(gesture.isScrubbing ? Math.round(gesture.scrubWeek) : displayedWeek);
 	const isInterpolating = $derived(pagerPreviewActive);
@@ -138,6 +141,20 @@
 		if (!pagerPreview) return;
 		pagerPreview.attach({ onPagerPreviewWeek });
 		return () => pagerPreview.detach();
+	});
+
+	$effect(() => {
+		if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+			hasFinePointer = false;
+			return;
+		}
+		const mediaQuery = window.matchMedia('(any-hover: hover) and (any-pointer: fine)');
+		const syncFinePointer = () => {
+			hasFinePointer = mediaQuery.matches;
+		};
+		syncFinePointer();
+		mediaQuery.addEventListener('change', syncFinePointer);
+		return () => mediaQuery.removeEventListener('change', syncFinePointer);
 	});
 
 	let prevTimetableId = $state<string | undefined>(undefined);
@@ -270,14 +287,23 @@
 		trackEvent('timetable_week_scrub', { week, trigger: 'keyboard' });
 	}
 
+	function stepDisplayedWeek(delta: -1 | 1) {
+		if (isExpanded) return;
+		const targetWeek = displayedWeek + delta;
+		if (targetWeek < startWeek || targetWeek > endWeek) return;
+		haptic.medium();
+		screen.setDisplayedWeek(targetWeek);
+		trackEvent('timetable_week_scrub', { week: targetWeek, trigger: 'button' });
+	}
+
 	function jumpToCurrentWeekIfGlass() {
-		if (!hasGlass || isExpanded) return;
+		if (!isInteractive || isExpanded) return;
 		haptic.medium();
 		screen.jumpToCurrentWeek();
 	}
 
 	function onKeydown(e: KeyboardEvent) {
-		if ((e.key === 'Enter' || e.key === ' ') && hasGlass && !isExpanded) {
+		if ((e.key === 'Enter' || e.key === ' ') && isInteractive && !isExpanded) {
 			e.preventDefault();
 			jumpToCurrentWeekIfGlass();
 		} else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
@@ -382,43 +408,75 @@
 			{tooltipWeekLabel}
 		</div>
 
-		<div
-			id="week-indicator"
-			bind:this={gesture.containerEl}
-			role="slider"
-			tabindex={hasGlass ? 0 : -1}
-			inert={!hasGlass}
-			aria-label={hostT(
-				hasGlass && !isExpanded
-					? 'timetable.week.indicatorGlassAria'
-					: 'timetable.week.indicatorAria'
-			)}
-			aria-valuemin={startWeek}
-			aria-valuemax={endWeek}
-			aria-valuenow={ariaWeek}
-			aria-valuetext={tooltipWeekLabel}
-			class={[
-				'capsule-indicator inline-flex min-h-11 cursor-pointer touch-none items-center justify-center rounded-full px-2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none',
-				isExpanded && 'capsule-indicator--expanded',
-				hasGlass && 'capsule-indicator--glass'
-			]}
-			style:--expanded-width={expandedWidth}
-			onpointerdown={gesture.onPointerDown}
-			onlostpointercapture={gesture.onPointerCancel}
-			oncontextmenu={(e) => e.preventDefault()}
-			onkeydown={onKeydown}
-		>
-			{#if isExpanded}
-				{@render expandedIndicator()}
-			{:else if isCollapsing}
-				<div class="dots-track-shell">
-					{@render compactIndicator()}
-					<div class="dots-track-overlay dots-track-overlay--fading">
-						{@render expandedIndicator()}
+		<div class="capsule-indicator-row relative inline-flex items-center justify-center">
+			{#if hasFinePointer}
+				<button
+					type="button"
+					class={[
+						'capsule-nav-button capsule-nav-button--prev inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-on-surface focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none',
+						isExpanded && 'capsule-nav-button--hidden'
+					]}
+					aria-label={hostT('timetable.week.prevAria')}
+					disabled={isExpanded || displayedWeek <= startWeek}
+					onclick={() => stepDisplayedWeek(-1)}
+				>
+					<ChevronLeft aria-hidden="true" class="size-5" />
+				</button>
+			{/if}
+
+			<div
+				id="week-indicator"
+				bind:this={gesture.containerEl}
+				role="slider"
+				tabindex={isInteractive ? 0 : -1}
+				inert={!isInteractive}
+				aria-label={hostT(
+					isInteractive && !isExpanded
+						? 'timetable.week.indicatorGlassAria'
+						: 'timetable.week.indicatorAria'
+				)}
+				aria-valuemin={startWeek}
+				aria-valuemax={endWeek}
+				aria-valuenow={ariaWeek}
+				aria-valuetext={tooltipWeekLabel}
+				class={[
+					'capsule-indicator inline-flex min-h-11 cursor-pointer touch-none items-center justify-center rounded-full px-2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none',
+					isExpanded && 'capsule-indicator--expanded',
+					hasGlass && 'capsule-indicator--glass'
+				]}
+				style:--expanded-width={expandedWidth}
+				onpointerdown={gesture.onPointerDown}
+				onlostpointercapture={gesture.onPointerCancel}
+				oncontextmenu={(e) => e.preventDefault()}
+				onkeydown={onKeydown}
+			>
+				{#if isExpanded}
+					{@render expandedIndicator()}
+				{:else if isCollapsing}
+					<div class="dots-track-shell">
+						{@render compactIndicator()}
+						<div class="dots-track-overlay dots-track-overlay--fading">
+							{@render expandedIndicator()}
+						</div>
 					</div>
-				</div>
-			{:else}
-				{@render compactIndicator()}
+				{:else}
+					{@render compactIndicator()}
+				{/if}
+			</div>
+
+			{#if hasFinePointer}
+				<button
+					type="button"
+					class={[
+						'capsule-nav-button capsule-nav-button--next inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-on-surface focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none',
+						isExpanded && 'capsule-nav-button--hidden'
+					]}
+					aria-label={hostT('timetable.week.nextAria')}
+					disabled={isExpanded || displayedWeek >= endWeek}
+					onclick={() => stepDisplayedWeek(1)}
+				>
+					<ChevronRight aria-hidden="true" class="size-5" />
+				</button>
 			{/if}
 		</div>
 	</div>
@@ -458,6 +516,73 @@
 		opacity: 1;
 		pointer-events: auto;
 		transition-duration: var(--indicator-transition-duration);
+	}
+
+	@media (any-hover: hover) and (any-pointer: fine) {
+		.capsule-indicator {
+			opacity: 1;
+			pointer-events: auto;
+		}
+	}
+
+	.capsule-nav-button {
+		position: absolute;
+		top: 50%;
+		transform: translateY(-50%);
+		pointer-events: auto;
+		opacity: 1;
+		visibility: visible;
+		background-color: color-mix(
+			in srgb,
+			var(--color-surface-container-high, #e5e8f0) 64%,
+			transparent
+		);
+		-webkit-backdrop-filter: blur(16px) saturate(1.3);
+		backdrop-filter: blur(16px) saturate(1.3);
+		border: 1px solid color-mix(in srgb, var(--color-outline-variant, #aeb2bb) 50%, transparent);
+		box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+		transition:
+			opacity var(--indicator-transition-duration) var(--indicator-easing),
+			transform var(--indicator-transition-duration) var(--indicator-easing),
+			background-color 150ms ease,
+			visibility 0s linear 0s;
+	}
+
+	.capsule-nav-button--prev {
+		right: calc(100% + 0.5rem);
+	}
+
+	.capsule-nav-button--next {
+		left: calc(100% + 0.5rem);
+	}
+
+	.capsule-nav-button:not(:disabled):hover {
+		background-color: color-mix(
+			in srgb,
+			var(--color-surface-container-high, #e5e8f0) 82%,
+			transparent
+		);
+	}
+
+	.capsule-nav-button:not(:disabled):active {
+		transform: translateY(-50%) scale(0.95);
+	}
+
+	.capsule-nav-button:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+
+	.capsule-nav-button--hidden,
+	.capsule-nav-button--hidden:disabled {
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+		transition:
+			opacity var(--indicator-transition-duration) var(--indicator-easing),
+			transform var(--indicator-transition-duration) var(--indicator-easing),
+			background-color 150ms ease,
+			visibility 0s linear var(--indicator-transition-duration);
 	}
 
 	.capsule-indicator--expanded {
@@ -585,24 +710,28 @@
 	@media (prefers-reduced-motion: reduce) {
 		.capsule-indicator,
 		.capsule-indicator--glass,
+		.capsule-nav-button,
 		.dots-track,
 		.indicator-dot,
 		.floating-tooltip,
 		.floating-tooltip::before,
 		.dots-track-overlay--fading {
 			transition-duration: 1ms !important;
+			transition-delay: 0s !important;
 			animation-duration: 1ms !important;
 		}
 	}
 
 	:root.reduce-motion .capsule-indicator,
 	:root.reduce-motion .capsule-indicator--glass,
+	:root.reduce-motion .capsule-nav-button,
 	:root.reduce-motion .dots-track,
 	:root.reduce-motion .indicator-dot,
 	:root.reduce-motion .floating-tooltip,
 	:root.reduce-motion .floating-tooltip::before,
 	:root.reduce-motion .dots-track-overlay--fading {
 		transition-duration: 1ms !important;
+		transition-delay: 0s !important;
 		animation-duration: 1ms !important;
 	}
 </style>

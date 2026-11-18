@@ -8,6 +8,7 @@ export {
 } from '@material-symbols-svg/svelte/icons/person';
 export { ArrowBackW700 as ArrowBack } from '@material-symbols-svg/svelte/icons/arrow-back';
 export { EditNoteW700 as EditNote } from '@material-symbols-svg/svelte/icons/edit-note';
+export { ChevronLeftW700 as ChevronLeft } from '@material-symbols-svg/svelte/icons/chevron-left';
 export { ChevronRightW700 as ChevronRight } from '@material-symbols-svg/svelte/icons/chevron-right';
 export { ListAltFillW700 as ListAltFill } from '@material-symbols-svg/svelte/icons/list-alt';
 export { DownloadFillW700 as DownloadFill } from '@material-symbols-svg/svelte/icons/download';
