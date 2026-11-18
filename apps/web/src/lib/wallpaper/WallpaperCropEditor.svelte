@@ -46,7 +46,8 @@
 	const confirmLabel = $derived(pt('screen.action.confirmCrop'));
 
 	const calendarService = new AcademicCalendarService();
-	const hostTranslate = (key: string) => controller.translatePlugin('host-ui', key);
+	const hostTranslate = (key: string, params?: Record<string, unknown>) =>
+		controller.translatePlugin('host-ui', key, params);
 
 	const timetable = $derived(controller.currentTimetable);
 	const today = $derived(controller.todayIso);

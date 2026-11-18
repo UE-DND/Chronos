@@ -33,7 +33,8 @@
 
 	const calendarService = new AcademicCalendarService();
 	const ui = $derived(fromStore(controller.snapshot));
-	const hostTranslate = (key: string) => controller.translatePlugin('host-ui', key);
+	const hostTranslate = (key: string, params?: Record<string, unknown>) =>
+		controller.translatePlugin('host-ui', key, params);
 
 	const timetable = $derived(ui.current.currentTimetable);
 	const today = $derived(ui.current.todayIso);
@@ -102,6 +103,8 @@
 	</TimetableWallpaperLayer>
 {:else}
 	<div class="flex min-h-[12rem] items-center justify-center p-8">
-		<p class="text-body-medium text-center text-on-surface-variant">暂无课表，导入后可预览效果</p>
+		<p class="text-body-medium text-center text-on-surface-variant">
+			{hostTranslate('timetable.preview.empty')}
+		</p>
 	</div>
 {/if}

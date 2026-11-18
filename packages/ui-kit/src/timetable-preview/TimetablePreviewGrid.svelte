@@ -69,7 +69,7 @@
 		expandedSlots?: ReadonlySet<string>;
 		onExpandSlot?: (slotKey: string) => void;
 		onCourseClick?: (course: Course) => void;
-		hostTranslate?: (key: string) => string;
+		hostTranslate?: (key: string, params?: Record<string, unknown>) => string;
 	}
 
 	let {
@@ -205,11 +205,11 @@
 				? 'overflow-hidden'
 				: 'overflow-y-auto'} {timetableBodyTintClass(hasDynamicBackground)}"
 			role="region"
-			aria-label="课表预览"
+			aria-label={hostTranslate('timetable.grid.aria')}
 		>
 			<div class="flex" style:height="calc(var(--row-height) * {gridModel.displayedPeriodCount})">
 				<aside
-					aria-label="节次与时间"
+					aria-label={hostTranslate('timetable.grid.periodsAria')}
 					class="shrink-0"
 					style:width="var(--sidebar-width)"
 					style:height="calc(var(--row-height) * {gridModel.displayedPeriodCount})"
@@ -264,7 +264,7 @@
 										onclick={() => expandSlot(item.key)}
 									>
 										<span class="text-on-surface-variant" style:font-size="{item.placeholderPx}px">
-											此时段有 {item.count} 门课程重叠
+											{hostTranslate('timetable.grid.overlap', { count: item.count })}
 										</span>
 									</button>
 								{:else}
@@ -273,7 +273,7 @@
 										style={capsuleCornerAttrs(item.corners).style}
 									>
 										<span class="text-on-surface-variant" style:font-size="{item.placeholderPx}px">
-											{item.count} 门课程重叠
+											{hostTranslate('timetable.grid.overlap', { count: item.count })}
 										</span>
 									</div>
 								{/if}

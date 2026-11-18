@@ -65,8 +65,30 @@
 	const capsuleCornerStyle = $derived(ui?.current.userPreferences?.capsuleCornerStyle ?? 'sharp');
 	const courseBadges = $derived(ui?.current.courseBadges ?? {});
 	const hostTranslate = $derived(
-		controller ? (key: string) => controller.translatePlugin('host-ui', key) : (key: string) => key
+		controller
+			? (key: string, params?: Record<string, unknown>) =>
+					controller.translatePlugin('host-ui', key, params)
+			: (key: string) => key
 	);
+	const emptyWallpaperText = $derived.by(() => {
+		const translated = hostTranslate('wallpaper.screen.preview.empty');
+		return translated === 'wallpaper.screen.preview.empty'
+			? '选择壁纸后，可在此预览应用效果'
+			: translated;
+	});
+	const emptyTimetableText = $derived.by(() => {
+		const translated = hostTranslate('wallpaper.preview.emptyTimetable');
+		return translated === 'wallpaper.preview.emptyTimetable'
+			? '暂无课表，导入后可预览壁纸效果'
+			: translated;
+	});
+	const selectedFileText = $derived.by(() => {
+		if (!selectedFileName) return '';
+		const translated = hostTranslate('wallpaper.preview.selectedFile', { name: selectedFileName });
+		return translated === 'wallpaper.preview.selectedFile'
+			? `已选择: ${selectedFileName}`
+			: translated;
+	});
 
 	const holidays = $derived.by(() => {
 		void ui?.current.calendarRevision;
@@ -155,7 +177,7 @@
 		/>
 	</div>
 	{#if selectedFileName}
-		<span class="text-xs text-primary">已选择: {selectedFileName}</span>
+		<span class="text-xs text-primary">{selectedFileText}</span>
 	{/if}
 
 	<div class="overflow-hidden rounded-xl border border-outline/20">
@@ -201,7 +223,7 @@
 						class="absolute inset-x-0 bottom-0 bg-surface-variant/80 px-3 py-2 text-center backdrop-blur-sm"
 					>
 						<p class="text-body-small text-supporting text-on-surface-variant">
-							选择壁纸后可预览效果
+							{emptyWallpaperText}
 						</p>
 					</div>
 				{/if}
@@ -210,7 +232,7 @@
 			<p
 				class="text-body-medium flex items-center justify-center p-8 text-center text-on-surface-variant"
 			>
-				暂无课表，导入后可预览壁纸效果
+				{emptyTimetableText}
 			</p>
 		{/if}
 	</div>

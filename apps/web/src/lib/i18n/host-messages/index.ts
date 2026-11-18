@@ -1,7 +1,10 @@
 import { en } from './en';
 import { zhCn } from './zh-cn';
 
-export const HOST_MESSAGES = { 'zh-cn': zhCn, en } as const;
+export const HOST_MESSAGES = { 'zh-cn': zhCn, en } as const satisfies {
+	'zh-cn': Readonly<Record<keyof typeof en, string>>;
+	en: Readonly<Record<keyof typeof zhCn, string>>;
+};
 
 export const HOST_UI_PLUGIN_ID = 'host-ui';
 

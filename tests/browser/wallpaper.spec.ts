@@ -456,3 +456,39 @@ test.describe('wallpaper persistence', () => {
 		await other.close();
 	});
 });
+
+test.describe('english preview localization', () => {
+	test.use({ locale: 'en-US', viewport: { width: 390, height: 844 } });
+
+	test('localizes preview timetable chrome, overlap badges, and empty wallpaper hints', async ({
+		page
+	}) => {
+		await page.clock.install({ time: new Date('2026-03-02T08:00:00+08:00') });
+		await page.goto('/Chronos/wallpaper/preview');
+		await expect(
+			page.getByText('Choose a wallpaper to preview how it looks here', { exact: true })
+		).toBeVisible();
+
+		await page.goto(`/Chronos/s#${payload}`);
+		await page.getByRole('button', { name: 'Import as new timetable', exact: true }).click();
+		await expect(page.locator('.timetable-week-pager')).toBeVisible();
+
+		await page.goto('/Chronos/wallpaper/preview');
+		await page.locator('input[type=file]').setInputFiles(await imageFile(page));
+		const applyCrop = page
+			.getByRole('button', { name: 'Apply crop', exact: true })
+			.filter({ visible: true });
+		await expect(applyCrop).toBeEnabled();
+
+		const region = page.getByRole('region', { name: "This week's timetable", exact: true });
+		await expect(region).toBeVisible();
+		await expect(region.getByLabel('Periods and times', { exact: true })).toBeVisible();
+		await expect(region.getByText('2 courses overlap in this slot', { exact: true })).toBeVisible();
+
+		await applyCrop.click();
+		await expect(region).toBeVisible();
+		await expect(region.getByLabel('Periods and times', { exact: true })).toBeVisible();
+		await expect(region.getByText('2 courses overlap in this slot', { exact: true })).toBeVisible();
+		await expect(page.getByText(/课表预览|节次与时间|门课程重叠/)).toHaveCount(0);
+	});
+});

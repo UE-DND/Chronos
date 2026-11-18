@@ -45,8 +45,15 @@
 	const capsuleCornerStyle = $derived(ui?.current.userPreferences?.capsuleCornerStyle ?? 'sharp');
 	const courseBadges = $derived(ui?.current.courseBadges ?? {});
 	const hostTranslate = $derived(
-		controller ? (key: string) => controller.translatePlugin('host-ui', key) : (key: string) => key
+		controller
+			? (key: string, params?: Record<string, unknown>) =>
+					controller.translatePlugin('host-ui', key, params)
+			: (key: string) => key
 	);
+	const emptyText = $derived.by(() => {
+		const translated = hostTranslate('timetable.preview.empty');
+		return translated === 'timetable.preview.empty' ? '暂无课表，导入后可预览效果' : translated;
+	});
 
 	const holidays = $derived.by(() => {
 		void ui?.current.calendarRevision;
@@ -101,7 +108,7 @@
 			<p
 				class="text-body-medium flex items-center justify-center p-8 text-center text-on-surface-variant"
 			>
-				暂无课表，导入后可预览效果
+				{emptyText}
 			</p>
 		{/if}
 	</div>

@@ -209,7 +209,7 @@ for (const variant of [
 			mimeType: 'image/png',
 			buffer: Buffer.from(data, 'base64')
 		});
-		const preview = page.getByRole('region', { name: '课表预览', exact: true });
+		const preview = page.getByRole('region', { name: '本周课程表', exact: true });
 		await expect(current(preview)).toHaveCount(1);
 		await expectCurrentCourseHighlight(current(preview));
 		await expect(preview.locator('.period-active')).toHaveCount(0);

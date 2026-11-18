@@ -393,7 +393,7 @@ test('maximum text size fits the Arknights theme in portrait and landscape', asy
 		});
 		await page.goto('/Chronos/wallpaper/preview');
 		const previewTitle = page
-			.getByRole('region', { name: '课表预览', exact: true })
+			.getByRole('region', { name: '本周课程表', exact: true })
 			.locator('.course-capsule span.break-all')
 			.first();
 		await expect(previewTitle).toBeVisible();
