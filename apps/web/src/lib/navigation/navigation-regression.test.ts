@@ -1,5 +1,5 @@
 import { createHistoryOverlaySync } from '@chronos/ui-kit';
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import {
 	canSystemBack,
 	configureNavigationCoordinator,
@@ -142,6 +142,9 @@ function browserAdapter(initial = '/') {
 describe('navigation and overlay browser contract', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+	});
+	afterEach(() => {
+		vi.useRealTimers();
 	});
 	it('UI back traverses once, preserves forward entries and never pushes', async () => {
 		const browser = browserAdapter();
@@ -483,6 +486,202 @@ describe('navigation and overlay browser contract', () => {
 
 			expect(canSystemBack()).toBe(true);
 			expect(dispatchSystemBack()).toBe('consumed');
+		});
+	});
+
+	describe('historyGo failure and timeout recovery', () => {
+		it('recovers route back via fallback goto when historyGo throws', async () => {
+			const browser = browserAdapter('/');
+			await navigateForward('/about');
+			registerPageBackFallback({ kind: 'route', href: '/settings' });
+			browser.historyGo.mockImplementationOnce(() => {
+				throw new Error('history.go unavailable');
+			});
+
+			navigateBack();
+			await Promise.resolve();
+
+			expect(browser.goto).toHaveBeenLastCalledWith('/settings', { replace: true });
+			expect(browser.renderedHref).toBe('/settings');
+			expect(getTopFrame()?.href).toBe('/settings');
+
+			await navigateForward('/about/terms');
+			expect(browser.renderedHref).toBe('/about/terms');
+			expect(dispatchSystemBack()).toBe('consumed');
+		});
+
+		it('releases the lock after a silent traversal without navigating to a fallback', async () => {
+			vi.useFakeTimers();
+			const browser = browserAdapter('/');
+			await navigateForward('/about');
+			navigateBack();
+			await navigateForward('/settings');
+			expect(browser.renderedHref).toBe('/about');
+
+			await vi.advanceTimersByTimeAsync(300);
+			expect(browser.goto).toHaveBeenCalledTimes(1);
+			await navigateForward('/settings');
+			expect(browser.renderedHref).toBe('/settings');
+		});
+
+		it('ignores same-entry sync and lets a late history traversal move back only once', async () => {
+			vi.useFakeTimers();
+			const browser = browserAdapter('/');
+			await navigateForward('/about');
+			await navigateForward('/settings');
+			navigateBack();
+			syncNavigationPage();
+			navigateBack();
+			expect(browser.historyGo).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(300);
+			expect(browser.renderedHref).toBe('/settings');
+			browser.complete();
+			expect(browser.goto).toHaveBeenCalledTimes(2);
+			expect(browser.renderedHref).toBe('/about');
+		});
+
+		it.each(['throw', 'timeout'] as const)(
+			'clears pending back lock without leaving current route when overlay historyGo hits %s',
+			async (mode) => {
+				vi.useFakeTimers();
+				const browser = browserAdapter('/');
+				await navigateForward('/about');
+				const dismiss = vi.fn();
+				const handle = openOverlayHistory('sheet', dismiss);
+				if (mode === 'throw') {
+					browser.historyGo.mockImplementationOnce(() => {
+						throw new Error('history.go unavailable');
+					});
+				}
+
+				handle.close();
+				expect(dismiss).toHaveBeenCalledOnce();
+				if (mode === 'timeout') {
+					await vi.advanceTimersByTimeAsync(300);
+				}
+
+				expect(browser.goto).toHaveBeenCalledTimes(1);
+				expect(browser.renderedHref).toBe('/about');
+
+				await navigateForward('/about/install');
+				expect(browser.renderedHref).toBe('/about/install');
+				expect(dispatchSystemBack()).toBe('consumed');
+				expect(browser.historyGo).toHaveBeenCalledTimes(2);
+			}
+		);
+
+		it('cancels the timeout watchdog when navigation starts or sync completes in time', async () => {
+			vi.useFakeTimers();
+			const browser = browserAdapter('/');
+			await navigateForward('/about');
+
+			navigateBack();
+			await vi.advanceTimersByTimeAsync(100);
+			browser.complete();
+			await vi.advanceTimersByTimeAsync(500);
+
+			expect(browser.goto).toHaveBeenCalledTimes(1);
+			expect(browser.renderedHref).toBe('/');
+			expect(dispatchSystemBack()).toBe('exit');
+		});
+
+		it('cancels pending historyGo timers when reconfiguring the coordinator', async () => {
+			vi.useFakeTimers();
+			const first = browserAdapter('/');
+			await navigateForward('/about');
+			navigateBack();
+
+			const second = browserAdapter('/');
+			await vi.advanceTimersByTimeAsync(500);
+
+			expect(first.goto).toHaveBeenCalledTimes(1);
+			expect(second.goto).not.toHaveBeenCalled();
+			expect(dispatchSystemBack()).toBe('exit');
+		});
+
+		it('releases correcting backPending state if tombstone correction historyGo never navigates', async () => {
+			vi.useFakeTimers();
+			const browser = browserAdapter('/');
+			const handle = openOverlayHistory('sheet', vi.fn());
+			handle.close();
+			browser.complete();
+
+			browser.historyGo.mockClear();
+			browser.traverse(1);
+			expect(browser.historyGo).toHaveBeenCalledWith(-1);
+
+			await vi.advanceTimersByTimeAsync(300);
+			await navigateForward('/about');
+			expect(browser.renderedHref).toBe('/about');
+		});
+
+		it('allows system exit on root shell after closing an overlay whose historyGo failed', async () => {
+			vi.useFakeTimers();
+			browserAdapter('/');
+			const handle = openOverlayHistory('sheet', vi.fn());
+			handle.close();
+			await vi.advanceTimersByTimeAsync(300);
+
+			expect(canSystemBack()).toBe(false);
+			expect(dispatchSystemBack()).toBe('exit');
+		});
+
+		it('navigates back from the underlying route when closing an overlay failed to pop history', async () => {
+			vi.useFakeTimers();
+			const browser = browserAdapter('/');
+			await navigateForward('/about');
+			const handle = openOverlayHistory('sheet', vi.fn());
+			handle.close();
+			await vi.advanceTimersByTimeAsync(300);
+
+			expect(browser.renderedHref).toBe('/about');
+			expect(dispatchSystemBack()).toBe('consumed');
+			expect(browser.historyGo).toHaveBeenLastCalledWith(-2);
+			browser.complete();
+			expect(browser.renderedHref).toBe('/');
+			expect(dispatchSystemBack()).toBe('exit');
+		});
+
+		it('falls back from the underlying route when post-overlay route historyGo also fails', async () => {
+			vi.useFakeTimers();
+			const browser = browserAdapter('/');
+			await navigateForward('/about');
+			const handle = openOverlayHistory('sheet', vi.fn());
+			handle.close();
+			await vi.advanceTimersByTimeAsync(300);
+
+			browser.historyGo.mockImplementationOnce(() => {
+				throw new Error('history.go unavailable');
+			});
+			expect(dispatchSystemBack()).toBe('consumed');
+			expect(browser.historyGo).toHaveBeenLastCalledWith(-2);
+
+			await Promise.resolve();
+			expect(browser.goto).toHaveBeenLastCalledWith('/', { replace: true });
+			expect(browser.renderedHref).toBe('/');
+		});
+
+		it('does not let a completed fallback goto clear a subsequently started navigateBack', async () => {
+			vi.useFakeTimers();
+			const browser = browserAdapter('/');
+			await navigateForward('/about');
+			registerPageBackFallback({ kind: 'route', href: '/settings' });
+			browser.historyGo.mockImplementationOnce(() => {
+				throw new Error('history.go unavailable');
+			});
+			navigateBack();
+
+			// Before the microtask .finally() of runFallbackBack runs, navigateBack() starts a new back.
+			navigateBack();
+			await Promise.resolve();
+			navigateBack();
+			expect(browser.historyGo).toHaveBeenCalledTimes(2);
+			expect(canSystemBack()).toBe(true);
+
+			browser.complete();
+			expect(browser.renderedHref).toBe('/');
+			expect(dispatchSystemBack()).toBe('exit');
 		});
 	});
 });

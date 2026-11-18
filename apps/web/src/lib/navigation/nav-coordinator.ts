@@ -1,5 +1,5 @@
 import type { BeforeNavigate } from '$app/navigation';
-import { resolveBack, resolveTraversal, type BackFallback } from './back-resolver';
+import { resolveBack, resolveTraversal, type BackFallback, type BackPlan } from './back-resolver';
 import {
 	findRecord,
 	getNavigationSnapshot,
@@ -11,6 +11,7 @@ import {
 	moveToRecord,
 	pushOverlay,
 	pushRoute,
+	type NavigationSnapshot,
 	type NavFrame
 } from './nav-stack';
 import { appRouteHref, isShellRoute } from './routes';
@@ -36,6 +37,115 @@ interface CoordinatorState {
 	correctingFrom?: string;
 	fallbackRegistration?: { fallback: BackFallback };
 	pendingFallbackTab?: string;
+	pendingHistoryGo?: { sourceId?: string; timer?: ReturnType<typeof setTimeout> };
+	pendingFallbackToken?: symbol;
+	failedOverlayPopId?: string;
+}
+
+const HISTORY_GO_TIMEOUT_MS = 300;
+
+function clearPendingHistoryGo(targetState: CoordinatorState): void {
+	if (!targetState.pendingHistoryGo) return;
+	if (targetState.pendingHistoryGo.timer !== undefined) {
+		clearTimeout(targetState.pendingHistoryGo.timer);
+	}
+	targetState.pendingHistoryGo = undefined;
+}
+
+function resetPendingBackState(targetState: CoordinatorState): void {
+	clearPendingHistoryGo(targetState);
+	targetState.backPending = false;
+	targetState.pendingFallbackToken = undefined;
+	targetState.requestedReplace = false;
+	targetState.pendingFallbackTab = undefined;
+	targetState.intent = undefined;
+	targetState.correctingFrom = undefined;
+}
+
+function runGoto(hrefTarget: string, opts?: { replace?: boolean }): Promise<void> {
+	if (!deps) return Promise.resolve();
+	try {
+		return Promise.resolve(deps.goto(hrefTarget, opts));
+	} catch (error) {
+		return Promise.reject(error);
+	}
+}
+
+function runHistoryGo(
+	targetState: CoordinatorState,
+	delta: number,
+	onNoNavigation: (reason: 'error' | 'timeout') => void
+): void {
+	if (!deps || state !== targetState) return;
+	clearPendingHistoryGo(targetState);
+	const pending: NonNullable<CoordinatorState['pendingHistoryGo']> = {
+		sourceId: findRecord(deps.getPage().state.chronosNavigation)?.id
+	};
+	targetState.pendingHistoryGo = pending;
+	try {
+		deps.historyGo(delta);
+	} catch {
+		if (state !== targetState || targetState.pendingHistoryGo !== pending) return;
+		clearPendingHistoryGo(targetState);
+		onNoNavigation('error');
+		return;
+	}
+	if (state !== targetState || targetState.pendingHistoryGo !== pending) return;
+	pending.timer = setTimeout(() => {
+		if (state !== targetState || targetState.pendingHistoryGo !== pending) return;
+		clearPendingHistoryGo(targetState);
+		onNoNavigation('timeout');
+	}, HISTORY_GO_TIMEOUT_MS);
+}
+
+function runFallbackBack(activeState: CoordinatorState, target: BackFallback): void {
+	if (!deps || state !== activeState) return;
+	const fallbackToken = Symbol('fallbackBack');
+	activeState.backPending = true;
+	activeState.pendingFallbackToken = fallbackToken;
+	activeState.pendingFallbackTab = target.kind === 'shell' ? target.tab : undefined;
+	activeState.requestedReplace = true;
+	void runGoto(appRouteHref(target.kind === 'shell' ? '/' : target.href), { replace: true })
+		.catch(() => {
+			/* Router keeps the previous page on canceled/failed navigation. */
+		})
+		.finally(() => {
+			if (state === activeState && activeState.pendingFallbackToken === fallbackToken) {
+				resetPendingBackState(activeState);
+			}
+		});
+}
+
+function resolveLogicalBack(
+	snapshot: NavigationSnapshot,
+	fallback: BackFallback,
+	failedOverlayPopId?: string
+): { logicalFrame: Readonly<NavFrame> | undefined; plan: BackPlan } {
+	const current = snapshot.records[snapshot.cursor];
+	if (
+		current &&
+		current.kind === 'overlay' &&
+		!current.valid &&
+		current.id === failedOverlayPopId
+	) {
+		for (let i = snapshot.cursor - 1; i >= 0; i--) {
+			const candidate = snapshot.records[i];
+			if (candidate.kind === 'route' || candidate.valid) {
+				const plan = resolveBack({ records: snapshot.records, cursor: i }, fallback);
+				if (plan.type === 'traverse') {
+					const target = snapshot.records.find((frame) => frame.id === plan.targetId);
+					if (target) {
+						return {
+							logicalFrame: candidate,
+							plan: { ...plan, delta: target.position - current.position }
+						};
+					}
+				}
+				return { logicalFrame: candidate, plan };
+			}
+		}
+	}
+	return { logicalFrame: current, plan: resolveBack(snapshot, fallback) };
 }
 
 function createCoordinatorState(): CoordinatorState {
@@ -64,6 +174,7 @@ function writeMarker(frame: NavFrame): void {
 	}
 }
 export function configureNavigationCoordinator(next: NavigationCoordinatorDeps): void {
+	clearPendingHistoryGo(state);
 	deps = next;
 	++requestId;
 	state = createCoordinatorState();
@@ -95,30 +206,32 @@ export function navigateBack(
 	fallback = state.fallbackRegistration?.fallback ?? ({ kind: 'shell' } as BackFallback)
 ): void {
 	if (!deps || state.backPending) return;
-	const plan = resolveBack(getNavigationSnapshot(), fallback);
-	state.backPending = true;
+	const activeState = state;
+	const topFrame = getTopFrame();
+	const { logicalFrame, plan } = resolveLogicalBack(
+		getNavigationSnapshot(),
+		fallback,
+		activeState.failedOverlayPopId
+	);
+	activeState.backPending = true;
 	if (
 		plan.type === 'traverse' &&
-		findRecord(deps.getPage().state.chronosNavigation)?.id === getTopFrame()?.id
+		findRecord(deps.getPage().state.chronosNavigation)?.id === topFrame?.id
 	) {
-		deps.historyGo(plan.delta);
+		runHistoryGo(activeState, plan.delta, (reason) => {
+			resetPendingBackState(activeState);
+			const current = getTopFrame();
+			// A timeout cannot cancel a browser traversal that is still queued.
+			if (logicalFrame?.kind === 'route' && reason === 'error') {
+				runFallbackBack(activeState, fallback);
+			} else if (current?.kind === 'overlay' && !current.valid) {
+				activeState.failedOverlayPopId = current.id;
+			}
+		});
 		return;
 	}
 	const target = plan.type === 'fallback' ? plan.fallback : fallback;
-	state.pendingFallbackTab = target.kind === 'shell' ? target.tab : undefined;
-	state.requestedReplace = true;
-	void Promise.resolve(
-		deps.goto(appRouteHref(target.kind === 'shell' ? '/' : target.href), { replace: true })
-	)
-		.catch(() => {
-			/* Router keeps the previous page on canceled/failed navigation. */
-		})
-		.finally(() => {
-			state.backPending = false;
-			state.requestedReplace = false;
-			state.pendingFallbackTab = undefined;
-			state.intent = undefined;
-		});
+	runFallbackBack(activeState, target);
 }
 
 /**
@@ -131,11 +244,9 @@ export function canSystemBack(): boolean {
 	if (state.backPending || state.intent) return true;
 
 	const snapshot = getNavigationSnapshot();
-	const current = getTopFrame();
-	if (!current) return false;
-
 	const fallback = state.fallbackRegistration?.fallback ?? ({ kind: 'shell' } as BackFallback);
-	const plan = resolveBack(snapshot, fallback);
+	const { logicalFrame, plan } = resolveLogicalBack(snapshot, fallback, state.failedOverlayPopId);
+	if (!logicalFrame) return false;
 
 	if (plan.type === 'traverse') {
 		return true;
@@ -143,7 +254,7 @@ export function canSystemBack(): boolean {
 
 	const pathname = deps.getPage().url.pathname;
 	const isAtRootShell =
-		isShellRoute(pathname) && current.kind === 'route' && current.entry !== 'deeplink';
+		isShellRoute(pathname) && logicalFrame.kind === 'route' && logicalFrame.entry !== 'deeplink';
 
 	return !isAtRootShell;
 }
@@ -177,19 +288,19 @@ export function onBeforeNavigate(navigation: BeforeNavigate): void {
 		state.intent = undefined;
 		return;
 	}
+	clearPendingHistoryGo(state);
 	if (navigation.type === 'popstate') state.renderingTarget = undefined;
+	const activeState = state;
 	const staged = {
 		type: navigation.type,
-		replace: state.requestedReplace,
-		shellTab: state.departureTab
+		replace: activeState.requestedReplace,
+		shellTab: activeState.departureTab
 	};
-	state.departureTab = undefined;
-	state.intent = staged;
+	activeState.departureTab = undefined;
+	activeState.intent = staged;
 	void navigation.complete?.catch(() => {
-		if (state.intent !== staged) return;
-		state.intent = undefined;
-		state.backPending = false;
-		state.correctingFrom = undefined;
+		if (state !== activeState || activeState.intent !== staged) return;
+		resetPendingBackState(activeState);
 	});
 }
 /** Called after successful route navigation AND when public page.state changes (shallow routing). */
@@ -210,6 +321,8 @@ export function syncNavigationPage(completed = false): void {
 	const current = getTopFrame()!;
 	// A completed goto creates/replaces a browser entry even when URL is identical.
 	if (completed && state.intent && state.intent.type !== 'popstate' && !state.renderingTarget) {
+		clearPendingHistoryGo(state);
+		state.failedOverlayPopId = undefined;
 		const replace = state.intent.replace;
 		if (state.intent.shellTab && getTopRoute()) getTopRoute()!.shellTab = state.intent.shellTab;
 		state.intent = undefined;
@@ -220,6 +333,9 @@ export function syncNavigationPage(completed = false): void {
 		writeMarker(frame);
 		if (isShellRoute(page.url.pathname) && frame.shellTab) deps.setActiveTab(frame.shellTab);
 		state.backPending = false;
+		state.requestedReplace = false;
+		state.pendingFallbackTab = undefined;
+		state.pendingFallbackToken = undefined;
 		return;
 	}
 	if (actual && actual.id !== current.id) {
@@ -230,24 +346,35 @@ export function syncNavigationPage(completed = false): void {
 			if (state.correctingFrom !== actual.id) {
 				state.correctingFrom = actual.id;
 				state.backPending = true;
-				deps.historyGo(target.position - actual.position);
+				const activeState = state;
+				runHistoryGo(activeState, target.position - actual.position, () => {
+					resetPendingBackState(activeState);
+				});
 			}
 			return;
 		}
 		if (!completed && actual.kind === 'route' && actual.href !== getTopRoute()?.href) {
 			// A route replacing a shallow entry may later be traversed shallowly by the router.
 			// The public state identifies the target, but its page component still needs loading.
+			clearPendingHistoryGo(state);
 			state.renderingTarget = actual;
 			state.backPending = true;
-			void Promise.resolve(deps.goto(actual.href, { replace: true })).catch(() => {
-				if (state.renderingTarget !== actual) return;
-				state.renderingTarget = undefined;
-				state.intent = undefined;
-				deps?.historyGo(current.position - actual.position);
+			const activeState = state;
+			void runGoto(actual.href, { replace: true }).catch(() => {
+				if (state !== activeState || activeState.renderingTarget !== actual) return;
+				activeState.renderingTarget = undefined;
+				activeState.intent = undefined;
+				activeState.backPending = true;
+				runHistoryGo(activeState, current.position - actual.position, () => {
+					resetPendingBackState(activeState);
+				});
 			});
 			return;
 		}
 
+		clearPendingHistoryGo(state);
+		state.failedOverlayPopId = undefined;
+		state.pendingFallbackToken = undefined;
 		invalidateOverlays(
 			(frame) => frame.position > actual.position && frame.position <= current.position
 		);
@@ -271,12 +398,18 @@ export function syncNavigationPage(completed = false): void {
 		state.backPending = false;
 		state.intent = undefined;
 	} else if (actual?.id === current.id) {
+		// Refreshing state on the physical source entry does not acknowledge a traversal.
+		if (!completed && state.pendingHistoryGo?.sourceId === actual?.id) return;
 		// Includes returning to the original valid position after a forward tombstone.
+		clearPendingHistoryGo(state);
 		state.correctingFrom = undefined;
 		state.backPending = false;
 		if (completed) state.intent = undefined;
 	} else if (completed) {
 		// Unknown document/session: learn only the current entry, never history.length.
+		clearPendingHistoryGo(state);
+		state.failedOverlayPopId = undefined;
+		state.pendingFallbackToken = undefined;
 		invalidateOverlays(() => true);
 		initNavStack(href(page.url), !isShellRoute(page.url.pathname));
 		writeMarker(getTopFrame()!);
@@ -309,6 +442,7 @@ export function openOverlayHistory(
 			}
 		};
 	}
+	state.failedOverlayPopId = undefined;
 	const frame = pushOverlay(overlayId, onDismiss);
 	deps.pushState('', { ...deps.getPage().state, chronosNavigation: markerFor(frame) });
 	function remove(): void {
