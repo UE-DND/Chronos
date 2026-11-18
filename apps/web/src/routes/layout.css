@@ -263,6 +263,12 @@
 		z-index: 15;
 	}
 
+	.adaptive-edge-bar,
+	.bottom-bar,
+	.ui-overlay-surface {
+		background-color: var(--shell-bottom-bar-bg, var(--color-surface-container));
+	}
+
 	.adaptive-edge-bar {
 		display: flex;
 		height: 100%;
@@ -271,7 +277,6 @@
 		border-top: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
 		padding-inline: 0.75rem;
 		padding-bottom: var(--tabbar-block-safe);
-		background-color: var(--shell-bottom-bar-bg, var(--color-surface-container));
 		transition: background-color 240ms cubic-bezier(0.2, 0, 0, 1);
 	}
 
@@ -296,7 +301,6 @@
 
 	.bottom-bar {
 		@apply flex h-[var(--bottom-bar-height)] shrink-0 items-center border-t border-border/60 px-3 pb-[var(--tabbar-block-safe)] sm:px-4;
-		background-color: var(--shell-bottom-bar-bg, var(--color-surface-container));
 	}
 
 	.tab-bar-content nav {

@@ -107,6 +107,13 @@ for (const viewport of [
 			const detail = page.getByRole('dialog', { name: '课程详情', exact: true });
 			await expect(detail).toHaveClass(/ui-overlay-surface/);
 			await expect(detail).toHaveCSS('border-top-width', '3px');
+			const detailColor = await detail.evaluate(
+				(surface) => getComputedStyle(surface).backgroundColor
+			);
+			await expect(page.locator('.adaptive-edge-bar--shell')).toHaveCSS(
+				'background-color',
+				detailColor
+			);
 			await captureOptionalScreenshot(page, {
 				animations: 'disabled',
 				path: `dist/e2e/arknights-detail-${viewport.width}-${mode}.png`

@@ -34,7 +34,7 @@
 	{@render children({ title, description, footer })}
 {:else}
 	<div
-		class="rounded-t-sheet flex min-h-0 flex-col overflow-hidden bg-surface-container-high text-on-surface shadow-overlay"
+		class="ui-overlay-surface rounded-t-sheet flex min-h-0 flex-col overflow-hidden text-on-surface shadow-overlay"
 	>
 		<div class="flex shrink-0 items-center gap-3 px-6 pt-6 pb-2">
 			<h2

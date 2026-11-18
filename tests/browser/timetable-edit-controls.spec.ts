@@ -37,6 +37,9 @@ test('date labels initialize the current value and discard cancelled drafts', as
 	await page.goto(`/Chronos/s#${payload}`);
 	await page.getByRole('button', { name: '导入为新课程表', exact: true }).click();
 	await expect(page.locator('.timetable-week-pager')).toBeVisible();
+	const bottomBarColor = await page
+		.locator('.adaptive-edge-bar--shell')
+		.evaluate((bar) => getComputedStyle(bar).backgroundColor);
 	await page.goto('/Chronos/timetable/details');
 	const label = page.getByRole('button', { name: '学期起始日（周一）', exact: true });
 	const trigger = page.getByRole('button', {
@@ -47,6 +50,10 @@ test('date labels initialize the current value and discard cancelled drafts', as
 	await expect(trigger).toBeVisible();
 
 	await label.click();
+	await expect(page.locator('.ui-date-picker-content')).toHaveCSS(
+		'background-color',
+		bottomBarColor
+	);
 	await confirm.click();
 	await expect(trigger).toBeVisible();
 
