@@ -111,6 +111,21 @@ test.beforeEach(async ({ context, request }) => {
 	});
 });
 
+test('installs the service worker when the first visit is a deep link', async ({
+	page,
+	context
+}) => {
+	await page.addInitScript(() =>
+		localStorage.setItem('chronos:/Chronos:chronos:onboarding-seen', '1')
+	);
+	await page.goto('/Chronos/about/update');
+	await expect.poll(() => workerBuild(page)).toBe(oldFeed.host.buildId);
+
+	await context.setOffline(true);
+	await page.reload();
+	await expect(page.getByRole('heading', { name: '软件更新', exact: true })).toBeVisible();
+});
+
 test('rejects an unauthorized worker and keeps the current timetable', async ({
 	page,
 	request

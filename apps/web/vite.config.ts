@@ -214,9 +214,8 @@ export default defineConfig(({ mode }) => {
 				},
 				{
 					disable: targetDef.disablePwa,
-					...(targetDef.target === 'cloudflare'
-						? { base: `${basePath}/`, scope: `${basePath}/` }
-						: {}),
+					base: `${basePath}/`,
+					scope: `${basePath}/`,
 					registerType: 'prompt',
 					injectRegister: false,
 					additionalManifestEntriesGenerator: () =>
