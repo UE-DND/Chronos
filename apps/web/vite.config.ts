@@ -287,6 +287,7 @@ export default defineConfig(({ mode }) => {
 					generateSW: {
 						clientsClaim: true,
 						cacheId: storageNamespace.key('precache'),
+						parallel: { enabled: true },
 						// SPA builds have no prerendered routes; the adapter generates the shell later.
 						globStrict: false,
 						globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}'],
