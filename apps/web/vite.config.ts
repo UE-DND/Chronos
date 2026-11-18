@@ -57,7 +57,7 @@ const shouldAnalyze = process.env.ANALYZE === 'true';
 const basePath = targetDef.basePath;
 const storageNamespace = createStorageNamespace(basePath);
 
-function resolveManualChunk(id: string): string | undefined {
+function resolveVendorChunkName(id: string): string | undefined {
 	if (!id.includes('node_modules')) return undefined;
 	if (id.includes('dexie')) return 'vendor-dexie';
 	if (id.includes('marked')) return 'vendor-marked';
@@ -145,8 +145,8 @@ export default defineConfig(({ mode }) => {
 		build: {
 			rolldownOptions: {
 				output: {
-					manualChunks(id) {
-						return resolveManualChunk(id);
+					codeSplitting: {
+						groups: [{ debugName: 'vendor', name: resolveVendorChunkName }]
 					}
 				}
 			}
