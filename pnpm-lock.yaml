@@ -346,8 +346,8 @@ importers:
         specifier: ^2.0.0
         version: 2.0.0(@sveltejs/kit@3.1.0(@sveltejs/vite-plugin-svelte@7.3.1(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3))(svelte@5.57.3))(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3))(svelte@5.57.3)(typescript@6.0.3))(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3))(magicast@0.5.5)(rolldown@1.2.14)(typescript@6.0.3)
       '@vite-pwa/workbox-swkit':
-        specifier: ^8.0.13
-        version: 8.0.13
+        specifier: ^8.0.15
+        version: 8.0.15
       magicast:
         specifier: ^0.5.5
         version: 0.5.5
@@ -2533,6 +2533,9 @@ packages:
 
   '@vite-pwa/workbox-swkit@8.0.13':
     resolution: {integrity: sha512-MH9KKR/XNIbjCRvgy8yCGv3AHc+dHAmG+GdA6jGo+jKZsK62cdoa/MhXhwxp893Tn6NuNzUH1QJZmNIt1cmjNQ==}
+
+  '@vite-pwa/workbox-swkit@8.0.15':
+    resolution: {integrity: sha512-AunMF5+ye+tMiqTqektZcSHPcV0MXw7VeY/xXOiQ54fNxSWg17USW4BY8aj16Xxlz24QBIHl759xxLhkY1K/aA==}
 
   '@vite-pwa/workbox-window@8.0.13':
     resolution: {integrity: sha512-jb74txMXdS/laitdtIpsj/p+ersyTkHKg2dRpOv2HCB5fFoy96QKZnKQcI64Oh33Sr/kjyQNOgQ1pY/XZvD3NQ==}
@@ -5581,7 +5584,7 @@ snapshots:
       '@unplugin-pwa/core': 0.0.3(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3))(magicast@0.5.5)(rolldown@1.2.14)(typescript@6.0.3)
       '@unplugin-pwa/inspector': 0.0.3
       '@vite-pwa/workbox-build': 8.0.13(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3))(magicast@0.5.5)(rolldown@1.2.14)(typescript@6.0.3)
-      '@vite-pwa/workbox-swkit': 8.0.13
+      '@vite-pwa/workbox-swkit': 8.0.15
       '@vite-pwa/workbox-window': 8.0.13
     optionalDependencies:
       magicast: 0.5.5
@@ -5618,7 +5621,7 @@ snapshots:
       '@unplugin-pwa/inspector': 0.0.3
       '@unplugin-pwa/vite': 0.0.3(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3))(magicast@0.5.5)(rolldown@1.2.14)(typescript@6.0.3)
       '@vite-pwa/workbox-build': 8.0.13(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3))(magicast@0.5.5)(rolldown@1.2.14)(typescript@6.0.3)
-      '@vite-pwa/workbox-swkit': 8.0.13
+      '@vite-pwa/workbox-swkit': 8.0.15
       '@vite-pwa/workbox-window': 8.0.13
       verkit: 0.5.0
     optionalDependencies:
@@ -5649,6 +5652,10 @@ snapshots:
       - typescript
 
   '@vite-pwa/workbox-swkit@8.0.13':
+    dependencies:
+      idb: 8.0.4
+
+  '@vite-pwa/workbox-swkit@8.0.15':
     dependencies:
       idb: 8.0.4
 
