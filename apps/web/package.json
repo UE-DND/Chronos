@@ -29,7 +29,7 @@
 	},
 	"devDependencies": {
 		"@chronos/plugin-theme-yumemita": "workspace:*",
-		"@inlang/paraglide-js": "^2.29.1",
+		"@inlang/paraglide-js": "^3.2.2",
 		"@sveltejs/adapter-cloudflare": "^8.0.2",
 		"@sveltejs/adapter-static": "^4.0.1",
 		"@sveltejs/adapter-vercel": "^7.0.3",
