@@ -1,6 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
-	<circle id="icon-background" cx="54" cy="54" r="54" fill="#FFFFFF" />
+	<path
+		id="icon-background"
+		d="M26.50 0.50 H81.50 C96.91 0.50 107.50 11.09 107.50 26.50 V81.50 C107.50 96.91 96.91 107.50 81.50 107.50 H26.50 C11.09 107.50 0.50 96.91 0.50 81.50 V26.50 C0.50 11.09 11.09 0.50 26.50 0.50 Z"
+		fill="url(#tile-bg)"
+		stroke="#CBD7E6"
+		stroke-opacity="0.72"
+		stroke-width="0.8"
+	/>
 	<defs>
+		<linearGradient id="tile-bg" x1="54" y1="0.5" x2="54" y2="107.5" gradientUnits="userSpaceOnUse">
+			<stop offset="0" stop-color="#FFFFFF" />
+			<stop offset="1" stop-color="#F3F7FC" />
+		</linearGradient>
 		<linearGradient id="lower-ribbon" x1="22.5" y1="54" x2="54" y2="85.5" gradientUnits="userSpaceOnUse">
 			<stop stop-color="#08B9AE" />
 			<stop offset="1" stop-color="#087FE0" />
