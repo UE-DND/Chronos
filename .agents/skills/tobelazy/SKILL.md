@@ -11,9 +11,7 @@ Implement the requested change with minimal diffs and strict engineering rigor.
 
 Read only guidance relevant to the actual behavior, framework, or architecture being changed. Typo / format / comment-only edits need no sub-SKILL. Reuse guidance already read in this task.
 
-- Svelte: For reactivity, component behavior, or layout changes in `.svelte` or `.svelte.ts` files:
-  - `.agents/skills/svelte-core-bestpractices/SKILL.md`
-  - `.agents/agents/svelte-file-editor.md`
+- For Svelte component behavior, reactivity, or layout changes in `.svelte`, `.svelte.ts`, or `.svelte.js`, follow [Svelte best practices](../svelte-core-bestpractices/SKILL.md) and the [editing and validation workflow](../../agents/svelte-file-editor.md).
 - Architecture & Layering: When changing module responsibilities or cross-layer interfaces:
   - `.agents/skills/codebase-design/SKILL.md`
 - Bug Fixing: When diagnosing and fixing reported bugs or regressions:

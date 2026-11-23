@@ -14,7 +14,7 @@ Review the requested diff for requirement fidelity and relevant standards. Check
 Verify that changes align strictly with the original requirement and edge-case contracts:
 
 - [ ] Scope Focus: Implements only requested capabilities without extraneous side-effects or unverified refactoring.
-- [ ] Edge Cases & Resilience: Check relevant failure modes, such as offline states, Dexie errors, corrupt share payloads, or upstream CAS failures (`AppResult` / user notices), only when affected.
+- [ ] Edge Cases & Resilience: Check affected failure modes against the [project's error contracts](../../../CONTRIBUTING.md#错误处理). For storage changes, verify that a failed operation and an absent record remain distinguishable. For timetable mutations, verify that any refresh or switch failure after a successful write is reported as a follow-up failure.
 - [ ] Breaking Changes: Clearly documents any schema or protocol format adjustments.
 
 ---

@@ -1,3 +1,10 @@
+---
+name: svelte-core-bestpractices
+description: Apply Svelte 5 guidance when implementing or reviewing Chronos component behavior, reactivity, or layout.
+---
+
+Adapted from the [official Svelte skill](https://github.com/sveltejs/ai-tools/tree/svelte-core-bestpractices-v2026.10.26-045238/tools/skills/svelte-core-bestpractices).
+
 ## `$state`
 
 Only use the `$state` rune for variables that should be _reactive_ — in other words, variables that cause an `$effect`, `$derived` or template expression to update. Everything else can be a normal variable.
@@ -55,6 +62,10 @@ let color = type === 'danger' ? 'red' : 'green';
 ## `$inspect.trace`
 
 `$inspect.trace` is a debugging tool for reactivity. If something is not updating properly or running more than it should you can add `$inspect.trace(label)` as the first line of an `$effect` or `$derived.by` (or any function they call) to trace their dependencies and discover which one triggered an update.
+
+## `#key` blocks
+
+When the key changes, Svelte destroys and recreates everything inside the block. Use this when the subtree needs to reset or replay a transition. Use `$derived` to recompute values in an existing child component.
 
 ## Events
 
@@ -153,7 +164,7 @@ Use `createContext` rather than `setContext` and `getContext`, as it provides ty
 
 ## Async Svelte
 
-If using version 5.36 or higher, you can use [await expressions](references/await-expressions.md) and [hydratable](references/hydratable.md) to use promises directly inside components. Note that these require the `experimental.async` option to be enabled in `svelte.config.js` as they are not yet considered fully stable.
+[Await expressions](references/await-expressions.md) and [hydratable](references/hydratable.md) require the Svelte 5 compiler option `experimental.async`. For the SvelteKit 3 host, check `compilerOptions` in the first argument to `withPwa` in [apps/web/vite.config.ts](../../../apps/web/vite.config.ts). Shared UI and plugins may be compiled by separate build steps, so check the compiler options of the build that owns the file.
 
 ## Avoid legacy features
 

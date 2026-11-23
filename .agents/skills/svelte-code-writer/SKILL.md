@@ -3,9 +3,11 @@ name: svelte-code-writer
 description: Use the Svelte documentation and autofixer CLI when Svelte assistance is needed and MCP tools are unavailable.
 ---
 
+Adapted from the [official Svelte skill](https://github.com/sveltejs/ai-tools/tree/svelte-code-writer-v2026.10.26-045239/tools/skills/svelte-code-writer).
+
 ## CLI tools
 
-You have access to `@sveltejs/mcp` CLI for Svelte-specific assistance. Use these commands via `vpx` (never `npx`; `vpx` is the only allowed runner):
+Run the `@sveltejs/mcp` CLI with `vpx`.
 
 ### List documentation sections
 
@@ -26,7 +28,7 @@ Retrieves full documentation for specified sections. Use `list-sections` first o
 **Example:**
 
 ```bash
-vpx @sveltejs/mcp get-documentation "$state,$derived,$effect"
+vpx @sveltejs/mcp get-documentation '$state,$derived,$effect'
 ```
 
 ### Svelte autofixer
@@ -39,23 +41,18 @@ Analyzes Svelte code and suggests fixes for common issues.
 
 **Options:**
 
-- `--async` - Enable async Svelte mode (default: false)
-- `--svelte-version` - Target version: 4 or 5 (default: 5)
+- `--async` enables async Svelte mode. Use it when the owning build enables `compilerOptions.experimental.async`.
+- `--svelte-version` accepts a full version, which enables version-specific suggestions. Resolve the installed version from the package that builds the file. The supported major versions are 4 and 5, with 5 as the default.
 
 **Examples:**
 
 ```bash
-# Analyze inline code (escape $ as \$)
-vpx @sveltejs/mcp svelte-autofixer '<script>let count = \$state(0);</script>'
-
-# Analyze a file
-vpx @sveltejs/mcp svelte-autofixer ./src/lib/Component.svelte
-
-# Target Svelte 4
-vpx @sveltejs/mcp svelte-autofixer ./Component.svelte --svelte-version 4
+# Analyze inline code with the installed Svelte version
+vpx @sveltejs/mcp svelte-autofixer '<script>let count = $state(0);</script>' \
+  --svelte-version "$(vp node -p "require('svelte/package.json').version")"
 ```
 
-**Important:** When passing code with runes (`$state`, `$derived`, etc.) via the terminal, escape the `$` character as `\$` to prevent shell variable substitution.
+Prefer a file path for existing components. Single-quote inline code to keep the shell from expanding runes such as `$state`.
 
 ## Workflow
 

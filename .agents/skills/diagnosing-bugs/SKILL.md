@@ -11,7 +11,7 @@ For bugs with regression risk, prefer a reproducible feedback loop. Obvious typo
 
 Prefer a focused regression test that fails before the fix; reuse an existing failing test when available.
 
-- Seam Test: Follow the affected module's test convention in `apps/web/src/` or `packages/`.
+- Seam Test: Follow the owning module's test convention. Use the browser regression suite when the failure depends on real browser behavior such as Service Worker lifecycle or cross-window coordination. See [CONTRIBUTING.md](../../../CONTRIBUTING.md#浏览器回归) for the relevant harnesses.
 - Harness/CLI: Use a focused script when an existing test runner cannot exercise the behavior effectively.
 - Stabilize: Control the relevant clock, network, or asynchronous scheduling when needed for reliable reproduction.
 

@@ -4,18 +4,7 @@ As of Svelte 5.36, you can use the `await` keyword inside your components in thr
 - inside `$derived(...)` declarations
 - inside your markup
 
-This feature is currently experimental, and you must opt in by adding the `experimental.async` option wherever you [configure](https://svelte.dev/docs/kit/configuration/llms.txt) Svelte, usually `svelte.config.js`:
-
-```js
-/// file: svelte.config.js
-export default {
-	compilerOptions: {
-		experimental: {
-			async: true
-		}
-	}
-};
-```
+This feature is experimental in Svelte 5. It requires `compilerOptions.experimental.async: true` in the Svelte compiler configuration. For the Chronos SvelteKit 3 host, that configuration is in the first argument to `withPwa` in [apps/web/vite.config.ts](../../../../apps/web/vite.config.ts).
 
 The experimental flag will be removed in Svelte 6.
 
