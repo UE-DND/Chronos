@@ -228,8 +228,11 @@ export const en = {
 	'transfer.confirm.options.heading': 'Import options',
 	'transfer.confirm.mode.heading': 'Import mode',
 	'transfer.confirm.mode.asNew': 'Import as a new timetable',
+	'transfer.confirm.mode.asNewDesc': 'Keep existing timetables and create a new one',
 	'transfer.confirm.mode.overwrite': 'Overwrite current timetable',
 	'transfer.confirm.mode.currentDesc': 'Current timetable: {name}',
+	'transfer.confirm.mode.overwriteWarning':
+		'Replaces all courses and settings in "{name}". This cannot be undone.',
 
 	// share
 	'share.error.noData': 'No timetable data found in the link',

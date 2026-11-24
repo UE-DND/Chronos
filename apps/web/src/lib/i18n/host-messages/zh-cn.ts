@@ -220,8 +220,10 @@ export const zhCn = {
 	'transfer.confirm.options.heading': '补充信息',
 	'transfer.confirm.mode.heading': '导入方式',
 	'transfer.confirm.mode.asNew': '作为新课程表导入',
+	'transfer.confirm.mode.asNewDesc': '保留现有课表，新建一份独立课表',
 	'transfer.confirm.mode.overwrite': '覆盖当前课程表',
 	'transfer.confirm.mode.currentDesc': '当前课程表：{name}',
+	'transfer.confirm.mode.overwriteWarning': '将替换「{name}」的全部课程与设置，此操作不可撤销。',
 
 	// share
 	'share.error.noData': '链接中未找到课表数据',
