@@ -18,7 +18,7 @@
 		"@chronos/ui-kit": "workspace:*",
 		"@material-symbols-svg/svelte": "^0.15.0",
 		"@vite-pwa/workbox-window": "^8.0.13",
-		"bits-ui": "^2.20.4",
+		"bits-ui": "^2.21.0",
 		"dexie": "^4.4.7",
 		"dompurify": "^3.4.17",
 		"firebase": "^12.19.0",
