@@ -216,37 +216,37 @@ importers:
     dependencies:
       '@capacitor-firebase/analytics':
         specifier: ^8.5.2
-        version: 8.5.2(@capacitor/core@8.5.3)(firebase@12.19.0)
+        version: 8.5.2(@capacitor/core@8.6.2)(firebase@12.19.0)
       '@capacitor/app':
         specifier: ^8.1.2
-        version: 8.1.2(@capacitor/core@8.5.3)
+        version: 8.1.2(@capacitor/core@8.6.2)
       '@capacitor/app-launcher':
         specifier: ^8.0.1
-        version: 8.0.1(@capacitor/core@8.5.3)
+        version: 8.0.1(@capacitor/core@8.6.2)
       '@capacitor/clipboard':
         specifier: ^8.0.1
-        version: 8.0.1(@capacitor/core@8.5.3)
+        version: 8.0.1(@capacitor/core@8.6.2)
       '@capacitor/core':
-        specifier: ^8.5.3
-        version: 8.5.3
+        specifier: ^8.6.2
+        version: 8.6.2
       '@capacitor/filesystem':
         specifier: ^8.1.5
-        version: 8.1.5(@capacitor/core@8.5.3)
+        version: 8.1.5(@capacitor/core@8.6.2)
       '@capacitor/haptics':
         specifier: ^8.0.2
-        version: 8.0.2(@capacitor/core@8.5.3)
+        version: 8.0.2(@capacitor/core@8.6.2)
       '@capacitor/local-notifications':
         specifier: ^8.3.1
-        version: 8.3.1(@capacitor/core@8.5.3)
+        version: 8.3.1(@capacitor/core@8.6.2)
       '@capacitor/share':
         specifier: ^8.0.3
-        version: 8.0.3(@capacitor/core@8.5.3)
+        version: 8.0.3(@capacitor/core@8.6.2)
       '@capacitor/splash-screen':
         specifier: ^8.0.2
-        version: 8.0.2(@capacitor/core@8.5.3)
+        version: 8.0.2(@capacitor/core@8.6.2)
       '@capacitor/status-bar':
         specifier: ^8.0.4
-        version: 8.0.4(@capacitor/core@8.5.3)
+        version: 8.0.4(@capacitor/core@8.6.2)
       '@chronos/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -256,13 +256,13 @@ importers:
     devDependencies:
       '@capacitor/android':
         specifier: ^8.5.3
-        version: 8.5.3(@capacitor/core@8.5.3)
+        version: 8.5.3(@capacitor/core@8.6.2)
       '@capacitor/cli':
         specifier: ^8.5.3
         version: 8.5.3(supports-color@10.2.2)
       '@capacitor/ios':
-        specifier: ^8.5.3
-        version: 8.5.3(@capacitor/core@8.5.3)
+        specifier: ^8.6.2
+        version: 8.6.2(@capacitor/core@8.6.2)
 
   apps/web:
     dependencies:
@@ -652,8 +652,8 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
-  '@capacitor/core@8.5.3':
-    resolution: {integrity: sha512-oBE1oGuYE4ZzYYrulC75OuHdSsD6zLUy7d5o1tFwDLG4govGoubY15cxpiI5l0+q87Lm5p0bhbehMdzJg4aFag==}
+  '@capacitor/core@8.6.2':
+    resolution: {integrity: sha512-UEb9crRuqEAe2Iu2eGOEuQ8rLQxpwg7ZZIpl17UJoytEpnV1e4oXXW0K7yYS2NsCOGmJjyLeKjNlgG7tkAoX8g==}
 
   '@capacitor/filesystem@8.1.5':
     resolution: {integrity: sha512-m1RkI8L83NJeppEKyRWioK3MDp2vjlA+QfUQcF8/xRlcXNC2HYxqoyYJ+K4M0EcVovy+g+4F24S05+bhK4Vgdg==}
@@ -665,10 +665,10 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
-  '@capacitor/ios@8.5.3':
-    resolution: {integrity: sha512-HnnV92Jl8+3x0JUloXUMjFcUsQI8wHFVsKwkLn72DfRZXYGZW11tQbmNOWOnRTljaU18FdI1b9ipT09SzzPDNw==}
+  '@capacitor/ios@8.6.2':
+    resolution: {integrity: sha512-YnVm0lRA1mQWK0SKd2bdJIOG+PXRRDDdndZ1+nGqeiob+QmHZmb4wWo5gVpWhoHO37pGi2qzH5w5WGvfKrs+Gg==}
     peerDependencies:
-      '@capacitor/core': ^8.5.0
+      '@capacitor/core': ^8.6.0
 
   '@capacitor/local-notifications@8.3.1':
     resolution: {integrity: sha512-F7zu/+p/mIR958YP4axOkeI5hBKRaXDyYjbNPrAil2wWfd7OxScPSTvP9t85NpQ0eULVRu0/sntoxOg6ck477A==}
@@ -4113,23 +4113,23 @@ snapshots:
       '@bytecodealliance/jco-node-fs': 0.3.2
       '@bytecodealliance/preview2-shim': 0.25.0
 
-  '@capacitor-firebase/analytics@8.5.2(@capacitor/core@8.5.3)(firebase@12.19.0)':
+  '@capacitor-firebase/analytics@8.5.2(@capacitor/core@8.6.2)(firebase@12.19.0)':
     dependencies:
-      '@capacitor/core': 8.5.3
+      '@capacitor/core': 8.6.2
     optionalDependencies:
       firebase: 12.19.0
 
-  '@capacitor/android@8.5.3(@capacitor/core@8.5.3)':
+  '@capacitor/android@8.5.3(@capacitor/core@8.6.2)':
     dependencies:
-      '@capacitor/core': 8.5.3
+      '@capacitor/core': 8.6.2
 
-  '@capacitor/app-launcher@8.0.1(@capacitor/core@8.5.3)':
+  '@capacitor/app-launcher@8.0.1(@capacitor/core@8.6.2)':
     dependencies:
-      '@capacitor/core': 8.5.3
+      '@capacitor/core': 8.6.2
 
-  '@capacitor/app@8.1.2(@capacitor/core@8.5.3)':
+  '@capacitor/app@8.1.2(@capacitor/core@8.6.2)':
     dependencies:
-      '@capacitor/core': 8.5.3
+      '@capacitor/core': 8.6.2
 
   '@capacitor/cli@8.5.3(supports-color@10.2.2)':
     dependencies:
@@ -4154,42 +4154,42 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@capacitor/clipboard@8.0.1(@capacitor/core@8.5.3)':
+  '@capacitor/clipboard@8.0.1(@capacitor/core@8.6.2)':
     dependencies:
-      '@capacitor/core': 8.5.3
+      '@capacitor/core': 8.6.2
 
-  '@capacitor/core@8.5.3':
+  '@capacitor/core@8.6.2':
     dependencies:
       tslib: 2.8.1
 
-  '@capacitor/filesystem@8.1.5(@capacitor/core@8.5.3)':
+  '@capacitor/filesystem@8.1.5(@capacitor/core@8.6.2)':
     dependencies:
-      '@capacitor/core': 8.5.3
+      '@capacitor/core': 8.6.2
       '@capacitor/synapse': 1.0.4
 
-  '@capacitor/haptics@8.0.2(@capacitor/core@8.5.3)':
+  '@capacitor/haptics@8.0.2(@capacitor/core@8.6.2)':
     dependencies:
-      '@capacitor/core': 8.5.3
+      '@capacitor/core': 8.6.2
 
-  '@capacitor/ios@8.5.3(@capacitor/core@8.5.3)':
+  '@capacitor/ios@8.6.2(@capacitor/core@8.6.2)':
     dependencies:
-      '@capacitor/core': 8.5.3
+      '@capacitor/core': 8.6.2
 
-  '@capacitor/local-notifications@8.3.1(@capacitor/core@8.5.3)':
+  '@capacitor/local-notifications@8.3.1(@capacitor/core@8.6.2)':
     dependencies:
-      '@capacitor/core': 8.5.3
+      '@capacitor/core': 8.6.2
 
-  '@capacitor/share@8.0.3(@capacitor/core@8.5.3)':
+  '@capacitor/share@8.0.3(@capacitor/core@8.6.2)':
     dependencies:
-      '@capacitor/core': 8.5.3
+      '@capacitor/core': 8.6.2
 
-  '@capacitor/splash-screen@8.0.2(@capacitor/core@8.5.3)':
+  '@capacitor/splash-screen@8.0.2(@capacitor/core@8.6.2)':
     dependencies:
-      '@capacitor/core': 8.5.3
+      '@capacitor/core': 8.6.2
 
-  '@capacitor/status-bar@8.0.4(@capacitor/core@8.5.3)':
+  '@capacitor/status-bar@8.0.4(@capacitor/core@8.6.2)':
     dependencies:
-      '@capacitor/core': 8.5.3
+      '@capacitor/core': 8.6.2
 
   '@capacitor/synapse@1.0.4': {}
 
