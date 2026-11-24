@@ -84,7 +84,7 @@ async function importTimetable(
 	return { pager, position };
 }
 
-test('opens course details when a tap produces a stationary pager scroll event', async ({
+test('opens course details without mounting more weeks on a stationary tap', async ({
 	page,
 	request
 }) => {
@@ -95,6 +95,20 @@ test('opens course details when a tap produces a stationary pager scroll event',
 		.nth(Math.round(initial))
 		.locator('button.course-capsule')
 		.first();
+	const rendering = await pager.evaluateHandle((node) => {
+		const pages = Array.from(node.children);
+		const count = () => pages.filter((page) => page.childElementCount > 0).length;
+		const before = count();
+		let peak = before;
+		const observer = new MutationObserver(() => {
+			peak = Math.max(peak, count());
+		});
+		for (const page of pages) observer.observe(page, { childList: true });
+		return () => {
+			observer.disconnect();
+			return Math.max(peak, count()) - before;
+		};
+	});
 	// Run after delegated pointerdown handlers have started the course gesture.
 	await page.evaluate(() => {
 		document.addEventListener(
@@ -109,6 +123,7 @@ test('opens course details when a tap produces a stationary pager scroll event',
 	});
 	await capsule.tap();
 	await expect(page.getByRole('dialog')).toBeVisible();
+	expect(await rendering.evaluate((stop) => stop())).toBe(0);
 	await expect.poll(position).toBeCloseTo(initial, 1);
 });
 

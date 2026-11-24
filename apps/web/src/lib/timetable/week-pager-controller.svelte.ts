@@ -190,9 +190,10 @@ export function createWeekPagerController(options: {
 		element.addEventListener('scrollend', settled, eventOptions);
 		element.addEventListener(
 			'pointerdown',
-			() => {
+			(event) => {
 				held = true;
-				if (active) expand();
+				// Wait for touch scrolling so mounting extra weeks does not swallow iOS taps.
+				if (active && event.pointerType !== 'touch') expand();
 			},
 			eventOptions
 		);
@@ -208,7 +209,7 @@ export function createWeekPagerController(options: {
 			...eventOptions,
 			capture: true
 		});
-		for (const type of ['touchstart', 'wheel', 'keydown'])
+		for (const type of ['wheel', 'keydown'])
 			element.addEventListener(
 				type,
 				() => {
