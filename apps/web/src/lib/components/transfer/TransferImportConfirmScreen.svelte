@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
+	import { fromStore } from 'svelte/store';
 	import { hostT } from '#lib/i18n/host-i18n.svelte.ts';
 	import { trackEvent } from '#lib/client/analytics.ts';
 	import { ImportMode } from '#lib/domain/import-mode.ts';
@@ -7,28 +8,26 @@
 		resolveSlotTitle,
 		type TransferStateController
 	} from '#lib/transfer/transfer-state.svelte.ts';
-	import Card from '#lib/components/ui/Card.svelte';
 	import FormScreenLayout from '#lib/components/ui/FormScreenLayout.svelte';
-	import type { EdgeBarAction } from '@chronos/ui-kit';
 	import SelectableOption from '#lib/components/ui/SelectableOption.svelte';
 	import { snackbar, snackbarKey } from '#lib/components/ui/snackbar-state.svelte.ts';
 	import { getAppController } from '#lib/services/app-engine.ts';
-
-	import { DownloadFill } from '#lib/icons/index.ts';
-	import { listDistinctCourses } from '@chronos/core';
+	import { DownloadFill, InfoFill } from '#lib/icons/index.ts';
+	import { formatFullDate, listDistinctCourses } from '@chronos/core';
 	import { createHostDateFieldLabels } from '#lib/components/ui/host-form-labels.ts';
 	import {
 		ImportCourseList,
 		MountableSlotOutlet,
 		SchemaForm,
 		findInvalidSchemaFields,
+		isValidIsoDateString,
 		TIMETABLE_PRESENTATION_CONTEXT,
 		resolveCoursePalette,
 		createPluginUiProps,
 		createImportConfirmTransfer,
+		type EdgeBarAction,
 		type TimetablePresentationSource
 	} from '@chronos/ui-kit';
-	import { fromStore } from 'svelte/store';
 
 	let {
 		transfer,
@@ -77,6 +76,17 @@
 	);
 	const canOverwrite = $derived(Boolean(currentTimetableName));
 	const displayedCourseCount = $derived(preview ? listDistinctCourses(preview.courses).length : 0);
+	const startWeek = $derived(preview?.academicConfig?.startWeek ?? 1);
+	const endWeek = $derived(preview?.academicConfig?.endWeek ?? 20);
+	const weekRangeLabel = $derived(
+		startWeek === endWeek
+			? hostT('transfer.confirm.stats.weekSingle', { week: startWeek })
+			: hostT('transfer.confirm.stats.weekRange', { start: startWeek, end: endWeek })
+	);
+	const termStartLabel = $derived.by(() => {
+		const raw = preview?.academicConfig?.termStartDate?.trim() ?? '';
+		return isValidIsoDateString(raw) ? formatFullDate(raw) : null;
+	});
 	let loading = $state(false);
 	const actions = $derived<EdgeBarAction[]>([
 		{
@@ -135,108 +145,143 @@
 	}
 </script>
 
+{#snippet validationHint(message: string)}
+	<div
+		role="status"
+		class="text-body-small flex items-center gap-2 rounded-inset bg-surface-container-high/70 px-3 py-2 text-on-surface-variant"
+	>
+		<InfoFill class="size-4 shrink-0 text-brand" aria-hidden="true" />
+		<span class="min-w-0 flex-1 break-words">{message}</span>
+	</div>
+{/snippet}
+
 {#if preview}
 	<FormScreenLayout {actions}>
-		<div class="flex flex-col gap-6 py-1">
-			<Card variant="filled" class="border border-outline-variant/50 !bg-surface-variant/30 p-4.5">
-				<div class="flex flex-col gap-3.5">
-					<div class="flex items-center justify-between gap-3">
-						<h2 class="text-title-medium flex-1 text-on-surface">
-							{preview.name}
-						</h2>
-						<span
-							class="text-label-large inline-flex items-center rounded-full bg-secondary-container px-3 py-1 text-on-secondary-container"
-						>
-							{resolveSlotTitle(transferState.previewSlotId)}
-						</span>
+		<section class="ui-section-surface ui-section-surface--comfortable">
+			<div class="flex flex-col gap-3.5">
+				<div class="flex items-start justify-between gap-3">
+					<h2
+						class="confirm-timetable-title text-title-large min-w-0 flex-1 break-words text-on-surface"
+					>
+						{preview.name}
+					</h2>
+					<span
+						class="text-label-small mt-0.5 inline-flex shrink-0 items-center rounded-control bg-secondary-container px-2.5 py-1 text-on-secondary-container"
+					>
+						{resolveSlotTitle(transferState.previewSlotId)}
+					</span>
+				</div>
+
+				<dl
+					class="grid grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))] gap-3 rounded-inset bg-surface-variant/75 px-3.5 py-2.5 dark:bg-surface-container-high/60"
+				>
+					<div class="flex min-w-0 flex-col gap-0.5">
+						<dt class="text-body-small text-supporting text-on-surface-variant">
+							{hostT('transfer.confirm.stats.courses')}
+						</dt>
+						<dd class="text-body-large font-sans font-semibold text-on-surface tabular-nums">
+							{hostT('transfer.confirm.stats.courseCountValue', { count: displayedCourseCount })}
+						</dd>
 					</div>
+					<div class="flex min-w-0 flex-col gap-0.5">
+						<dt class="text-body-small text-supporting text-on-surface-variant">
+							{hostT('transfer.confirm.stats.weeks')}
+						</dt>
+						<dd class="text-body-large font-sans font-semibold text-on-surface tabular-nums">
+							{weekRangeLabel}
+						</dd>
+					</div>
+					{#if termStartLabel}
+						<div class="flex min-w-0 flex-col gap-0.5">
+							<dt class="text-body-small text-supporting text-on-surface-variant">
+								{hostT('transfer.confirm.stats.termStart')}
+							</dt>
+							<dd class="text-body-large font-sans font-semibold text-on-surface tabular-nums">
+								{termStartLabel}
+							</dd>
+						</div>
+					{/if}
+				</dl>
 
-					<div class="grid grid-cols-3 gap-2.5">
-						<div
-							class="flex flex-col items-center justify-center rounded-2xl bg-surface/80 p-3 text-center transition-colors dark:bg-surface/50"
-						>
-							<span class="text-body-small text-supporting text-on-surface-variant">
-								{hostT('transfer.confirm.stats.courses')}
-							</span>
-							<span class="text-title-large mt-0.5 font-bold text-on-surface"
-								>{displayedCourseCount}</span
-							>
-						</div>
-						<div
-							class="flex flex-col items-center justify-center rounded-2xl bg-surface/80 p-3 text-center transition-colors dark:bg-surface/50"
-						>
-							<span class="text-body-small text-supporting text-on-surface-variant">
-								{hostT('transfer.confirm.stats.startWeek')}
-							</span>
-							<span class="text-title-large mt-0.5 font-bold text-on-surface"
-								>{preview.academicConfig?.startWeek ?? 1}</span
-							>
-						</div>
-						<div
-							class="flex flex-col items-center justify-center rounded-2xl bg-surface/80 p-3 text-center transition-colors dark:bg-surface/50"
-						>
-							<span class="text-body-small text-supporting text-on-surface-variant">
-								{hostT('transfer.confirm.stats.endWeek')}
-							</span>
-							<span class="text-title-large mt-0.5 font-bold text-on-surface"
-								>{preview.academicConfig?.endWeek ?? 20}</span
-							>
+				{#if preview.courses.length > 0}
+					<div class="border-t border-outline-variant/60 pt-3.5">
+						<ImportCourseList
+							courses={preview.courses}
+							{coursePalette}
+							initialVisibleCount={hasConfirmPhase ? 6 : 8}
+							expandLabel={(count) => hostT('transfer.confirm.courses.expand', { count })}
+							collapseLabel={hostT('transfer.confirm.courses.collapse')}
+						/>
+					</div>
+				{/if}
+			</div>
+		</section>
+
+		{#if hasConfirmPhase}
+			<section class="ui-section">
+				{#if activeSlot?.confirmComponent && pluginProps}
+					<MountableSlotOutlet
+						component={activeSlot.confirmComponent}
+						props={pluginProps}
+						class="w-full"
+					/>
+					{#if confirmValidationError}
+						{@render validationHint(confirmValidationError)}
+					{/if}
+				{:else if activeSlot?.confirmSchema}
+					<h3 class="ui-section-title">
+						{hostT('transfer.confirm.options.heading')}
+					</h3>
+					<div class="ui-section-surface ui-section-surface--comfortable">
+						<div class="ui-section-stack">
+							<SchemaForm
+								schema={activeSlot.confirmSchema}
+								value={transferState.confirmInputs}
+								onValueChange={(next) => transfer.setConfirmInputs(next)}
+								{dateFieldLabels}
+								{controller}
+							/>
+							{#if confirmValidationError}
+								{@render validationHint(confirmValidationError)}
+							{/if}
 						</div>
 					</div>
+				{/if}
+			</section>
+		{/if}
 
-					{#if preview.courses.length > 0}
-						<ImportCourseList courses={preview.courses} {coursePalette} />
-					{/if}
-				</div>
-			</Card>
+		<div class="flex flex-col gap-3">
+			<h3 class="text-title-medium px-1 text-on-surface">
+				{hostT('transfer.confirm.mode.heading')}
+			</h3>
 
-			{#if hasConfirmPhase}
-				<div class="flex flex-col gap-3">
-					{#if activeSlot?.confirmComponent && pluginProps}
-						<MountableSlotOutlet
-							component={activeSlot.confirmComponent}
-							props={pluginProps}
-							class="w-full"
-						/>
-					{:else if activeSlot?.confirmSchema}
-						<SchemaForm
-							schema={activeSlot.confirmSchema}
-							value={transferState.confirmInputs}
-							onValueChange={(next) => transfer.setConfirmInputs(next)}
-							{dateFieldLabels}
-							{controller}
-						/>
-					{/if}
-				</div>
-			{/if}
+			<div class="flex flex-col gap-2.5">
+				<SelectableOption
+					name="import-mode"
+					label={hostT('transfer.confirm.mode.asNew')}
+					selected={transferState.importMode === ImportMode.AS_NEW}
+					onclick={() => selectImportMode(ImportMode.AS_NEW)}
+				/>
 
-			<div class="flex flex-col gap-3">
-				<h3 class="text-title-medium px-1 text-on-surface">
-					{hostT('transfer.confirm.mode.heading')}
-				</h3>
-
-				<div class="flex flex-col gap-2.5">
-					<SelectableOption
-						name="import-mode"
-						label={hostT('transfer.confirm.mode.asNew')}
-						selected={transferState.importMode === ImportMode.AS_NEW}
-						onclick={() => selectImportMode(ImportMode.AS_NEW)}
-					/>
-
-					<SelectableOption
-						name="import-mode"
-						label={hostT('transfer.confirm.mode.overwrite')}
-						description={currentTimetableName
-							? hostT('transfer.confirm.mode.currentDesc', {
-									name: currentTimetableName
-								})
-							: undefined}
-						disabled={!canOverwrite}
-						selected={transferState.importMode === ImportMode.OVERWRITE_CURRENT}
-						onclick={() => selectImportMode(ImportMode.OVERWRITE_CURRENT)}
-					/>
-				</div>
+				<SelectableOption
+					name="import-mode"
+					label={hostT('transfer.confirm.mode.overwrite')}
+					description={currentTimetableName
+						? hostT('transfer.confirm.mode.currentDesc', {
+								name: currentTimetableName
+							})
+						: undefined}
+					disabled={!canOverwrite}
+					selected={transferState.importMode === ImportMode.OVERWRITE_CURRENT}
+					onclick={() => selectImportMode(ImportMode.OVERWRITE_CURRENT)}
+				/>
 			</div>
 		</div>
 	</FormScreenLayout>
 {/if}
+
+<style>
+	.confirm-timetable-title {
+		font-weight: max(600, var(--font-weight-title-large));
+	}
+</style>
