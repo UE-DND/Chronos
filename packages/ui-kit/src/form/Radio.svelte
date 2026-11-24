@@ -22,7 +22,7 @@
 <span
 	class="rounded-circular relative flex size-10 items-center justify-center transition-colors {disabled
 		? ''
-		: 'focus-within:bg-on-surface/10 hover:bg-on-surface/5'} {className}"
+		: 'hover:bg-on-surface/5 has-[:focus-visible]:bg-on-surface/10'} {className}"
 >
 	<input
 		type="radio"
