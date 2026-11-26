@@ -16,7 +16,7 @@
 		"@chronos/plugin-codec-share": "workspace:*",
 		"@chronos/plugin-theme-m3": "workspace:*",
 		"@chronos/ui-kit": "workspace:*",
-		"@material-symbols-svg/svelte": "^0.15.0",
+		"@material-symbols-svg/svelte": "^0.18.0",
 		"@vite-pwa/workbox-window": "^8.0.13",
 		"bits-ui": "^2.21.0",
 		"dexie": "^4.4.7",
