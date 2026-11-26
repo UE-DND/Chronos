@@ -1,0 +1,57 @@
+{
+	"formatVersion": 1,
+	"release": {
+		"tagName": "v1.3.7",
+		"name": "Chronos 1.3.7",
+		"body": "## 优化\n\n- 改善课表导入预览，集中显示课程数、教学周和开学日期，课程较多时可展开查看完整列表。\n- 默认导入为新课表。选择覆盖时，会显示要替换的课表名称，并提示其课程与设置将被替换，且无法撤销。\n\n## 修复\n\n- 修复 iOS 上点击课节有时无法打开课程详情的问题。\n- 修复底部弹层打开时抢走时间选择滚轮焦点的问题。单选控件的焦点提示仅在键盘导航时显示。",
+		"publishedAt": "2026-11-26"
+	},
+	"bundleId": "org.uednd.chronos",
+	"profiles": {
+		"chronos-default": {
+			"host": {
+				"version": "1.3.7",
+				"buildId": "33a13e8f89e1dd4033c2118e770ac35fa99588d697e4b89adff0092c9650175d",
+				"sourceCommit": "4f1c8f1a0c37764301559a66b716823bb5dc6fae",
+				"profileId": "chronos-default",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"ipaUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.7/Chronos-default-1.3.7.ipa",
+			"sha256": "edcd79221329a2b727f936deb58465c15f0f62825e049fe769538834124c9b6e",
+			"sizeBytes": 2239723,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.7/catalog.json",
+			"minimumOsVersion": "17.4"
+		},
+		"chronos-cqut": {
+			"host": {
+				"version": "1.3.7",
+				"buildId": "3cc9fb6a0bb4a54b4c6fa0c3622a32ef2dc11b7bf15081a303eca0698d7022ec",
+				"sourceCommit": "4f1c8f1a0c37764301559a66b716823bb5dc6fae",
+				"profileId": "chronos-cqut",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"ipaUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.7/Chronos-cqut-1.3.7.ipa",
+			"sha256": "b4e9160da4f384c4eeb82cce7c33bd006bedea80f10a7a52a280b7755ace9511",
+			"sizeBytes": 2272567,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.7/catalog.json",
+			"minimumOsVersion": "17.4"
+		},
+		"chronos-cqut-offline": {
+			"host": {
+				"version": "1.3.7",
+				"buildId": "ad178f9b491b99af4a7c8b0ea3f1eb042dc64d2f566752ad053342b3c160a343",
+				"sourceCommit": "4f1c8f1a0c37764301559a66b716823bb5dc6fae",
+				"profileId": "chronos-cqut-offline",
+				"deploymentId": "mobile",
+				"target": "mobile"
+			},
+			"ipaUrl": "https://github.com/UE-DND/Chronos/releases/download/v1.3.7/Chronos-cqut-offline-1.3.7.ipa",
+			"sha256": "df766907eafe29b3de254e4fbde7c1477a870094cd83851307bf5cb72c1cfceb",
+			"sizeBytes": 2237607,
+			"pluginCatalogUrl": "https://ue-dnd.github.io/Chronos/plugins/releases/1.3.7/catalog.json",
+			"minimumOsVersion": "17.4"
+		}
+	}
+}
