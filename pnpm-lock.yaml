@@ -215,8 +215,8 @@ importers:
   apps/mobile:
     dependencies:
       '@capacitor-firebase/analytics':
-        specifier: ^8.5.2
-        version: 8.5.2(@capacitor/core@8.6.2)(firebase@12.19.0)
+        specifier: ^8.6.0
+        version: 8.6.0(@capacitor/core@8.6.2)(firebase@12.19.0)
       '@capacitor/app':
         specifier: ^8.1.2
         version: 8.1.2(@capacitor/core@8.6.2)
@@ -618,8 +618,8 @@ packages:
   '@bytecodealliance/preview3-shim@0.6.1':
     resolution: {integrity: sha512-61mEfjfgGmZhEMA0H3waawPKvYd3za9y0vJ7pmQz/9yvm4FR6Ef+cmqhnxDE7ezsM07MY1btP92ymmgsgFwxmg==}
 
-  '@capacitor-firebase/analytics@8.5.2':
-    resolution: {integrity: sha512-r+XW5o3zIq8BP5Xj+lcR9KGtORcHM3X/oZugAa7weLo6JqWmjqe6u+6ulpfFfgPAXv1aOzHVXSbEz1sRPuwCTg==}
+  '@capacitor-firebase/analytics@8.6.0':
+    resolution: {integrity: sha512-SiEgcC75secpgSVZncSoSB8mrx9mPVyDgO0PrFsknK9OYs8xZcoh7PIEfNENjvBrmfX0QDFA+bX7UDNSbhCPgg==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
       firebase: ^12.6.0
@@ -4291,10 +4291,12 @@ packages:
   yuku-core@0.19.0:
     resolution: {integrity: sha512-kYK9e1XdfirNhkipzW0wmMcSWcVF/CWnuugodfVYRCUwvoBefweL9HzB96OiKEhsx78V5WbUxbJqlizMX869Qg==}
     engines: {node: '>=14.18.0'}
+    deprecated: 'Yuku is now one package with one core. Use "yuku" instead: https://yuku.fyi/javascript/. Existing installs keep working but get no more fixes.'
 
   yuku-parser@0.19.0:
     resolution: {integrity: sha512-XrBh9ZiQK5mJVRxZBAvD6LwRyAYrK3MFtH3+onyuxFL5hFD44EC3QOmIC1FjTj6H2MMwq46/NAI+NZxLZPZgxg==}
     engines: {node: '>=14.18.0'}
+    deprecated: 'Yuku is now one package with one core. Use "yuku" instead: https://yuku.fyi/javascript/. Existing installs keep working but get no more fixes.'
 
   zimmerframe@1.1.5:
     resolution: {integrity: sha512-msJxIvYDYcoNL+PJsu+7qmpDWsYmAxTY+2TNYXXF0hzBzBk0BMecOqDOG/EckUoKCuKwObfbugIl8QpqHDXeFA==}
@@ -4382,7 +4384,7 @@ snapshots:
       '@bytecodealliance/jco-node-fs': 0.3.2
       '@bytecodealliance/preview2-shim': 0.25.0
 
-  '@capacitor-firebase/analytics@8.5.2(@capacitor/core@8.6.2)(firebase@12.19.0)':
+  '@capacitor-firebase/analytics@8.6.0(@capacitor/core@8.6.2)(firebase@12.19.0)':
     dependencies:
       '@capacitor/core': 8.6.2
     optionalDependencies:
