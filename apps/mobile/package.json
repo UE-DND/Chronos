@@ -27,7 +27,7 @@
 		"@chronos/ui-kit": "workspace:*"
 	},
 	"devDependencies": {
-		"@capacitor/android": "^8.5.3",
+		"@capacitor/android": "^8.6.2",
 		"@capacitor/ios": "^8.6.2",
 		"@capacitor/cli": "^8.5.3"
 	}
