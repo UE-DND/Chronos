@@ -12,7 +12,7 @@
 		"run:ios": "vpx cap run ios"
 	},
 	"dependencies": {
-		"@capacitor-firebase/analytics": "^8.5.2",
+		"@capacitor-firebase/analytics": "^8.6.0",
 		"@capacitor/app": "^8.1.2",
 		"@capacitor/app-launcher": "^8.0.1",
 		"@capacitor/clipboard": "^8.0.1",
